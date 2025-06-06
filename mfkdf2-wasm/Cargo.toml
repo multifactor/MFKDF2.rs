@@ -1,7 +1,7 @@
 [package]
-name = "mfkdf2-wasm"
-version = "0.1.0"
 edition = "2024"
+name    = "mfkdf2-wasm"
+version = "0.1.0"
 
 [dependencies]
 mfkdf2 = { workspace = true }
