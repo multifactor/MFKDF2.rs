@@ -4,6 +4,16 @@ members = ["mfkdf2", "mfkdf2-wasm", "mfkdf2-py"]
 [workspace.dependencies]
 mfkdf2 = { path = "mfkdf2" }
 
-aes = { version = "0.8", default-features = false }
-sharks = { version = "0.5", default-features = false }
+# Cryptography
+aes    = { version = "0.8", default-features = false }
 argon2 = { version = "0.5", default-features = false }
+sharks = { version = "0.5", default-features = false }
+
+# Password Strength
+zxcvbn = "3.1"
+
+# UUID
+uuid = { version = "1.17", default-features = false }
+
+# Error Handling
+thiserror = { version = "2.0", default-features = false }
