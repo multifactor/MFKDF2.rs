@@ -1,10 +1,10 @@
+use zxcvbn::{Entropy, zxcvbn};
+
+use super::FactorMaterial;
 use crate::{
   error::{MFKDF2Error, MFKDF2Result},
   factors::Factor,
 };
-
-use super::FactorMaterial;
-use zxcvbn::{Entropy, zxcvbn};
 
 // TODO (autoparallel): Should this actually be like:
 // pub struct Question {
@@ -14,8 +14,8 @@ use zxcvbn::{Entropy, zxcvbn};
 
 pub struct Question(String);
 impl FactorMaterial for Question {
-  type Params = ();
   type Output = Entropy;
+  type Params = ();
 
   fn material(input: Self) -> MFKDF2Result<Factor<Self>> {
     if input.0.is_empty() {
@@ -28,10 +28,11 @@ impl FactorMaterial for Question {
 
     let strength = zxcvbn(&cleaned_answer, &[]);
     Ok(Factor {
-      id: "question".to_string(),
-      data: Self(cleaned_answer),
+      id:     "question".to_string(),
+      data:   Self(cleaned_answer),
       params: (),
-      // TODO (autoparallel): Should this not return an actual question the answer is associated to?
+      // TODO (autoparallel): Should this not return an actual question the answer is associated
+      // to?
       output: strength,
     })
   }
