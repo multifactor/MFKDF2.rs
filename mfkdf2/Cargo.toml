@@ -1,12 +1,22 @@
 [package]
-name = "mfkdf2"
-version = "0.1.0"
 edition = "2024"
+name    = "mfkdf2"
+version = "0.1.0"
 
 
 [dependencies]
-aes = { workspace = true }
-sharks = { workspace = true }
+# Cryptography
+aes    = { workspace = true }
 argon2 = { workspace = true }
+sharks = { workspace = true }
+
+# Password Strength
+zxcvbn = { workspace = true }
+
+# UUID
+uuid = { workspace = true }
+
+# Error Handling
+thiserror = { workspace = true }
 
 # TODO (autoparallel): We likely need a "wasm" target arch cfg for this crate, at least for things like rand.

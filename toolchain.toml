@@ -1,4 +1,4 @@
 [toolchain]
-channel = "stable"
+channel    = "stable"
 components = ["rustfmt", "clippy", "llvm-cov"]
-targets = ["wasm32-unknown-unknown"]
+targets    = ["wasm32-unknown-unknown"]

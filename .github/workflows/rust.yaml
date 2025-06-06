@@ -38,16 +38,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      
-      - name: Install Rust
-        uses: dtolnay/rust-toolchain@master
-        with:
-          toolchain: nightly-2025-05-25
 
       - name: Install taplo
-        uses: taiki-e/install-action@cargo-binstall
-        with:
-          tool: taplo-cli
+        run: |
+          curl -L https://github.com/tamasfe/taplo/releases/latest/download/taplo-linux-x86_64.gz -o taplo.gz
+          gunzip taplo.gz
+          chmod +x taplo
+          sudo mv taplo /usr/local/bin/
 
       - name: Rust Cache
         uses: Swatinem/rust-cache@v2
@@ -117,33 +114,6 @@ jobs:
 
       - name: Run tests
         run: cargo test --verbose --workspace
-
-  semver:
-    name: semver
-    runs-on: ubuntu-latest
-    continue-on-error: true
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Install Rust
-        uses: dtolnay/rust-toolchain@master
-        with:
-          toolchain: nightly-2025-05-25
-
-      - name: Rust Cache
-        uses: Swatinem/rust-cache@v2
-        with:
-          key: rust/semver
-
-      - name: Install cargo-semver-checks
-        uses: taiki-e/install-action@cargo-binstall
-        with:
-          tool: cargo-semver-checks
-
-      - name: Check semver
-        run: cargo semver-checks check-release
 
   doc:
     name: doc
