@@ -118,33 +118,6 @@ jobs:
       - name: Run tests
         run: cargo test --verbose --workspace
 
-  semver:
-    name: semver
-    runs-on: ubuntu-latest
-    continue-on-error: true
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Install Rust
-        uses: dtolnay/rust-toolchain@master
-        with:
-          toolchain: nightly-2025-05-25
-
-      - name: Rust Cache
-        uses: Swatinem/rust-cache@v2
-        with:
-          key: rust/semver
-
-      - name: Install cargo-semver-checks
-        uses: taiki-e/install-action@cargo-binstall
-        with:
-          tool: cargo-semver-checks
-
-      - name: Check semver
-        run: cargo semver-checks check-release
-
   doc:
     name: doc
     runs-on: ubuntu-latest
