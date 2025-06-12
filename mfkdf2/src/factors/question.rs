@@ -6,34 +6,51 @@ use crate::{
   factors::Factor,
 };
 
-// TODO (autoparallel): Should this actually be like:
-// pub struct Question {
-//   question: String,
-//   answer: String,
-// }
+pub struct Question {
+  question: String,
+  answer:   String,
+}
 
-pub struct Question(String);
+impl Question {
+  pub fn new(question: impl Into<String>, answer: impl Into<String>) -> Self {
+    Self { question: question.into(), answer: answer.into() }
+  }
+}
+
 impl FactorMaterial for Question {
   type Output = Entropy;
   type Params = ();
 
-  fn material(input: Self) -> MFKDF2Result<Factor<Self>> {
-    if input.0.is_empty() {
+  fn material(self) -> MFKDF2Result<Factor<Self>> {
+    let answer = self.answer;
+    let question = self.question;
+    if answer.is_empty() {
       return Err(MFKDF2Error::AnswerEmpty);
     }
 
-    let answer = input.0;
-    let cleaned_answer =
+    let answer =
       answer.to_lowercase().replace(|c: char| !c.is_alphanumeric(), "").trim().to_string();
 
-    let strength = zxcvbn(&cleaned_answer, &[]);
+    let strength = zxcvbn(&answer, &[]);
     Ok(Factor {
       id:     "question".to_string(),
-      data:   Self(cleaned_answer),
+      data:   Question { question, answer },
       params: (),
-      // TODO (autoparallel): Should this not return an actual question the answer is associated
-      // to?
       output: strength,
     })
+  }
+}
+
+#[cfg(test)]
+mod tests {
+  use zxcvbn::Score;
+
+  use super::*;
+
+  #[test]
+  fn test_question_strength() {
+    let question = Question::new("What is the capital of France?", "Paris");
+    let factor = question.material().unwrap();
+    assert_eq!(factor.output.score(), Score::Zero);
   }
 }

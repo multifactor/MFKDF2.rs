@@ -7,7 +7,7 @@ pub mod uuid;
 pub trait FactorMaterial {
   type Params;
   type Output;
-  fn material(input: Self) -> MFKDF2Result<Factor<Self>>
+  fn material(self) -> MFKDF2Result<Factor<Self>>
   where Self: Sized;
 }
 
