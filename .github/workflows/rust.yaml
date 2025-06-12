@@ -13,6 +13,26 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
+  rust-fmt:
+    name: rustfmt
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: nightly
+          components: rustfmt
+
+      - name: Rust Cache
+        uses: Swatinem/rust-cache@v2
+        with:
+          key: rust/rustfmt
+
+      - name: Run Rust fmt
+        run: cargo fmt --all -- --check
+
   toml-fmt:
     name: taplo
     runs-on: ubuntu-latest
@@ -26,11 +46,16 @@ jobs:
           chmod +x taplo
           sudo mv taplo /usr/local/bin/
 
+      - name: Rust Cache
+        uses: Swatinem/rust-cache@v2
+        with:
+          key: rust/taplo
+
       - name: Run TOML fmt
         run: taplo fmt --check
 
-  quality:
-    name: Rust Quality
+  check:
+    name: check
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -39,27 +64,95 @@ jobs:
         uses: dtolnay/rust-toolchain@master
         with:
           toolchain: stable
-          components: rustfmt, clippy, llvm-tools-preview
 
       - name: Rust Cache
         uses: Swatinem/rust-cache@v2
-
-      - name: Run Rust fmt
-        run: cargo fmt --all -- --check
+        with:
+          key: rust/check
 
       - name: Run cargo check
         run: cargo check --workspace
 
+  clippy:
+    name: clippy
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: stable
+          components: clippy
+
+      - name: Rust Cache
+        uses: Swatinem/rust-cache@v2
+        with:
+          key: rust/clippy
+
+      - name: Build
+        run: cargo build --workspace
+
       - name: Clippy
         run: cargo clippy --all-targets --all-features -- --deny warnings
+
+  test:
+    name: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: stable
+
+      - name: Rust Cache
+        uses: Swatinem/rust-cache@v2
+        with:
+          key: rust/test
+
+      - name: Run tests
+        run: cargo test --verbose --workspace
+
+  doc:
+    name: doc
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: stable
+
+      - name: Rust Cache
+        uses: Swatinem/rust-cache@v2
+        with:
+          key: rust/doc
 
       - name: Run cargo doc to check for warnings
         run: RUSTDOCFLAGS="-D warnings" cargo doc --no-deps --all-features
 
+  coverage:
+    name: coverage
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: stable
+          components: llvm-tools-preview
+
+      - name: Rust Cache
+        uses: Swatinem/rust-cache@v2
+
       - name: Install cargo-llvm-cov
         uses: taiki-e/install-action@cargo-llvm-cov
 
-      - name: Generate code coverage
+      - name: Run cargo-llvm-cov
         run: cargo llvm-cov --all-features --workspace --lcov --output-path lcov.info
 
       - name: Upload coverage to Artifacts
