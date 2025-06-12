@@ -22,7 +22,6 @@ mod tests {
     let factor = uuid.material().unwrap();
     assert_eq!(factor.id, "uuid");
     assert_eq!(factor.data, uuid);
-    assert_eq!(factor.params, ());
     assert_eq!(factor.output, uuid);
   }
 }

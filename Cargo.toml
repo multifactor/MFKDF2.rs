@@ -1,5 +1,6 @@
 [workspace]
-members = ["mfkdf2", "mfkdf2-wasm", "mfkdf2-py"]
+members  = ["mfkdf2", "mfkdf2-wasm", "mfkdf2-py"]
+resolver = "2"
 
 [workspace.dependencies]
 mfkdf2 = { path = "mfkdf2" }
