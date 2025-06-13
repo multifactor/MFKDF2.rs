@@ -1,7 +1,0 @@
-[package]
-edition = "2024"
-name    = "mfkdf2-py"
-version = "0.1.0"
-
-[dependencies]
-mfkdf2 = { workspace = true }

@@ -44,6 +44,11 @@ test:
     @just header "Running doc tests"
     cargo test --workspace --doc
 
+# Run WebAssembly tests in headless Chrome
+test-wasm:
+    @just header "Running WebAssembly tests"
+    wasm-pack test --node
+
 # Run clippy for the workspace on your local OS
 lint:
     @just header "Running clippy"

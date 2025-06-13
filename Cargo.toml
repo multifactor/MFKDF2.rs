@@ -1,20 +1,39 @@
-[workspace]
-members  = ["mfkdf2", "mfkdf2-wasm", "mfkdf2-py"]
+[package]
+edition = "2024"
+name    = "mfkdf2"
+version = "0.1.0"
+
 resolver = "2"
 
-[workspace.dependencies]
-mfkdf2 = { path = "mfkdf2" }
+[lib]
+crate-type = ["cdylib", "rlib"]
 
+[dependencies]
 # Cryptography
 aes    = { version = "0.8", default-features = false }
 argon2 = { version = "0.5", default-features = false }
 sharks = { version = "0.5", default-features = false }
 
+# Serialization
+serde = { version = "1.0", features = ["derive"] }
+
 # Password Strength
-zxcvbn = "3.1"
+zxcvbn = { version = "3.1", default-features = false, features = ["ser"] }
 
 # UUID
-uuid = { version = "1.17", default-features = false }
+uuid = { version = "1.17", default-features = false, features = ["serde"] }
 
 # Error Handling
 thiserror = { version = "2.0", default-features = false }
+
+# WebAssembly
+serde-wasm-bindgen = { version = "0.6", default-features = false }
+wasm-bindgen       = { version = "0.2", default-features = false }
+
+# WebAssembly-specific dependencies
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+getrandom = { version = "0.2", default-features = false, features = ["js"] }
+
+# WebAssembly-specific dev dependencies
+[target.'cfg(target_arch = "wasm32")'.dev-dependencies]
+wasm-bindgen-test = { version = "0.3" }
