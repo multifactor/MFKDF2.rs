@@ -3,26 +3,41 @@ use zxcvbn::{Entropy, zxcvbn};
 use super::FactorMaterial;
 use crate::{
   error::{MFKDF2Error, MFKDF2Result},
-  factors::Factor,
+  factors::{GenericFactor, Material},
 };
 
 pub struct Password(String);
 
 impl Password {
   pub fn new(password: impl Into<String>) -> Self { Self(password.into()) }
+
+  pub fn setup(self) -> MFKDF2Result<Material> {
+    if self.0.is_empty() {
+      return Err(MFKDF2Error::PasswordEmpty);
+    }
+
+    let strength = zxcvbn(&self.0, &[]);
+    Ok(Material {
+      id:     "password".to_string(), // TODO: This is a placeholder.
+      kind:   "password".to_string(),
+      data:   self.0.as_bytes().to_vec(),
+      output: format!("Strength: {}", strength.score()),
+    })
+  }
 }
 
 impl FactorMaterial for Password {
   type Output = Entropy;
   type Params = ();
 
-  fn material(self) -> MFKDF2Result<Factor<Self>> {
+  // TODO: this is the old implementation, we should use the new one
+  fn material(self) -> MFKDF2Result<GenericFactor<Self>> {
     if self.0.is_empty() {
       return Err(MFKDF2Error::PasswordEmpty);
     }
 
     let strength = zxcvbn(&self.0, &[]);
-    Ok(Factor { id: "password".to_string(), data: self, params: (), output: strength })
+    Ok(GenericFactor { id: "password".to_string(), data: self, params: (), output: strength })
   }
 }
 

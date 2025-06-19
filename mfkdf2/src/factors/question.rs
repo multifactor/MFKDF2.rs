@@ -3,7 +3,7 @@ use zxcvbn::{Entropy, zxcvbn};
 use super::FactorMaterial;
 use crate::{
   error::{MFKDF2Error, MFKDF2Result},
-  factors::Factor,
+  factors::GenericFactor,
 };
 
 pub struct Question {
@@ -21,7 +21,7 @@ impl FactorMaterial for Question {
   type Output = Entropy;
   type Params = ();
 
-  fn material(self) -> MFKDF2Result<Factor<Self>> {
+  fn material(self) -> MFKDF2Result<GenericFactor<Self>> {
     let answer = self.answer;
     let question = self.question;
     if answer.is_empty() {
@@ -32,7 +32,7 @@ impl FactorMaterial for Question {
       answer.to_lowercase().replace(|c: char| !c.is_alphanumeric(), "").trim().to_string();
 
     let strength = zxcvbn(&answer, &[]);
-    Ok(Factor {
+    Ok(GenericFactor {
       id:     "question".to_string(),
       data:   Question { question, answer },
       params: (),

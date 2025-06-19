@@ -7,9 +7,10 @@ mfkdf2 = { path = "mfkdf2" }
 
 # Cryptography
 aes    = { version = "0.8", default-features = false }
-argon2 = { version = "0.5", default-features = false }
-sharks = { version = "0.5", default-features = false }
-
+argon2 = { version = "0.5" }
+ecb    = { version = "0.1", default-features = false }
+rand   = { version = "0.8", default-features = false, features = ["std"] }
+sharks = { version = "0.5" }
 # Password Strength
 zxcvbn = "3.1"
 
