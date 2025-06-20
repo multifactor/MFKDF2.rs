@@ -1,14 +1,18 @@
-use uuid::Uuid;
+use serde_json::Value;
+pub use uuid::Uuid;
 
-use super::FactorMaterial;
-use crate::{error::MFKDF2Result, factors::GenericFactor};
+use crate::factors::Material;
 
-impl FactorMaterial for Uuid {
-  type Output = Self;
-  type Params = ();
-
-  fn material(self) -> MFKDF2Result<GenericFactor<Self>> {
-    Ok(GenericFactor { id: "uuid".to_string(), data: self, params: (), output: self })
+impl Into<Material> for Uuid {
+  fn into(self) -> Material {
+    Material {
+      id:      None,
+      kind:    "uuid".to_string(),
+      data:    self.to_string().as_bytes().to_vec(),
+      output:  Value::String(self.to_string()),
+      // TODO (autoparallel): Calculate entropy
+      entropy: 0,
+    }
   }
 }
 
@@ -18,10 +22,12 @@ mod tests {
 
   #[test]
   fn test_uuid_factor() {
-    let uuid = Uuid::from_u128(1234567890);
-    let factor = uuid.material().unwrap();
-    assert_eq!(factor.id, "uuid");
-    assert_eq!(factor.data, uuid);
-    assert_eq!(factor.output, uuid);
+    let uuid = Uuid::from_u128(123_456_789_012);
+    let factor: Material = uuid.into();
+    assert_eq!(factor.id, None);
+    assert_eq!(factor.kind, "uuid");
+    assert_eq!(factor.data, uuid.to_string().as_bytes().to_vec());
+    assert_eq!(factor.output, Value::String(uuid.to_string()));
+    assert_eq!(factor.entropy, 0);
   }
 }

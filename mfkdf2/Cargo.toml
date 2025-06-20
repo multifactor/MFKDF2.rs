@@ -17,7 +17,7 @@ sharks = { workspace = true }
 rand = { workspace = true, features = ["std"] }
 
 # Password Strength
-zxcvbn = { workspace = true }
+zxcvbn = { workspace = true, features = ["ser"] }
 
 # UUID
 uuid = { workspace = true }

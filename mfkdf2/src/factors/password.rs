@@ -1,43 +1,38 @@
-use zxcvbn::{Entropy, zxcvbn};
+use serde_json::json;
+use zxcvbn::{Score, zxcvbn};
 
-use super::FactorMaterial;
 use crate::{
   error::{MFKDF2Error, MFKDF2Result},
-  factors::{GenericFactor, Material},
+  factors::{Factor, Material},
 };
 
-pub struct Password(String);
+pub struct Password {
+  password: String,
+  score:    Score,
+  entropy:  u32,
+}
 
 impl Password {
-  pub fn new(password: impl Into<String>) -> Self { Self(password.into()) }
-
-  pub fn setup(self) -> MFKDF2Result<Material> {
-    if self.0.is_empty() {
+  // Creates a password from a string that cannot be empty.
+  pub fn new(password: impl Into<String>) -> MFKDF2Result<Self> {
+    let password = std::convert::Into::<String>::into(password);
+    if password.is_empty() {
       return Err(MFKDF2Error::PasswordEmpty);
     }
-
-    let strength = zxcvbn(&self.0, &[]);
-    Ok(Material {
-      id:     "password".to_string(), // TODO: This is a placeholder.
-      kind:   "password".to_string(),
-      data:   self.0.as_bytes().to_vec(),
-      output: format!("Strength: {}", strength.score()),
-    })
+    let strength = zxcvbn(&password, &[]);
+    Ok(Self { password, score: strength.score(), entropy: strength.guesses().ilog2() })
   }
 }
 
-impl FactorMaterial for Password {
-  type Output = Entropy;
-  type Params = ();
-
-  // TODO: this is the old implementation, we should use the new one
-  fn material(self) -> MFKDF2Result<GenericFactor<Self>> {
-    if self.0.is_empty() {
-      return Err(MFKDF2Error::PasswordEmpty);
+impl From<Password> for Material {
+  fn from(password: Password) -> Self {
+    Self {
+      id:      None,
+      kind:    "password".to_string(),
+      data:    password.password.as_bytes().to_vec(),
+      output:  json!({ "score": password.score }),
+      entropy: password.entropy,
     }
-
-    let strength = zxcvbn(&self.0, &[]);
-    Ok(GenericFactor { id: "password".to_string(), data: self, params: (), output: strength })
   }
 }
 
@@ -50,13 +45,13 @@ mod tests {
   #[test]
   fn test_password_strength() {
     let password = Password::new("password");
-    let factor = password.material().unwrap();
-    dbg!(factor.output.score());
-    assert_eq!(factor.output.score(), Score::Zero);
+    let factor: Material = password.unwrap().into();
+    assert_eq!(factor.output, json!({ "score": Score::Zero }));
+    assert_eq!(factor.entropy, 1);
 
     let password = Password::new("98p23uijafjj--ah77yhfraklhjaza!?a3");
-    let factor = password.material().unwrap();
-    dbg!(factor.output.score());
-    assert_eq!(factor.output.score(), Score::Four);
+    let factor: Material = password.unwrap().into();
+    assert_eq!(factor.output, json!({ "score": Score::Four }));
+    assert_eq!(factor.entropy, 63);
   }
 }

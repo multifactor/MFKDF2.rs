@@ -941,6 +941,7 @@ dependencies = [
  "itertools",
  "lazy_static",
  "regex",
+ "serde",
  "time",
  "wasm-bindgen",
  "web-sys",
