@@ -22,9 +22,9 @@ impl Question {
     if answer.is_empty() {
       return Err(MFKDF2Error::AnswerEmpty);
     }
-    let strength = zxcvbn(&answer, &[]);
     let answer =
       answer.to_lowercase().replace(|c: char| !c.is_alphanumeric(), "").trim().to_string();
+    let strength = zxcvbn(&answer, &[]);
     Ok(Self { question, answer, score: strength.score(), entropy: strength.guesses().ilog2() })
   }
 }
@@ -54,7 +54,7 @@ mod tests {
     assert_eq!(question.answer, "paris");
     assert_eq!(question.score, Score::Zero);
 
-    let question = Question::new("What is the capital of France?", "ParIS    ()*@&$#R").unwrap();
+    let question = Question::new("What is the capital of France?", "ParIS    ()*@&$#").unwrap();
     assert_eq!(question.question, "What is the capital of France?");
     assert_eq!(question.answer, "paris");
     assert_eq!(question.score, Score::Zero);
@@ -65,6 +65,6 @@ mod tests {
     let question = Question::new("What is the capital of France?", "Paris");
     let factor: Material = question.unwrap().into();
     assert_eq!(factor.output, json!({ "score": Score::Zero }));
-    assert_eq!(factor.entropy, 1);
+    assert_eq!(factor.entropy, 9);
   }
 }
