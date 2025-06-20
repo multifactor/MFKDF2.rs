@@ -3,7 +3,6 @@ use std::collections::HashSet;
 use base64::{Engine, engine::general_purpose};
 use hmac::{Hmac, Mac};
 use rand::{RngCore, rngs::OsRng};
-use rstest::{fixture, rstest};
 use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value};
 use sha2::{Digest, Sha256};
