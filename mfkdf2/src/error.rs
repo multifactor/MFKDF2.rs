@@ -2,7 +2,7 @@ use thiserror::Error;
 
 pub type MFKDF2Result<T> = Result<T, MFKDF2Error>;
 
-#[derive(Error, Debug)]
+#[derive(Error, Debug, PartialEq, Eq)]
 pub enum MFKDF2Error {
   #[error("password cannot be empty!")]
   PasswordEmpty,

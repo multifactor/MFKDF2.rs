@@ -28,6 +28,10 @@ base64 = "0.22"
 # Hashing
 sha2 = "0.10"
 
+# HMAC
+hmac = "0.12"
+
+
 # Error Handling
 thiserror = { workspace = true }
 
@@ -37,3 +41,6 @@ serde_json = "1.0"
 
 
 # TODO (autoparallel): We likely need a "wasm" target arch cfg for this crate, at least for things like rand.
+
+[dev-dependencies]
+itertools = "0.14"

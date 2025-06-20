@@ -11,7 +11,9 @@ pub struct Factor {
   pub kind:   String,
   pub pad:    String, // base64-encoded encrypted share
   pub salt:   String, // base64 HKDF salt
-  pub params: Value,  // factor-specific metadata (empty for now)
+  pub key:    [u8; 32],
+  pub secret: Vec<u8>,
+  pub params: Value, // factor-specific metadata (empty for now)
 }
 
 /// Runtime representation of a factor supplied during setup.
