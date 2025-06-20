@@ -27,6 +27,6 @@ mod tests {
     assert_eq!(factor.kind, "uuid");
     assert_eq!(factor.data, uuid.to_string().as_bytes().to_vec());
     assert_eq!(factor.output, Value::String(uuid.to_string()));
-    assert_eq!(factor.entropy, 0);
+    assert_eq!(factor.entropy, 122);
   }
 }
