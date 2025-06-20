@@ -16,6 +16,9 @@ pub enum MFKDF2Error {
   #[error("factor id is required!")]
   MissingFactorId,
 
+  #[error("factor id must be unique!")]
+  DuplicateFactorId,
+
   #[error(transparent)]
   DecodeError(#[from] base64::DecodeError),
 

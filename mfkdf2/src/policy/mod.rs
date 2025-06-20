@@ -1,3 +1,5 @@
+use std::collections::HashSet;
+
 use base64::{Engine, engine::general_purpose};
 use rand::{RngCore, rngs::OsRng};
 use serde::{Deserialize, Serialize};
@@ -69,6 +71,7 @@ impl PolicyBuilder {
 
     // Build FactorPolicy list
     let mut factor_policies = Vec::new();
+    let mut ids = HashSet::new();
     for (mat, share) in self.factors.into_iter().zip(shares) {
       // per-factor salt
       let mut salt_bytes = [0u8; 32];
@@ -88,6 +91,10 @@ impl PolicyBuilder {
         let hash = hasher.finalize();
         general_purpose::STANDARD.encode(hash)
       });
+
+      if !ids.insert(id.clone()) {
+        return Err(MFKDF2Error::DuplicateFactorId);
+      }
 
       factor_policies.push(Factor {
         id,
