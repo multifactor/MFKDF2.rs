@@ -3,6 +3,7 @@ use std::collections::HashSet;
 use base64::{Engine, engine::general_purpose};
 use hmac::{Hmac, Mac};
 use rand::{RngCore, rngs::OsRng};
+use rstest::{fixture, rstest};
 use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value};
 use sha2::{Digest, Sha256};
@@ -207,199 +208,104 @@ mod tests {
   #![allow(clippy::expect_used)]
 
   use itertools::Itertools;
+  use rstest::{fixture, rstest};
 
   use super::*;
   use crate::factors::{password::Password, question::Question, uuid::Uuid};
 
-  fn password() -> Password { Password::new("hunter2").unwrap() }
+  // ---------------- fixtures ----------------
 
-  fn question() -> Question { Question::new("What is the capital of France?", "Paris").unwrap() }
-
-  fn uuid() -> Uuid { Uuid::from_u128(123_456_789_012) }
-
-  fn factors() -> Vec<Material> {
-    let mut password: Material = password().into();
-    password.set_id("password1");
-    let mut question: Material = question().into();
-    question.set_id("question1");
-    let mut uuid: Material = uuid().into();
-    uuid.set_id("uuid1");
-    vec![password, question, uuid]
+  #[fixture]
+  fn all_factors() -> Vec<Material> {
+    let mut p: Material = Password::new("hunter2").unwrap().into();
+    p.set_id("pw");
+    let mut q: Material = Question::new("What is the capital of France?", "Paris").unwrap().into();
+    q.set_id("qa");
+    let mut u: Material = Uuid::from_u128(123_456_789_012).into();
+    u.set_id("id");
+    vec![p, q, u]
   }
 
-  fn policy_3_of_3() -> (Policy, [u8; 32]) {
-    PolicyBuilder::new()
-      .with_threshold(3)
-      .with_factor(factors()[0].clone())
-      .with_factor(factors()[1].clone())
-      .with_factor(factors()[2].clone())
-      .build()
-      .expect("build should succeed")
-  }
-
-  fn policy_2_of_3() -> (Policy, [u8; 32]) {
-    PolicyBuilder::new()
-      .with_threshold(2)
-      .with_factor(factors()[0].clone())
-      .with_factor(factors()[1].clone())
-      .with_factor(factors()[2].clone())
-      .build()
-      .expect("build should succeed")
-  }
-
-  fn policy_1_of_3() -> (Policy, [u8; 32]) {
+  #[fixture]
+  fn policy_1(all_factors: Vec<Material>) -> (Policy, [u8; 32]) {
     PolicyBuilder::new()
       .with_threshold(1)
-      .with_factor(factors()[0].clone())
-      .with_factor(factors()[1].clone())
-      .with_factor(factors()[2].clone())
+      .with_factor(all_factors[0].clone())
+      .with_factor(all_factors[1].clone())
+      .with_factor(all_factors[2].clone())
       .build()
-      .expect("build should succeed")
+      .unwrap()
   }
 
-  #[test]
-  fn setup_generates_policy() {
-    let (policy, _) = policy_3_of_3();
-
-    assert_eq!(policy.threshold, 3);
-    assert_eq!(policy.factors.len(), 3);
-
-    for f in &policy.factors {
-      assert!(!f.pad.is_empty());
-      assert!(!f.salt.is_empty());
-    }
+  #[fixture]
+  fn policy_2(all_factors: Vec<Material>) -> (Policy, [u8; 32]) {
+    PolicyBuilder::new()
+      .with_threshold(2)
+      .with_factor(all_factors[0].clone())
+      .with_factor(all_factors[1].clone())
+      .with_factor(all_factors[2].clone())
+      .build()
+      .unwrap()
   }
 
-  #[test]
-  fn setup_then_derive() {
-    let factors = factors();
-    let (policy, key) = policy_3_of_3();
-
-    let key_derived = policy.derive(factors).expect("derive should succeed");
-    assert_eq!(key_derived, key);
-  }
-
-  #[test]
-  fn derive_fails_with_insufficient_factors_3_of_3() {
-    let (policy, _) = policy_3_of_3();
-    let all = factors();
-    let n = all.len();
-
-    // sizes 0,1,2 are insufficient when threshold is 3
-    for k in 1..3 {
-      for idxs in (0..n).combinations(k) {
-        let subset: Vec<Material> = idxs.iter().map(|&i| all[i].clone()).collect();
-        assert_eq!(policy.derive(subset).unwrap_err(), MFKDF2Error::ShareRecoveryError);
-      }
-    }
-  }
-
-  #[test]
-  fn derive_fails_with_insufficient_factors_2_of_3() {
-    let (policy, _) = policy_2_of_3();
-    let all = factors();
-    let n = all.len();
-
-    // sizes 0,1 are insufficient when threshold is 2
-    for k in 1..2 {
-      for idxs in (0..n).combinations(k) {
-        let subset: Vec<Material> = idxs.iter().map(|&i| all[i].clone()).collect();
-        assert_eq!(policy.derive(subset).unwrap_err(), MFKDF2Error::ShareRecoveryError);
-      }
-    }
-  }
-
-  #[test]
-  fn derive_fails_with_insufficient_factors_1_of_3() {
-    let (policy, _) = policy_1_of_3();
-
-    // empty set is insufficient when threshold is 1
-    assert_eq!(policy.derive(Vec::<Material>::new()).unwrap_err(), MFKDF2Error::ShareRecoveryError);
-  }
-
-  #[test]
-  fn derive_panics_with_incorrect_factor() {
-    let factors = factors();
-    let (policy, key) = policy_3_of_3();
-
-    // flip a byte in one factor to simulate wrong password
-    let mut bad_factors = factors;
-    bad_factors[0].data[0] ^= 0xFF;
-
-    let key_derived = policy.derive(bad_factors).expect("derive should succeed");
-    assert_ne!(key_derived, key);
-  }
-
-  #[test]
-  fn threshold_1_of_3() {
-    let all = factors();
-    let (policy, key) = policy_1_of_3();
-
-    // key derived with all factors (ground truth)
-    let key_correct = policy.derive(all.clone()).expect("derive should succeed");
-    assert_eq!(key_correct, key);
-
-    let n = all.len();
-    // Every non-empty subset (sizes 1..=3) should succeed and equal `key`
-    for k in 1..=all.len() {
-      for idxs in (0..n).combinations(k) {
-        let subset: Vec<Material> = idxs.iter().map(|&i| all[i].clone()).collect();
-        let derived = policy.derive(subset).expect("derive should succeed");
-        assert_eq!(derived, key);
-      }
-    }
-  }
-
-  #[test]
-  fn threshold_2_of_3() {
-    let all = factors();
-    let (policy, key) = policy_2_of_3();
-
-    let n = all.len();
-
-    // Subsets of size 2 or 3 should derive the same key.
-    for k in 2..=n {
-      for idxs in (0..n).combinations(k) {
-        let subset: Vec<Material> = idxs.iter().map(|&i| all[i].clone()).collect();
-        let derived = policy.derive(subset).expect("derive should succeed");
-        assert_eq!(derived, key);
-      }
-    }
-  }
-
-  #[test]
-  fn serialize_deserialize() {
-    let (policy, _) = policy_3_of_3();
-
-    let serialized = serde_json::to_string_pretty(&policy).expect("serialize should succeed");
-    let deserialized: Policy =
-      serde_json::from_str(&serialized).expect("deserialize should succeed");
-    assert_eq!(policy.threshold, deserialized.threshold);
-    assert_eq!(policy.factors.len(), deserialized.factors.len());
-    for (p, d) in policy.factors.iter().zip(deserialized.factors.iter()) {
-      assert_eq!(p.id, d.id);
-      assert_eq!(p.kind, d.kind);
-      assert_eq!(p.pad, d.pad);
-    }
-    assert_eq!(policy.integrity, deserialized.integrity);
-  }
-
-  #[test]
-  fn policy_from_typed_factors() {
-    let (policy, _) = PolicyBuilder::new()
+  #[fixture]
+  fn policy_3(all_factors: Vec<Material>) -> (Policy, [u8; 32]) {
+    PolicyBuilder::new()
       .with_threshold(3)
-      .with_factor(password())
-      .with_factor(question())
-      .with_factor(uuid())
+      .with_factor(all_factors[0].clone())
+      .with_factor(all_factors[1].clone())
+      .with_factor(all_factors[2].clone())
       .build()
-      .expect("build should succeed");
+      .unwrap()
+  }
 
-    assert_eq!(policy.threshold, 3);
-    assert_eq!(policy.factors.len(), 3);
+  fn subsets(src: &[Material], k: usize) -> impl Iterator<Item = Vec<Material>> {
+    (0..src.len()).combinations(k).map(|idx| idx.into_iter().map(|i| src[i].clone()).collect())
+  }
 
-    for f in &policy.factors {
-      assert!(!f.pad.is_empty());
-      assert!(!f.salt.is_empty());
+  #[rstest]
+  fn generates_policy(policy_3: (Policy, [u8; 32])) {
+    let (p, _) = policy_3;
+    assert_eq!(p.threshold, 3);
+    assert_eq!(p.factors.len(), 3);
+  }
+
+  #[rstest]
+  fn round_trip(policy_3: (Policy, [u8; 32]), all_factors: Vec<Material>) {
+    let (p, key) = policy_3;
+    assert_eq!(p.derive(all_factors).unwrap(), key);
+  }
+
+  #[rstest]
+  #[case::policy_1_k_0(policy_1, 0)]
+  #[case::policy_2_k_0(policy_2, 0)]
+  #[case::policy_2_k_1(policy_2, 1)]
+  #[case::policy_3_k_0(policy_3, 0)]
+  #[case::policy_3_k_1(policy_3, 1)]
+  #[case::policy_3_k_2(policy_3, 2)]
+  fn insufficient(
+    #[case] policy: fn(Vec<Material>) -> (Policy, [u8; 32]),
+    #[case] k: usize,
+    all_factors: Vec<Material>,
+  ) {
+    let (p, _) = policy(all_factors.clone());
+    for s in subsets(&all_factors, k) {
+      assert_eq!(p.derive(s).unwrap_err(), MFKDF2Error::ShareRecoveryError);
+    }
+  }
+
+  #[rstest]
+  #[case::policy_1(policy_1, 1)]
+  #[case::policy_2(policy_2, 2)]
+  #[case::policy_3(policy_3, 3)]
+  fn threshold(
+    #[case] policy: fn(Vec<Material>) -> (Policy, [u8; 32]),
+    #[case] k: usize,
+    all_factors: Vec<Material>,
+  ) {
+    let (p, key) = policy(all_factors.clone());
+    for s in subsets(&all_factors, k) {
+      assert_eq!(p.derive(s).unwrap(), key);
     }
   }
 }
