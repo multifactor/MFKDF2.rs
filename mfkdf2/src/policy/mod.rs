@@ -23,15 +23,12 @@ pub struct PolicyBuilder {
 
 #[derive(Debug, Serialize, Deserialize, Eq, PartialEq)]
 pub struct Policy {
-  pub threshold: u8,
-  pub salt:      String,
-  pub factors:   Vec<Factor>,
-  pub integrity: [u8; 32],
-  // TODO (autoparallel): This is so we can track the real entropy of the policy.
-  // pub entropy_real: u32,
-  //
-  // TODO (autoparallel): This is so we can track the theoretical entropy of the policy.
-  // pub entropy_theoretical: u32,
+  pub threshold:           u8,
+  pub salt:                String,
+  pub factors:             Vec<Factor>,
+  pub integrity:           [u8; 32],
+  pub entropy_real:        u32,
+  pub entropy_theoretical: u32,
 }
 
 impl Default for PolicyBuilder {
@@ -57,9 +54,11 @@ impl PolicyBuilder {
   }
 
   pub fn build(self) -> MFKDF2Result<(Policy, [u8; 32])> {
+    let threshold = self.threshold;
+
     // Check threshold against number of factors
     // TODO (autoparallel): This should be compile-time checkable? Or at least an error.
-    if !(1..=self.factors.len()).contains(&(self.threshold as usize)) {
+    if !(1..=self.factors.len()).contains(&(threshold as usize)) {
       return Err(MFKDF2Error::InvalidThreshold);
     }
 
@@ -76,11 +75,16 @@ impl PolicyBuilder {
     let key = argon2id(&secret, &salt);
 
     // Split secret into Shamir shares
-    let shares = split_secret(&secret, self.threshold, self.factors.len());
+    let shares = split_secret(&secret, threshold, self.factors.len());
 
     // Build FactorPolicy list
     let mut factor_policies = Vec::new();
     let mut ids = HashSet::new();
+
+    // Track factor entropy for later policy-level calculation
+    let mut theoretical_entropy: Vec<u32> = Vec::new();
+    let mut real_entropy: Vec<u32> = Vec::new();
+
     for (mat, share) in self.factors.into_iter().zip(shares) {
       // per-factor salt
       let mut salt_factor = [0u8; 32];
@@ -109,6 +113,10 @@ impl PolicyBuilder {
         return Err(MFKDF2Error::DuplicateFactorId);
       }
 
+      // Record entropy statistics (in bits) for this factor.
+      theoretical_entropy.push((mat.data.len() * 8) as u32);
+      real_entropy.push(mat.entropy);
+
       factor_policies.push(Factor {
         id,
         kind: mat.kind,
@@ -126,7 +134,7 @@ impl PolicyBuilder {
     // Hash the signable policy components (threshold, salt, factors) to match JS `extract`
     let encoded_salt = general_purpose::STANDARD.encode(salt);
     let mut hasher = Sha256::new();
-    hasher.update(self.threshold.to_le_bytes());
+    hasher.update(threshold.to_le_bytes());
     hasher.update(encoded_salt.as_bytes());
     // Serialize factors deterministically so the same digest is produced
     let factors_json =
@@ -141,12 +149,26 @@ impl PolicyBuilder {
     let mut integrity = [0u8; 32];
     integrity.copy_from_slice(&result.into_bytes());
 
+    // Calculate entropy
+    theoretical_entropy.sort_unstable();
+    real_entropy.sort_unstable();
+
+    let required = threshold as usize;
+
+    let theoretical_sum: u32 = theoretical_entropy.iter().take(required).copied().sum();
+    let real_sum: u32 = real_entropy.iter().take(required).copied().sum();
+
+    let entropy_theoretical = theoretical_sum.min(256);
+    let entropy_real = real_sum.min(256);
+
     Ok((
       Policy {
-        threshold: self.threshold,
+        threshold,
         salt: general_purpose::STANDARD.encode(salt),
         factors: factor_policies,
         integrity,
+        entropy_real,
+        entropy_theoretical,
       },
       key,
     ))
@@ -212,8 +234,6 @@ mod tests {
 
   use super::*;
   use crate::factors::{password::Password, question::Question, uuid::Uuid};
-
-  // ---------------- fixtures ----------------
 
   #[fixture]
   fn all_factors() -> Vec<Material> {
@@ -307,5 +327,20 @@ mod tests {
     for s in subsets(&all_factors, k) {
       assert_eq!(p.derive(s).unwrap(), key);
     }
+  }
+
+  #[rstest]
+  #[case::policy_1(policy_1, 9, 40)]
+  #[case::policy_2(policy_2, 21, 96)]
+  #[case::policy_3(policy_3, 143, 256)]
+  fn entropy(
+    #[case] policy: fn(Vec<Material>) -> (Policy, [u8; 32]),
+    #[case] entropy_real: u32,
+    #[case] entropy_theoretical: u32,
+    all_factors: Vec<Material>,
+  ) {
+    let (p, _) = policy(all_factors);
+    assert_eq!(p.entropy_real, entropy_real);
+    assert_eq!(p.entropy_theoretical, entropy_theoretical);
   }
 }
