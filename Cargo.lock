@@ -468,16 +468,10 @@ dependencies = [
 [[package]]
 name = "mfkdf2-py"
 version = "0.1.0"
-dependencies = [
- "mfkdf2",
-]
 
 [[package]]
 name = "mfkdf2-wasm"
 version = "0.1.0"
-dependencies = [
- "mfkdf2",
-]
 
 [[package]]
 name = "num-conv"
