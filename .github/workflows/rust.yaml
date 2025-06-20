@@ -161,3 +161,25 @@ jobs:
         with:
           name: coverage-report
           path: target/coverage
+
+  udeps:
+    name: udeps
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: nightly
+
+      - name: Rust Cache
+        uses: Swatinem/rust-cache@v2
+        with:
+          key: rust/udeps
+
+      - name: Install cargo-udeps
+        run: cargo install cargo-udeps --locked
+
+      - name: Run cargo udeps
+        run: cargo +nightly udeps --all-targets --workspace

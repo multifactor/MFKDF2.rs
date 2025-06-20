@@ -11,7 +11,7 @@ use sharks::{Share, Sharks};
 use crate::{
   error::{MFKDF2Error, MFKDF2Result},
   factors::{Factor, Material},
-  utils::{aes256_ecb_decrypt, aes256_ecb_encrypt, argon2id, hkdf_sha256, split_secret},
+  utils::{aes256_ecb_decrypt, aes256_ecb_encrypt, argon2id, hkdf_sha256},
 };
 
 #[derive(Debug, Serialize, Deserialize, Eq, PartialEq)]
@@ -75,7 +75,9 @@ impl PolicyBuilder {
     let key = argon2id(&secret, &salt);
 
     // Split secret into Shamir shares
-    let shares = split_secret(&secret, threshold, self.factors.len());
+    let dealer = Sharks(threshold).dealer_rng(&secret, &mut OsRng);
+    let shares: Vec<Vec<u8>> =
+      dealer.take(self.factors.len()).map(|s: Share| Vec::from(&s)).collect();
 
     // Build FactorPolicy list
     let mut factor_policies = Vec::new();

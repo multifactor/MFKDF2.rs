@@ -4,7 +4,6 @@ use cipher::{BlockDecryptMut, BlockEncryptMut, KeyInit, block_padding::NoPadding
 use ecb::Encryptor;
 use hkdf::Hkdf;
 use sha2::Sha256;
-use sharks::{Share, Sharks};
 
 pub fn hkdf_sha256(input: &[u8], salt: &[u8; 32]) -> [u8; 32] {
   let hk = Hkdf::<Sha256>::new(Some(salt), input);
@@ -45,10 +44,4 @@ pub fn argon2id(secret: &[u8; 32], salt: &[u8; 32]) -> [u8; 32] {
   let mut key = [0u8; 32];
   argon2.hash_password_into(secret, salt, &mut key).expect("argon2id");
   key
-}
-
-pub fn split_secret(secret: &[u8; 32], threshold: u8, shares: usize) -> Vec<Vec<u8>> {
-  let sharks = Sharks(threshold);
-  let dealer = sharks.dealer(secret);
-  dealer.take(shares).map(|s: Share| Vec::from(&s)).collect()
 }
