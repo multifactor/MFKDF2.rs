@@ -3,7 +3,7 @@ use zxcvbn::{Score, zxcvbn};
 
 use crate::{
   error::{MFKDF2Error, MFKDF2Result},
-  factors::{Factor, Material},
+  factors::Material,
 };
 
 pub struct Password {

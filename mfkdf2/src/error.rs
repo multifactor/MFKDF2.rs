@@ -2,7 +2,7 @@ use thiserror::Error;
 
 pub type MFKDF2Result<T> = Result<T, MFKDF2Error>;
 
-#[derive(Error, Debug, PartialEq, Eq)]
+#[derive(Error, Debug)]
 pub enum MFKDF2Error {
   #[error("password cannot be empty!")]
   PasswordEmpty,
@@ -28,4 +28,10 @@ pub enum MFKDF2Error {
 
   #[error("share recovery failed!")]
   ShareRecoveryError,
+
+  #[error("invalid hmac key!")]
+  InvalidHmacKey,
+
+  #[error(transparent)]
+  SerializeError(#[from] serde_json::Error),
 }

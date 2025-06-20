@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 use serde_json::json;
-use zxcvbn::{Entropy, Score, zxcvbn};
+use zxcvbn::{Score, zxcvbn};
 
 use crate::{
   error::{MFKDF2Error, MFKDF2Result},

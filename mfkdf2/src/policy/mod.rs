@@ -56,7 +56,6 @@ impl PolicyBuilder {
     self
   }
 
-  // TODO (autoparallel): This is a **minimal** implementation (no integrity HMAC yet).
   pub fn build(self) -> MFKDF2Result<(Policy, [u8; 32])> {
     // Check threshold against number of factors
     // TODO (autoparallel): This should be compile-time checkable? Or at least an error.
@@ -130,11 +129,13 @@ impl PolicyBuilder {
     hasher.update(self.threshold.to_le_bytes());
     hasher.update(encoded_salt.as_bytes());
     // Serialize factors deterministically so the same digest is produced
-    let factors_json = serde_json::to_string(&factor_policies).expect("serialize factors");
+    let factors_json =
+      serde_json::to_string(&factor_policies).map_err(MFKDF2Error::SerializeError)?;
     hasher.update(factors_json.as_bytes());
     let policy_data = hasher.finalize();
 
-    let mut mac = Hmac::<Sha256>::new_from_slice(&integrity_key).expect("HMAC init");
+    let mut mac =
+      Hmac::<Sha256>::new_from_slice(&integrity_key).map_err(|_| MFKDF2Error::InvalidHmacKey)?;
     mac.update(policy_data.as_slice());
     let result = mac.finalize();
     let mut integrity = [0u8; 32];
@@ -289,7 +290,7 @@ mod tests {
   ) {
     let (p, _) = policy(all_factors.clone());
     for s in subsets(&all_factors, k) {
-      assert_eq!(p.derive(s).unwrap_err(), MFKDF2Error::ShareRecoveryError);
+      assert_eq!(p.derive(s).unwrap_err().to_string(), MFKDF2Error::ShareRecoveryError.to_string());
     }
   }
 

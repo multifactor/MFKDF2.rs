@@ -3,15 +3,14 @@ pub use uuid::Uuid;
 
 use crate::factors::Material;
 
-impl Into<Material> for Uuid {
-  fn into(self) -> Material {
-    Material {
+impl From<Uuid> for Material {
+  fn from(val: Uuid) -> Self {
+    Self {
       id:      None,
       kind:    "uuid".to_string(),
-      data:    self.to_string().as_bytes().to_vec(),
-      output:  Value::String(self.to_string()),
-      // TODO (autoparallel): Calculate entropy
-      entropy: 0,
+      data:    val.to_string().as_bytes().to_vec(),
+      output:  Value::String(val.to_string()),
+      entropy: 122,
     }
   }
 }
