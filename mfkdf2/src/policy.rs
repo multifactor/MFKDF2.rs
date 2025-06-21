@@ -24,12 +24,10 @@ pub struct PolicyBuilder {
 
 #[derive(Debug, Serialize, Deserialize, Eq, PartialEq)]
 pub struct Policy {
-  pub threshold:           u8,
-  pub salt:                String,
-  pub factors:             Vec<Factor>,
-  pub integrity:           [u8; 32],
-  pub entropy_real:        u32,
-  pub entropy_theoretical: u32,
+  pub threshold: u8,
+  pub salt:      String,
+  pub factors:   Vec<Factor>,
+  pub integrity: [u8; 32],
 }
 
 impl Default for PolicyBuilder {
@@ -54,7 +52,7 @@ impl PolicyBuilder {
     self
   }
 
-  pub fn build(self) -> MFKDF2Result<(Policy, [u8; 32])> {
+  pub fn build(self) -> MFKDF2Result<(Policy, [u8; 32], u32, u32)> {
     let threshold = self.threshold;
 
     // Check threshold against number of factors
@@ -80,11 +78,8 @@ impl PolicyBuilder {
     let shares: Vec<Vec<u8>> =
       dealer.take(self.factors.len()).map(|s: Share| Vec::from(&s)).collect();
 
-    // Build FactorPolicy list
     let mut factor_policies = Vec::new();
     let mut ids = HashSet::new();
-
-    // Track factor entropy for later policy-level calculation
     let mut theoretical_entropy: Vec<u32> = Vec::new();
     let mut real_entropy: Vec<u32> = Vec::new();
 
@@ -104,20 +99,14 @@ impl PolicyBuilder {
       // TODO (autoparallel): Add params for each factor.
       let params = Value::Object(Map::new());
 
-      // Generate ID if not provided
-      let id = mat.id.unwrap_or_else(|| {
-        let mut hasher = Sha256::new();
-        hasher.update(&mat.data);
-        let hash = hasher.finalize();
-        general_purpose::STANDARD.encode(hash)
-      });
+      let id = mat.id.unwrap();
 
       if !ids.insert(id.clone()) {
         return Err(MFKDF2Error::DuplicateFactorId);
       }
 
       // Record entropy statistics (in bits) for this factor.
-      theoretical_entropy.push((mat.data.len() * 8) as u32);
+      theoretical_entropy.push(u32::try_from(mat.data.len() * 8).unwrap());
       real_entropy.push(mat.entropy);
 
       factor_policies.push(Factor {
@@ -139,6 +128,7 @@ impl PolicyBuilder {
     let mut hasher = Sha256::new();
     hasher.update(threshold.to_le_bytes());
     hasher.update(encoded_salt.as_bytes());
+
     // Serialize factors deterministically so the same digest is produced
     let factors_json =
       serde_json::to_string(&factor_policies).map_err(MFKDF2Error::SerializeError)?;
@@ -170,10 +160,10 @@ impl PolicyBuilder {
         salt: general_purpose::STANDARD.encode(salt),
         factors: factor_policies,
         integrity,
-        entropy_real,
-        entropy_theoretical,
       },
       key,
+      entropy_real,
+      entropy_theoretical,
     ))
   }
 }
@@ -250,7 +240,7 @@ mod tests {
   }
 
   #[fixture]
-  fn policy_1(all_factors: Vec<Material>) -> (Policy, [u8; 32]) {
+  fn policy_1(all_factors: Vec<Material>) -> (Policy, [u8; 32], u32, u32) {
     PolicyBuilder::new()
       .with_threshold(1)
       .with_factor(all_factors[0].clone())
@@ -261,7 +251,7 @@ mod tests {
   }
 
   #[fixture]
-  fn policy_2(all_factors: Vec<Material>) -> (Policy, [u8; 32]) {
+  fn policy_2(all_factors: Vec<Material>) -> (Policy, [u8; 32], u32, u32) {
     PolicyBuilder::new()
       .with_threshold(2)
       .with_factor(all_factors[0].clone())
@@ -272,7 +262,7 @@ mod tests {
   }
 
   #[fixture]
-  fn policy_3(all_factors: Vec<Material>) -> (Policy, [u8; 32]) {
+  fn policy_3(all_factors: Vec<Material>) -> (Policy, [u8; 32], u32, u32) {
     PolicyBuilder::new()
       .with_threshold(3)
       .with_factor(all_factors[0].clone())
@@ -287,15 +277,15 @@ mod tests {
   }
 
   #[rstest]
-  fn generates_policy(policy_3: (Policy, [u8; 32])) {
-    let (p, _) = policy_3;
+  fn generates_policy(policy_3: (Policy, [u8; 32], u32, u32)) {
+    let (p, ..) = policy_3;
     assert_eq!(p.threshold, 3);
     assert_eq!(p.factors.len(), 3);
   }
 
   #[rstest]
-  fn round_trip(policy_3: (Policy, [u8; 32]), all_factors: Vec<Material>) {
-    let (p, key) = policy_3;
+  fn round_trip(policy_3: (Policy, [u8; 32], u32, u32), all_factors: Vec<Material>) {
+    let (p, key, ..) = policy_3;
     assert_eq!(p.derive(all_factors).unwrap(), key);
   }
 
@@ -307,11 +297,11 @@ mod tests {
   #[case::policy_3_k_1(policy_3, 1)]
   #[case::policy_3_k_2(policy_3, 2)]
   fn insufficient(
-    #[case] policy: fn(Vec<Material>) -> (Policy, [u8; 32]),
+    #[case] policy: fn(Vec<Material>) -> (Policy, [u8; 32], u32, u32),
     #[case] k: usize,
     all_factors: Vec<Material>,
   ) {
-    let (p, _) = policy(all_factors.clone());
+    let (p, ..) = policy(all_factors.clone());
     for s in subsets(&all_factors, k) {
       assert_eq!(p.derive(s).unwrap_err().to_string(), MFKDF2Error::ShareRecoveryError.to_string());
     }
@@ -322,11 +312,11 @@ mod tests {
   #[case::policy_2(policy_2, 2)]
   #[case::policy_3(policy_3, 3)]
   fn threshold(
-    #[case] policy: fn(Vec<Material>) -> (Policy, [u8; 32]),
+    #[case] policy: fn(Vec<Material>) -> (Policy, [u8; 32], u32, u32),
     #[case] k: usize,
     all_factors: Vec<Material>,
   ) {
-    let (p, key) = policy(all_factors.clone());
+    let (p, key, ..) = policy(all_factors.clone());
     for s in subsets(&all_factors, k) {
       assert_eq!(p.derive(s).unwrap(), key);
     }
@@ -337,13 +327,13 @@ mod tests {
   #[case::policy_2(policy_2, 21, 96)]
   #[case::policy_3(policy_3, 143, 256)]
   fn entropy(
-    #[case] policy: fn(Vec<Material>) -> (Policy, [u8; 32]),
+    #[case] policy: fn(Vec<Material>) -> (Policy, [u8; 32], u32, u32),
     #[case] entropy_real: u32,
     #[case] entropy_theoretical: u32,
     all_factors: Vec<Material>,
   ) {
-    let (p, _) = policy(all_factors);
-    assert_eq!(p.entropy_real, entropy_real);
-    assert_eq!(p.entropy_theoretical, entropy_theoretical);
+    let (p, _, computed_entropy_real, computed_entropy_theoretical) = policy(all_factors);
+    assert_eq!(entropy_real, computed_entropy_real);
+    assert_eq!(entropy_theoretical, computed_entropy_theoretical);
   }
 }

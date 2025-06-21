@@ -38,6 +38,7 @@ pub fn aes256_ecb_decrypt(mut data: Vec<u8>, key: &[u8; 32]) -> Vec<u8> {
 
 // TODO (autoparallel): This can be replaced with a generic KDF with the default being Argon2id and
 // we can also vary the parameters of argon2id itself too.
+// TODO (autoparallel): balloon hashing could be an option too.
 pub fn argon2id(secret: &[u8; 32], salt: &[u8; 32]) -> [u8; 32] {
   // Reasonable defaults: 2 iters, 24 MiB
   let params = Params::new(24 * 1024, 2, 1, Some(32)).expect("argon2 params");
