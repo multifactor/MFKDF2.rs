@@ -4,7 +4,6 @@ pub mod password;
 pub mod question;
 pub mod uuid;
 
-// TODO: Need to get the name of "material" and "factorpolicy" correct.
 #[derive(Clone, Debug, Serialize, Deserialize, Eq, PartialEq)]
 pub struct Factor {
   pub id:     String,
@@ -16,7 +15,6 @@ pub struct Factor {
   pub params: Value, // factor-specific metadata (empty for now)
 }
 
-/// Runtime representation of a factor supplied during setup.
 #[derive(Clone, Debug, Serialize, Deserialize, Eq, PartialEq)]
 pub struct Material {
   pub id:      Option<String>,

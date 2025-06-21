@@ -13,7 +13,6 @@ pub fn hkdf_sha256(input: &[u8], salt: &[u8; 32]) -> [u8; 32] {
 }
 
 pub fn aes256_ecb_encrypt(data: &[u8], key: &[u8; 32]) -> Vec<u8> {
-  // ECB works on 16-byte blocks with NO padding (JS did cipher.setAutoPadding(false)).
   // Ensure the input is a multiple of 16 by zero-padding if necessary.
   let mut buf = {
     let mut v = data.to_vec();
@@ -37,6 +36,8 @@ pub fn aes256_ecb_decrypt(mut data: Vec<u8>, key: &[u8; 32]) -> Vec<u8> {
   data
 }
 
+// TODO (autoparallel): This can be replaced with a generic KDF with the default being Argon2id and
+// we can also vary the parameters of argon2id itself too.
 pub fn argon2id(secret: &[u8; 32], salt: &[u8; 32]) -> [u8; 32] {
   // Reasonable defaults: 2 iters, 24 MiB
   let params = Params::new(24 * 1024, 2, 1, Some(32)).expect("argon2 params");

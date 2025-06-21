@@ -1,3 +1,4 @@
+// TODO (autoparallel): If we use `no-std`, then this use of `HashSet` will need to be replaced.
 use std::collections::HashSet;
 
 use base64::{Engine, engine::general_purpose};
@@ -9,9 +10,9 @@ use sha2::{Digest, Sha256};
 use sharks::{Share, Sharks};
 
 use crate::{
+  crypto::{aes256_ecb_decrypt, aes256_ecb_encrypt, argon2id, hkdf_sha256},
   error::{MFKDF2Error, MFKDF2Result},
   factors::{Factor, Material},
-  utils::{aes256_ecb_decrypt, aes256_ecb_encrypt, argon2id, hkdf_sha256},
 };
 
 #[derive(Debug, Serialize, Deserialize, Eq, PartialEq)]
