@@ -1,20 +1,36 @@
-use crate::error::MFKDF2Result;
-
+use serde::{Deserialize, Serialize};
+use serde_json::Value;
 pub mod password;
 pub mod question;
 pub mod uuid;
 
-pub trait FactorMaterial {
-  type Params;
-  type Output;
-  fn material(self) -> MFKDF2Result<Factor<Self>>
-  where Self: Sized;
+#[derive(Clone, Debug, Serialize, Deserialize, Eq, PartialEq)]
+pub struct Factor {
+  pub id:     String,
+  pub kind:   String,
+  pub pad:    String, // base64-encoded encrypted share
+  pub salt:   String, // base64 HKDF salt
+  pub key:    [u8; 32],
+  pub secret: Vec<u8>,
+  pub params: Value, // factor-specific metadata (empty for now)
 }
 
-/// A scaffold for a factor in the MFKDF2 algorithm.
-pub struct Factor<T: FactorMaterial> {
-  pub id:     String,
-  pub data:   T,
-  pub params: T::Params,
-  pub output: T::Output,
+#[derive(Clone, Debug, Serialize, Deserialize, Eq, PartialEq)]
+pub struct Material {
+  pub id:      Option<String>,
+  pub kind:    String,
+  pub data:    Vec<u8>,
+  pub output:  Value, // diagnostics (unused for now)
+  pub entropy: u32,
+}
+
+impl Material {
+  pub fn set_id(&mut self, id: impl Into<String>) { self.id = Some(id.into()); }
+}
+
+impl IntoIterator for Material {
+  type IntoIter = std::vec::IntoIter<Self>;
+  type Item = Self;
+
+  fn into_iter(self) -> Self::IntoIter { vec![self].into_iter() }
 }

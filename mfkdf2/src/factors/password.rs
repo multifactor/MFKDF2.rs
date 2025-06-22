@@ -1,28 +1,38 @@
-use zxcvbn::{Entropy, zxcvbn};
+use serde_json::json;
+use zxcvbn::{Score, zxcvbn};
 
-use super::FactorMaterial;
 use crate::{
   error::{MFKDF2Error, MFKDF2Result},
-  factors::Factor,
+  factors::Material,
 };
 
-pub struct Password(String);
-
-impl Password {
-  pub fn new(password: impl Into<String>) -> Self { Self(password.into()) }
+pub struct Password {
+  password: String,
+  score:    Score,
+  entropy:  u32,
 }
 
-impl FactorMaterial for Password {
-  type Output = Entropy;
-  type Params = ();
-
-  fn material(self) -> MFKDF2Result<Factor<Self>> {
-    if self.0.is_empty() {
+impl Password {
+  // Creates a password from a string that cannot be empty.
+  pub fn new(password: impl Into<String>) -> MFKDF2Result<Self> {
+    let password = std::convert::Into::<String>::into(password);
+    if password.is_empty() {
       return Err(MFKDF2Error::PasswordEmpty);
     }
+    let strength = zxcvbn(&password, &[]);
+    Ok(Self { password, score: strength.score(), entropy: strength.guesses().ilog2() })
+  }
+}
 
-    let strength = zxcvbn(&self.0, &[]);
-    Ok(Factor { id: "password".to_string(), data: self, params: (), output: strength })
+impl From<Password> for Material {
+  fn from(password: Password) -> Self {
+    Self {
+      id:      None,
+      kind:    "password".to_string(),
+      data:    password.password.as_bytes().to_vec(),
+      output:  json!({ "score": password.score }),
+      entropy: password.entropy,
+    }
   }
 }
 
@@ -35,13 +45,13 @@ mod tests {
   #[test]
   fn test_password_strength() {
     let password = Password::new("password");
-    let factor = password.material().unwrap();
-    dbg!(factor.output.score());
-    assert_eq!(factor.output.score(), Score::Zero);
+    let factor: Material = password.unwrap().into();
+    assert_eq!(factor.output, json!({ "score": Score::Zero }));
+    assert_eq!(factor.entropy, 1);
 
     let password = Password::new("98p23uijafjj--ah77yhfraklhjaza!?a3");
-    let factor = password.material().unwrap();
-    dbg!(factor.output.score());
-    assert_eq!(factor.output.score(), Score::Four);
+    let factor: Material = password.unwrap().into();
+    assert_eq!(factor.output, json!({ "score": Score::Four }));
+    assert_eq!(factor.entropy, 63);
   }
 }

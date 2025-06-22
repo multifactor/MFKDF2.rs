@@ -1,14 +1,17 @@
-use uuid::Uuid;
+use serde_json::Value;
+pub use uuid::Uuid;
 
-use super::FactorMaterial;
-use crate::{error::MFKDF2Result, factors::Factor};
+use crate::factors::Material;
 
-impl FactorMaterial for Uuid {
-  type Output = Self;
-  type Params = ();
-
-  fn material(self) -> MFKDF2Result<Factor<Self>> {
-    Ok(Factor { id: "uuid".to_string(), data: self, params: (), output: self })
+impl From<Uuid> for Material {
+  fn from(val: Uuid) -> Self {
+    Self {
+      id:      None,
+      kind:    "uuid".to_string(),
+      data:    val.to_string().as_bytes().to_vec(),
+      output:  Value::String(val.to_string()),
+      entropy: 122,
+    }
   }
 }
 
@@ -18,10 +21,12 @@ mod tests {
 
   #[test]
   fn test_uuid_factor() {
-    let uuid = Uuid::from_u128(1234567890);
-    let factor = uuid.material().unwrap();
-    assert_eq!(factor.id, "uuid");
-    assert_eq!(factor.data, uuid);
-    assert_eq!(factor.output, uuid);
+    let uuid = Uuid::from_u128(123_456_789_012);
+    let factor: Material = uuid.into();
+    assert_eq!(factor.id, None);
+    assert_eq!(factor.kind, "uuid");
+    assert_eq!(factor.data, uuid.to_string().as_bytes().to_vec());
+    assert_eq!(factor.output, Value::String(uuid.to_string()));
+    assert_eq!(factor.entropy, 122);
   }
 }

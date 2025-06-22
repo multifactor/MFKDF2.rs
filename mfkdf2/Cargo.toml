@@ -3,20 +3,44 @@ edition = "2024"
 name    = "mfkdf2"
 version = "0.1.0"
 
-
 [dependencies]
 # Cryptography
-aes    = { workspace = true }
-argon2 = { workspace = true }
-sharks = { workspace = true }
+aes = { version = "0.8", default-features = false }
+argon2 = { version = "0.5", default-features = false, features = ["alloc"] }
+cipher = { version = "0.4", default-features = false, features = [
+  "block-padding",
+] }
+ecb = { version = "0.1", default-features = false }
+hkdf = { version = "0.12", default-features = false }
+sharks = { version = "0.5", default-features = false }
+
+# Randomness
+# TODO (autoparallel): This can be made `no-std` if we need to.
+rand = { version = "0.8", default-features = false, features = ["std"] }
 
 # Password Strength
-zxcvbn = { workspace = true }
+zxcvbn = { version = "3.1", default-features = false, features = ["ser"] }
 
 # UUID
-uuid = { workspace = true }
+uuid = { version = "1.17", default-features = false }
+
+# Encoding
+# TODO (autoparallel): This can be made `no-std` if we need to.
+base64 = { version = "0.22", default-features = false, features = ["std"] }
+
+# Hashing
+sha2 = { version = "0.10", default-features = false }
+
+# HMAC
+hmac = { version = "0.12", default-features = false }
 
 # Error Handling
-thiserror = { workspace = true }
+thiserror = { version = "2.0", default-features = false }
 
-# TODO (autoparallel): We likely need a "wasm" target arch cfg for this crate, at least for things like rand.
+# Serde
+serde      = { version = "1.0", default-features = false, features = ["derive"] }
+serde_json = { version = "1.0", default-features = false, features = ["alloc"] }
+
+[dev-dependencies]
+itertools = "0.14"
+rstest    = "0.25"
