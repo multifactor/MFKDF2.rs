@@ -221,6 +221,7 @@ impl Policy {
 mod tests {
   #![allow(clippy::unwrap_used)]
   #![allow(clippy::expect_used)]
+  #![allow(clippy::type_complexity)]
 
   use itertools::Itertools;
   use rstest::{fixture, rstest};
@@ -332,7 +333,7 @@ mod tests {
     #[case] entropy_theoretical: u32,
     all_factors: Vec<Material>,
   ) {
-    let (p, _, computed_entropy_real, computed_entropy_theoretical) = policy(all_factors);
+    let (_, _, computed_entropy_real, computed_entropy_theoretical) = policy(all_factors);
     assert_eq!(entropy_real, computed_entropy_real);
     assert_eq!(entropy_theoretical, computed_entropy_theoretical);
   }
