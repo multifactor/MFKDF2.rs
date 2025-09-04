@@ -10,6 +10,8 @@ pub mod question;
 pub use password::password;
 pub use question::question;
 
+pub type SetupFactorFn = Box<dyn Fn() -> Pin<Box<dyn Future<Output = Value> + Send>> + Send + Sync>;
+
 #[derive(Serialize, Deserialize)]
 pub struct MFKDF2Factor {
   // TODO (autoparallel): This should be called "type" instead.
@@ -19,11 +21,10 @@ pub struct MFKDF2Factor {
   // TODO (autoparallel): This is the factor specific salt.
   pub salt:    [u8; 32],
   #[serde(skip)]
-  pub params:  Option<Box<dyn Fn() -> Pin<Box<dyn Future<Output = Value> + Send>> + Send + Sync>>,
+  pub params:  Option<SetupFactorFn>,
   pub entropy: Option<u32>,
   #[serde(skip)]
-  pub output:
-    Option<Pin<Box<dyn Fn() -> Pin<Box<dyn Future<Output = Value> + Send>> + Send + Sync>>>,
+  pub output:  Option<SetupFactorFn>,
 }
 
 impl std::fmt::Debug for MFKDF2Factor {
