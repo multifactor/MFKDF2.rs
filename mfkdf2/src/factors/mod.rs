@@ -4,7 +4,7 @@ pub mod password;
 pub mod question;
 pub mod uuid;
 
-#[derive(Clone, Debug, Serialize, Deserialize, Eq, PartialEq)]
+#[derive(uniffi::Object, Clone, Debug, Serialize, Deserialize, Eq, PartialEq)]
 pub struct Factor {
   pub id:     String,
   pub kind:   String,
@@ -15,7 +15,17 @@ pub struct Factor {
   pub params: Value, // factor-specific metadata (empty for now)
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, Eq, PartialEq)]
+/// I'm writing some documentation for this here. Use it by doing:
+/// ```
+/// let material = Material {
+///   id:      Some("my-id".to_string()),
+///   kind:    "my-kind".to_string(),
+///   data:    vec![1, 2, 3],
+///   output:  Value::Null,
+///   entropy: 100,
+/// };
+/// ```
+#[derive(uniffi::Object, Clone, Debug, Serialize, Deserialize, Eq, PartialEq)]
 pub struct Material {
   pub id:      Option<String>,
   pub kind:    String,
