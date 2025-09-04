@@ -31,5 +31,25 @@ async fn test_key_derive() -> Result<(), mfkdf2::error::MFKDF2Error> {
 
   let derived_key = mfkdf2::derive::key(key.policy, factors).await?;
   println!("Derived key: {}", derived_key);
+
+  assert_eq!(derived_key.key, key.key);
+
   Ok(())
+}
+
+#[tokio::test]
+#[should_panic]
+async fn test_key_derive_fail() -> () {
+  let key = mock_derived_key().await.unwrap();
+  println!("Setup key: {}", key);
+
+  let factor =
+    ("password_1".to_owned(), mfkdf2::derive::factors::password("wrong_password").await.unwrap());
+
+  let factors = HashMap::from([factor]);
+
+  let derived_key = mfkdf2::derive::key(key.policy, factors).await.unwrap();
+  println!("Derived key: {}", derived_key);
+
+  assert_eq!(derived_key.key, key.key);
 }
