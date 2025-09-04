@@ -24,7 +24,7 @@ async fn test_key_derive() -> Result<(), mfkdf2::error::MFKDF2Error> {
   let key = mock_mfkdf2().await?;
   println!("Setup key: {}", key);
 
-  let factor = ("password_1".to_owned(), mfkdf2::derive::factors::password("Tr0ubd4dour").await?);
+  let factor = ("password_1", mfkdf2::derive::factors::password("Tr0ubd4dour")?);
 
   let factors = HashMap::from([factor]);
 
@@ -42,8 +42,7 @@ async fn test_key_derive_fail() -> () {
   let key = mock_mfkdf2().await.unwrap();
   println!("Setup key: {}", key);
 
-  let factor =
-    ("password_1".to_owned(), mfkdf2::derive::factors::password("wrong_password").await.unwrap());
+  let factor = ("password_1", mfkdf2::derive::factors::password("wrong_password").unwrap());
 
   let factors = HashMap::from([factor]);
 
@@ -78,15 +77,14 @@ async fn mock_threshold_mfkdf2()
 }
 
 #[tokio::test]
-async fn test_key_setup_threshold() -> () { let key = mock_threshold_mfkdf2().await.unwrap(); }
+async fn test_key_setup_threshold() -> () { mock_threshold_mfkdf2().await.unwrap(); }
 
 #[tokio::test]
 async fn test_key_derive_threshold() -> () {
   let key = mock_threshold_mfkdf2().await.unwrap();
   println!("Setup key: {}", key);
 
-  let factor =
-    ("password_1".to_owned(), mfkdf2::derive::factors::password("Tr0ubd4dour").await.unwrap());
+  let factor = ("password_1", mfkdf2::derive::factors::password("Tr0ubd4dour").unwrap());
 
   let factors = HashMap::from([factor]);
 
@@ -95,8 +93,7 @@ async fn test_key_derive_threshold() -> () {
 
   assert_eq!(derived_key.key, key.key);
 
-  let factor =
-    ("password_2".to_owned(), mfkdf2::derive::factors::password("hunter2").await.unwrap());
+  let factor = ("password_2", mfkdf2::derive::factors::password("hunter2").unwrap());
 
   let factors = HashMap::from([factor]);
 
@@ -142,12 +139,8 @@ async fn test_key_derive_password_question() -> () {
   let key = mock_password_question_mfkdf2().await.unwrap();
   println!("Setup key: {}", key);
 
-  let factor_password =
-    ("password_1".to_owned(), mfkdf2::derive::factors::password("Tr0ubd4dour").await.unwrap());
-  let factor_question = (
-    "question_1".to_owned(),
-    mfkdf2::derive::factors::question("Paris").unwrap()("value".into()).await.unwrap(),
-  );
+  let factor_password = ("password_1", mfkdf2::derive::factors::password("Tr0ubd4dour").unwrap());
+  let factor_question = ("question_1", mfkdf2::derive::factors::question("Paris").unwrap());
 
   let factors = HashMap::from([factor_password, factor_question]);
 

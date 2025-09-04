@@ -5,21 +5,21 @@ use sharks::{Share, Sharks};
 
 use crate::{
   crypto::{aes256_ecb_decrypt, balloon_sha3_256, hkdf_sha256},
-  derive::factors::MFKDF2DerivedFactor,
+  derive::DeriveFactorFn,
   error::{MFKDF2Error, MFKDF2Result},
   setup::key::{MFKDF2DerivedKey, MFKDF2Entropy, Policy},
 };
 
 pub async fn key(
   policy: Policy,
-  factors: HashMap<String, MFKDF2DerivedFactor>,
+  factors: HashMap<&str, DeriveFactorFn>,
 ) -> MFKDF2Result<MFKDF2DerivedKey> {
   let mut shares_bytes = Vec::new();
   for factor in policy.clone().factors {
-    let material = match factors.get(&factor.id) {
-      Some(material) => material,
-      None => continue,
-    };
+    let Some(factor_fn) = factors.get(factor.id.as_str()) else { continue };
+
+    let material = factor_fn(factor.params.clone()).await?;
+
     // TODO (autoparallel): This should probably be done with a `MaybeUninit` array.
     let salt_bytes = general_purpose::STANDARD.decode(&factor.salt)?;
     let salt_arr: [u8; 32] = salt_bytes.try_into().map_err(|_| MFKDF2Error::TryFromVecError)?;

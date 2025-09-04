@@ -1,22 +1,12 @@
-use std::{future::Future, pin::Pin};
-
-use serde_json::{Value, json};
+use serde_json::json;
 use zxcvbn::zxcvbn;
 
 use crate::{
-  derive::factors::MFKDF2DerivedFactor,
+  derive::{DeriveFactorFn, factors::MFKDF2DerivedFactor},
   error::{MFKDF2Error, MFKDF2Result},
 };
 
-pub fn question(
-  answer: impl Into<String>,
-) -> MFKDF2Result<
-  Box<
-    dyn Fn(Value) -> Pin<Box<dyn Future<Output = MFKDF2Result<MFKDF2DerivedFactor>> + Send>>
-      + Send
-      + Sync,
-  >,
-> {
+pub fn question(answer: impl Into<String>) -> MFKDF2Result<DeriveFactorFn> {
   let answer = answer.into();
   if answer.is_empty() {
     return Err(MFKDF2Error::AnswerEmpty);
