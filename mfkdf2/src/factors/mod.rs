@@ -1,5 +1,6 @@
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
+pub mod hotp;
 pub mod password;
 pub mod question;
 pub mod uuid;
@@ -43,4 +44,18 @@ impl IntoIterator for Material {
   type Item = Self;
 
   fn into_iter(self) -> Self::IntoIter { vec![self].into_iter() }
+}
+
+pub trait Derive {
+  type Input;
+  type Output;
+
+  fn derive(input: Self::Input) -> Self::Output;
+}
+
+pub trait Setup {
+  type Input;
+  type Output;
+
+  fn setup(input: Self::Input) -> Self::Output;
 }

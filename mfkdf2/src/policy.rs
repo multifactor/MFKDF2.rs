@@ -78,7 +78,7 @@ impl PolicyBuilder {
     let shares: Vec<Vec<u8>> =
       dealer.take(self.factors.len()).map(|s: Share| Vec::from(&s)).collect();
 
-    let mut factor_policies = Vec::new();
+    let mut factors = Vec::new();
     let mut ids = HashSet::new();
     let mut theoretical_entropy: Vec<u32> = Vec::new();
     let mut real_entropy: Vec<u32> = Vec::new();
@@ -109,7 +109,7 @@ impl PolicyBuilder {
       theoretical_entropy.push(u32::try_from(mat.data.len() * 8).unwrap());
       real_entropy.push(mat.entropy);
 
-      factor_policies.push(Factor {
+      factors.push(Factor {
         id,
         kind: mat.kind,
         pad: general_purpose::STANDARD.encode(pad),
@@ -130,8 +130,7 @@ impl PolicyBuilder {
     hasher.update(encoded_salt.as_bytes());
 
     // Serialize factors deterministically so the same digest is produced
-    let factors_json =
-      serde_json::to_string(&factor_policies).map_err(MFKDF2Error::SerializeError)?;
+    let factors_json = serde_json::to_string(&factors).map_err(MFKDF2Error::SerializeError)?;
     hasher.update(factors_json.as_bytes());
     let policy_data = hasher.finalize();
 
@@ -155,12 +154,7 @@ impl PolicyBuilder {
     let entropy_real = real_sum.min(256);
 
     Ok((
-      Policy {
-        threshold,
-        salt: general_purpose::STANDARD.encode(salt),
-        factors: factor_policies,
-        integrity,
-      },
+      Policy { threshold, salt: general_purpose::STANDARD.encode(salt), factors, integrity },
       key,
       entropy_real,
       entropy_theoretical,
@@ -176,23 +170,23 @@ impl Policy {
   // make this nicer. Idk.
   pub fn derive(&self, factors: impl IntoIterator<Item = Material>) -> MFKDF2Result<[u8; 32]> {
     let mut shares_bytes = Vec::new();
-    for factor in factors {
-      if factor.id.is_none() {
+    for material in factors {
+      if material.id.is_none() {
         return Err(MFKDF2Error::MissingFactorId);
       }
 
-      if let Some(factor_policy) =
+      if let Some(factor) =
         // Note: This unwrap is safe because we checked that the id is not none above.
-        self.factors.iter().find(|&f| f.id == *factor.id.as_ref().unwrap())
+        self.factors.iter().find(|&f| f.id == *material.id.as_ref().unwrap())
       {
         // TODO (autoparallel): This should probably be done with a `MaybeUninit` array.
-        let salt_bytes = general_purpose::STANDARD.decode(&factor_policy.salt)?;
+        let salt_bytes = general_purpose::STANDARD.decode(&factor.salt)?;
         let salt_arr: [u8; 32] = salt_bytes.try_into().map_err(|_| MFKDF2Error::TryFromVecError)?;
 
-        let stretched = hkdf_sha256(&factor.data, &salt_arr);
+        let stretched = hkdf_sha256(&material.data, &salt_arr);
 
         // TODO (autoparallel): This should probably be done with a `MaybeUninit` array.
-        let pad = general_purpose::STANDARD.decode(&factor_policy.pad)?;
+        let pad = general_purpose::STANDARD.decode(&factor.pad)?;
         let plaintext = aes256_ecb_decrypt(pad, &stretched);
 
         // TODO (autoparallel): It would be preferred to know the size of this array at compile
@@ -227,7 +221,13 @@ mod tests {
   use rstest::{fixture, rstest};
 
   use super::*;
-  use crate::factors::{password::Password, question::Question, uuid::Uuid};
+  use crate::factors::{
+    Setup,
+    hotp::{HOTP, HOTPOptions},
+    password::Password,
+    question::Question,
+    uuid::Uuid,
+  };
 
   #[fixture]
   fn all_factors() -> Vec<Material> {
@@ -336,5 +336,28 @@ mod tests {
     let (_, _, computed_entropy_real, computed_entropy_theoretical) = policy(all_factors);
     assert_eq!(entropy_real, computed_entropy_real);
     assert_eq!(entropy_theoretical, computed_entropy_theoretical);
+  }
+
+  #[test]
+  fn test_hotp_factor_with_policy() {
+    // Test that HOTP factor works with the Setup trait
+    let hotp_options = HOTPOptions {
+      id: Some("hotp".to_string()),
+      secret: Some(b"test secret".to_vec()),
+      digits: 6,
+      ..Default::default()
+    };
+
+    let mut hotp_material = HOTP::setup(hotp_options).unwrap();
+    hotp_material.set_id("hotp");
+
+    // Create a policy with HOTP factor
+    let (policy, _key, _entropy_real, _entropy_theoretical) =
+      PolicyBuilder::new().with_threshold(1).with_factor(hotp_material).build().unwrap();
+
+    assert_eq!(policy.threshold, 1);
+    assert_eq!(policy.factors.len(), 1);
+    assert_eq!(policy.factors[0].kind, "hotp");
+    assert_eq!(policy.factors[0].id, "hotp");
   }
 }
