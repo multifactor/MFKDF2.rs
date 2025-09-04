@@ -1,61 +1,73 @@
+use std::pin::Pin;
+
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-pub mod hotp;
+// pub mod hotp;
 pub mod password;
-pub mod question;
-pub mod uuid;
+// pub mod question;
+// pub mod uuid;
 
-#[derive(uniffi::Object, Clone, Debug, Serialize, Deserialize, Eq, PartialEq)]
-pub struct Factor {
-  pub id:     String,
+pub use password::password;
+
+pub struct MFKDF2DerivedFactor {
   pub kind:   String,
-  pub pad:    String, // base64-encoded encrypted share
-  pub salt:   String, // base64 HKDF salt
-  pub key:    [u8; 32],
-  pub secret: Vec<u8>,
-  pub params: Value, // factor-specific metadata (empty for now)
+  pub data:   Vec<u8>,
+  pub params: Option<Box<dyn Fn() -> Pin<Box<dyn Future<Output = Value> + Send>> + Send + Sync>>,
+  pub output:
+    Option<Pin<Box<dyn Fn() -> Pin<Box<dyn Future<Output = Value> + Send>> + Send + Sync>>>,
 }
 
-/// I'm writing some documentation for this here. Use it by doing:
-/// ```
-/// let material = Material {
-///   id:      Some("my-id".to_string()),
-///   kind:    "my-kind".to_string(),
-///   data:    vec![1, 2, 3],
-///   output:  Value::Null,
-///   entropy: 100,
-/// };
-/// ```
-#[derive(uniffi::Object, Clone, Debug, Serialize, Deserialize, Eq, PartialEq)]
-pub struct Material {
-  pub id:      Option<String>,
-  pub kind:    String,
-  pub data:    Vec<u8>,
-  pub output:  Value, // diagnostics (unused for now)
-  pub entropy: u32,
-}
+// #[derive(uniffi::Object, Clone, Debug, Serialize, Deserialize, Eq, PartialEq)]
+// pub struct Factor {
+//   pub id:     String,
+//   pub kind:   String,
+//   pub pad:    String, // base64-encoded encrypted share
+//   pub salt:   String, // base64 HKDF salt
+//   pub key:    [u8; 32],
+//   pub secret: Vec<u8>,
+//   pub params: Value, // factor-specific metadata (empty for now)
+// }
 
-impl Material {
-  pub fn set_id(&mut self, id: impl Into<String>) { self.id = Some(id.into()); }
-}
+// /// I'm writing some documentation for this here. Use it by doing:
+// /// ```
+// /// let material = Material {
+// ///   id:      Some("my-id".to_string()),
+// ///   kind:    "my-kind".to_string(),
+// ///   data:    vec![1, 2, 3],
+// ///   output:  Value::Null,
+// ///   entropy: 100,
+// /// };
+// /// ```
+// #[derive(uniffi::Object, Clone, Debug, Serialize, Deserialize, Eq, PartialEq)]
+// pub struct Material {
+//   pub id:      Option<String>,
+//   pub kind:    String,
+//   pub data:    Vec<u8>,
+//   pub output:  Value, // diagnostics (unused for now)
+//   pub entropy: u32,
+// }
 
-impl IntoIterator for Material {
-  type IntoIter = std::vec::IntoIter<Self>;
-  type Item = Self;
+// impl Material {
+//   pub fn set_id(&mut self, id: impl Into<String>) { self.id = Some(id.into()); }
+// }
 
-  fn into_iter(self) -> Self::IntoIter { vec![self].into_iter() }
-}
+// impl IntoIterator for Material {
+//   type IntoIter = std::vec::IntoIter<Self>;
+//   type Item = Self;
 
-pub trait Derive {
-  type Input;
-  type Output;
+//   fn into_iter(self) -> Self::IntoIter { vec![self].into_iter() }
+// }
 
-  fn derive(input: Self::Input) -> Self::Output;
-}
+// pub trait Derive {
+//   type Input;
+//   type Output;
 
-pub trait Setup {
-  type Input;
-  type Output;
+//   fn derive(input: Self::Input) -> Self::Output;
+// }
 
-  fn setup(input: Self::Input) -> Self::Output;
-}
+// pub trait Setup {
+//   type Input;
+//   type Output;
+
+//   fn setup(input: Self::Input) -> Self::Output;
+// }

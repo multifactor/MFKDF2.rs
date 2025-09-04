@@ -15,7 +15,7 @@ use crate::{
   setup::factors::{MFKDF2Factor, Material},
 };
 
-#[derive(Serialize, Deserialize, Debug, Eq, PartialEq)]
+#[derive(Clone, Serialize, Deserialize, Debug, Eq, PartialEq)]
 pub struct PolicyFactor {
   pub id:     String,
   pub kind:   String,
@@ -53,6 +53,17 @@ pub struct MFKDF2DerivedKey {
   pub shares:  Vec<Vec<u8>>,
   pub outputs: Vec<Value>,
   pub entropy: MFKDF2Entropy,
+}
+
+impl std::fmt::Display for MFKDF2DerivedKey {
+  fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    write!(
+      f,
+      "MFKDF2DerivedKey {{ key: {}, secret: {} }}",
+      base64::Engine::encode(&general_purpose::STANDARD, self.key),
+      base64::Engine::encode(&general_purpose::STANDARD, self.secret),
+    )
+  }
 }
 
 pub async fn key(
@@ -177,14 +188,7 @@ pub async fn key(
   })
 }
 
-// #[derive(Debug, Serialize, Deserialize, Eq, PartialEq)]
-// pub struct PolicyBuilder {
-//   pub threshold: u8,
-//   pub salt:      Option<[u8; 32]>,
-//   pub factors:   Vec<Material>,
-// }
-
-#[derive(Debug, Serialize, Deserialize, Eq, PartialEq)]
+#[derive(Clone, Debug, Serialize, Deserialize, Eq, PartialEq)]
 pub struct Policy {
   pub threshold: u8,
   pub salt:      String,
@@ -192,186 +196,8 @@ pub struct Policy {
   pub integrity: [u8; 32],
 }
 
-// impl Default for PolicyBuilder {
-//   fn default() -> Self { Self::new() }
-// }
-
-// impl PolicyBuilder {
-//   pub const fn new() -> Self { Self { threshold: 1, salt: None, factors: Vec::new() } }
-
-//   pub const fn with_threshold(mut self, threshold: u8) -> Self {
-//     self.threshold = threshold;
-//     self
-//   }
-
-//   pub const fn with_salt(mut self, salt: [u8; 32]) -> Self {
-//     self.salt = Some(salt);
-//     self
-//   }
-
-//   pub fn with_factor<F: Into<Material>>(mut self, factor: F) -> Self {
-//     self.factors.push(factor.into());
-//     self
-//   }
-
-//   pub fn build(self) -> MFKDF2Result<(Policy, [u8; 32], u32, u32)> {
-//     let threshold = self.threshold;
-
-//     // Check threshold against number of factors
-//     // TODO (autoparallel): This should be compile-time checkable? Or at least an error.
-//     if !(1..=self.factors.len()).contains(&(threshold as usize)) {
-//       return Err(MFKDF2Error::InvalidThreshold);
-//     }
-
-//     // Generate salt & secret if not provided
-//     let salt: [u8; 32] = self.salt.unwrap_or_else(|| {
-//       let mut salt = [0u8; 32];
-//       OsRng.fill_bytes(&mut salt);
-//       salt
-//     });
-//     let mut secret: [u8; 32] = [0u8; 32];
-//     OsRng.fill_bytes(&mut secret);
-
-//     // Generate key
-//     let key = balloon_sha3_256(&secret, &salt);
-
-//     // Split secret into Shamir shares
-//     let dealer = Sharks(threshold).dealer_rng(&secret, &mut OsRng);
-//     let shares: Vec<Vec<u8>> =
-//       dealer.take(self.factors.len()).map(|s: Share| Vec::from(&s)).collect();
-
-//     let mut factors = Vec::new();
-//     let mut ids = HashSet::new();
-//     let mut theoretical_entropy: Vec<u32> = Vec::new();
-//     let mut real_entropy: Vec<u32> = Vec::new();
-
-//     for (mat, share) in self.factors.into_iter().zip(shares) {
-//       // per-factor salt
-//       let mut salt_factor = [0u8; 32];
-//       OsRng.fill_bytes(&mut salt_factor);
-
-//       // HKDF stretch & AES-encrypt share
-//       let stretched = hkdf_sha256(&mat.data, &salt_factor);
-//       let pad = aes256_ecb_encrypt(&share, &stretched);
-
-//       // Generate factor key
-//       let key_factor = hkdf_sha256(&key, &salt_factor);
-//       let secret_factor = aes256_ecb_encrypt(&share, &key_factor);
-
-//       // TODO (autoparallel): Add params for each factor.
-//       let params = Value::Object(Map::new());
-
-//       let id = mat.id.unwrap();
-
-//       if !ids.insert(id.clone()) {
-//         return Err(MFKDF2Error::DuplicateFactorId);
-//       }
-
-//       // Record entropy statistics (in bits) for this factor.
-//       theoretical_entropy.push(u32::try_from(mat.data.len() * 8).unwrap());
-//       real_entropy.push(mat.entropy);
-
-//       factors.push(Factor {
-//         id,
-//         kind: mat.kind,
-//         pad: general_purpose::STANDARD.encode(pad),
-//         salt: general_purpose::STANDARD.encode(salt_factor),
-//         key: key_factor,
-//         secret: secret_factor,
-//         params,
-//       });
-//     }
-
-//     // Derive an integrity key specific to the policy and compute a policy HMAC
-//     let integrity_key = hkdf_sha256(&key, &salt);
-
-//     // Hash the signable policy components (threshold, salt, factors) to match JS `extract`
-//     let encoded_salt = general_purpose::STANDARD.encode(salt);
-//     let mut hasher = Sha256::new();
-//     hasher.update(threshold.to_le_bytes());
-//     hasher.update(encoded_salt.as_bytes());
-
-//     // Serialize factors deterministically so the same digest is produced
-//     let factors_json = serde_json::to_string(&factors).map_err(MFKDF2Error::SerializeError)?;
-//     hasher.update(factors_json.as_bytes());
-//     let policy_data = hasher.finalize();
-
-//     let mut mac =
-//       Hmac::<Sha256>::new_from_slice(&integrity_key).map_err(|_| MFKDF2Error::InvalidHmacKey)?;
-//     mac.update(policy_data.as_slice());
-//     let result = mac.finalize();
-//     let mut integrity = [0u8; 32];
-//     integrity.copy_from_slice(&result.into_bytes());
-
-//     // Calculate entropy
-//     theoretical_entropy.sort_unstable();
-//     real_entropy.sort_unstable();
-
-//     let required = threshold as usize;
-
-//     let theoretical_sum: u32 = theoretical_entropy.iter().take(required).copied().sum();
-//     let real_sum: u32 = real_entropy.iter().take(required).copied().sum();
-
-//     let entropy_theoretical = theoretical_sum.min(256);
-//     let entropy_real = real_sum.min(256);
-
-//     Ok((
-//       Policy { threshold, salt: general_purpose::STANDARD.encode(salt), factors, integrity },
-//       key,
-//       entropy_real,
-//       entropy_theoretical,
-//     ))
-//   }
-// }
-
 // TODO (autoparallel): Add a `PolicyBuilder` to make it easier to create policies.
-impl Policy {
-  // TODO (autoparallel): We should have some kind of introspection on what we can derive from. So
-  // we should have some kind of `Policy::derive_from` that takes a single typed factor and the
-  // stage of "how derived" the policy is. Could have `PolicyInteractive` or something like that to
-  // make this nicer. Idk.
-  pub fn derive(&self, factors: impl IntoIterator<Item = Material>) -> MFKDF2Result<[u8; 32]> {
-    let mut shares_bytes = Vec::new();
-    for material in factors {
-      if material.id.is_none() {
-        return Err(MFKDF2Error::MissingFactorId);
-      }
-
-      if let Some(factor) =
-        // Note: This unwrap is safe because we checked that the id is not none above.
-        self.factors.iter().find(|&f| f.id == *material.id.as_ref().unwrap())
-      {
-        // TODO (autoparallel): This should probably be done with a `MaybeUninit` array.
-        let salt_bytes = general_purpose::STANDARD.decode(&factor.salt)?;
-        let salt_arr: [u8; 32] = salt_bytes.try_into().map_err(|_| MFKDF2Error::TryFromVecError)?;
-
-        let stretched = hkdf_sha256(&material.data, &salt_arr);
-
-        // TODO (autoparallel): This should probably be done with a `MaybeUninit` array.
-        let pad = general_purpose::STANDARD.decode(&factor.pad)?;
-        let plaintext = aes256_ecb_decrypt(pad, &stretched);
-
-        // TODO (autoparallel): It would be preferred to know the size of this array at compile
-        // time.
-        shares_bytes.push(plaintext);
-      }
-    }
-
-    let shares_vec: Vec<Share> = shares_bytes
-      .iter()
-      .map(|b| Share::try_from(&b[..]).map_err(|_| MFKDF2Error::TryFromVecError))
-      .collect::<Result<Vec<Share>, _>>()?;
-
-    let sharks = Sharks(self.threshold);
-    let secret = sharks.recover(&shares_vec).map_err(|_| MFKDF2Error::ShareRecoveryError)?;
-    let secret_arr: [u8; 32] = secret[..32].try_into().map_err(|_| MFKDF2Error::TryFromVecError)?;
-
-    let salt_bytes = general_purpose::STANDARD.decode(&self.salt)?;
-    let salt_arr: [u8; 32] = salt_bytes.try_into().map_err(|_| MFKDF2Error::TryFromVecError)?;
-    let key = balloon_sha3_256(&secret_arr, &salt_arr);
-    Ok(key)
-  }
-}
+impl Policy {}
 
 // #[cfg(test)]
 // mod tests {
