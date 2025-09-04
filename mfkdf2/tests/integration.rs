@@ -1,7 +1,6 @@
 use std::collections::HashMap;
 
-async fn mock_derived_key()
--> Result<mfkdf2::setup::key::MFKDF2DerivedKey, mfkdf2::error::MFKDF2Error> {
+async fn mock_mfkdf2() -> Result<mfkdf2::setup::key::MFKDF2DerivedKey, mfkdf2::error::MFKDF2Error> {
   let factors = vec![mfkdf2::setup::factors::password(
     "Tr0ubd4dour",
     Some(mfkdf2::setup::factors::password::PasswordOptions { id: Some("password_1".to_string()) }),
@@ -16,13 +15,13 @@ async fn mock_derived_key()
 
 #[tokio::test]
 async fn test_key_setup() -> Result<(), mfkdf2::error::MFKDF2Error> {
-  mock_derived_key().await?;
+  mock_mfkdf2().await?;
   Ok(())
 }
 
 #[tokio::test]
 async fn test_key_derive() -> Result<(), mfkdf2::error::MFKDF2Error> {
-  let key = mock_derived_key().await?;
+  let key = mock_mfkdf2().await?;
   println!("Setup key: {}", key);
 
   let factor = ("password_1".to_owned(), mfkdf2::derive::factors::password("Tr0ubd4dour").await?);
@@ -40,11 +39,64 @@ async fn test_key_derive() -> Result<(), mfkdf2::error::MFKDF2Error> {
 #[tokio::test]
 #[should_panic]
 async fn test_key_derive_fail() -> () {
-  let key = mock_derived_key().await.unwrap();
+  let key = mock_mfkdf2().await.unwrap();
   println!("Setup key: {}", key);
 
   let factor =
     ("password_1".to_owned(), mfkdf2::derive::factors::password("wrong_password").await.unwrap());
+
+  let factors = HashMap::from([factor]);
+
+  let derived_key = mfkdf2::derive::key(key.policy, factors).await.unwrap();
+  println!("Derived key: {}", derived_key);
+
+  assert_eq!(derived_key.key, key.key);
+}
+
+async fn mock_threshold_mfkdf2()
+-> Result<mfkdf2::setup::key::MFKDF2DerivedKey, mfkdf2::error::MFKDF2Error> {
+  let factors = vec![
+    mfkdf2::setup::factors::password(
+      "Tr0ubd4dour",
+      Some(mfkdf2::setup::factors::password::PasswordOptions {
+        id: Some("password_1".to_string()),
+      }),
+    ),
+    mfkdf2::setup::factors::password(
+      "hunter2",
+      Some(mfkdf2::setup::factors::password::PasswordOptions {
+        id: Some("password_2".to_string()),
+      }),
+    ),
+  ]
+  .into_iter()
+  .collect::<Result<Vec<_>, _>>()?;
+
+  let options = mfkdf2::setup::key::MFKDF2Options { threshold: Some(1), ..Default::default() };
+  let key = mfkdf2::setup::key::key(factors, Some(options)).await?;
+  Ok(key)
+}
+
+#[tokio::test]
+async fn test_key_setup_threshold() -> () { let key = mock_threshold_mfkdf2().await.unwrap(); }
+
+#[tokio::test]
+async fn test_key_derive_threshold() -> () {
+  let key = mock_threshold_mfkdf2().await.unwrap();
+  println!("Setup key: {}", key);
+
+  let factor =
+    ("password_1".to_owned(), mfkdf2::derive::factors::password("Tr0ubd4dour").await.unwrap());
+
+  let factors = HashMap::from([factor]);
+
+  let derived_key = mfkdf2::derive::key(key.policy.clone(), factors).await.unwrap();
+  println!("Derived key: {}", derived_key);
+
+  assert_eq!(derived_key.key, key.key);
+
+  let factor =
+    ("password_2".to_owned(), mfkdf2::derive::factors::password("hunter2").await.unwrap());
 
   let factors = HashMap::from([factor]);
 
