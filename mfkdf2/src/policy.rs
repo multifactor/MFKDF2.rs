@@ -10,7 +10,7 @@ use sha2::{Digest, Sha256};
 use sharks::{Share, Sharks};
 
 use crate::{
-  crypto::{aes256_ecb_decrypt, aes256_ecb_encrypt, argon2id, hkdf_sha256},
+  crypto::{aes256_ecb_decrypt, aes256_ecb_encrypt, balloon_sha3_256, hkdf_sha256},
   error::{MFKDF2Error, MFKDF2Result},
   factors::{Factor, Material},
 };
@@ -71,7 +71,7 @@ impl PolicyBuilder {
     OsRng.fill_bytes(&mut secret);
 
     // Generate key
-    let key = argon2id(&secret, &salt);
+    let key = balloon_sha3_256(&secret, &salt);
 
     // Split secret into Shamir shares
     let dealer = Sharks(threshold).dealer_rng(&secret, &mut OsRng);
@@ -212,7 +212,7 @@ impl Policy {
 
     let salt_bytes = general_purpose::STANDARD.decode(&self.salt)?;
     let salt_arr: [u8; 32] = salt_bytes.try_into().map_err(|_| MFKDF2Error::TryFromVecError)?;
-    let key = argon2id(&secret_arr, &salt_arr);
+    let key = balloon_sha3_256(&secret_arr, &salt_arr);
     Ok(key)
   }
 }

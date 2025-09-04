@@ -13,7 +13,7 @@ path = "uniffi-bindgen.rs"
 [dependencies]
 # Cryptography
 aes = { version = "0.8", default-features = false }
-argon2 = { version = "0.5", default-features = false, features = ["alloc"] }
+# argon2 = { version = "0.5", default-features = false, features = ["alloc"] }
 cipher = { version = "0.4", default-features = false, features = [
   "block-padding",
 ] }
@@ -36,7 +36,12 @@ uuid = { version = "1.17", default-features = false }
 base64 = { version = "0.22", default-features = false, features = ["std"] }
 
 # Hashing
+balloon-hash = { version = "0.4", default-features = false, features = [
+  "alloc",
+] }
+# TODO: May not need SHA2 anymore.
 sha2 = { version = "0.10", default-features = false }
+sha3 = { version = "0.10", default-features = false }
 
 # HMAC
 hmac = { version = "0.12", default-features = false }
