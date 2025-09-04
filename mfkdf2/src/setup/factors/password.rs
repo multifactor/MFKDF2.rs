@@ -1,17 +1,11 @@
 use rand::{RngCore, rngs::OsRng};
 use serde_json::json;
-use zxcvbn::{Score, zxcvbn};
+use zxcvbn::zxcvbn;
 
 use crate::{
   error::{MFKDF2Error, MFKDF2Result},
   setup::factors::MFKDF2Factor,
 };
-
-pub struct Password {
-  password: String,
-  score:    Score,
-  entropy:  u32,
-}
 
 pub struct PasswordOptions {
   pub id: Option<String>,
@@ -42,46 +36,17 @@ pub fn password(
   })
 }
 
-// impl Password {
-//   // Creates a password from a string that cannot be empty.
-//   pub fn new(password: impl Into<String>) -> MFKDF2Result<Self> {
-//     let password = std::convert::Into::<String>::into(password);
-//     if password.is_empty() {
-//       return Err(MFKDF2Error::PasswordEmpty);
-//     }
-//     let strength = zxcvbn(&password, &[]);
-//     Ok(Self { password, score: strength.score(), entropy: strength.guesses().ilog2() })
-//   }
-// }
+#[cfg(test)]
+mod tests {
 
-// impl From<Password> for Material {
-//   fn from(password: Password) -> Self {
-//     Self {
-//       id:      None,
-//       kind:    "password".to_string(),
-//       data:    password.password.as_bytes().to_vec(),
-//       output:  json!({ "score": password.score }),
-//       entropy: password.entropy,
-//     }
-//   }
-// }
+  use super::*;
 
-// #[cfg(test)]
-// mod tests {
-//   use zxcvbn::Score;
+  #[tokio::test]
+  async fn test_password_strength() {
+    let factor = password("password", None).unwrap();
+    assert_eq!(factor.entropy, Some(1));
 
-//   use super::*;
-
-//   #[test]
-//   fn test_password_strength() {
-//     let password = Password::new("password");
-//     let factor: Material = password.unwrap().into();
-//     assert_eq!(factor.output, json!({ "score": Score::Zero }));
-//     assert_eq!(factor.entropy, 1);
-
-//     let password = Password::new("98p23uijafjj--ah77yhfraklhjaza!?a3");
-//     let factor: Material = password.unwrap().into();
-//     assert_eq!(factor.output, json!({ "score": Score::Four }));
-//     assert_eq!(factor.entropy, 63);
-//   }
-// }
+    let factor = password("98p23uijafjj--ah77yhfraklhjaza!?a3", None).unwrap();
+    assert_eq!(factor.entropy, Some(63));
+  }
+}
