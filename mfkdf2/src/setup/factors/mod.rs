@@ -4,10 +4,11 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 // pub mod hotp;
 pub mod password;
-// pub mod question;
+pub mod question;
 // pub mod uuid;
 
 pub use password::password;
+pub use question::question;
 
 #[derive(Serialize, Deserialize)]
 pub struct MFKDF2Factor {
@@ -37,48 +38,4 @@ impl std::fmt::Debug for MFKDF2Factor {
       .field("output", &"<future>")
       .finish()
   }
-}
-
-/// I'm writing some documentation for this here. Use it by doing:
-/// ```
-/// let material = Material {
-///   id:      Some("my-id".to_string()),
-///   kind:    "my-kind".to_string(),
-///   data:    vec![1, 2, 3],
-///   output:  Value::Null,
-///   entropy: 100,
-/// };
-/// ```
-#[derive(uniffi::Object, Clone, Debug, Serialize, Deserialize, Eq, PartialEq)]
-pub struct Material {
-  pub id:      Option<String>,
-  pub kind:    String,
-  pub data:    Vec<u8>,
-  pub output:  Value, // diagnostics (unused for now)
-  pub entropy: u32,
-}
-
-impl Material {
-  pub fn set_id(&mut self, id: impl Into<String>) { self.id = Some(id.into()); }
-}
-
-impl IntoIterator for Material {
-  type IntoIter = std::vec::IntoIter<Self>;
-  type Item = Self;
-
-  fn into_iter(self) -> Self::IntoIter { vec![self].into_iter() }
-}
-
-// pub trait Derive {
-//   type Input;
-//   type Output;
-
-//   fn derive(input: Self::Input) -> Self::Output;
-// }
-
-pub trait Setup {
-  type Input;
-  type Output;
-
-  fn setup(input: Self::Input) -> Self::Output;
 }

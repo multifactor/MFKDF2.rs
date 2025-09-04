@@ -5,12 +5,9 @@ use sharks::{Share, Sharks};
 
 use crate::{
   crypto::{aes256_ecb_decrypt, balloon_sha3_256, hkdf_sha256},
-  derive::{MFKDF2DerivedFactorFuture, factors::MFKDF2DerivedFactor},
+  derive::factors::MFKDF2DerivedFactor,
   error::{MFKDF2Error, MFKDF2Result},
-  setup::{
-    factors::MFKDF2Factor,
-    key::{MFKDF2DerivedKey, MFKDF2Entropy, Policy},
-  },
+  setup::key::{MFKDF2DerivedKey, MFKDF2Entropy, Policy},
 };
 
 pub async fn key(

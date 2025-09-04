@@ -1,70 +1,66 @@
-use serde::{Deserialize, Serialize};
+use rand::{RngCore, rngs::OsRng};
 use serde_json::json;
-use zxcvbn::{Score, zxcvbn};
+use zxcvbn::zxcvbn;
 
 use crate::{
   error::{MFKDF2Error, MFKDF2Result},
-  factors::Material,
+  setup::factors::MFKDF2Factor,
 };
 
-#[derive(Clone, Debug, Serialize, Deserialize, Eq, PartialEq)]
-pub struct Question {
-  question: String,
-  answer:   String,
-  score:    Score,
-  entropy:  u32,
+pub struct QuestionOptions {
+  pub id:       Option<String>,
+  pub question: String,
 }
 
-impl Question {
-  pub fn new(question: impl Into<String>, answer: impl Into<String>) -> MFKDF2Result<Self> {
-    let question = question.into();
-    let answer = answer.into();
-    if answer.is_empty() {
-      return Err(MFKDF2Error::AnswerEmpty);
-    }
-    let answer =
-      answer.to_lowercase().replace(|c: char| !c.is_alphanumeric(), "").trim().to_string();
-    let strength = zxcvbn(&answer, &[]);
-    Ok(Self { question, answer, score: strength.score(), entropy: strength.guesses().ilog2() })
+pub fn question(
+  answer: impl Into<String>,
+  options: Option<QuestionOptions>,
+) -> MFKDF2Result<MFKDF2Factor> {
+  let answer = answer.into();
+  if answer.is_empty() {
+    return Err(MFKDF2Error::AnswerEmpty);
   }
-}
+  let answer = answer.to_lowercase().replace(|c: char| !c.is_alphanumeric(), "").trim().to_string();
+  let strength = zxcvbn(&answer, &[]);
+  let entropy = strength.guesses().ilog2();
 
-impl From<Question> for Material {
-  fn from(question: Question) -> Self {
-    Self {
-      id:      None,
-      kind:    "question".to_string(),
-      data:    question.answer.as_bytes().to_vec(),
-      output:  json!({ "score": question.score }),
-      entropy: question.entropy,
-    }
-  }
+  let mut salt = [0u8; 32];
+  OsRng.fill_bytes(&mut salt);
+
+  let (id, question_text) = match options {
+    Some(opts) => (opts.id.unwrap_or("question".to_string()), opts.question),
+    None => ("question".to_string(), String::new()),
+  };
+
+  Ok(MFKDF2Factor {
+    kind: "question".to_string(),
+    id,
+    data: answer.as_bytes().to_vec(),
+    salt,
+    params: Some(Box::new(move || {
+      let q = question_text.clone();
+      Box::pin(async move { json!({ "question": q }) })
+    })),
+    entropy: Some(entropy),
+    output: None,
+  })
 }
 
 #[cfg(test)]
 mod tests {
-  use zxcvbn::Score;
 
   use super::*;
 
   #[test]
-  fn test_question_new() {
-    let question = Question::new("What is the capital of France?", "Paris").unwrap();
-    assert_eq!(question.question, "What is the capital of France?");
-    assert_eq!(question.answer, "paris");
-    assert_eq!(question.score, Score::Zero);
-
-    let question = Question::new("What is the capital of France?", "ParIS    ()*@&$#").unwrap();
-    assert_eq!(question.question, "What is the capital of France?");
-    assert_eq!(question.answer, "paris");
-    assert_eq!(question.score, Score::Zero);
-  }
-
-  #[test]
   fn test_question_strength() {
-    let question = Question::new("What is the capital of France?", "Paris");
-    let factor: Material = question.unwrap().into();
-    assert_eq!(factor.output, json!({ "score": Score::Zero }));
-    assert_eq!(factor.entropy, 9);
+    let factor = question(
+      "Paris",
+      Some(QuestionOptions {
+        id:       None,
+        question: "What is the capital of France?".to_string(),
+      }),
+    )
+    .unwrap();
+    assert_eq!(factor.entropy, Some(9));
   }
 }
