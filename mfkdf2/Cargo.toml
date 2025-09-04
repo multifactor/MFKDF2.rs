@@ -4,7 +4,7 @@ name    = "mfkdf2"
 version = "0.1.0"
 
 [lib]
-crate-type = ["cdylib"]
+crate-type = ["cdylib", "lib"]
 
 [[bin]]
 name = "uniffi-bindgen"
@@ -68,3 +68,4 @@ getrandom = { version = "0.2", features = ["js"] }
 [dev-dependencies]
 itertools = "0.14"
 rstest    = "0.25"
+tokio     = { version = "1.42", features = ["full"] }
