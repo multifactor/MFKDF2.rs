@@ -21,7 +21,7 @@ pub fn password(password: impl Into<String>) -> MFKDF2Result<DeriveFactorFn> {
         kind:   "password".to_string(),
         data:   password.as_bytes().to_vec(),
         params: None,
-        output: Some(Box::pin(move || Box::pin(async move { json!({ "strength": strength }) }))),
+        output: Some(Box::new(move || Box::pin(async move { json!({ "strength": strength }) }))),
       })
     })
   }))

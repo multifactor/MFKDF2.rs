@@ -1,6 +1,3 @@
-use std::pin::Pin;
-
-use serde_json::Value;
 // pub mod hotp;
 pub mod password;
 pub mod question;
@@ -9,10 +6,11 @@ pub mod question;
 pub use password::password;
 pub use question::question;
 
+use crate::setup::factors::SetupFactorFn;
+
 pub struct MFKDF2DerivedFactor {
   pub kind:   String,
   pub data:   Vec<u8>,
-  pub params: Option<Box<dyn Fn() -> Pin<Box<dyn Future<Output = Value> + Send>> + Send + Sync>>,
-  pub output:
-    Option<Pin<Box<dyn Fn() -> Pin<Box<dyn Future<Output = Value> + Send>> + Send + Sync>>>,
+  pub params: Option<SetupFactorFn>,
+  pub output: Option<SetupFactorFn>,
 }

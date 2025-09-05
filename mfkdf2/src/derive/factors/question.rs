@@ -25,7 +25,7 @@ pub fn question(answer: impl Into<String>) -> MFKDF2Result<DeriveFactorFn> {
           let p = params.clone();
           Box::pin(async move { p })
         })),
-        output: Some(Box::pin(move || {
+        output: Some(Box::new(move || {
           let s = strength.clone();
           Box::pin(async move { json!({ "strength": s }) })
         })),
