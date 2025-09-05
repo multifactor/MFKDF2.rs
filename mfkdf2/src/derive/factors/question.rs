@@ -1,4 +1,6 @@
-use serde_json::json;
+use std::sync::Arc;
+
+use serde_json::{Value, json};
 use zxcvbn::zxcvbn;
 
 use crate::{
@@ -14,7 +16,7 @@ pub fn question(answer: impl Into<String>) -> MFKDF2Result<DeriveFactorFn> {
   let answer = answer.to_lowercase().replace(|c: char| !c.is_alphanumeric(), "").trim().to_string();
   let strength = zxcvbn(&answer, &[]);
 
-  Ok(Box::new(move |params| {
+  Ok(Arc::new(move |params: Value| {
     let answer = answer.clone();
     let strength = strength.clone();
     Box::pin(async move {

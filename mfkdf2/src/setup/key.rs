@@ -39,13 +39,13 @@ pub struct MFKDF2Options {
   // pub parallelism: Option<u32>,
 }
 
-#[derive(Debug, Serialize, Deserialize, Eq, PartialEq)]
+#[derive(Clone, Debug, Serialize, Deserialize, Eq, PartialEq)]
 pub struct MFKDF2Entropy {
   pub real:        u32,
   pub theoretical: u32,
 }
 
-#[derive(Debug, Serialize, Deserialize, Eq, PartialEq)]
+#[derive(Clone, Debug, Serialize, Deserialize, Eq, PartialEq)]
 pub struct MFKDF2DerivedKey {
   pub policy:  Policy,
   pub key:     [u8; 32],

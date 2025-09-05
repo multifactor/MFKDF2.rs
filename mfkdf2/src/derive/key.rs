@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, hash::Hash};
 
 use base64::{Engine, engine::general_purpose};
 use sharks::{Share, Sharks};
@@ -12,11 +12,14 @@ use crate::{
 
 pub async fn key(
   policy: Policy,
-  factors: HashMap<&str, DeriveFactorFn>,
+  factors: HashMap<String, DeriveFactorFn>,
 ) -> MFKDF2Result<MFKDF2DerivedKey> {
   let mut shares_bytes = Vec::new();
   for factor in policy.clone().factors {
-    let Some(factor_fn) = factors.get(factor.id.as_str()) else { continue };
+    let factor_fn = match factors.get(factor.id.as_str()) {
+      Some(factor_fn) => factor_fn,
+      None => continue,
+    };
 
     let material = factor_fn(factor.params.clone()).await?;
 

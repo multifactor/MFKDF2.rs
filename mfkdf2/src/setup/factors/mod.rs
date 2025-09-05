@@ -11,7 +11,7 @@ pub mod stack;
 pub use password::password;
 pub use question::question;
 
-pub type SetupFactorFn = Box<dyn Fn() -> Pin<Box<dyn Future<Output = Value> + Send>> + Send + Sync>;
+pub type SetupFactorFn = Box<dyn Fn() -> Pin<Box<dyn Future<Output = Value>>>>;
 
 #[derive(Serialize, Deserialize)]
 pub struct MFKDF2Factor {
