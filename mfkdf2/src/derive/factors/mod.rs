@@ -2,6 +2,7 @@
 pub mod password;
 pub mod question;
 // pub mod uuid;
+pub mod stack;
 
 pub use password::password;
 pub use question::question;
