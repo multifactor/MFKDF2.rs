@@ -19,7 +19,7 @@ async fn setup_stack() -> Result<mfkdf2::setup::key::MFKDF2DerivedKey, mfkdf2::e
       mfkdf2::setup::factors::stack(stacked_factors, mfkdf2::setup::key::MFKDF2Options::default())
         .await?,
       mfkdf2::setup::factors::password(
-        "password_3",
+        "my-secure-password",
         mfkdf2::setup::factors::password::PasswordOptions { id: Some("password_3".to_string()) },
       )?,
     ],
@@ -60,8 +60,8 @@ async fn test_stack_derive() {
   let derived_key = mfkdf2::derive::key(
     key.policy,
     HashMap::from([(
-      "password3".to_string(),
-      mfkdf2::derive::factors::password("password3").unwrap(),
+      "password_3".to_string(),
+      mfkdf2::derive::factors::password("my-secure-password").unwrap(),
     )]),
   )
   .await
