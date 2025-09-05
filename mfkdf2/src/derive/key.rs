@@ -1,4 +1,4 @@
-use std::{collections::HashMap, hash::Hash};
+use std::collections::HashMap;
 
 use base64::{Engine, engine::general_purpose};
 use sharks::{Share, Sharks};
