@@ -10,6 +10,7 @@ pub mod stack;
 
 pub use password::password;
 pub use question::question;
+pub use stack::stack;
 
 pub type SetupFactorFn = Box<dyn Fn() -> Pin<Box<dyn Future<Output = Value>>>>;
 

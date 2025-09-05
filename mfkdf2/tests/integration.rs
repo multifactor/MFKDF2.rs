@@ -3,7 +3,7 @@ use std::collections::HashMap;
 async fn mock_mfkdf2() -> Result<mfkdf2::setup::key::MFKDF2DerivedKey, mfkdf2::error::MFKDF2Error> {
   let factors = vec![mfkdf2::setup::factors::password(
     "Tr0ubd4dour",
-    Some(mfkdf2::setup::factors::password::PasswordOptions { id: Some("password_1".to_string()) }),
+    mfkdf2::setup::factors::password::PasswordOptions { id: Some("password_1".to_string()) },
   )]
   .into_iter()
   .collect::<Result<Vec<_>, _>>()?;
@@ -58,15 +58,11 @@ async fn mock_threshold_mfkdf2()
   let factors = vec![
     mfkdf2::setup::factors::password(
       "Tr0ubd4dour",
-      Some(mfkdf2::setup::factors::password::PasswordOptions {
-        id: Some("password_1".to_string()),
-      }),
+      mfkdf2::setup::factors::password::PasswordOptions { id: Some("password_1".to_string()) },
     ),
     mfkdf2::setup::factors::password(
       "hunter2",
-      Some(mfkdf2::setup::factors::password::PasswordOptions {
-        id: Some("password_2".to_string()),
-      }),
+      mfkdf2::setup::factors::password::PasswordOptions { id: Some("password_2".to_string()) },
     ),
   ]
   .into_iter()
@@ -110,9 +106,7 @@ async fn mock_password_question_mfkdf2()
   let factors = vec![
     mfkdf2::setup::factors::password(
       "Tr0ubd4dour",
-      Some(mfkdf2::setup::factors::password::PasswordOptions {
-        id: Some("password_1".to_string()),
-      }),
+      mfkdf2::setup::factors::password::PasswordOptions { id: Some("password_1".to_string()) },
     ),
     mfkdf2::setup::factors::question(
       "Paris",
