@@ -28,7 +28,7 @@ pub struct PolicyFactor {
   pub params: Value,
 }
 
-#[derive(Default, Clone)]
+#[derive(Default, Clone, Serialize, Deserialize)]
 pub struct MFKDF2Options {
   pub id:        Option<String>,
   pub threshold: Option<u8>,
@@ -39,13 +39,13 @@ pub struct MFKDF2Options {
   // pub parallelism: Option<u32>,
 }
 
-#[derive(Debug, Serialize, Deserialize, Eq, PartialEq)]
+#[derive(Clone, Debug, Serialize, Deserialize, Eq, PartialEq)]
 pub struct MFKDF2Entropy {
   pub real:        u32,
   pub theoretical: u32,
 }
 
-#[derive(Debug, Serialize, Deserialize, Eq, PartialEq)]
+#[derive(Clone, Debug, Serialize, Deserialize, Eq, PartialEq)]
 pub struct MFKDF2DerivedKey {
   pub policy:  Policy,
   pub key:     [u8; 32],
@@ -68,10 +68,10 @@ impl std::fmt::Display for MFKDF2DerivedKey {
 
 pub async fn key(
   factors: Vec<MFKDF2Factor>,
-  options: Option<MFKDF2Options>,
+  options: MFKDF2Options,
 ) -> MFKDF2Result<MFKDF2DerivedKey> {
   // Sets the threshold to be the number of factors (n of n) if not provided.
-  let threshold = options.clone().unwrap_or_default().threshold.unwrap_or(factors.len() as u8);
+  let threshold = options.clone().threshold.unwrap_or(factors.len() as u8);
 
   // Check threshold against number of factors
   // TODO (autoparallel): This should be compile-time checkable? Or at least an error.
@@ -80,7 +80,7 @@ pub async fn key(
   }
 
   // Generate salt & secret if not provided
-  let salt: [u8; 32] = options.unwrap_or_default().salt.unwrap_or_else(|| {
+  let salt: [u8; 32] = options.clone().salt.unwrap_or_else(|| {
     let mut salt = [0u8; 32];
     OsRng.fill_bytes(&mut salt);
     salt

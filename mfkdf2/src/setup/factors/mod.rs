@@ -6,11 +6,13 @@ use serde_json::Value;
 pub mod password;
 pub mod question;
 // pub mod uuid;
+pub mod stack;
 
 pub use password::password;
 pub use question::question;
+pub use stack::stack;
 
-pub type SetupFactorFn = Box<dyn Fn() -> Pin<Box<dyn Future<Output = Value> + Send>> + Send + Sync>;
+pub type SetupFactorFn = Box<dyn Fn() -> Pin<Box<dyn Future<Output = Value>>>>;
 
 #[derive(Serialize, Deserialize)]
 pub struct MFKDF2Factor {

@@ -3,13 +3,13 @@ use std::collections::HashMap;
 async fn mock_mfkdf2() -> Result<mfkdf2::setup::key::MFKDF2DerivedKey, mfkdf2::error::MFKDF2Error> {
   let factors = vec![mfkdf2::setup::factors::password(
     "Tr0ubd4dour",
-    Some(mfkdf2::setup::factors::password::PasswordOptions { id: Some("password_1".to_string()) }),
+    mfkdf2::setup::factors::password::PasswordOptions { id: Some("password_1".to_string()) },
   )]
   .into_iter()
   .collect::<Result<Vec<_>, _>>()?;
 
   let options = mfkdf2::setup::key::MFKDF2Options::default();
-  let key = mfkdf2::setup::key(factors, Some(options)).await?;
+  let key = mfkdf2::setup::key(factors, options).await?;
   Ok(key)
 }
 
@@ -24,7 +24,7 @@ async fn test_key_derive() -> Result<(), mfkdf2::error::MFKDF2Error> {
   let key = mock_mfkdf2().await?;
   println!("Setup key: {}", key);
 
-  let factor = ("password_1", mfkdf2::derive::factors::password("Tr0ubd4dour")?);
+  let factor = ("password_1".to_string(), mfkdf2::derive::factors::password("Tr0ubd4dour")?);
 
   let factors = HashMap::from([factor]);
 
@@ -42,7 +42,8 @@ async fn test_key_derive_fail() -> () {
   let key = mock_mfkdf2().await.unwrap();
   println!("Setup key: {}", key);
 
-  let factor = ("password_1", mfkdf2::derive::factors::password("wrong_password").unwrap());
+  let factor =
+    ("password_1".to_string(), mfkdf2::derive::factors::password("wrong_password").unwrap());
 
   let factors = HashMap::from([factor]);
 
@@ -57,22 +58,18 @@ async fn mock_threshold_mfkdf2()
   let factors = vec![
     mfkdf2::setup::factors::password(
       "Tr0ubd4dour",
-      Some(mfkdf2::setup::factors::password::PasswordOptions {
-        id: Some("password_1".to_string()),
-      }),
+      mfkdf2::setup::factors::password::PasswordOptions { id: Some("password_1".to_string()) },
     ),
     mfkdf2::setup::factors::password(
       "hunter2",
-      Some(mfkdf2::setup::factors::password::PasswordOptions {
-        id: Some("password_2".to_string()),
-      }),
+      mfkdf2::setup::factors::password::PasswordOptions { id: Some("password_2".to_string()) },
     ),
   ]
   .into_iter()
   .collect::<Result<Vec<_>, _>>()?;
 
   let options = mfkdf2::setup::key::MFKDF2Options { threshold: Some(1), ..Default::default() };
-  let key = mfkdf2::setup::key(factors, Some(options)).await?;
+  let key = mfkdf2::setup::key(factors, options).await?;
   Ok(key)
 }
 
@@ -84,7 +81,8 @@ async fn test_key_derive_threshold() -> () {
   let key = mock_threshold_mfkdf2().await.unwrap();
   println!("Setup key: {}", key);
 
-  let factor = ("password_1", mfkdf2::derive::factors::password("Tr0ubd4dour").unwrap());
+  let factor =
+    ("password_1".to_string(), mfkdf2::derive::factors::password("Tr0ubd4dour").unwrap());
 
   let factors = HashMap::from([factor]);
 
@@ -93,7 +91,7 @@ async fn test_key_derive_threshold() -> () {
 
   assert_eq!(derived_key.key, key.key);
 
-  let factor = ("password_2", mfkdf2::derive::factors::password("hunter2").unwrap());
+  let factor = ("password_2".to_string(), mfkdf2::derive::factors::password("hunter2").unwrap());
 
   let factors = HashMap::from([factor]);
 
@@ -108,9 +106,7 @@ async fn mock_password_question_mfkdf2()
   let factors = vec![
     mfkdf2::setup::factors::password(
       "Tr0ubd4dour",
-      Some(mfkdf2::setup::factors::password::PasswordOptions {
-        id: Some("password_1".to_string()),
-      }),
+      mfkdf2::setup::factors::password::PasswordOptions { id: Some("password_1".to_string()) },
     ),
     mfkdf2::setup::factors::question(
       "Paris",
@@ -124,7 +120,7 @@ async fn mock_password_question_mfkdf2()
   .collect::<Result<Vec<_>, _>>()?;
 
   let options = mfkdf2::setup::key::MFKDF2Options::default();
-  let key = mfkdf2::setup::key(factors, Some(options)).await?;
+  let key = mfkdf2::setup::key(factors, options).await?;
   Ok(key)
 }
 
@@ -139,8 +135,10 @@ async fn test_key_derive_password_question() -> () {
   let key = mock_password_question_mfkdf2().await.unwrap();
   println!("Setup key: {}", key);
 
-  let factor_password = ("password_1", mfkdf2::derive::factors::password("Tr0ubd4dour").unwrap());
-  let factor_question = ("question_1", mfkdf2::derive::factors::question("Paris").unwrap());
+  let factor_password =
+    ("password_1".to_string(), mfkdf2::derive::factors::password("Tr0ubd4dour").unwrap());
+  let factor_question =
+    ("question_1".to_string(), mfkdf2::derive::factors::question("Paris").unwrap());
 
   let factors = HashMap::from([factor_password, factor_question]);
 

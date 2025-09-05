@@ -13,7 +13,7 @@ pub struct PasswordOptions {
 
 pub fn password(
   password: impl Into<String>,
-  options: Option<PasswordOptions>,
+  options: PasswordOptions,
 ) -> MFKDF2Result<MFKDF2Factor> {
   let password = std::convert::Into::<String>::into(password);
   if password.is_empty() {
@@ -27,7 +27,7 @@ pub fn password(
 
   Ok(MFKDF2Factor {
     kind: "password".to_string(),
-    id: options.unwrap_or(PasswordOptions { id: None }).id.unwrap_or("password".to_string()),
+    id: options.id.unwrap_or("password".to_string()),
     data: password.as_bytes().to_vec(),
     salt,
     params: Some(Box::new(|| Box::pin(async { json!({}) }))),
@@ -43,10 +43,11 @@ mod tests {
 
   #[tokio::test]
   async fn test_password_strength() {
-    let factor = password("password", None).unwrap();
+    let factor = password("password", PasswordOptions { id: None }).unwrap();
     assert_eq!(factor.entropy, Some(1));
 
-    let factor = password("98p23uijafjj--ah77yhfraklhjaza!?a3", None).unwrap();
+    let factor =
+      password("98p23uijafjj--ah77yhfraklhjaza!?a3", PasswordOptions { id: None }).unwrap();
     assert_eq!(factor.entropy, Some(63));
   }
 }
