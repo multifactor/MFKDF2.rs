@@ -35,6 +35,9 @@ pub enum MFKDF2Error {
   #[error("invalid hmac key!")]
   InvalidHmacKey,
 
+  #[error("invalid HOTP digits! digits must be between 6 and 8")]
+  InvalidHOTPDigits,
+
   #[error(transparent)]
   SerializeError(#[from] serde_json::Error),
 }

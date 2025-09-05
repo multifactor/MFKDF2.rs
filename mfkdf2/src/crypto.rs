@@ -1,9 +1,9 @@
 use aes::Aes256;
-use argon2::{Algorithm, Argon2, Params, Version};
 use cipher::{BlockDecryptMut, BlockEncryptMut, KeyInit, block_padding::NoPadding};
 use ecb::Encryptor;
 use hkdf::Hkdf;
 use sha2::Sha256;
+use sha3::Sha3_256;
 
 pub fn hkdf_sha256(input: &[u8], salt: &[u8; 32]) -> [u8; 32] {
   let hk = Hkdf::<Sha256>::new(Some(salt), input);
@@ -36,14 +36,26 @@ pub fn aes256_ecb_decrypt(mut data: Vec<u8>, key: &[u8; 32]) -> Vec<u8> {
   data
 }
 
-// TODO (autoparallel): This can be replaced with a generic KDF with the default being Argon2id and
-// we can also vary the parameters of argon2id itself too.
-// TODO (autoparallel): balloon hashing could be an option too.
-pub fn argon2id(secret: &[u8; 32], salt: &[u8; 32]) -> [u8; 32] {
-  // Reasonable defaults: 2 iters, 24 MiB
-  let params = Params::new(24 * 1024, 2, 1, Some(32)).expect("argon2 params");
-  let argon2 = Argon2::new(Algorithm::Argon2id, Version::V0x13, params);
+pub fn balloon_sha3_256(input: &[u8], salt: &[u8; 32]) -> [u8; 32] {
   let mut key = [0u8; 32];
-  argon2.hash_password_into(secret, salt, &mut key).expect("argon2id");
+  let balloon = balloon_hash::Balloon::<Sha3_256>::default();
+  balloon.hash_into(input, salt, &mut key).unwrap();
   key
+}
+
+#[cfg(test)]
+mod tests {
+  use super::*;
+
+  // TODO: We should test this against real known test vectors.
+  #[test]
+  fn test_balloon_sha3_256() {
+    let input = b"test";
+    let salt = [0u8; 32];
+    let key = balloon_sha3_256(input, &salt);
+    assert_eq!(key, [
+      73, 231, 77, 172, 3, 246, 133, 157, 117, 140, 46, 54, 81, 82, 218, 209, 45, 30, 196, 30, 223,
+      170, 5, 13, 59, 39, 7, 52, 133, 92, 162, 246
+    ]);
+  }
 }
