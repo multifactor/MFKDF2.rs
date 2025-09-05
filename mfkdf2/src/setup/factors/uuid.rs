@@ -1,32 +1,28 @@
-use serde_json::Value;
+use rand::{RngCore, rngs::OsRng};
+use serde_json::{Value, json};
 pub use uuid::Uuid;
 
-use crate::factors::Material;
+use crate::{error::MFKDF2Result, setup::factors::MFKDF2Factor};
 
-impl From<Uuid> for Material {
-  fn from(val: Uuid) -> Self {
-    Self {
-      id:      None,
-      kind:    "uuid".to_string(),
-      data:    val.to_string().as_bytes().to_vec(),
-      output:  Value::String(val.to_string()),
-      entropy: 122,
-    }
-  }
+pub struct UUIDOptions {
+  pub id: Option<String>,
 }
 
-#[cfg(test)]
-mod tests {
-  use super::*;
+pub fn uuid(uuid: Uuid, options: UUIDOptions) -> MFKDF2Result<MFKDF2Factor> {
+  let mut salt = [0u8; 32];
+  OsRng.fill_bytes(&mut salt);
 
-  #[test]
-  fn test_uuid_factor() {
-    let uuid = Uuid::from_u128(123_456_789_012);
-    let factor: Material = uuid.into();
-    assert_eq!(factor.id, None);
-    assert_eq!(factor.kind, "uuid");
-    assert_eq!(factor.data, uuid.to_string().as_bytes().to_vec());
-    assert_eq!(factor.output, Value::String(uuid.to_string()));
-    assert_eq!(factor.entropy, 122);
-  }
+  Ok(MFKDF2Factor {
+    id: options.id.unwrap_or("uuid".to_string()),
+    kind: "uuid".to_string(),
+    data: uuid.to_string().as_bytes().to_vec(),
+    salt,
+    params: Some(Box::new(move || Box::pin(async move { json!({}) }))),
+    output: Some(Box::new(move || {
+      let uuid = uuid.clone();
+      Box::pin(async move { Value::String(uuid.to_string()) })
+    })),
+
+    entropy: Some(122),
+  })
 }

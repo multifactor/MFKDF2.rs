@@ -1,5 +1,7 @@
 use std::collections::HashMap;
 
+use uuid::Uuid;
+
 async fn mock_mfkdf2() -> Result<mfkdf2::setup::key::MFKDF2DerivedKey, mfkdf2::error::MFKDF2Error> {
   let factors = vec![mfkdf2::setup::factors::password(
     "Tr0ubd4dour",
@@ -141,6 +143,41 @@ async fn test_key_derive_password_question() -> () {
     ("question_1".to_string(), mfkdf2::derive::factors::question("Paris").unwrap());
 
   let factors = HashMap::from([factor_password, factor_question]);
+
+  let derived_key = mfkdf2::derive::key(key.policy.clone(), factors).await.unwrap();
+  println!("Derived key: {}", derived_key);
+
+  assert_eq!(derived_key.key, key.key);
+}
+
+async fn mock_uuid_mfkdf2()
+-> Result<mfkdf2::setup::key::MFKDF2DerivedKey, mfkdf2::error::MFKDF2Error> {
+  let factors = vec![mfkdf2::setup::factors::uuid(
+    Uuid::from_u128(123_456_789_012),
+    mfkdf2::setup::factors::uuid::UUIDOptions { id: None },
+  )]
+  .into_iter()
+  .collect::<Result<Vec<_>, _>>()?;
+  let options = mfkdf2::setup::key::MFKDF2Options::default();
+  let key = mfkdf2::setup::key(factors, options).await?;
+  Ok(key)
+}
+
+#[tokio::test]
+async fn test_key_setup_uuid() -> () {
+  let key = mock_uuid_mfkdf2().await.unwrap();
+  println!("Setup key: {}", key);
+}
+
+#[tokio::test]
+async fn test_key_derive_uuid() -> () {
+  let key = mock_uuid_mfkdf2().await.unwrap();
+  println!("Setup key: {}", key);
+
+  let factor =
+    ("uuid".to_string(), mfkdf2::derive::factors::uuid(Uuid::from_u128(123_456_789_012)).unwrap());
+
+  let factors = HashMap::from([factor]);
 
   let derived_key = mfkdf2::derive::key(key.policy.clone(), factors).await.unwrap();
   println!("Derived key: {}", derived_key);
