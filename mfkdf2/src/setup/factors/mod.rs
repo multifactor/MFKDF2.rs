@@ -16,7 +16,7 @@ pub use question::question;
 pub use stack::stack;
 pub use uuid::uuid;
 
-pub type SetupFactorFn = Box<dyn Fn() -> Pin<Box<dyn Future<Output = Value>>>>;
+pub type SetupFactorFn = Box<dyn Fn([u8; 32]) -> Pin<Box<dyn Future<Output = Value>>>>;
 
 #[derive(Serialize, Deserialize)]
 pub struct MFKDF2Factor {

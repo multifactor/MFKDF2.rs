@@ -59,14 +59,13 @@ pub fn hotp(code: u32) -> MFKDF2Result<DeriveFactorFn> {
       Ok(MFKDF2DerivedFactor {
         kind:   "hotp".to_string(),
         data:   target_bytes.to_vec(),
-        params: Some(Box::new(move || {
+        params: Some(Box::new(move |key| {
           let params = params.clone();
           Box::pin(async move {
-            // Decrypt the secret using the factor key (placeholder for now)
+            // Decrypt the secret using the factor key
             let pad_b64 = params["pad"].as_str().unwrap();
             let pad = base64::prelude::BASE64_STANDARD.decode(pad_b64).unwrap();
-            let placeholder_key = [0u8; 32]; // This should come from the actual key
-            let decrypted = aes256_ecb_decrypt(pad, &placeholder_key);
+            let decrypted = aes256_ecb_decrypt(pad, &key);
             let secret_size = params["secretSize"].as_u64().unwrap() as usize;
             let secret = &decrypted[..secret_size];
 
@@ -89,7 +88,7 @@ pub fn hotp(code: u32) -> MFKDF2Result<DeriveFactorFn> {
             })
           })
         })),
-        output: Some(Box::new(move || Box::pin(async move { json!({}) }))),
+        output: Some(Box::new(move |_| Box::pin(async move { json!({}) }))),
       })
     })
   }))

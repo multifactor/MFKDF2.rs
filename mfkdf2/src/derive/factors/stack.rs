@@ -18,11 +18,11 @@ pub fn stack(factors: HashMap<String, DeriveFactorFn>) -> MFKDF2Result<DeriveFac
       Ok(MFKDF2DerivedFactor {
         kind:   "stack".to_string(),
         data:   key.key.to_vec(),
-        params: Some(Box::new(move || {
+        params: Some(Box::new(move |_| {
           let policy = policy.clone();
           Box::pin(async move { serde_json::to_value(policy).unwrap() })
         })),
-        output: Some(Box::new(move || {
+        output: Some(Box::new(move |_| {
           let key = key.clone();
           Box::pin(async move { serde_json::to_value(key).unwrap() })
         })),

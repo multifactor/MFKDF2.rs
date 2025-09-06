@@ -30,7 +30,7 @@ pub fn password(
     id: options.id.unwrap_or("password".to_string()),
     data: password.as_bytes().to_vec(),
     salt,
-    params: Some(Box::new(|| Box::pin(async { json!({}) }))),
+    params: Some(Box::new(|_| Box::pin(async { json!({}) }))),
     entropy: Some(strength.guesses().ilog2()),
     output: None,
   })

@@ -29,7 +29,7 @@ pub fn question(answer: impl Into<String>, options: QuestionOptions) -> MFKDF2Re
     id: options.id.unwrap_or("question".to_string()),
     data: answer.as_bytes().to_vec(),
     salt,
-    params: Some(Box::new(move || {
+    params: Some(Box::new(move |_| {
       let q = options.question.clone();
       Box::pin(async move { json!({ "question": q }) })
     })),

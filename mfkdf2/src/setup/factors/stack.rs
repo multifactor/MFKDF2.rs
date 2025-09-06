@@ -20,7 +20,7 @@ pub async fn stack(
     id: options.id.unwrap_or("stack".to_string()),
     data: key.key.to_vec(),
     salt,
-    params: Some(Box::new(move || {
+    params: Some(Box::new(move |_| {
       let policy = key.policy.clone();
       Box::pin(async { serde_json::to_value(policy).unwrap() })
     })),

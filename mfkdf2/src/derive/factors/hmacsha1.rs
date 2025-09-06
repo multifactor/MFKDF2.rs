@@ -23,13 +23,13 @@ pub fn hmacsha1(response: [u8; 20]) -> MFKDF2Result<DeriveFactorFn> {
       Ok(MFKDF2DerivedFactor {
         kind:   "hmacsha1".to_string(),
         data:   secret.to_vec(),
-        params: Some(Box::new(move || {
+        params: Some(Box::new(move |_| {
           let challenge = OsRng.r#gen::<u64>();
           let response = crate::crypto::hmacsha1(&secret, challenge);
           let pad = response.iter().zip(secret.iter()).map(|(a, b)| a ^ b).collect::<Vec<u8>>();
           Box::pin(async move { json!({ "challenge": challenge, "pad": pad }) })
         })),
-        output: Some(Box::new(move || Box::pin(async move { json!({ "secret": secret }) }))),
+        output: Some(Box::new(move |_| Box::pin(async move { json!({ "secret": secret }) }))),
       })
     })
   }))

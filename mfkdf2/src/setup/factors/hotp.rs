@@ -98,7 +98,7 @@ pub fn hotp(options: HOTPOptions) -> MFKDF2Result<MFKDF2Factor> {
     id,
     data: target_bytes.to_vec(),
     salt,
-    params: Some(Box::new(move || {
+    params: Some(Box::new(move |key| {
       let options = options_for_params.clone();
       Box::pin(async move {
         // Generate or use provided secret
@@ -126,10 +126,7 @@ pub fn hotp(options: HOTPOptions) -> MFKDF2Result<MFKDF2Factor> {
           padded_secret.extend(padding);
         }
 
-        // For now, we'll use a placeholder key - in real implementation this would come from the
-        // key derivation
-        let placeholder_key = [0u8; 32];
-        let pad = aes256_ecb_encrypt(&padded_secret, &placeholder_key);
+        let pad = aes256_ecb_encrypt(&padded_secret, &key);
 
         json!({
           "hash": match options.hash {
@@ -146,7 +143,7 @@ pub fn hotp(options: HOTPOptions) -> MFKDF2Result<MFKDF2Factor> {
       })
     })),
     entropy: Some((options.digits as f64 * 10.0_f64.log2()) as u32),
-    output: Some(Box::new(move || {
+    output: Some(Box::new(move |_| {
       let options = options_for_output.clone();
       Box::pin(async move {
         let secret = options.secret.unwrap_or_else(|| {
@@ -181,6 +178,7 @@ mod tests {
 
   #[tokio::test]
   async fn test_hotp_setup_with_known_secret() {
+    let key = [0u8; 32];
     let options = HOTPOptions {
       id:     Some("test_hotp".to_string()),
       secret: Some(b"hello world".to_vec()),
@@ -196,7 +194,7 @@ mod tests {
     assert_eq!(factor.data.len(), 4); // u32 target as bytes
 
     // Test that params can be generated
-    let params = factor.params.unwrap()().await;
+    let params = factor.params.unwrap()(key).await;
     assert!(params["hash"].is_string());
     assert!(params["digits"].is_number());
     assert!(params["pad"].is_string());

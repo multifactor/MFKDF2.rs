@@ -106,14 +106,14 @@ pub async fn key(
     let pad = aes256_ecb_encrypt(&share, &stretched);
 
     // Generate factor key
-    let key_factor = hkdf_sha256(&key, &factor.salt);
-    let secret_factor = aes256_ecb_encrypt(&share, &key_factor);
+    let factor_key = hkdf_sha256(&key, &factor.salt);
+    let factor_secret = aes256_ecb_encrypt(&share, &factor_key);
 
     // TODO (autoparallel): Add params for each factor.
-    let params = factor.params.as_ref().unwrap()().await;
+    let params = factor.params.as_ref().unwrap()(factor_key).await;
     // TODO (autoparallel): This should not be an unwrap.
-    outputs.push(match factor.output.as_ref() {
-      Some(output) => output().await,
+    outputs.push(match &factor.output {
+      Some(output) => output(key).await,
       None => Value::Null,
     });
 
@@ -133,8 +133,8 @@ pub async fn key(
       kind: factor.kind.clone(),
       pad: general_purpose::STANDARD.encode(pad),
       salt: general_purpose::STANDARD.encode(factor.salt),
-      key: key_factor,
-      secret: general_purpose::STANDARD.encode(secret_factor),
+      key: factor_key,
+      secret: general_purpose::STANDARD.encode(factor_secret),
       params,
     });
   }
