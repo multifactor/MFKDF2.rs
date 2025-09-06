@@ -181,3 +181,52 @@ async fn test_key_derive_uuid() -> () {
 
   assert_eq!(derived_key.key, key.key);
 }
+
+const HMACSHA1_SECRET: [u8; 20] = [
+  0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f, 0x10,
+  0x11, 0x12, 0x13, 0x14,
+];
+
+async fn mock_hmacsha1_mfkdf2()
+-> Result<mfkdf2::setup::key::MFKDF2DerivedKey, mfkdf2::error::MFKDF2Error> {
+  let factors =
+    vec![mfkdf2::setup::factors::hmacsha1(mfkdf2::setup::factors::hmacsha1::HMACSHA1Options {
+      id:     Some("hmacsha1_1".to_string()),
+      secret: Some(HMACSHA1_SECRET),
+    })]
+    .into_iter()
+    .collect::<Result<Vec<_>, _>>()?;
+
+  let options = mfkdf2::setup::key::MFKDF2Options::default();
+  let key = mfkdf2::setup::key(factors, options).await?;
+  Ok(key)
+}
+
+#[tokio::test]
+async fn test_key_setup_hmacsha1() -> Result<(), mfkdf2::error::MFKDF2Error> {
+  let key = mock_hmacsha1_mfkdf2().await?;
+  println!("Setup key: {}", key);
+  Ok(())
+}
+
+#[tokio::test]
+async fn test_key_derive_hmacsha1() -> Result<(), mfkdf2::error::MFKDF2Error> {
+  let key = mock_hmacsha1_mfkdf2().await?;
+  println!("Setup key: {}", key);
+
+  let challenge = key.policy.factors.iter().find(|f| f.kind == "hmacsha1").unwrap().params
+    ["challenge"]
+    .as_u64()
+    .unwrap();
+
+  let response = mfkdf2::crypto::hmacsha1(&HMACSHA1_SECRET, challenge);
+
+  let factor = ("hmacsha1_1".to_string(), mfkdf2::derive::factors::hmacsha1(response).unwrap());
+  let factors = HashMap::from([factor]);
+
+  let derived_key = mfkdf2::derive::key(key.policy, factors).await?;
+  println!("Derived key: {}", derived_key);
+
+  assert_eq!(derived_key.key, key.key);
+  Ok(())
+}

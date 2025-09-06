@@ -8,8 +8,5 @@ use serde_json::Value;
 
 use crate::{derive::factors::MFKDF2DerivedFactor, error::MFKDF2Result};
 
-pub type DeriveFactorFn = Arc<
-  dyn Fn(Value) -> Pin<Box<dyn Future<Output = MFKDF2Result<MFKDF2DerivedFactor>> + Send>>
-    + Send
-    + Sync,
->;
+pub type DeriveFactorFn =
+  Arc<dyn Fn(Value) -> Pin<Box<dyn Future<Output = MFKDF2Result<MFKDF2DerivedFactor>>>>>;
