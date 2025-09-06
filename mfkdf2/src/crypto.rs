@@ -51,6 +51,12 @@ pub fn hmacsha1(secret: &[u8], challenge: u64) -> [u8; 20] {
   mac.finalize().into_bytes().into()
 }
 
+pub fn hmacsha256(secret: &[u8], input: &[u8]) -> [u8; 32] {
+  let mut mac = <Hmac<Sha256> as Mac>::new_from_slice(secret).unwrap();
+  mac.update(input);
+  mac.finalize().into_bytes().into()
+}
+
 #[cfg(test)]
 mod tests {
   use super::*;

@@ -230,3 +230,41 @@ async fn test_key_derive_hmacsha1() -> Result<(), mfkdf2::error::MFKDF2Error> {
   assert_eq!(derived_key.key, key.key);
   Ok(())
 }
+
+#[tokio::test]
+async fn test_policy_json_schema_compliance() {
+  let key = mock_mfkdf2().await.unwrap();
+
+  // Serialize the policy to JSON
+  let policy_json = serde_json::to_string_pretty(&key.policy).unwrap();
+  println!("Policy JSON:\n{}", policy_json);
+
+  // Parse it back to ensure it's valid JSON
+  let parsed: serde_json::Value = serde_json::from_str(&policy_json).unwrap();
+
+  // Check that all required schema fields are present
+  assert!(parsed.get("$schema").is_some(), "Missing $schema field");
+  assert!(parsed.get("$id").is_some(), "Missing $id field");
+  assert!(parsed.get("threshold").is_some(), "Missing threshold field");
+  assert!(parsed.get("salt").is_some(), "Missing salt field");
+  assert!(parsed.get("factors").is_some(), "Missing factors field");
+  assert!(parsed.get("hmac").is_some(), "Missing hmac field");
+
+  // Check schema URL
+  let schema = parsed.get("$schema").unwrap().as_str().unwrap();
+  assert_eq!(schema, "https://mfkdf.com/schema/v2.0.0/policy.json");
+
+  // Check factors array structure
+  let factors = parsed.get("factors").unwrap().as_array().unwrap();
+  assert!(!factors.is_empty(), "Factors array should not be empty");
+
+  let factor = &factors[0];
+  assert!(factor.get("id").is_some(), "Factor missing id field");
+  assert!(factor.get("type").is_some(), "Factor missing type field");
+  assert!(factor.get("pad").is_some(), "Factor missing pad field");
+  assert!(factor.get("salt").is_some(), "Factor missing salt field");
+  assert!(factor.get("secret").is_some(), "Factor missing secret field");
+  assert!(factor.get("params").is_some(), "Factor missing params field");
+
+  println!("✅ Policy JSON schema compliance test passed!");
+}
