@@ -30,10 +30,7 @@ pub fn hmacsha1(options: HMACSHA1Options) -> MFKDF2Result<MFKDF2Factor> {
       Box::pin(async move { json!({ "challenge": challenge, "pad": pad }) })
     })),
     entropy: Some(160),
-    output: Some(Box::new(move || {
-      let secret = secret.clone();
-      Box::pin(async move { json!({ "secret": secret }) })
-    })),
+    output: Some(Box::new(move || Box::pin(async move { json!({ "secret": secret }) }))),
   })
 }
 
