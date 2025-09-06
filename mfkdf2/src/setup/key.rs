@@ -8,6 +8,7 @@ use serde_json::Value;
 use sha2::{Digest, Sha256};
 use sharks::{Share, Sharks};
 
+use super::*;
 use crate::{
   crypto::{aes256_ecb_encrypt, balloon_sha3_256, hkdf_sha256},
   error::{MFKDF2Error, MFKDF2Result},

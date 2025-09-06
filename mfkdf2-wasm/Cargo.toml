@@ -3,5 +3,10 @@ edition = "2024"
 name    = "mfkdf2-wasm"
 version = "0.1.0"
 
+[lib]
+crate-type = ["cdylib"]
+
 [dependencies]
-# mfkdf2 = { workspace = true }
+base64     = "0.22"
+serde      = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"

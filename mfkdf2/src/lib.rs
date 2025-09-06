@@ -1,5 +1,3 @@
-// uniffi::setup_scaffolding!();
-
 use std::pin::Pin;
 
 use serde_json::Value;
