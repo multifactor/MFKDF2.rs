@@ -21,7 +21,7 @@ pub async fn key(
       None => continue,
     };
 
-    let material = factor_fn(factor.params.clone()).await?;
+    let material = factor_fn(serde_json::from_str(&factor.params).unwrap()).await?;
 
     // TODO (autoparallel): This should probably be done with a `MaybeUninit` array.
     let salt_bytes = general_purpose::STANDARD.decode(&factor.salt)?;

@@ -1,6 +1,6 @@
-// uniffi::setup_scaffolding!();
+uniffi::setup_scaffolding!();
 
-use std::pin::Pin;
+use std::{future::Future, pin::Pin};
 
 use serde_json::Value;
 

@@ -18,24 +18,26 @@ pub fn hmacsha1(options: HMACSHA1Options) -> MFKDF2Result<MFKDF2Factor> {
   let mut salt = [0u8; 32];
   OsRng.fill_bytes(&mut salt);
 
+  let challenge = OsRng.r#gen::<u64>();
+  let response = crate::crypto::hmacsha1(&secret, challenge);
+  let pad = response.iter().zip(secret.iter()).map(|(a, b)| a ^ b).collect::<Vec<u8>>();
+  let params = json!({ "challenge": challenge, "pad": pad });
+
   Ok(MFKDF2Factor {
-    kind: "hmacsha1".to_string(),
-    id: options.id.unwrap_or("hmacsha1".to_string()),
-    data: secret.to_vec(),
-    salt,
-    params: Some(Box::new(move || {
-      let challenge = OsRng.r#gen::<u64>();
-      let response = crate::crypto::hmacsha1(&secret, challenge);
-      let pad = response.iter().zip(secret.iter()).map(|(a, b)| a ^ b).collect::<Vec<u8>>();
-      Box::pin(async move { json!({ "challenge": challenge, "pad": pad }) })
-    })),
+    kind:    "hmacsha1".to_string(),
+    id:      options.id.unwrap_or("hmacsha1".to_string()),
+    data:    secret.to_vec(),
+    salt:    salt.to_vec(),
+    params:  params.to_string(),
     entropy: Some(160),
-    output: Some(Box::new(move || Box::pin(async move { json!({ "secret": secret }) }))),
+    output:  json!({ "secret": secret }).to_string(),
   })
 }
 
 #[cfg(test)]
 mod tests {
+  use serde_json::Value;
+
   use super::*;
 
   #[tokio::test]
@@ -55,7 +57,7 @@ mod tests {
     assert_eq!(factor.data, known_secret.to_vec());
 
     // Get the challenge and pad from params
-    let params = factor.params.unwrap()().await;
+    let params = serde_json::from_str::<Value>(&factor.params).unwrap();
     let challenge = params["challenge"].as_u64().unwrap();
     let pad = params["pad"]
       .as_array()
@@ -86,8 +88,8 @@ mod tests {
     assert_eq!(factor.kind, "hmacsha1");
     assert_eq!(factor.id, "hmacsha1");
     assert_eq!(factor.data.len(), 20); // Secret should be 20 bytes
-    assert!(factor.params.is_some());
-    assert!(factor.output.is_some());
+    assert!(serde_json::from_str::<Value>(&factor.params).is_ok());
+    assert!(serde_json::from_str::<Value>(&factor.output).is_ok());
     assert_eq!(factor.entropy, Some(160)); // 20 bytes * 8 bits = 160 bits
   }
 }

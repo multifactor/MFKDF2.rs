@@ -14,37 +14,35 @@ use crate::{
   setup::factors::MFKDF2Factor,
 };
 
-#[derive(Clone, Serialize, Deserialize, Debug, Eq, PartialEq)]
-pub struct PolicyFactor {
-  pub id:     String,
-  #[serde(rename = "type")]
-  pub kind:   String,
-  pub pad:    String,
-  pub salt:   String,
-  #[serde(skip)]
-  pub key:    [u8; 32],
-  pub secret: String,
-  pub params: Value,
-}
-
-#[derive(Default, Clone, Serialize, Deserialize)]
+#[derive(Default, Clone, Serialize, Deserialize, uniffi::Record)]
 pub struct MFKDF2Options {
   pub id:        Option<String>,
   pub threshold: Option<u8>,
-  pub salt:      Option<[u8; 32]>,
+  pub salt:      Option<Vec<u8>>,
   // TODO (autoparallel): Add these options.
   // pub time: Option<u32>,
   // pub memory: Option<u32>,
   // pub parallelism: Option<u32>,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, Eq, PartialEq)]
+#[derive(Clone, Serialize, Deserialize, Debug, Eq, PartialEq, uniffi::Record)]
+pub struct PolicyFactor {
+  pub id:     String,
+  #[serde(rename = "type")]
+  pub kind:   String,
+  pub pad:    String,
+  pub salt:   String,
+  pub secret: String,
+  pub params: String,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize, Eq, PartialEq, uniffi::Record)]
 pub struct MFKDF2Entropy {
   pub real:        u32,
   pub theoretical: u32,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, Eq, PartialEq)]
+#[derive(Clone, Debug, Serialize, Deserialize, Eq, PartialEq, uniffi::Object)]
 pub struct MFKDF2DerivedKey {
   pub policy:  Policy,
   pub key:     [u8; 32],
@@ -65,6 +63,7 @@ impl std::fmt::Display for MFKDF2DerivedKey {
   }
 }
 
+#[uniffi::export]
 pub async fn key(
   factors: Vec<MFKDF2Factor>,
   options: MFKDF2Options,
@@ -79,11 +78,14 @@ pub async fn key(
   }
 
   // Generate salt & secret if not provided
-  let salt: [u8; 32] = options.clone().salt.unwrap_or_else(|| {
-    let mut salt = [0u8; 32];
-    OsRng.fill_bytes(&mut salt);
-    salt
-  });
+  let salt = match options.clone().salt {
+    Some(salt) => salt.try_into().unwrap(),
+    None => {
+      let mut salt = [0u8; 32];
+      OsRng.fill_bytes(&mut salt);
+      salt
+    },
+  };
   let mut secret: [u8; 32] = [0u8; 32];
   OsRng.fill_bytes(&mut secret);
 
@@ -102,20 +104,17 @@ pub async fn key(
 
   for (factor, share) in factors.iter().zip(shares.clone()) {
     // HKDF stretch & AES-encrypt share
-    let stretched = hkdf_sha256(&factor.data, &factor.salt);
+    let stretched = hkdf_sha256(&factor.data, &factor.salt.clone().try_into().unwrap());
     let pad = aes256_ecb_encrypt(&share, &stretched);
 
     // Generate factor key
-    let key_factor = hkdf_sha256(&key, &factor.salt);
+    let key_factor = hkdf_sha256(&key, &factor.salt.clone().try_into().unwrap());
     let secret_factor = aes256_ecb_encrypt(&share, &key_factor);
 
     // TODO (autoparallel): Add params for each factor.
-    let params = factor.params.as_ref().unwrap()().await;
+    // let params = serde_json::from_str::<Value>(&factor.params).unwrap();
     // TODO (autoparallel): This should not be an unwrap.
-    outputs.push(match factor.output.as_ref() {
-      Some(output) => output().await,
-      None => Value::Null,
-    });
+    outputs.push(serde_json::from_str(&factor.output).unwrap());
 
     let id = factor.id.clone();
 
@@ -132,10 +131,9 @@ pub async fn key(
       id,
       kind: factor.kind.clone(),
       pad: general_purpose::STANDARD.encode(pad),
-      salt: general_purpose::STANDARD.encode(factor.salt),
-      key: key_factor,
+      salt: general_purpose::STANDARD.encode(factor.salt.clone()),
       secret: general_purpose::STANDARD.encode(secret_factor),
-      params,
+      params: factor.params.clone(),
     });
   }
 
@@ -191,7 +189,7 @@ pub async fn key(
   })
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, Eq, PartialEq)]
+#[derive(Clone, Debug, Serialize, Deserialize, Eq, PartialEq, uniffi::Record)]
 pub struct Policy {
   #[serde(rename = "$schema")]
   pub schema:    String,

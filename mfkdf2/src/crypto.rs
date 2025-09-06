@@ -38,11 +38,11 @@ pub fn aes256_ecb_decrypt(mut data: Vec<u8>, key: &[u8; 32]) -> Vec<u8> {
   data
 }
 
-pub fn balloon_sha3_256(input: &[u8], salt: &[u8; 32]) -> [u8; 32] {
-  let mut key = [0u8; 32];
+pub fn balloon_sha3_256(input: &[u8], salt: &[u8]) -> [u8; 32] {
+  let mut hash = [0u8; 32];
   let balloon = balloon_hash::Balloon::<Sha3_256>::default();
-  balloon.hash_into(input, salt, &mut key).unwrap();
-  key
+  balloon.hash_into(input, salt, &mut hash).unwrap();
+  hash
 }
 
 pub fn hmacsha1(secret: &[u8], challenge: u64) -> [u8; 20] {

@@ -5,7 +5,7 @@ pub type MFKDF2Result<T> = Result<T, MFKDF2Error>;
 // TODO (autoparallel): It may be worth making this have inner errors, e.g., for factors and other
 // things. That is usually not my style, but it may be nicer for the caller as long as destructuring
 // the error is not too painful.
-#[derive(Error, Debug)]
+#[derive(Error, Debug, uniffi::Object)]
 pub enum MFKDF2Error {
   #[error("password cannot be empty!")]
   PasswordEmpty,
