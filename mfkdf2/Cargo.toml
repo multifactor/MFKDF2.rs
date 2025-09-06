@@ -13,7 +13,6 @@ path = "uniffi-bindgen.rs"
 [dependencies]
 # Cryptography
 aes = { version = "0.8", default-features = false }
-# argon2 = { version = "0.5", default-features = false, features = ["alloc"] }
 cipher = { version = "0.4", default-features = false, features = [
   "block-padding",
 ] }
@@ -29,7 +28,7 @@ rand = { version = "0.8", default-features = false, features = ["std"] }
 zxcvbn = { version = "3.1", default-features = false, features = ["ser"] }
 
 # UUID
-# uuid = { version = "1.17", default-features = false }
+uuid = { version = "1.17", default-features = false }
 
 # Encoding
 # TODO (autoparallel): This can be made `no-std` if we need to.
@@ -40,7 +39,7 @@ balloon-hash = { version = "0.4", default-features = false, features = [
   "alloc",
 ] }
 # TODO: May not need SHA2 anymore.
-# sha1 = { version = "0.10", default-features = false }
+sha1 = { version = "0.10", default-features = false }
 sha2 = { version = "0.10", default-features = false }
 sha3 = { version = "0.10", default-features = false }
 

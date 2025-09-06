@@ -1,32 +1,24 @@
-use serde_json::Value;
+use std::rc::Rc;
+
+use serde_json::json;
 pub use uuid::Uuid;
 
-use crate::factors::Material;
+use crate::{
+  derive::{DeriveFactorFn, factors::MFKDF2DerivedFactor},
+  error::MFKDF2Result,
+};
 
-impl From<Uuid> for Material {
-  fn from(val: Uuid) -> Self {
-    Self {
-      id:      None,
-      kind:    "uuid".to_string(),
-      data:    val.to_string().as_bytes().to_vec(),
-      output:  Value::String(val.to_string()),
-      entropy: 122,
-    }
-  }
-}
-
-#[cfg(test)]
-mod tests {
-  use super::*;
-
-  #[test]
-  fn test_uuid_factor() {
-    let uuid = Uuid::from_u128(123_456_789_012);
-    let factor: Material = uuid.into();
-    assert_eq!(factor.id, None);
-    assert_eq!(factor.kind, "uuid");
-    assert_eq!(factor.data, uuid.to_string().as_bytes().to_vec());
-    assert_eq!(factor.output, Value::String(uuid.to_string()));
-    assert_eq!(factor.entropy, 122);
-  }
+pub fn uuid(uuid: Uuid) -> MFKDF2Result<DeriveFactorFn> {
+  Ok(Rc::new(move |_params| {
+    Box::pin(async move {
+      Ok(MFKDF2DerivedFactor {
+        kind:   "uuid".to_string(),
+        data:   uuid.to_string().as_bytes().to_vec(),
+        params: None,
+        output: Some(Box::new(move || {
+          Box::pin(async move { json!({ "uuid": uuid.to_string() }) })
+        })),
+      })
+    })
+  }))
 }

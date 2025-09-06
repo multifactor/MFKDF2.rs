@@ -2,7 +2,6 @@
 use std::collections::HashSet;
 
 use base64::{Engine, engine::general_purpose};
-use hmac::{Hmac, Mac};
 use rand::{RngCore, rngs::OsRng};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -18,13 +17,13 @@ use crate::{
 #[derive(Clone, Serialize, Deserialize, Debug, Eq, PartialEq)]
 pub struct PolicyFactor {
   pub id:     String,
+  #[serde(rename = "type")]
   pub kind:   String,
   pub pad:    String,
   pub salt:   String,
+  #[serde(skip)]
   pub key:    [u8; 32],
-  // TODO (autoparallel): This should be a [u8; 32] instead since we're encrypting a share (16
-  // bytes).
-  pub secret: Vec<u8>,
+  pub secret: String,
   pub params: Value,
 }
 
@@ -135,7 +134,7 @@ pub async fn key(
       pad: general_purpose::STANDARD.encode(pad),
       salt: general_purpose::STANDARD.encode(factor.salt),
       key: key_factor,
-      secret: secret_factor,
+      secret: general_purpose::STANDARD.encode(secret_factor),
       params,
     });
   }
@@ -154,12 +153,7 @@ pub async fn key(
   hasher.update(factors_json.as_bytes());
   let policy_data = hasher.finalize();
 
-  let mut mac =
-    Hmac::<Sha256>::new_from_slice(&integrity_key).map_err(|_| MFKDF2Error::InvalidHmacKey)?;
-  mac.update(policy_data.as_slice());
-  let result = mac.finalize();
-  let mut integrity = [0u8; 32];
-  integrity.copy_from_slice(&result.into_bytes());
+  let hmac = crate::crypto::hmacsha256(&integrity_key, policy_data.as_slice());
 
   // Calculate entropy
   theoretical_entropy.sort_unstable();
@@ -173,12 +167,21 @@ pub async fn key(
   let entropy_theoretical = theoretical_sum.min(256);
   let entropy_real = real_sum.min(256);
 
+  // Generate a unique ID for this policy if not provided
+  let policy_id = options.id.unwrap_or_else(|| {
+    let mut id_bytes = [0u8; 16];
+    OsRng.fill_bytes(&mut id_bytes);
+    format!("mfkdf2-{}", general_purpose::STANDARD.encode(id_bytes))
+  });
+
   Ok(MFKDF2DerivedKey {
     policy: Policy {
+      schema: "https://mfkdf.com/schema/v2.0.0/policy.json".to_string(),
+      id: policy_id,
       threshold,
       salt: general_purpose::STANDARD.encode(salt),
       factors: policy_factors,
-      integrity,
+      hmac: general_purpose::STANDARD.encode(hmac),
     },
     key,
     secret,
@@ -190,8 +193,12 @@ pub async fn key(
 
 #[derive(Clone, Debug, Serialize, Deserialize, Eq, PartialEq)]
 pub struct Policy {
+  #[serde(rename = "$schema")]
+  pub schema:    String,
+  #[serde(rename = "$id")]
+  pub id:        String,
   pub threshold: u8,
   pub salt:      String,
   pub factors:   Vec<PolicyFactor>,
-  pub integrity: [u8; 32],
+  pub hmac:      String,
 }
