@@ -4,7 +4,7 @@ use serde_json::Value;
 use uuid::Uuid;
 
 async fn mock_mfkdf2() -> Result<mfkdf2::setup::key::MFKDF2DerivedKey, mfkdf2::error::MFKDF2Error> {
-  let factors = vec![mfkdf2::setup::factors::password_fn(
+  let factors = vec![mfkdf2::setup::factors::password(
     "Tr0ubd4dour",
     mfkdf2::setup::factors::password::PasswordOptions { id: Some("password_1".to_string()) },
   )]

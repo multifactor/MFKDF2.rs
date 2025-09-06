@@ -11,7 +11,7 @@ pub mod password;
 
 pub use hmacsha1::hmacsha1;
 // pub use hotp::hotp;
-pub use password::password_fn;
+pub use password::password;
 // pub use question::question;
 // pub use stack::stack;
 // pub use uuid::uuid;

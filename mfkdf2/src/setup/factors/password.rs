@@ -12,8 +12,7 @@ pub struct PasswordOptions {
   pub id: Option<String>,
 }
 
-#[uniffi::export]
-pub fn password_fn(password: &str, options: PasswordOptions) -> MFKDF2Result<MFKDF2Factor> {
+pub fn password(password: &str, options: PasswordOptions) -> MFKDF2Result<MFKDF2Factor> {
   if password.is_empty() {
     return Err(MFKDF2Error::PasswordEmpty);
   }
@@ -32,6 +31,11 @@ pub fn password_fn(password: &str, options: PasswordOptions) -> MFKDF2Result<MFK
     entropy: Some(strength.guesses().ilog2()),
     output:  json!({}).to_string(),
   })
+}
+
+#[uniffi::export]
+pub fn setup_factors_password(input: &str, options: PasswordOptions) -> MFKDF2Result<MFKDF2Factor> {
+  password(input, options)
 }
 
 #[cfg(test)]

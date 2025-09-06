@@ -63,7 +63,7 @@ impl std::fmt::Display for MFKDF2DerivedKey {
   }
 }
 
-#[uniffi::export]
+#[uniffi::export(name = "setup_key")]
 pub async fn key(
   factors: Vec<MFKDF2Factor>,
   options: MFKDF2Options,

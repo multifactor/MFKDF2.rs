@@ -24,7 +24,7 @@ async def test_basic_functionality():
         # Create a password factor (similar to the Rust integration test)
         print("Creating password factor...")
         password_options = mfkdf2.PasswordOptions(id="password_1")
-        password_factor = mfkdf2.password_fn("Tr0ubd4dour", password_options)
+        password_factor = mfkdf2.setup_factors_password("Tr0ubd4dour", password_options)
         
         print("✅ Successfully created password factor")
         print(f"   Factor ID: {password_factor.id}")
@@ -43,7 +43,7 @@ async def test_basic_functionality():
         
         # Test the key derivation function (setup phase)
         print("\n🔑 Testing key setup...")
-        derived_key = await mfkdf2.key([password_factor], options)
+        derived_key = await mfkdf2.setup_key([password_factor], options)
         print("✅ Successfully set up key!")
         print(f"   Key type: {type(derived_key)}")
         
