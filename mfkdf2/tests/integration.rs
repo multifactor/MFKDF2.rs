@@ -1,6 +1,5 @@
 use std::collections::HashMap;
 
-use base64::prelude::*;
 use uuid::Uuid;
 
 async fn mock_mfkdf2() -> Result<mfkdf2::setup::key::MFKDF2DerivedKey, mfkdf2::error::MFKDF2Error> {
@@ -397,7 +396,7 @@ async fn test_key_derive_mixed_password_hotp() -> Result<(), mfkdf2::error::MFKD
   let digits = hotp_factor.params["digits"].as_u64().unwrap() as u8;
 
   // Generate the correct HOTP code using SHA256 (different from previous test)
-  let generated_code = generate_hotp_code_sha256(&HOTP_SECRET, counter, digits);
+  let generated_code = generate_hotp_code_sha256(HOTP_SECRET, counter, digits);
 
   println!("Generated HOTP code (SHA256): {}", generated_code);
 
