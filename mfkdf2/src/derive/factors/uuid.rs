@@ -1,4 +1,4 @@
-use std::sync::Arc;
+use std::rc::Rc;
 
 use serde_json::json;
 pub use uuid::Uuid;
@@ -9,7 +9,7 @@ use crate::{
 };
 
 pub fn uuid(uuid: Uuid) -> MFKDF2Result<DeriveFactorFn> {
-  Ok(Arc::new(move |_params| {
+  Ok(Rc::new(move |_params| {
     Box::pin(async move {
       Ok(MFKDF2DerivedFactor {
         kind:   "uuid".to_string(),

@@ -1,4 +1,4 @@
-use std::sync::Arc;
+use std::rc::Rc;
 
 use base64::prelude::*;
 use hmac::{Hmac, Mac};
@@ -47,7 +47,7 @@ fn generate_hotp_code(secret: &[u8], counter: u64, hash: &str, digits: u8) -> u3
 }
 
 pub fn hotp(code: u32) -> MFKDF2Result<DeriveFactorFn> {
-  Ok(Arc::new(move |params: Value| {
+  Ok(Rc::new(move |params: Value| {
     let offset = params["offset"].as_u64().unwrap() as u32;
     let digits = params["digits"].as_u64().unwrap() as u8;
 

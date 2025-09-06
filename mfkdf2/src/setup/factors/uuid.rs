@@ -18,10 +18,7 @@ pub fn uuid(uuid: Uuid, options: UUIDOptions) -> MFKDF2Result<MFKDF2Factor> {
     data: uuid.to_string().as_bytes().to_vec(),
     salt,
     params: Some(Box::new(move || Box::pin(async move { json!({}) }))),
-    output: Some(Box::new(move || {
-      let uuid = uuid.clone();
-      Box::pin(async move { Value::String(uuid.to_string()) })
-    })),
+    output: Some(Box::new(move || Box::pin(async move { Value::String(uuid.to_string()) }))),
 
     entropy: Some(122),
   })

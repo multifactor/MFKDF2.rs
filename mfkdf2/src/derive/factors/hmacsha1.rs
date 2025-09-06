@@ -1,4 +1,4 @@
-use std::sync::Arc;
+use std::rc::Rc;
 
 use rand::{Rng, rngs::OsRng};
 use serde_json::{Value, json};
@@ -14,7 +14,7 @@ pub struct HMACSHA1Options {
 }
 
 pub fn hmacsha1(response: [u8; 20]) -> MFKDF2Result<DeriveFactorFn> {
-  Ok(Arc::new(move |params: Value| {
+  Ok(Rc::new(move |params: Value| {
     let pad: Vec<u8> =
       params["pad"].as_array().unwrap().iter().map(|v| v.as_u64().unwrap() as u8).collect();
     let secret: [u8; 20] = std::array::from_fn(|i| response[i] ^ pad[i]);

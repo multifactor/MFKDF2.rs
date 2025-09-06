@@ -1,4 +1,4 @@
-use std::sync::Arc;
+use std::rc::Rc;
 
 use serde_json::json;
 use zxcvbn::zxcvbn;
@@ -16,7 +16,7 @@ pub fn password(password: impl Into<String>) -> MFKDF2Result<DeriveFactorFn> {
   let strength = zxcvbn(&password, &[]);
   let strength = strength.guesses().ilog2();
 
-  Ok(Arc::new(move |_params| {
+  Ok(Rc::new(move |_params| {
     let password = password.clone();
     Box::pin(async move {
       Ok(MFKDF2DerivedFactor {

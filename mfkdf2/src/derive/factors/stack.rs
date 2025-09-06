@@ -1,4 +1,4 @@
-use std::{collections::HashMap, sync::Arc};
+use std::{collections::HashMap, rc::Rc};
 
 use crate::{
   derive::{DeriveFactorFn, factors::MFKDF2DerivedFactor},
@@ -7,12 +7,11 @@ use crate::{
 };
 
 pub fn stack(factors: HashMap<String, DeriveFactorFn>) -> MFKDF2Result<DeriveFactorFn> {
-  let factors = Arc::new(factors);
-  Ok(Arc::new(move |params| {
-    let factors = Arc::clone(&factors);
+  Ok(Rc::new(move |params| {
+    let factors = factors.clone();
     Box::pin(async move {
       let policy = serde_json::from_value::<Policy>(params).unwrap();
-      let key = crate::derive::key(policy, (*factors).clone()).await?;
+      let key = crate::derive::key(policy, factors).await?;
 
       let policy = key.policy.clone();
 

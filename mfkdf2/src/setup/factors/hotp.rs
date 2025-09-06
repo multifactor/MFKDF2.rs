@@ -73,10 +73,10 @@ fn generate_hotp_code(secret: &[u8], counter: u64, hash: &HOTPHash, digits: u8) 
 
 pub fn hotp(options: HOTPOptions) -> MFKDF2Result<MFKDF2Factor> {
   // Validation
-  if let Some(ref id) = options.id {
-    if id.is_empty() {
-      return Err(crate::error::MFKDF2Error::InvalidHmacKey);
-    }
+  if let Some(ref id) = options.id
+    && id.is_empty()
+  {
+    return Err(crate::error::MFKDF2Error::InvalidHmacKey);
   }
   if options.digits < 6 || options.digits > 8 {
     return Err(crate::error::MFKDF2Error::InvalidHOTPDigits);
