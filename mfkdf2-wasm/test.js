@@ -1,51 +1,43 @@
-// Simple test for our pure WASM + JS wrapper approach
-const fs = require('fs');
-const path = require('path');
-const { initMFKDF2 } = require('./mfkdf2.js');
+// Simple test for mfkdf2.setup.factors.password()
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+import init, { setup_factors_password, test_string_return } from './pkg/mfkdf2_wasm.js';
+import { createMFKDF2 } from './api.js';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 async function test() {
-    console.log('🧪 Testing MFKDF2 Pure WASM + JS Wrapper');
-    console.log('==========================================');
+    console.log('🧪 Testing mfkdf2.setup.factors.password()');
+    console.log('========================================');
 
     try {
-        // Load the WASM binary
-        const wasmPath = path.join(__dirname, '../target/wasm32-unknown-unknown/release/mfkdf2_wasm.wasm');
-
-        if (!fs.existsSync(wasmPath)) {
-            console.error('❌ WASM file not found at:', wasmPath);
-            console.log('   Run: cargo build --target wasm32-unknown-unknown --release');
-            return;
-        }
-
+        // Load and initialize WASM
+        const wasmPath = path.join(__dirname, 'pkg', 'mfkdf2_wasm_bg.wasm');
         const wasmBytes = fs.readFileSync(wasmPath);
-        console.log(`✅ Loaded WASM binary: ${wasmBytes.length} bytes`);
+        const wasmModule = await init(wasmBytes);
 
-        // Initialize MFKDF2
-        const mfkdf2 = await initMFKDF2(wasmBytes);
-        console.log('✅ MFKDF2 initialized successfully');
+        // Create API with wrapper functions
+        const mfkdf2 = createMFKDF2(wasmModule, { setup_factors_password });
 
-        // Test password factor creation
-        console.log('\n📝 Testing password factor creation...');
-        const passwordFactor = mfkdf2.setup.factors.password('testpassword123', { id: 'password' });
-        console.log('✅ Password factor created:');
-        console.log(`   ID: ${passwordFactor.id}`);
-        console.log(`   Type: ${passwordFactor.type}`);
-        console.log(`   Entropy: ${passwordFactor.entropy} bits`);
+        // Test the function
+        console.log('📝 Creating password factor...');
+        const factor = mfkdf2.setup.factors.password('testpassword123', { id: 'password' });
 
-        console.log('\n🎉 Basic test completed successfully!');
-        console.log('\nNext steps:');
-        console.log('- Implement setup_key in WASM');
-        console.log('- Implement derive_key_with_password in WASM');
-        console.log('- Add support for multiple factor types');
+        console.log('✅ Success!');
+        console.log(`   ID: ${factor.id}`);
+        console.log(`   Type: ${factor.kind}`);
+        console.log(`   Entropy: ${factor.entropy} bits`);
+
+        return true;
 
     } catch (error) {
         console.error('❌ Test failed:', error.message);
-        console.error(error.stack);
+        return false;
     }
 }
 
-if (require.main === module) {
-    test();
-}
-
-module.exports = { test };
+test().then(success => {
+    process.exit(success ? 0 : 1);
+});
