@@ -3,41 +3,41 @@ use std::collections::HashMap;
 use serde_json::Value;
 use uuid::Uuid;
 
-// async fn mock_mfkdf2() -> Result<mfkdf2::setup::key::MFKDF2DerivedKey,
-// mfkdf2::error::MFKDF2Error> {   let factors = vec![mfkdf2::setup::factors::password(
-//     "Tr0ubd4dour",
-//     mfkdf2::setup::factors::password::PasswordOptions { id: Some("password_1".to_string()) },
-//   )]
-//   .into_iter()
-//   .collect::<Result<Vec<_>, _>>()?;
+async fn mock_mfkdf2() -> Result<mfkdf2::setup::key::MFKDF2DerivedKey, mfkdf2::error::MFKDF2Error> {
+  let factors = vec![mfkdf2::setup::factors::password_fn(
+    "Tr0ubd4dour",
+    mfkdf2::setup::factors::password::PasswordOptions { id: Some("password_1".to_string()) },
+  )]
+  .into_iter()
+  .collect::<Result<Vec<_>, _>>()?;
 
-//   let options = mfkdf2::setup::key::MFKDF2Options::default();
-//   let key = mfkdf2::setup::key(factors, options).await?;
-//   Ok(key)
-// }
+  let options = mfkdf2::setup::key::MFKDF2Options::default();
+  let key = mfkdf2::setup::key(factors, options).await?;
+  Ok(key)
+}
 
-// #[tokio::test]
-// async fn test_key_setup() -> Result<(), mfkdf2::error::MFKDF2Error> {
-//   mock_mfkdf2().await?;
-//   Ok(())
-// }
+#[tokio::test]
+async fn test_key_setup() -> Result<(), mfkdf2::error::MFKDF2Error> {
+  mock_mfkdf2().await?;
+  Ok(())
+}
 
-// #[tokio::test]
-// async fn test_key_derive() -> Result<(), mfkdf2::error::MFKDF2Error> {
-//   let key = mock_mfkdf2().await?;
-//   println!("Setup key: {}", key);
+#[tokio::test]
+async fn test_key_derive() -> Result<(), mfkdf2::error::MFKDF2Error> {
+  let key = mock_mfkdf2().await?;
+  println!("Setup key: {}", key);
 
-//   let factor = ("password_1".to_string(), mfkdf2::derive::factors::password("Tr0ubd4dour")?);
+  let factor = ("password_1".to_string(), mfkdf2::derive::factors::password("Tr0ubd4dour")?);
 
-//   let factors = HashMap::from([factor]);
+  let factors = HashMap::from([factor]);
 
-//   let derived_key = mfkdf2::derive::key(key.policy, factors).await?;
-//   println!("Derived key: {}", derived_key);
+  let derived_key = mfkdf2::derive::key(key.policy, factors).await?;
+  println!("Derived key: {}", derived_key);
 
-//   assert_eq!(derived_key.key, key.key);
+  assert_eq!(derived_key.key, key.key);
 
-//   Ok(())
-// }
+  Ok(())
+}
 
 // #[tokio::test]
 // #[should_panic]

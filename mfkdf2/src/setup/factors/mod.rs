@@ -4,14 +4,14 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 pub mod hmacsha1;
 // pub mod hotp;
-// pub mod password;
+pub mod password;
 // pub mod question;
 // pub mod stack;
 // pub mod uuid;
 
 pub use hmacsha1::hmacsha1;
 // pub use hotp::hotp;
-// pub use password::password;
+pub use password::password_fn;
 // pub use question::question;
 // pub use stack::stack;
 // pub use uuid::uuid;

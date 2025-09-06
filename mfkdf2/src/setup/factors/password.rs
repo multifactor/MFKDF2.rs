@@ -7,32 +7,30 @@ use crate::{
   setup::factors::MFKDF2Factor,
 };
 
+#[derive(uniffi::Record)]
 pub struct PasswordOptions {
   pub id: Option<String>,
 }
 
-pub fn password(
-  password: impl Into<String>,
-  options: PasswordOptions,
-) -> MFKDF2Result<MFKDF2Factor> {
-  let password = std::convert::Into::<String>::into(password);
+#[uniffi::export]
+pub fn password_fn(password: &str, options: PasswordOptions) -> MFKDF2Result<MFKDF2Factor> {
   if password.is_empty() {
     return Err(MFKDF2Error::PasswordEmpty);
   }
-  let strength = zxcvbn(&password, &[]);
+  let strength = zxcvbn(password, &[]);
 
   // per-factor salt
   let mut salt = [0u8; 32];
   OsRng.fill_bytes(&mut salt);
 
   Ok(MFKDF2Factor {
-    kind: "password".to_string(),
-    id: options.id.unwrap_or("password".to_string()),
-    data: password.as_bytes().to_vec(),
-    salt,
-    params: Some(Box::new(|| Box::pin(async { json!({}) }))),
+    kind:    "password".to_string(),
+    id:      options.id.unwrap_or("password".to_string()),
+    data:    password.as_bytes().to_vec(),
+    salt:    salt.to_vec(),
+    params:  json!({}).to_string(),
     entropy: Some(strength.guesses().ilog2()),
-    output: None,
+    output:  json!({}).to_string(),
   })
 }
 
