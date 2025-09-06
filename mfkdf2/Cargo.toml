@@ -39,7 +39,7 @@ balloon-hash = { version = "0.4", default-features = false, features = [
   "alloc",
 ] }
 # TODO: May not need SHA2 anymore.
-# sha1 = { version = "0.10", default-features = false }
+sha1 = { version = "0.10", default-features = false }
 sha2 = { version = "0.10", default-features = false }
 sha3 = { version = "0.10", default-features = false }
 

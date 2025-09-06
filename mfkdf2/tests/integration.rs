@@ -110,13 +110,10 @@ async fn mock_password_question_mfkdf2()
       "Tr0ubd4dour",
       mfkdf2::setup::factors::password::PasswordOptions { id: Some("password_1".to_string()) },
     ),
-    mfkdf2::setup::factors::question(
-      "Paris",
-      Some(mfkdf2::setup::factors::question::QuestionOptions {
-        id:       Some("question_1".to_string()),
-        question: "What is the capital of France?".to_string(),
-      }),
-    ),
+    mfkdf2::setup::factors::question("Paris", mfkdf2::setup::factors::question::QuestionOptions {
+      id:       Some("question_1".to_string()),
+      question: "What is the capital of France?".to_string(),
+    }),
   ]
   .into_iter()
   .collect::<Result<Vec<_>, _>>()?;

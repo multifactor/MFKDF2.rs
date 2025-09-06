@@ -2,6 +2,8 @@ use aes::Aes256;
 use cipher::{BlockDecryptMut, BlockEncryptMut, KeyInit, block_padding::NoPadding};
 use ecb::Encryptor;
 use hkdf::Hkdf;
+use hmac::{Hmac, Mac};
+use sha1::Sha1;
 use sha2::Sha256;
 use sha3::Sha3_256;
 
@@ -41,6 +43,12 @@ pub fn balloon_sha3_256(input: &[u8], salt: &[u8; 32]) -> [u8; 32] {
   let balloon = balloon_hash::Balloon::<Sha3_256>::default();
   balloon.hash_into(input, salt, &mut key).unwrap();
   key
+}
+
+pub fn hmacsha1(secret: &[u8], challenge: u64) -> [u8; 20] {
+  let mut mac = <Hmac<Sha1> as Mac>::new_from_slice(secret).unwrap();
+  mac.update(&challenge.to_be_bytes());
+  mac.finalize().into_bytes().into()
 }
 
 #[cfg(test)]
