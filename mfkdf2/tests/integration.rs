@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 
+use base64::prelude::*;
 use uuid::Uuid;
 
 async fn mock_mfkdf2() -> Result<mfkdf2::setup::key::MFKDF2DerivedKey, mfkdf2::error::MFKDF2Error> {
@@ -267,4 +268,168 @@ async fn test_policy_json_schema_compliance() {
   assert!(factor.get("params").is_some(), "Factor missing params field");
 
   println!("✅ Policy JSON schema compliance test passed!");
+}
+
+const HOTP_SECRET: &[u8] = b"hello world hotp secret";
+
+async fn mock_hotp_mfkdf2()
+-> Result<mfkdf2::setup::key::MFKDF2DerivedKey, mfkdf2::error::MFKDF2Error> {
+  let factors = vec![mfkdf2::setup::factors::hotp(mfkdf2::setup::factors::hotp::HOTPOptions {
+    id:     Some("hotp_1".to_string()),
+    secret: Some(HOTP_SECRET.to_vec()),
+    digits: 6,
+    hash:   mfkdf2::setup::factors::hotp::HOTPHash::Sha1,
+    issuer: "MFKDF".to_string(),
+    label:  "test".to_string(),
+  })]
+  .into_iter()
+  .collect::<Result<Vec<_>, _>>()?;
+
+  let options = mfkdf2::setup::key::MFKDF2Options::default();
+  let key = mfkdf2::setup::key(factors, options).await?;
+  Ok(key)
+}
+
+#[tokio::test]
+async fn test_key_setup_hotp() -> Result<(), mfkdf2::error::MFKDF2Error> {
+  let key = mock_hotp_mfkdf2().await?;
+  println!("Setup key: {}", key);
+  Ok(())
+}
+
+#[tokio::test]
+async fn test_key_derive_hotp() -> Result<(), mfkdf2::error::MFKDF2Error> {
+  let key = mock_hotp_mfkdf2().await?;
+  println!("Setup key: {}", key);
+
+  // Extract HOTP parameters from the policy
+  let hotp_factor = key.policy.factors.iter().find(|f| f.kind == "hotp").unwrap();
+  let counter = hotp_factor.params["counter"].as_u64().unwrap();
+  let digits = hotp_factor.params["digits"].as_u64().unwrap() as u8;
+
+  // Generate the HOTP code that the user would need to provide
+  // This simulates what would come from an authenticator app
+  let generated_code = generate_hotp_code(HOTP_SECRET, counter, digits);
+
+  println!("Generated HOTP code: {}", generated_code);
+
+  // Now use this code to derive the key
+  let factor = ("hotp_1".to_string(), mfkdf2::derive::factors::hotp(generated_code).unwrap());
+  let factors = HashMap::from([factor]);
+
+  let derived_key = mfkdf2::derive::key(key.policy, factors).await?;
+  println!("Derived key: {}", derived_key);
+
+  assert_eq!(derived_key.key, key.key);
+  Ok(())
+}
+
+#[tokio::test]
+#[should_panic]
+async fn test_key_derive_hotp_wrong_code() {
+  let key = mock_hotp_mfkdf2().await.unwrap();
+  println!("Setup key: {}", key);
+
+  // Use a wrong HOTP code
+  let wrong_code = 123_456_u32;
+  let factor = ("hotp_1".to_string(), mfkdf2::derive::factors::hotp(wrong_code).unwrap());
+  let factors = HashMap::from([factor]);
+
+  let derived_key = mfkdf2::derive::key(key.policy, factors).await.unwrap();
+  println!("Derived key: {}", derived_key);
+
+  // This should fail because the wrong code will produce a different target
+  assert_eq!(derived_key.key, key.key);
+}
+
+// TODO: Useful helper that we may want to use elsewhere.
+fn generate_hotp_code(secret: &[u8], counter: u64, digits: u8) -> u32 {
+  use hmac::{Hmac, Mac};
+  use sha1::Sha1;
+
+  let counter_bytes = counter.to_be_bytes();
+  let mut mac = Hmac::<Sha1>::new_from_slice(secret).unwrap();
+  mac.update(&counter_bytes);
+  let digest = mac.finalize().into_bytes();
+
+  // Dynamic truncation as per RFC 4226
+  let offset = (digest[digest.len() - 1] & 0xf) as usize;
+  let code = ((digest[offset] & 0x7f) as u32) << 24
+    | (digest[offset + 1] as u32) << 16
+    | (digest[offset + 2] as u32) << 8
+    | (digest[offset + 3] as u32);
+
+  code % (10_u32.pow(digits as u32))
+}
+
+async fn mock_mixed_factors_mfkdf2()
+-> Result<mfkdf2::setup::key::MFKDF2DerivedKey, mfkdf2::error::MFKDF2Error> {
+  let factors = vec![
+    mfkdf2::setup::factors::password(
+      "Tr0ubd4dour",
+      mfkdf2::setup::factors::password::PasswordOptions { id: Some("password_1".to_string()) },
+    ),
+    mfkdf2::setup::factors::hotp(mfkdf2::setup::factors::hotp::HOTPOptions {
+      id:     Some("hotp_1".to_string()),
+      secret: Some(HOTP_SECRET.to_vec()),
+      digits: 6,
+      hash:   mfkdf2::setup::factors::hotp::HOTPHash::Sha256,
+      issuer: "MFKDF".to_string(),
+      label:  "test".to_string(),
+    }),
+  ]
+  .into_iter()
+  .collect::<Result<Vec<_>, _>>()?;
+
+  let options = mfkdf2::setup::key::MFKDF2Options::default();
+  let key = mfkdf2::setup::key(factors, options).await?;
+  Ok(key)
+}
+
+#[tokio::test]
+async fn test_key_derive_mixed_password_hotp() -> Result<(), mfkdf2::error::MFKDF2Error> {
+  let key = mock_mixed_factors_mfkdf2().await?;
+  println!("Setup key: {}", key);
+
+  // Extract HOTP parameters
+  let hotp_factor = key.policy.factors.iter().find(|f| f.kind == "hotp").unwrap();
+  let counter = hotp_factor.params["counter"].as_u64().unwrap();
+  let digits = hotp_factor.params["digits"].as_u64().unwrap() as u8;
+
+  // Generate the correct HOTP code using SHA256 (different from previous test)
+  let generated_code = generate_hotp_code_sha256(&HOTP_SECRET, counter, digits);
+
+  println!("Generated HOTP code (SHA256): {}", generated_code);
+
+  // Create both factors
+  let factor_password =
+    ("password_1".to_string(), mfkdf2::derive::factors::password("Tr0ubd4dour").unwrap());
+  let factor_hotp = ("hotp_1".to_string(), mfkdf2::derive::factors::hotp(generated_code).unwrap());
+  let factors = HashMap::from([factor_password, factor_hotp]);
+
+  let derived_key = mfkdf2::derive::key(key.policy, factors).await?;
+  println!("Derived key: {}", derived_key);
+
+  assert_eq!(derived_key.key, key.key);
+  Ok(())
+}
+
+// Helper function for SHA256 HOTP codes
+fn generate_hotp_code_sha256(secret: &[u8], counter: u64, digits: u8) -> u32 {
+  use hmac::{Hmac, Mac};
+  use sha2::Sha256;
+
+  let counter_bytes = counter.to_be_bytes();
+  let mut mac = Hmac::<Sha256>::new_from_slice(secret).unwrap();
+  mac.update(&counter_bytes);
+  let digest = mac.finalize().into_bytes();
+
+  // Dynamic truncation as per RFC 4226
+  let offset = (digest[digest.len() - 1] & 0xf) as usize;
+  let code = ((digest[offset] & 0x7f) as u32) << 24
+    | (digest[offset + 1] as u32) << 16
+    | (digest[offset + 2] as u32) << 8
+    | (digest[offset + 3] as u32);
+
+  code % (10_u32.pow(digits as u32))
 }
