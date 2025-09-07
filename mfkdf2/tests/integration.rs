@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 
+use serde_json::Value;
 use uuid::Uuid;
 
 async fn mock_mfkdf2() -> Result<mfkdf2::setup::key::MFKDF2DerivedKey, mfkdf2::error::MFKDF2Error> {
@@ -304,9 +305,10 @@ async fn test_key_derive_hotp() -> Result<(), mfkdf2::error::MFKDF2Error> {
 
   // Extract HOTP parameters from the policy
   let hotp_factor = key.policy.factors.iter().find(|f| f.kind == "hotp").unwrap();
-  let counter = hotp_factor.params["counter"].as_u64().unwrap();
-  dbg!(&hotp_factor.params);
-  let digits = hotp_factor.params["digits"].as_u64().unwrap() as u8;
+  let params: Value = serde_json::from_str(&hotp_factor.params).unwrap();
+  let counter = params["counter"].as_u64().unwrap();
+  dbg!(&params);
+  let digits = params["digits"].as_u64().unwrap() as u8;
 
   // Generate the HOTP code that the user would need to provide
   // This simulates what would come from an authenticator app
@@ -394,8 +396,9 @@ async fn test_key_derive_mixed_password_hotp() -> Result<(), mfkdf2::error::MFKD
 
   // Extract HOTP parameters
   let hotp_factor = key.policy.factors.iter().find(|f| f.kind == "hotp").unwrap();
-  let counter = hotp_factor.params["counter"].as_u64().unwrap();
-  let digits = hotp_factor.params["digits"].as_u64().unwrap() as u8;
+  let params: Value = serde_json::from_str(&hotp_factor.params).unwrap();
+  let counter = params["counter"].as_u64().unwrap();
+  let digits = params["digits"].as_u64().unwrap() as u8;
 
   // Generate the correct HOTP code using SHA256 (different from previous test)
   let generated_code = generate_hotp_code_sha256(&HOTP_SECRET, counter, digits);

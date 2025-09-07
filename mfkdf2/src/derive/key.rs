@@ -23,7 +23,7 @@ pub async fn key(
       None => continue,
     };
 
-    material.factor_type.include_params(factor.params.clone());
+    material.factor_type.include_params(serde_json::from_str(&factor.params).unwrap());
 
     // TODO (autoparallel): This should probably be done with a `MaybeUninit` array.
     let salt_bytes = general_purpose::STANDARD.decode(&factor.salt)?;
@@ -57,8 +57,8 @@ pub async fn key(
 
   Ok(MFKDF2DerivedKey {
     policy,
-    key,
-    secret: secret_arr,
+    key: key.to_vec(),
+    secret: secret_arr.to_vec(),
     shares: shares_vec.into_iter().map(|s| Vec::from(&s)).collect(),
     outputs: Vec::new(),
     entropy: MFKDF2Entropy { real: 0, theoretical: 0 },

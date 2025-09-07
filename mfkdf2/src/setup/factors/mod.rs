@@ -17,7 +17,7 @@ pub use password::password;
 // pub use stack::stack;
 // pub use uuid::uuid;
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize, uniffi::Enum)]
 pub enum FactorType {
   Password(password::Password),
   HOTP(hotp::HOTP),
@@ -65,7 +65,7 @@ pub trait FactorTrait {
   fn output_derive(&self, key: [u8; 32]) -> Value;
 }
 
-#[derive(Clone, Serialize, Deserialize)]
+#[derive(Clone, Serialize, Deserialize, uniffi::Record)]
 pub struct MFKDF2Factor {
   // TODO: Don't need now because we can handle the factor type in the data field (which may want
   // to be renamed) // TODO (autoparallel): This should be called "type" instead.
@@ -74,7 +74,7 @@ pub struct MFKDF2Factor {
   pub factor_type: FactorType,
   // pub data:    Vec<u8>,
   // TODO (autoparallel): This is the factor specific salt.
-  pub salt:        [u8; 32],
+  pub salt:        Vec<u8>,
   // #[serde(skip)]
   // pub params:  Option<SetupFactorFn>,
   pub entropy:     Option<u32>,

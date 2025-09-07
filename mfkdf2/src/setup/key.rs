@@ -16,7 +16,7 @@ use crate::{
 };
 
 // TODO (autoparallel): We probably can just use the MFKDF2Factor struct directly here.
-#[derive(Clone, Serialize, Deserialize, Debug, Eq, PartialEq)]
+#[derive(Clone, Serialize, Deserialize, Debug, Eq, PartialEq, uniffi::Record)]
 pub struct PolicyFactor {
   pub id:     String,
   #[serde(rename = "type")]
@@ -24,35 +24,35 @@ pub struct PolicyFactor {
   pub pad:    String,
   pub salt:   String,
   #[serde(skip)]
-  pub key:    [u8; 32],
+  pub key:    Vec<u8>,
   pub secret: String,
-  pub params: Value,
+  pub params: String,
 }
 
-#[derive(Default, Clone, Serialize, Deserialize)]
+#[derive(Default, Clone, Serialize, Deserialize, uniffi::Record)]
 pub struct MFKDF2Options {
   pub id:        Option<String>,
   pub threshold: Option<u8>,
-  pub salt:      Option<[u8; 32]>,
+  pub salt:      Option<Vec<u8>>,
   // TODO (autoparallel): Add these options.
   // pub time: Option<u32>,
   // pub memory: Option<u32>,
   // pub parallelism: Option<u32>,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, Eq, PartialEq)]
+#[derive(Clone, Debug, Serialize, Deserialize, Eq, PartialEq, uniffi::Record)]
 pub struct MFKDF2Entropy {
   pub real:        u32,
   pub theoretical: u32,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, Eq, PartialEq)]
+#[derive(Clone, Debug, Serialize, Deserialize, Eq, PartialEq, uniffi::Record)]
 pub struct MFKDF2DerivedKey {
   pub policy:  Policy,
-  pub key:     [u8; 32],
-  pub secret:  [u8; 32],
+  pub key:     Vec<u8>,
+  pub secret:  Vec<u8>,
   pub shares:  Vec<Vec<u8>>,
-  pub outputs: Vec<Value>,
+  pub outputs: Vec<String>,
   pub entropy: MFKDF2Entropy,
 }
 
@@ -61,12 +61,13 @@ impl std::fmt::Display for MFKDF2DerivedKey {
     write!(
       f,
       "MFKDF2DerivedKey {{ key: {}, secret: {} }}",
-      base64::Engine::encode(&general_purpose::STANDARD, self.key),
-      base64::Engine::encode(&general_purpose::STANDARD, self.secret),
+      base64::Engine::encode(&general_purpose::STANDARD, self.key.clone()),
+      base64::Engine::encode(&general_purpose::STANDARD, self.secret.clone()),
     )
   }
 }
 
+#[uniffi::export]
 pub async fn key(
   factors: Vec<MFKDF2Factor>,
   options: MFKDF2Options,
@@ -81,11 +82,15 @@ pub async fn key(
   }
 
   // Generate salt & secret if not provided
-  let salt: [u8; 32] = options.clone().salt.unwrap_or_else(|| {
-    let mut salt = [0u8; 32];
-    OsRng.fill_bytes(&mut salt);
-    salt
-  });
+  let salt: [u8; 32] = match options.clone().salt {
+    Some(salt) => salt.try_into().unwrap(),
+    None => {
+      let mut salt = [0u8; 32];
+      OsRng.fill_bytes(&mut salt);
+      salt
+    },
+  };
+
   let mut secret: [u8; 32] = [0u8; 32];
   OsRng.fill_bytes(&mut secret);
 
@@ -104,11 +109,12 @@ pub async fn key(
 
   for (factor, share) in factors.iter().zip(shares.clone()) {
     // HKDF stretch & AES-encrypt share
-    let stretched = hkdf_sha256(&factor.factor_type.bytes(), &factor.salt);
+    let stretched =
+      hkdf_sha256(&factor.factor_type.bytes(), &factor.salt.clone().try_into().unwrap());
     let pad = aes256_ecb_encrypt(&share, &stretched);
 
     // Generate factor key
-    let factor_key = hkdf_sha256(&key, &factor.salt);
+    let factor_key = hkdf_sha256(&key, &factor.salt.clone().try_into().unwrap());
     let factor_secret = aes256_ecb_encrypt(&share, &factor_key);
 
     // TODO (autoparallel): Add params for each factor.
@@ -128,13 +134,13 @@ pub async fn key(
     real_entropy.push(factor.entropy.unwrap());
 
     policy_factors.push(PolicyFactor {
-      id: id.unwrap(),
-      kind: factor.kind(),
-      pad: general_purpose::STANDARD.encode(pad),
-      salt: general_purpose::STANDARD.encode(factor.salt),
-      key: factor_key,
+      id:     id.unwrap(),
+      kind:   factor.kind(),
+      pad:    general_purpose::STANDARD.encode(pad),
+      salt:   general_purpose::STANDARD.encode(factor.salt.clone()),
+      key:    factor_key.to_vec(),
       secret: general_purpose::STANDARD.encode(factor_secret),
-      params,
+      params: serde_json::to_string(&params).unwrap(),
     });
   }
 
@@ -182,15 +188,15 @@ pub async fn key(
       factors: policy_factors,
       hmac: general_purpose::STANDARD.encode(hmac),
     },
-    key,
-    secret,
+    key: key.to_vec(),
+    secret: secret.to_vec(),
     shares,
-    outputs,
+    outputs: outputs.iter().map(|o| serde_json::to_string(o).unwrap()).collect(),
     entropy: MFKDF2Entropy { real: entropy_real, theoretical: entropy_theoretical },
   })
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, Eq, PartialEq)]
+#[derive(Clone, Debug, Serialize, Deserialize, Eq, PartialEq, uniffi::Record)]
 pub struct Policy {
   #[serde(rename = "$schema")]
   pub schema:    String,

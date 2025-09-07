@@ -8,7 +8,7 @@ use crate::{
   setup::factors::{FactorTrait, FactorType, MFKDF2Factor},
 };
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize, uniffi::Record)]
 pub struct Password {
   pub password: String,
 }
@@ -48,10 +48,10 @@ pub fn password(
   OsRng.fill_bytes(&mut salt);
 
   Ok(MFKDF2Factor {
-    id: Some(options.id.unwrap_or("password".to_string())),
+    id:          Some(options.id.unwrap_or("password".to_string())),
     factor_type: FactorType::Password(Password { password }),
-    salt,
-    entropy: Some(strength.guesses().ilog2()),
+    salt:        salt.to_vec(),
+    entropy:     Some(strength.guesses().ilog2()),
     // inner: Some(Box::new(Password {})),
   })
 }

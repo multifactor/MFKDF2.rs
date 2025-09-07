@@ -56,11 +56,13 @@ pub fn hotp(code: u32) -> MFKDF2Result<MFKDF2Factor> {
     id:          None,
     factor_type: FactorType::HOTP(HOTP {
       options: HOTPOptions::default(),
-      params: Value::Null, // Will be set by include_params
+      // TODO (autoparallel): This is confusing, should probably put an Option here.
+      params: serde_json::to_string(&Value::Null).unwrap(),
       code,
       target: 0,
     }),
-    salt:        [0u8; 32],
+    // TODO (autoparallel): This is confusing, should probably put an Option here.
+    salt:        [0u8; 32].to_vec(),
     entropy:     Some((6 as f64 * 10.0_f64.log2()) as u32),
   })
 }

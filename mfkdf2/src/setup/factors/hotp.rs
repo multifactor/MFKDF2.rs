@@ -12,10 +12,10 @@ use crate::{
   setup::factors::{FactorTrait, FactorType, MFKDF2Factor},
 };
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize, uniffi::Record)]
 pub struct HOTP {
   pub options: HOTPOptions,
-  pub params:  Value,
+  pub params:  String,
   pub code:    u32,
   pub target:  u32,
 }
@@ -95,15 +95,16 @@ impl FactorTrait for HOTP {
 
   fn params_derive(&self, key: [u8; 32]) -> Value {
     // Decrypt the secret using the factor key
-    let pad_b64 = self.params["pad"].as_str().unwrap();
+    let params: Value = serde_json::from_str(&self.params).unwrap();
+    let pad_b64 = params["pad"].as_str().unwrap();
     let pad = base64::prelude::BASE64_STANDARD.decode(pad_b64).unwrap();
     let decrypted = aes256_ecb_decrypt(pad, &key);
-    let secret_size = self.params["secretSize"].as_u64().unwrap() as usize;
+    let secret_size = params["secretSize"].as_u64().unwrap() as usize;
     let secret = &decrypted[..secret_size];
 
     // Generate HOTP code with incremented counter
-    let counter = self.params["counter"].as_u64().unwrap() + 1;
-    let hash = self.params["hash"].as_str().unwrap();
+    let counter = params["counter"].as_u64().unwrap() + 1;
+    let hash = params["hash"].as_str().unwrap();
     let hash = match hash {
       "sha1" => HOTPHash::Sha1,
       "sha256" => HOTPHash::Sha256,
@@ -133,7 +134,7 @@ impl FactorTrait for HOTP {
   fn include_params(&mut self, params: Value) {
     // Store the policy parameters for derive phase
     dbg!(&params);
-    self.params = params.clone();
+    self.params = serde_json::to_string(&params).unwrap();
 
     // If this is a derive factor (has a code), calculate target and store in options.secret
     if self.code != 0 {
@@ -148,7 +149,7 @@ impl FactorTrait for HOTP {
   }
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize, uniffi::Record)]
 pub struct HOTPOptions {
   pub id:     Option<String>,
   pub secret: Option<Vec<u8>>,
@@ -158,7 +159,7 @@ pub struct HOTPOptions {
   pub label:  String,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize, uniffi::Enum)]
 pub enum HOTPHash {
   Sha1,
   Sha256,
@@ -242,11 +243,11 @@ pub fn hotp(options: HOTPOptions) -> MFKDF2Result<MFKDF2Factor> {
     id,
     factor_type: FactorType::HOTP(HOTP {
       options: options.clone(),
-      params: Value::Null,
+      params: serde_json::to_string(&Value::Null).unwrap(),
       code: 0,
       target,
     }),
-    salt,
+    salt: salt.to_vec(),
     entropy: Some((options.digits as f64 * 10.0_f64.log2()) as u32),
   })
 }
