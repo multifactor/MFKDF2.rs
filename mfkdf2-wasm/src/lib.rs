@@ -23,3 +23,33 @@ pub fn setup_factors_password(password: String, id: Option<String>) -> String {
     Err(e) => format!("{{\"error\": \"Failed to create password factor: {:?}\"}}", e),
   }
 }
+
+/// Very thin wrapper around mfkdf2::setup::key::key
+/// Takes factors JSON and options JSON, returns derived key JSON
+#[wasm_bindgen]
+pub async fn setup_key(factors_json: String, options_json: Option<String>) -> String {
+  // Parse factors from JSON
+  let factors: Vec<mfkdf2::setup::factors::MFKDF2Factor> = match serde_json::from_str(&factors_json)
+  {
+    Ok(factors) => factors,
+    Err(e) => return format!("{{\"error\": \"Failed to parse factors JSON: {:?}\"}}", e),
+  };
+
+  // Parse options from JSON or use default
+  let options: mfkdf2::setup::key::MFKDF2Options = match options_json {
+    Some(json) => match serde_json::from_str(&json) {
+      Ok(options) => options,
+      Err(e) => return format!("{{\"error\": \"Failed to parse options JSON: {:?}\"}}", e),
+    },
+    None => mfkdf2::setup::key::MFKDF2Options::default(),
+  };
+
+  // Call the actual setup::key function
+  match mfkdf2::setup::key::key(factors, options).await {
+    Ok(derived_key) => match serde_json::to_string(&derived_key) {
+      Ok(json) => json,
+      Err(e) => format!("{{\"error\": \"JSON serialization error: {:?}\"}}", e),
+    },
+    Err(e) => format!("{{\"error\": \"Failed to create key: {:?}\"}}", e),
+  }
+}

@@ -12,7 +12,7 @@ use super::*;
 use crate::{
   crypto::{aes256_ecb_encrypt, balloon_sha3_256, hkdf_sha256},
   error::{MFKDF2Error, MFKDF2Result},
-  setup::factors::MFKDF2Factor,
+  setup::factors::{MFKDF2Factor, password::FactorTrait},
 };
 
 #[derive(Clone, Serialize, Deserialize, Debug, Eq, PartialEq)]
@@ -103,7 +103,7 @@ pub async fn key(
 
   for (factor, share) in factors.iter().zip(shares.clone()) {
     // HKDF stretch & AES-encrypt share
-    let stretched = hkdf_sha256(&factor.data, &factor.salt);
+    let stretched = hkdf_sha256(&factor.data.bytes(), &factor.salt);
     let pad = aes256_ecb_encrypt(&share, &stretched);
 
     // Generate factor key
@@ -111,12 +111,9 @@ pub async fn key(
     let factor_secret = aes256_ecb_encrypt(&share, &factor_key);
 
     // TODO (autoparallel): Add params for each factor.
-    let params = factor.params.as_ref().unwrap()(factor_key).await;
+    let params = factor.data.params(factor_key);
     // TODO (autoparallel): This should not be an unwrap.
-    outputs.push(match &factor.output {
-      Some(output) => output(key).await,
-      None => Value::Null,
-    });
+    outputs.push(factor.data.output(key));
 
     let id = factor.id.clone();
 
@@ -125,7 +122,7 @@ pub async fn key(
     }
 
     // Record entropy statistics (in bits) for this factor.
-    theoretical_entropy.push(u32::try_from(factor.data.len() * 8).unwrap());
+    theoretical_entropy.push(u32::try_from(factor.data.bytes().len() * 8).unwrap());
     // TODO (autoparallel): This should not be an unwrap, should entropy really be optional?
     real_entropy.push(factor.entropy.unwrap());
 

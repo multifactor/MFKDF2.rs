@@ -6,19 +6,6 @@ class MFKDF2 {
 
     get setup() {
         return {
-            /**
-             * Create an MFKDF2 key from factors
-             * @param {Array} factors - Array of MFKDF2Factor objects
-             * @param {Object} [options] - Setup options
-             * @returns {Promise<Object>} MFKDF2 derived key
-             */
-            key: async (factors, options = {}) => {
-                const factorsJson = JSON.stringify(factors);
-                const optionsJson = Object.keys(options).length > 0 ? JSON.stringify(options) : null;
-                const resultJson = await this.wasmFunctions.setup_key(factorsJson, optionsJson);
-                return JSON.parse(resultJson);
-            },
-
             factors: {
                 /**
                  * Create a password factor
@@ -29,6 +16,7 @@ class MFKDF2 {
                  */
                 password: (password, options = {}) => {
                     const resultJson = this.wasmFunctions.setup_factors_password(password, options.id || null);
+                    console.log('Result JSON:', resultJson);
                     return JSON.parse(resultJson);
                 }
             }
