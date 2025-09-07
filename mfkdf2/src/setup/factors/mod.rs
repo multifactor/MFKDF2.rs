@@ -70,14 +70,14 @@ pub struct MFKDF2Factor {
   // TODO: Don't need now because we can handle the factor type in the data field (which may want
   // to be renamed) // TODO (autoparallel): This should be called "type" instead.
   // pub kind:    String,
-  pub id:      Option<String>,
-  pub data:    FactorType,
+  pub id:          Option<String>,
+  pub factor_type: FactorType,
   // pub data:    Vec<u8>,
   // TODO (autoparallel): This is the factor specific salt.
-  pub salt:    [u8; 32],
+  pub salt:        [u8; 32],
   // #[serde(skip)]
   // pub params:  Option<SetupFactorFn>,
-  pub entropy: Option<u32>,
+  pub entropy:     Option<u32>,
   // #[serde(skip)]
   // pub output:  Option<SetupFactorFn>,
   // #[serde(skip)]
@@ -85,15 +85,15 @@ pub struct MFKDF2Factor {
 }
 
 impl MFKDF2Factor {
-  pub fn kind(&self) -> String { self.data.kind() }
+  pub fn kind(&self) -> String { self.factor_type.kind() }
 }
 
 impl std::fmt::Debug for MFKDF2Factor {
   fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
     f.debug_struct("MFKDF2Factor")
-      .field("kind", &self.data.kind())
+      .field("kind", &self.factor_type.kind())
       .field("id", &self.id)
-      .field("data", &self.data)
+      .field("data", &self.factor_type)
       .field("salt", &self.salt)
       .field("params", &"<function>")
       .field("entropy", &self.entropy)

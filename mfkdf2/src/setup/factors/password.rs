@@ -26,9 +26,7 @@ impl FactorTrait for Password {
 
   fn output_derive(&self, key: [u8; 32]) -> Value { json!({}) }
 
-  fn include_params(&mut self, params: Value) {
-    
-  }
+  fn include_params(&mut self, params: Value) {}
 }
 
 pub struct PasswordOptions {
@@ -51,7 +49,7 @@ pub fn password(
 
   Ok(MFKDF2Factor {
     id: Some(options.id.unwrap_or("password".to_string())),
-    data: FactorType::Password(Password { password }),
+    factor_type: FactorType::Password(Password { password }),
     salt,
     entropy: Some(strength.guesses().ilog2()),
     // inner: Some(Box::new(Password {})),

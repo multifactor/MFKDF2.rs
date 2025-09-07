@@ -23,13 +23,13 @@ pub async fn key(
       None => continue,
     };
 
-    material.data.include_params(factor.params.clone());
+    material.factor_type.include_params(factor.params.clone());
 
     // TODO (autoparallel): This should probably be done with a `MaybeUninit` array.
     let salt_bytes = general_purpose::STANDARD.decode(&factor.salt)?;
     let salt_arr: [u8; 32] = salt_bytes.try_into().map_err(|_| MFKDF2Error::TryFromVecError)?;
 
-    let stretched = hkdf_sha256(&material.data.bytes(), &salt_arr);
+    let stretched = hkdf_sha256(&material.factor_type.bytes(), &salt_arr);
 
     // TODO (autoparallel): This should probably be done with a `MaybeUninit` array.
     let pad = general_purpose::STANDARD.decode(&factor.pad)?;

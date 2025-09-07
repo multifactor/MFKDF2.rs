@@ -50,10 +50,17 @@ fn generate_hotp_code(secret: &[u8], counter: u64, hash: &str, digits: u8) -> u3
 }
 
 pub fn hotp(code: u32) -> MFKDF2Result<MFKDF2Factor> {
+  // Create HOTP factor with the user-provided code
+  // The target will be calculated in include_params once we have the policy parameters
   Ok(MFKDF2Factor {
-    id:      None,
-    data:    FactorType::HOTP(HOTP { options: HOTPOptions::default(), params: Value::Null, code }),
-    salt:    [0u8; 32],
-    entropy: Some((6 as f64 * 10.0_f64.log2()) as u32),
+    id:          None,
+    factor_type: FactorType::HOTP(HOTP {
+      options: HOTPOptions::default(),
+      params: Value::Null, // Will be set by include_params
+      code,
+      target: 0,
+    }),
+    salt:        [0u8; 32],
+    entropy:     Some((6 as f64 * 10.0_f64.log2()) as u32),
   })
 }

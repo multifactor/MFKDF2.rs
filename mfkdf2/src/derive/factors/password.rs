@@ -14,7 +14,7 @@ pub fn password(password: impl Into<String>) -> MFKDF2Result<MFKDF2Factor> {
   let strength = strength.guesses().ilog2();
 
   Ok(MFKDF2Factor {
-    data:    FactorType::Password(Password { password }),
+    factor_type:    FactorType::Password(Password { password }),
     salt:    [0u8; 32],
     entropy: Some(strength),
     id:      None,

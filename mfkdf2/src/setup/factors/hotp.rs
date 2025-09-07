@@ -17,17 +17,18 @@ pub struct HOTP {
   pub options: HOTPOptions,
   pub params:  Value,
   pub code:    u32,
+  pub target:  u32,
 }
 
 impl FactorTrait for HOTP {
   fn kind(&self) -> String { "hotp".to_string() }
 
-  fn bytes(&self) -> Vec<u8> { self.options.secret.clone().unwrap_or(vec![]) }
+  fn bytes(&self) -> Vec<u8> {
+    // For setup factors, return the secret or empty vec
+    self.target.to_be_bytes().to_vec()
+  }
 
   fn params_setup(&self, key: [u8; 32]) -> Value {
-    // Generate random target
-    let target = OsRng.gen_range(0..10_u32.pow(self.options.digits.clone() as u32));
-
     // Generate or use provided secret
     let secret = if let Some(secret) = self.options.secret.clone() {
       secret
@@ -42,7 +43,7 @@ impl FactorTrait for HOTP {
 
     // Calculate offset
     let offset =
-      mod_positive(target as i64 - code as i64, 10_i64.pow(self.options.digits as u32)) as u32;
+      mod_positive(self.target as i64 - code as i64, 10_i64.pow(self.options.digits as u32)) as u32;
 
     // Pad secret to multiple of 16 for encryption
     let padding_needed = 16 - (secret.len() % 16);
@@ -93,12 +94,6 @@ impl FactorTrait for HOTP {
   }
 
   fn params_derive(&self, key: [u8; 32]) -> Value {
-    let offset = self.params["offset"].as_u64().unwrap() as u32;
-    let digits = self.params["digits"].as_u64().unwrap() as u8;
-
-    // Calculate target
-    let target = mod_positive(offset as i64 + self.code as i64, 10_i64.pow(digits as u32)) as u32;
-
     // Decrypt the secret using the factor key
     let pad_b64 = self.params["pad"].as_str().unwrap();
     let pad = base64::prelude::BASE64_STANDARD.decode(pad_b64).unwrap();
@@ -118,12 +113,14 @@ impl FactorTrait for HOTP {
     let generated_code = generate_hotp_code(secret, counter, &hash, self.options.digits);
 
     // Calculate new offset
-    let new_offset =
-      mod_positive(target as i64 - generated_code as i64, 10_i64.pow(digits as u32)) as u32;
+    let new_offset = mod_positive(
+      self.target as i64 - generated_code as i64,
+      10_i64.pow(self.options.digits as u32),
+    ) as u32;
 
     json!({
       "hash": hash,
-      "digits": digits,
+      "digits": self.options.digits,
       "pad": pad_b64,
       "secretSize": secret_size,
       "counter": counter,
@@ -133,7 +130,22 @@ impl FactorTrait for HOTP {
 
   fn output_derive(&self, key: [u8; 32]) -> Value { json!({}) }
 
-  fn include_params(&mut self, params: Value) {}
+  fn include_params(&mut self, params: Value) {
+    // Store the policy parameters for derive phase
+    dbg!(&params);
+    self.params = params.clone();
+
+    // If this is a derive factor (has a code), calculate target and store in options.secret
+    if self.code != 0 {
+      if let (Some(offset), Some(digits)) = (params["offset"].as_u64(), params["digits"].as_u64()) {
+        let modulus = 10_u64.pow(digits as u32);
+        let target = (offset + self.code as u64) % modulus;
+
+        // Store target as 4-byte big-endian (matches JS implementation)
+        self.target = target as u32;
+      }
+    }
+  }
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -210,16 +222,30 @@ pub fn hotp(options: HOTPOptions) -> MFKDF2Result<MFKDF2Factor> {
     return Err(crate::error::MFKDF2Error::InvalidHOTPDigits);
   }
 
+  // Generate random target
+  let target = OsRng.gen_range(0..10_u32.pow(u32::from(options.digits)));
+
   let mut salt = [0u8; 32];
   OsRng.fill_bytes(&mut salt);
 
   let id = Some(options.id.clone().unwrap_or("hotp".to_string()));
 
+  if let Some(secret) = &options.secret {
+    if secret.len() != 32 {
+      panic!("secret must be 32 bytes");
+    }
+  }
+
   // TODO (autoparallel): Code should possibly be an option, though this follows the same pattern as
   // the password factor which stores the actual password in the struct.
   Ok(MFKDF2Factor {
     id,
-    data: FactorType::HOTP(HOTP { options: options.clone(), params: Value::Null, code: 0 }),
+    factor_type: FactorType::HOTP(HOTP {
+      options: options.clone(),
+      params: Value::Null,
+      code: 0,
+      target,
+    }),
     salt,
     entropy: Some((options.digits as f64 * 10.0_f64.log2()) as u32),
   })
@@ -245,10 +271,10 @@ mod tests {
     let factor = hotp(options).unwrap();
     assert_eq!(factor.kind(), "hotp");
     assert_eq!(factor.id, Some("test_hotp".to_string()));
-    assert_eq!(factor.data.bytes().len(), 4); // u32 target as bytes
+    assert_eq!(factor.factor_type.bytes().len(), 4); // u32 target as bytes
 
     // Test that params can be generated
-    let params = factor.data.params_setup(key);
+    let params = factor.factor_type.params_setup(key);
     assert!(params["hash"].is_string());
     assert!(params["digits"].is_number());
     assert!(params["pad"].is_string());
@@ -265,10 +291,10 @@ mod tests {
 
     assert_eq!(factor.kind(), "hotp");
     assert_eq!(factor.id, Some("hotp".to_string()));
-    assert_eq!(factor.data.bytes().len(), 4);
+    assert_eq!(factor.factor_type.bytes().len(), 4);
     assert!(factor.entropy.is_some());
-    assert!(factor.data.params_setup(key).is_object());
-    assert!(factor.data.output_setup(key).is_object());
+    assert!(factor.factor_type.params_setup(key).is_object());
+    assert!(factor.factor_type.output_setup(key).is_object());
   }
 
   #[test]

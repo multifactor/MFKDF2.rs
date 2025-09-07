@@ -104,7 +104,7 @@ pub async fn key(
 
   for (factor, share) in factors.iter().zip(shares.clone()) {
     // HKDF stretch & AES-encrypt share
-    let stretched = hkdf_sha256(&factor.data.bytes(), &factor.salt);
+    let stretched = hkdf_sha256(&factor.factor_type.bytes(), &factor.salt);
     let pad = aes256_ecb_encrypt(&share, &stretched);
 
     // Generate factor key
@@ -112,9 +112,9 @@ pub async fn key(
     let factor_secret = aes256_ecb_encrypt(&share, &factor_key);
 
     // TODO (autoparallel): Add params for each factor.
-    let params = factor.data.params_setup(factor_key);
+    let params = factor.factor_type.params_setup(factor_key);
     // TODO (autoparallel): This should not be an unwrap.
-    outputs.push(factor.data.output_setup(key));
+    outputs.push(factor.factor_type.output_setup(key));
 
     let id = factor.id.clone();
 
@@ -123,7 +123,7 @@ pub async fn key(
     }
 
     // Record entropy statistics (in bits) for this factor.
-    theoretical_entropy.push(u32::try_from(factor.data.bytes().len() * 8).unwrap());
+    theoretical_entropy.push(u32::try_from(factor.factor_type.bytes().len() * 8).unwrap());
     // TODO (autoparallel): This should not be an unwrap, should entropy really be optional?
     real_entropy.push(factor.entropy.unwrap());
 
