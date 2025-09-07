@@ -4,11 +4,11 @@ use serde_json::json;
 use zxcvbn::zxcvbn;
 
 use crate::{
-  derive::{DeriveFactorFn, factors::MFKDF2DerivedFactor},
   error::{MFKDF2Error, MFKDF2Result},
+  setup::factors::{FactorType, MFKDF2Factor, password::Password},
 };
 
-pub fn password(password: impl Into<String>) -> MFKDF2Result<DeriveFactorFn> {
+pub fn password(password: impl Into<String>) -> MFKDF2Result<MFKDF2Factor> {
   let password = std::convert::Into::<String>::into(password);
   if password.is_empty() {
     return Err(MFKDF2Error::PasswordEmpty);
@@ -16,15 +16,11 @@ pub fn password(password: impl Into<String>) -> MFKDF2Result<DeriveFactorFn> {
   let strength = zxcvbn(&password, &[]);
   let strength = strength.guesses().ilog2();
 
-  Ok(Rc::new(move |_params| {
-    let password = password.clone();
-    Box::pin(async move {
-      Ok(MFKDF2DerivedFactor {
-        kind:   "password".to_string(),
-        data:   password.as_bytes().to_vec(),
-        params: None,
-        output: Some(Box::new(move |_| Box::pin(async move { json!({ "strength": strength }) }))),
-      })
-    })
-  }))
+  Ok(MFKDF2Factor {
+    kind:    "password".to_string(),
+    data:    FactorType::Password(Password { password }),
+    salt:    [0u8; 32],
+    entropy: Some(strength),
+    id:      None,
+  })
 }

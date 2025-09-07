@@ -34,6 +34,35 @@ class MFKDF2 {
             }
         };
     }
+
+    get derive() {
+        return {
+            /**
+             * Derive an MFKDF2 key from policy and factors
+             * @param {Object} policy - The MFKDF2 policy from setup
+             * @param {Object} factors - HashMap of factor ID -> MFKDF2Factor
+             * @returns {Promise<Object>} MFKDF2 derived key
+             */
+            key: async (policy, factors) => {
+                const policyJson = JSON.stringify(policy);
+                const factorsJson = JSON.stringify(factors);
+                const resultJson = await this.wasmFunctions.derive_key(policyJson, factorsJson);
+                return JSON.parse(resultJson);
+            },
+
+            factors: {
+                /**
+                 * Create a derive password factor
+                 * @param {string} password - The password
+                 * @returns {Object} Derive password factor
+                 */
+                password: (password) => {
+                    const resultJson = this.wasmFunctions.derive_factors_password(password);
+                    return JSON.parse(resultJson);
+                }
+            }
+        };
+    }
 }
 
 /**
@@ -45,7 +74,8 @@ class MFKDF2 {
 function createMFKDF2(wasmModule, wasmFunctions) {
     const api = new MFKDF2(wasmModule, wasmFunctions);
     return {
-        setup: api.setup
+        setup: api.setup,
+        derive: api.derive
     };
 }
 

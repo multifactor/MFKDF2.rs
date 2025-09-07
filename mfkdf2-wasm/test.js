@@ -2,7 +2,7 @@
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import init, { setup_factors_password, setup_key, test_string_return } from './pkg/mfkdf2_wasm.js';
+import init, { setup_factors_password, setup_key, derive_key, derive_factors_password, test_string_return } from './pkg/mfkdf2_wasm.js';
 import { createMFKDF2 } from './api.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -19,7 +19,7 @@ async function test() {
         const wasmModule = await init(wasmBytes);
 
         // Create API with wrapper functions
-        const mfkdf2 = createMFKDF2(wasmModule, { setup_factors_password, setup_key });
+        const mfkdf2 = createMFKDF2(wasmModule, { setup_factors_password, setup_key, derive_key, derive_factors_password });
 
         // Test 1: Create password factor
         console.log('📝 Creating password factor...');
@@ -38,6 +38,31 @@ async function test() {
         console.log('✅ MFKDF2 key created!');
         console.log(`   Policy: ${JSON.stringify(derivedKey.policy)}`);
         console.log(`   Key: ${derivedKey.key}`);
+
+        // Test 3: Derive key (like the Rust integration test)
+        console.log('\n🔓 Deriving key from policy and factors...');
+
+        // Create proper derive factor (not reusing setup factor!)
+        console.log('📝 Creating derive password factor...');
+        const deriveFactor = mfkdf2.derive.factors.password('Tr0ubd4dour');
+        console.log('✅ Derive password factor created!');
+        console.log('   Derive factor structure:', JSON.stringify(deriveFactor, null, 2));
+
+        // Create derive factors (HashMap of factor ID -> factor)
+        const deriveFactors = {
+            'password_1': deriveFactor  // Use the proper derive factor
+        };
+
+        const derivedKey2 = await mfkdf2.derive.key(derivedKey.policy, deriveFactors);
+
+        console.log('✅ Key derived successfully!');
+        console.log(`   Keys match: ${JSON.stringify(derivedKey.key) === JSON.stringify(derivedKey2.key)}`);
+
+        if (JSON.stringify(derivedKey.key) === JSON.stringify(derivedKey2.key)) {
+            console.log('🎉 Complete MFKDF2 flow working: Setup → Derive → Keys Match!');
+        } else {
+            console.log('❌ Keys do not match - there may be an issue');
+        }
 
         return true;
 

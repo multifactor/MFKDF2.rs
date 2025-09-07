@@ -12,9 +12,10 @@ use super::*;
 use crate::{
   crypto::{aes256_ecb_encrypt, balloon_sha3_256, hkdf_sha256},
   error::{MFKDF2Error, MFKDF2Result},
-  setup::factors::{MFKDF2Factor, password::FactorTrait},
+  setup::factors::{FactorTrait, MFKDF2Factor},
 };
 
+// TODO (autoparallel): We probably can just use the MFKDF2Factor struct directly here.
 #[derive(Clone, Serialize, Deserialize, Debug, Eq, PartialEq)]
 pub struct PolicyFactor {
   pub id:     String,
@@ -127,7 +128,7 @@ pub async fn key(
     real_entropy.push(factor.entropy.unwrap());
 
     policy_factors.push(PolicyFactor {
-      id,
+      id: id.unwrap(),
       kind: factor.kind.clone(),
       pad: general_purpose::STANDARD.encode(pad),
       salt: general_purpose::STANDARD.encode(factor.salt),

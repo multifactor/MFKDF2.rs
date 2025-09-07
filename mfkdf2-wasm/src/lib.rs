@@ -53,3 +53,43 @@ pub async fn setup_key(factors_json: String, options_json: Option<String>) -> St
     Err(e) => format!("{{\"error\": \"Failed to create key: {:?}\"}}", e),
   }
 }
+
+/// Very thin wrapper around mfkdf2::derive::key::key
+/// Takes policy JSON and factors JSON, returns derived key JSON
+#[wasm_bindgen]
+pub async fn derive_key(policy_json: String, factors_json: String) -> String {
+  // Parse policy from JSON
+  let policy: mfkdf2::setup::key::Policy = match serde_json::from_str(&policy_json) {
+    Ok(policy) => policy,
+    Err(e) => return format!("{{\"error\": \"Failed to parse policy JSON: {:?}\"}}", e),
+  };
+
+  // Parse factors from JSON - expecting HashMap<String, MFKDF2Factor>
+  let factors: std::collections::HashMap<String, mfkdf2::setup::factors::MFKDF2Factor> =
+    match serde_json::from_str(&factors_json) {
+      Ok(factors) => factors,
+      Err(e) => return format!("{{\"error\": \"Failed to parse factors JSON: {:?}\"}}", e),
+    };
+
+  // Call the actual derive::key function
+  match mfkdf2::derive::key::key(policy, factors).await {
+    Ok(derived_key) => match serde_json::to_string(&derived_key) {
+      Ok(json) => json,
+      Err(e) => format!("{{\"error\": \"JSON serialization error: {:?}\"}}", e),
+    },
+    Err(e) => format!("{{\"error\": \"Failed to derive key: {:?}\"}}", e),
+  }
+}
+
+/// Very thin wrapper around mfkdf2::derive::factors::password::password
+/// Just handles the JS/WASM boundary and returns JSON
+#[wasm_bindgen]
+pub fn derive_factors_password(password: String) -> String {
+  match mfkdf2::derive::factors::password::password(password) {
+    Ok(factor) => match serde_json::to_string(&factor) {
+      Ok(json) => json,
+      Err(e) => format!("{{\"error\": \"JSON serialization error: {:?}\"}}", e),
+    },
+    Err(e) => format!("{{\"error\": \"Failed to create derive password factor: {:?}\"}}", e),
+  }
+}

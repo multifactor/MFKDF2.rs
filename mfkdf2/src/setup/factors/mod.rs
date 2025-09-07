@@ -16,15 +16,64 @@ pub use password::password;
 // pub use question::question;
 // pub use stack::stack;
 // pub use uuid::uuid;
-use crate::setup::factors::password::{FactorTrait, FactorType};
 
-pub type SetupFactorFn = Box<dyn Fn([u8; 32]) -> Pin<Box<dyn Future<Output = Value>>>>;
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub enum FactorType {
+  Password(password::Password),
+}
 
-#[derive(Serialize, Deserialize)]
+impl FactorTrait for FactorType {
+  fn bytes(&self) -> Vec<u8> {
+    match self {
+      FactorType::Password(password) => password.bytes(),
+    }
+  }
+
+  fn params(&self, key: [u8; 32]) -> Value {
+    match self {
+      FactorType::Password(password) => password.params(key),
+    }
+  }
+
+  fn output(&self, key: [u8; 32]) -> Value {
+    match self {
+      FactorType::Password(password) => password.output(key),
+    }
+  }
+
+  fn params_derive(&self, key: [u8; 32]) -> Value {
+    match self {
+      FactorType::Password(password) => password.params_derive(key),
+    }
+  }
+
+  fn output_derive(&self, key: [u8; 32]) -> Value {
+    match self {
+      FactorType::Password(password) => password.output_derive(key),
+    }
+  }
+
+  fn include_params(&mut self, params: Value) {
+    match self {
+      FactorType::Password(password) => password.include_params(params),
+    }
+  }
+}
+
+pub trait FactorTrait {
+  fn include_params(&mut self, params: Value);
+  fn bytes(&self) -> Vec<u8>;
+  fn params(&self, key: [u8; 32]) -> Value;
+  fn output(&self, key: [u8; 32]) -> Value;
+  fn params_derive(&self, key: [u8; 32]) -> Value;
+  fn output_derive(&self, key: [u8; 32]) -> Value;
+}
+
+#[derive(Clone, Serialize, Deserialize)]
 pub struct MFKDF2Factor {
   // TODO (autoparallel): This should be called "type" instead.
   pub kind:    String,
-  pub id:      String,
+  pub id:      Option<String>,
   pub data:    FactorType,
   // pub data:    Vec<u8>,
   // TODO (autoparallel): This is the factor specific salt.

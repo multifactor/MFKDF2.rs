@@ -5,29 +5,31 @@ use sharks::{Share, Sharks};
 
 use crate::{
   crypto::{aes256_ecb_decrypt, balloon_sha3_256, hkdf_sha256},
-  derive::DeriveFactorFn,
   error::{MFKDF2Error, MFKDF2Result},
-  setup::key::{MFKDF2DerivedKey, MFKDF2Entropy, Policy},
+  setup::{
+    factors::{FactorTrait, MFKDF2Factor},
+    key::{MFKDF2DerivedKey, MFKDF2Entropy, Policy},
+  },
 };
 
 pub async fn key(
   policy: Policy,
-  factors: HashMap<String, DeriveFactorFn>,
+  factors: HashMap<String, MFKDF2Factor>,
 ) -> MFKDF2Result<MFKDF2DerivedKey> {
   let mut shares_bytes = Vec::new();
   for factor in policy.clone().factors {
-    let factor_fn = match factors.get(factor.id.as_str()) {
-      Some(factor_fn) => factor_fn,
+    let mut material = match factors.get(factor.id.as_str()).cloned() {
+      Some(material) => material,
       None => continue,
     };
 
-    let material = factor_fn(factor.params.clone()).await?;
+    material.data.include_params(factor.params.clone());
 
     // TODO (autoparallel): This should probably be done with a `MaybeUninit` array.
     let salt_bytes = general_purpose::STANDARD.decode(&factor.salt)?;
     let salt_arr: [u8; 32] = salt_bytes.try_into().map_err(|_| MFKDF2Error::TryFromVecError)?;
 
-    let stretched = hkdf_sha256(&material.data, &salt_arr);
+    let stretched = hkdf_sha256(&material.data.bytes(), &salt_arr);
 
     // TODO (autoparallel): This should probably be done with a `MaybeUninit` array.
     let pad = general_purpose::STANDARD.decode(&factor.pad)?;

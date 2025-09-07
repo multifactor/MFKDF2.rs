@@ -5,41 +5,10 @@ use zxcvbn::zxcvbn;
 
 use crate::{
   error::{MFKDF2Error, MFKDF2Result},
-  setup::factors::MFKDF2Factor,
+  setup::factors::{FactorTrait, FactorType, MFKDF2Factor},
 };
 
-#[derive(Debug, Serialize, Deserialize)]
-pub enum FactorType {
-  Password(Password),
-}
-
-impl FactorTrait for FactorType {
-  fn bytes(&self) -> Vec<u8> {
-    match self {
-      FactorType::Password(password) => password.bytes(),
-    }
-  }
-
-  fn params(&self, key: [u8; 32]) -> Value {
-    match self {
-      FactorType::Password(password) => password.params(key),
-    }
-  }
-
-  fn output(&self, key: [u8; 32]) -> Value {
-    match self {
-      FactorType::Password(password) => password.output(key),
-    }
-  }
-}
-
-pub trait FactorTrait {
-  fn bytes(&self) -> Vec<u8>;
-  fn params(&self, key: [u8; 32]) -> Value;
-  fn output(&self, key: [u8; 32]) -> Value;
-}
-
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Password {
   pub password: String,
 }
@@ -50,6 +19,12 @@ impl FactorTrait for Password {
   fn params(&self, key: [u8; 32]) -> Value { json!({}) }
 
   fn output(&self, key: [u8; 32]) -> Value { json!({}) }
+
+  fn params_derive(&self, key: [u8; 32]) -> Value { json!({}) }
+
+  fn output_derive(&self, key: [u8; 32]) -> Value { json!({}) }
+
+  fn include_params(&mut self, params: Value) {}
 }
 
 pub struct PasswordOptions {
@@ -72,7 +47,7 @@ pub fn password(
 
   Ok(MFKDF2Factor {
     kind: "password".to_string(),
-    id: options.id.unwrap_or("password".to_string()),
+    id: Some(options.id.unwrap_or("password".to_string())),
     data: FactorType::Password(Password { password }),
     salt,
     entropy: Some(strength.guesses().ilog2()),
