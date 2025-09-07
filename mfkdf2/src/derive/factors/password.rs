@@ -1,6 +1,3 @@
-use std::rc::Rc;
-
-use serde_json::json;
 use zxcvbn::zxcvbn;
 
 use crate::{
@@ -17,7 +14,6 @@ pub fn password(password: impl Into<String>) -> MFKDF2Result<MFKDF2Factor> {
   let strength = strength.guesses().ilog2();
 
   Ok(MFKDF2Factor {
-    kind:    "password".to_string(),
     data:    FactorType::Password(Password { password }),
     salt:    [0u8; 32],
     entropy: Some(strength),

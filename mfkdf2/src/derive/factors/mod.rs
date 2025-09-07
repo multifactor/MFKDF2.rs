@@ -1,12 +1,12 @@
 // pub mod hmacsha1;
-// pub mod hotp;
+pub mod hotp;
 pub mod password;
 // pub mod question;
 // pub mod stack;
 // pub mod uuid;
 
 // pub use hmacsha1::hmacsha1;
-// pub use hotp::hotp;
+pub use hotp::hotp;
 pub use password::password;
 
 // pub use question::question;

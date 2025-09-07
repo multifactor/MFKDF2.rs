@@ -112,9 +112,9 @@ pub async fn key(
     let factor_secret = aes256_ecb_encrypt(&share, &factor_key);
 
     // TODO (autoparallel): Add params for each factor.
-    let params = factor.data.params(factor_key);
+    let params = factor.data.params_setup(factor_key);
     // TODO (autoparallel): This should not be an unwrap.
-    outputs.push(factor.data.output(key));
+    outputs.push(factor.data.output_setup(key));
 
     let id = factor.id.clone();
 
@@ -129,7 +129,7 @@ pub async fn key(
 
     policy_factors.push(PolicyFactor {
       id: id.unwrap(),
-      kind: factor.kind.clone(),
+      kind: factor.kind(),
       pad: general_purpose::STANDARD.encode(pad),
       salt: general_purpose::STANDARD.encode(factor.salt),
       key: factor_key,

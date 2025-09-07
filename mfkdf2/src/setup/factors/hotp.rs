@@ -2,11 +2,139 @@ use base64::prelude::*;
 use hmac::{Hmac, Mac};
 use rand::{Rng, RngCore, rngs::OsRng};
 use serde::{Deserialize, Serialize};
-use serde_json::json;
+use serde_json::{Value, json};
 use sha1::Sha1;
 use sha2::{Sha256, Sha512};
 
-use crate::{crypto::aes256_ecb_encrypt, error::MFKDF2Result, setup::factors::MFKDF2Factor};
+use crate::{
+  crypto::{aes256_ecb_decrypt, aes256_ecb_encrypt},
+  error::MFKDF2Result,
+  setup::factors::{FactorTrait, FactorType, MFKDF2Factor},
+};
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct HOTP {
+  pub options: HOTPOptions,
+  pub params:  Value,
+  pub code:    u32,
+}
+
+impl FactorTrait for HOTP {
+  fn kind(&self) -> String { "hotp".to_string() }
+
+  fn bytes(&self) -> Vec<u8> { self.options.secret.clone().unwrap_or(vec![]) }
+
+  fn params_setup(&self, key: [u8; 32]) -> Value {
+    // Generate random target
+    let target = OsRng.gen_range(0..10_u32.pow(self.options.digits.clone() as u32));
+
+    // Generate or use provided secret
+    let secret = if let Some(secret) = self.options.secret.clone() {
+      secret
+    } else {
+      let mut secret = vec![0u8; 32]; // Default to 32 bytes like JS
+      OsRng.fill_bytes(&mut secret);
+      secret
+    };
+
+    // Generate HOTP code with counter = 1
+    let code = generate_hotp_code(&secret, 1, &self.options.hash, self.options.digits);
+
+    // Calculate offset
+    let offset =
+      mod_positive(target as i64 - code as i64, 10_i64.pow(self.options.digits as u32)) as u32;
+
+    // Pad secret to multiple of 16 for encryption
+    let padding_needed = 16 - (secret.len() % 16);
+    let mut padded_secret = secret.clone();
+    if padding_needed != 16 {
+      let mut padding = vec![0u8; padding_needed];
+      OsRng.fill_bytes(&mut padding);
+      padded_secret.extend(padding);
+    }
+
+    let pad = aes256_ecb_encrypt(&padded_secret, &key);
+
+    json!({
+      "hash": match self.options.hash {
+        HOTPHash::Sha1 => "sha1",
+        HOTPHash::Sha256 => "sha256",
+        HOTPHash::Sha512 => "sha512"
+      },
+      "digits": self.options.digits,
+      "pad": base64::prelude::BASE64_STANDARD.encode(&pad),
+      "secretSize": secret.len(),
+      "counter": 1,
+      "offset": offset
+    })
+  }
+
+  fn output_setup(&self, _key: [u8; 32]) -> Value {
+    let secret = self.options.secret.clone().unwrap_or_else(|| {
+      let mut secret = vec![0u8; 32];
+      OsRng.fill_bytes(&mut secret);
+      secret
+    });
+
+    json!({
+      "scheme": "otpauth",
+      "type": "hotp",
+      "label": self.options.label,
+      "secret": base64::prelude::BASE64_STANDARD.encode(&secret),
+      "issuer": self.options.issuer,
+      "algorithm": match self.options.hash {
+        HOTPHash::Sha1 => "sha1",
+        HOTPHash::Sha256 => "sha256",
+        HOTPHash::Sha512 => "sha512"
+      },
+      "digits": self.options.digits,
+      "counter": 1
+    })
+  }
+
+  fn params_derive(&self, key: [u8; 32]) -> Value {
+    let offset = self.params["offset"].as_u64().unwrap() as u32;
+    let digits = self.params["digits"].as_u64().unwrap() as u8;
+
+    // Calculate target
+    let target = mod_positive(offset as i64 + self.code as i64, 10_i64.pow(digits as u32)) as u32;
+
+    // Decrypt the secret using the factor key
+    let pad_b64 = self.params["pad"].as_str().unwrap();
+    let pad = base64::prelude::BASE64_STANDARD.decode(pad_b64).unwrap();
+    let decrypted = aes256_ecb_decrypt(pad, &key);
+    let secret_size = self.params["secretSize"].as_u64().unwrap() as usize;
+    let secret = &decrypted[..secret_size];
+
+    // Generate HOTP code with incremented counter
+    let counter = self.params["counter"].as_u64().unwrap() + 1;
+    let hash = self.params["hash"].as_str().unwrap();
+    let hash = match hash {
+      "sha1" => HOTPHash::Sha1,
+      "sha256" => HOTPHash::Sha256,
+      "sha512" => HOTPHash::Sha512,
+      _ => panic!("Unsupported hash algorithm"),
+    };
+    let generated_code = generate_hotp_code(secret, counter, &hash, self.options.digits);
+
+    // Calculate new offset
+    let new_offset =
+      mod_positive(target as i64 - generated_code as i64, 10_i64.pow(digits as u32)) as u32;
+
+    json!({
+      "hash": hash,
+      "digits": digits,
+      "pad": pad_b64,
+      "secretSize": secret_size,
+      "counter": counter,
+      "offset": new_offset
+    })
+  }
+
+  fn output_derive(&self, key: [u8; 32]) -> Value { json!({}) }
+
+  fn include_params(&mut self, params: Value) {}
+}
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct HOTPOptions {
@@ -82,92 +210,18 @@ pub fn hotp(options: HOTPOptions) -> MFKDF2Result<MFKDF2Factor> {
     return Err(crate::error::MFKDF2Error::InvalidHOTPDigits);
   }
 
-  // Generate random target
-  let target = OsRng.gen_range(0..10_u32.pow(options.digits as u32));
-  let target_bytes = target.to_be_bytes();
-
   let mut salt = [0u8; 32];
   OsRng.fill_bytes(&mut salt);
 
-  let id = options.id.clone().unwrap_or_else(|| "hotp".to_string());
-  let options_for_params = options.clone();
-  let options_for_output = options.clone();
+  let id = Some(options.id.clone().unwrap_or("hotp".to_string()));
 
+  // TODO (autoparallel): Code should possibly be an option, though this follows the same pattern as
+  // the password factor which stores the actual password in the struct.
   Ok(MFKDF2Factor {
-    kind: "hotp".to_string(),
     id,
-    data: target_bytes.to_vec(),
+    data: FactorType::HOTP(HOTP { options: options.clone(), params: Value::Null, code: 0 }),
     salt,
-    params: Some(Box::new(move |key| {
-      let options = options_for_params.clone();
-      Box::pin(async move {
-        // Generate or use provided secret
-        let secret = if let Some(secret) = options.secret {
-          secret
-        } else {
-          let mut secret = vec![0u8; 32]; // Default to 32 bytes like JS
-          OsRng.fill_bytes(&mut secret);
-          secret
-        };
-
-        // Generate HOTP code with counter = 1
-        let code = generate_hotp_code(&secret, 1, &options.hash, options.digits);
-
-        // Calculate offset
-        let offset =
-          mod_positive(target as i64 - code as i64, 10_i64.pow(options.digits as u32)) as u32;
-
-        // Pad secret to multiple of 16 for encryption
-        let padding_needed = 16 - (secret.len() % 16);
-        let mut padded_secret = secret.clone();
-        if padding_needed != 16 {
-          let mut padding = vec![0u8; padding_needed];
-          OsRng.fill_bytes(&mut padding);
-          padded_secret.extend(padding);
-        }
-
-        let pad = aes256_ecb_encrypt(&padded_secret, &key);
-
-        json!({
-          "hash": match options.hash {
-            HOTPHash::Sha1 => "sha1",
-            HOTPHash::Sha256 => "sha256",
-            HOTPHash::Sha512 => "sha512"
-          },
-          "digits": options.digits,
-          "pad": base64::prelude::BASE64_STANDARD.encode(&pad),
-          "secretSize": secret.len(),
-          "counter": 1,
-          "offset": offset
-        })
-      })
-    })),
     entropy: Some((options.digits as f64 * 10.0_f64.log2()) as u32),
-    output: Some(Box::new(move |_| {
-      let options = options_for_output.clone();
-      Box::pin(async move {
-        let secret = options.secret.unwrap_or_else(|| {
-          let mut secret = vec![0u8; 32];
-          OsRng.fill_bytes(&mut secret);
-          secret
-        });
-
-        json!({
-          "scheme": "otpauth",
-          "type": "hotp",
-          "label": options.label,
-          "secret": base64::prelude::BASE64_STANDARD.encode(&secret),
-          "issuer": options.issuer,
-          "algorithm": match options.hash {
-            HOTPHash::Sha1 => "sha1",
-            HOTPHash::Sha256 => "sha256",
-            HOTPHash::Sha512 => "sha512"
-          },
-          "digits": options.digits,
-          "counter": 1
-        })
-      })
-    })),
   })
 }
 
@@ -189,12 +243,12 @@ mod tests {
     };
 
     let factor = hotp(options).unwrap();
-    assert_eq!(factor.kind, "hotp");
-    assert_eq!(factor.id, "test_hotp");
-    assert_eq!(factor.data.len(), 4); // u32 target as bytes
+    assert_eq!(factor.kind(), "hotp");
+    assert_eq!(factor.id, Some("test_hotp".to_string()));
+    assert_eq!(factor.data.bytes().len(), 4); // u32 target as bytes
 
     // Test that params can be generated
-    let params = factor.params.unwrap()(key).await;
+    let params = factor.data.params_setup(key);
     assert!(params["hash"].is_string());
     assert!(params["digits"].is_number());
     assert!(params["pad"].is_string());
@@ -205,15 +259,16 @@ mod tests {
 
   #[tokio::test]
   async fn test_hotp_setup_default_options() {
+    let key = [0u8; 32];
     let options = HOTPOptions::default();
     let factor = hotp(options).unwrap();
 
-    assert_eq!(factor.kind, "hotp");
-    assert_eq!(factor.id, "hotp");
-    assert_eq!(factor.data.len(), 4);
+    assert_eq!(factor.kind(), "hotp");
+    assert_eq!(factor.id, Some("hotp".to_string()));
+    assert_eq!(factor.data.bytes().len(), 4);
     assert!(factor.entropy.is_some());
-    assert!(factor.params.is_some());
-    assert!(factor.output.is_some());
+    assert!(factor.data.params_setup(key).is_object());
+    assert!(factor.data.output_setup(key).is_object());
   }
 
   #[test]

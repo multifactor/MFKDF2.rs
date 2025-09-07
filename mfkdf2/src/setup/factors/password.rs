@@ -14,17 +14,21 @@ pub struct Password {
 }
 
 impl FactorTrait for Password {
+  fn kind(&self) -> String { "password".to_string() }
+
   fn bytes(&self) -> Vec<u8> { self.password.as_bytes().to_vec() }
 
-  fn params(&self, key: [u8; 32]) -> Value { json!({}) }
+  fn params_setup(&self, key: [u8; 32]) -> Value { json!({}) }
 
-  fn output(&self, key: [u8; 32]) -> Value { json!({}) }
+  fn output_setup(&self, key: [u8; 32]) -> Value { json!({}) }
 
   fn params_derive(&self, key: [u8; 32]) -> Value { json!({}) }
 
   fn output_derive(&self, key: [u8; 32]) -> Value { json!({}) }
 
-  fn include_params(&mut self, params: Value) {}
+  fn include_params(&mut self, params: Value) {
+    
+  }
 }
 
 pub struct PasswordOptions {
@@ -46,7 +50,6 @@ pub fn password(
   OsRng.fill_bytes(&mut salt);
 
   Ok(MFKDF2Factor {
-    kind: "password".to_string(),
     id: Some(options.id.unwrap_or("password".to_string())),
     data: FactorType::Password(Password { password }),
     salt,
