@@ -35,9 +35,11 @@ uuid = { version = "1.17", default-features = false }
 base64 = { version = "0.22", default-features = false, features = ["std"] }
 
 # Hashing
+argon2 = { version = "0.5.3", default-features = false, features = ["std"] }
 balloon-hash = { version = "0.4", default-features = false, features = [
   "alloc",
 ] }
+
 # TODO: May not need SHA2 anymore.
 sha1 = { version = "0.10", default-features = false }
 sha2 = { version = "0.10", default-features = false }
@@ -54,7 +56,7 @@ serde      = { version = "1.0", default-features = false, features = ["derive"] 
 serde_json = { version = "1.0", default-features = false, features = ["alloc"] }
 
 # Uniffi
-# TODO (autoparallel): I'm not sure if we can put these features into a different crate or something. 
+# TODO (autoparallel): I'm not sure if we can put these features into a different crate or something.
 uniffi = { version = "0.29", features = [
   "build",
   "cli",
