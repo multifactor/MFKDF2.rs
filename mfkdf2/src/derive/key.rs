@@ -1,10 +1,11 @@
 use std::collections::HashMap;
 
+use argon2::Argon2;
 use base64::{Engine, engine::general_purpose};
 use sharks::{Share, Sharks};
 
 use crate::{
-  crypto::{aes256_ecb_decrypt, balloon_sha3_256, hkdf_sha256},
+  crypto::{aes256_ecb_decrypt, hkdf_sha256},
   error::{MFKDF2Error, MFKDF2Result},
   setup::{
     factors::{FactorTrait, MFKDF2Factor},
@@ -51,7 +52,10 @@ pub async fn key(
 
   let salt_bytes = general_purpose::STANDARD.decode(&policy.salt)?;
   let salt_arr: [u8; 32] = salt_bytes.try_into().map_err(|_| MFKDF2Error::TryFromVecError)?;
-  let key = balloon_sha3_256(&secret_arr, &salt_arr);
+  let mut key = [0u8; 32];
+  Argon2::default()
+    .hash_password_into(&secret_arr, &salt_arr, &mut key)
+    .map_err(|e| MFKDF2Error::Argon2Error(e))?;
 
   // TODO (autoparallel): Properly update the policy.
 
@@ -63,4 +67,13 @@ pub async fn key(
     outputs: Vec::new(),
     entropy: MFKDF2Entropy { real: 0, theoretical: 0 },
   })
+}
+
+#[uniffi::export]
+pub async fn derive_key(
+  policy: Policy,
+  factors: HashMap<String, MFKDF2Factor>,
+) -> MFKDF2Result<MFKDF2DerivedKey> {
+  // Reuse the existing constructor logic
+  key(policy, factors).await
 }

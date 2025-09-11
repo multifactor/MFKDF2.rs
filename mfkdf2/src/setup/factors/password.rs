@@ -29,6 +29,7 @@ impl FactorTrait for Password {
   fn include_params(&mut self, params: Value) {}
 }
 
+#[derive(Clone, Debug, Serialize, Deserialize, uniffi::Record)]
 pub struct PasswordOptions {
   pub id: Option<String>,
 }
@@ -54,6 +55,12 @@ pub fn password(
     entropy:     Some(strength.guesses().ilog2()),
     // inner: Some(Box::new(Password {})),
   })
+}
+
+#[uniffi::export]
+pub fn setup_password(password: String, options: PasswordOptions) -> MFKDF2Result<MFKDF2Factor> {
+  // Reuse the existing constructor logic
+  crate::setup::factors::password::password(password, options)
 }
 
 #[cfg(test)]
