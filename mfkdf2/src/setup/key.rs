@@ -1,6 +1,7 @@
 // TODO (autoparallel): If we use `no-std`, then this use of `HashSet` will need to be replaced.
 use std::collections::HashSet;
 
+use argon2::Argon2;
 use base64::{Engine, engine::general_purpose};
 use rand::{RngCore, rngs::OsRng};
 use serde::{Deserialize, Serialize};
@@ -10,7 +11,7 @@ use sharks::{Share, Sharks};
 
 use super::*;
 use crate::{
-  crypto::{aes256_ecb_encrypt, balloon_sha3_256, hkdf_sha256},
+  crypto::{aes256_ecb_encrypt, hkdf_sha256},
   error::{MFKDF2Error, MFKDF2Result},
   setup::factors::{FactorTrait, MFKDF2Factor},
 };
@@ -95,7 +96,10 @@ pub async fn key(
   OsRng.fill_bytes(&mut secret);
 
   // Generate key
-  let key = balloon_sha3_256(&secret, &salt);
+  let mut key = [0u8; 32];
+  Argon2::default()
+    .hash_password_into(&secret, &salt, &mut key)
+    .map_err(|e| MFKDF2Error::Argon2Error(e))?;
 
   // Split secret into Shamir shares
   let dealer = Sharks(threshold).dealer_rng(&secret, &mut OsRng);
