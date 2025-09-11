@@ -1,0 +1,25 @@
+{
+  "type": "module",
+  "name": "ts",
+  "packageManager": "yarn@4.6.0",
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/multifactor/mfkdf2.rs.git"
+  },
+  "scripts": {
+    "ubrn:web": "ubrn build web",
+    "ubrn:checkout": "ubrn checkout",
+    "ubrn:clean": "rm -rfv cpp/ android/CMakeLists.txt android/src/main/java android/*.cpp ios/ src/Native* src/index.*ts* src/generated/",
+    "typecheck": "tsc",
+    "test": "tsx src/test.ts"
+  },
+  "dependencies": {
+    "uniffi-bindgen-react-native": "^0.29.3-1"
+  },
+  "devDependencies": {
+    "@types/node": "^22.5.5",
+    "prettier": "^3.6.2",
+    "tsx": "^4.19.0",
+    "typescript": "^5.6.2"
+  }
+}
