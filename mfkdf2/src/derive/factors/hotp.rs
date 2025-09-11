@@ -49,6 +49,7 @@ fn generate_hotp_code(secret: &[u8], counter: u64, hash: &str, digits: u8) -> u3
   code % (10_u32.pow(digits as u32))
 }
 
+#[uniffi::export]
 pub fn hotp(code: u32) -> MFKDF2Result<MFKDF2Factor> {
   // Create HOTP factor with the user-provided code
   // The target will be calculated in include_params once we have the policy parameters

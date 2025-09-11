@@ -23,3 +23,9 @@ pub fn password(password: impl Into<String>) -> MFKDF2Result<MFKDF2Factor> {
     id:          None,
   })
 }
+
+#[uniffi::export]
+pub fn derive_password(password: String) -> MFKDF2Result<MFKDF2Factor> {
+  // Reuse the existing constructor logic
+  crate::derive::factors::password::password(password)
+}
