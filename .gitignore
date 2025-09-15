@@ -1,4 +1,10 @@
+# Rust build artifacts
 target/
 
+# TS/JS build artifacts
 node_modules/
 dist/
+
+# Generated bindings
+generated/
+rust_modules/
