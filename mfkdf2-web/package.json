@@ -12,7 +12,7 @@
   "scripts": {
     "ubrn:web": "ubrn build web",
     "ubrn:checkout": "ubrn checkout",
-    "ubrn:clean": "rm -rfv cpp/ android/CMakeLists.txt android/src/main/java android/*.cpp ios/ src/Native* src/index.*ts* src/generated/",
+    "ubrn:clean": "rm -rfv cpp/ android/CMakeLists.txt android/src/main/java android/*.cpp ios/ src/Native* src/*.web.ts* src/generated/",
     "typecheck": "tsc",
     "test": "npx tsx node_modules/mocha/bin/mocha",
     "test:watch": "npx tsx node_modules/mocha/bin/mocha --watch",
