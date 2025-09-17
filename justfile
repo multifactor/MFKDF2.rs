@@ -22,14 +22,52 @@ install-tools:
     else \
         printf "{{success}}✓ taplo already installed{{reset}}\n"; \
     fi
+    if ! command -v cargo-udeps > /dev/null; then \
+        printf "{{info}}Installing cargo-udeps...{{reset}}\n" && \
+        cargo install cargo-udeps; \
+    else \
+        printf "{{success}}✓ cargo-udeps already installed{{reset}}\n"; \
+    fi
+    if ! command -v uniffi-bindgen > /dev/null; then \
+        printf "{{info}}Installing uniffi-bindgen...{{reset}}\n" && \
+        cargo install uniffi-bindgen; \
+    else \
+        printf "{{success}}✓ uniffi-bindgen already installed{{reset}}\n"; \
+    fi
 
 # Install rust toolchain
 install-rust:
     @just header "Installing Rust Toolchain"
     rustup install
 
+# Install uniffi and Node.js dependencies
+install-uniffi-deps:
+    @just header "Installing UniFFI Dependencies"
+    @# Check if Node.js is installed
+    @if ! command -v node > /dev/null; then \
+        printf "{{error}}Error: Node.js is not installed. Please install Node.js first.{{reset}}\n"; \
+        printf "{{info}}Visit: https://nodejs.org/ or use a package manager like brew, apt, etc.{{reset}}\n"; \
+        exit 1; \
+    else \
+        printf "{{success}}✓ Node.js found: $(node --version){{reset}}\n"; \
+    fi
+    @# Check if npm is installed
+    @if ! command -v npm > /dev/null; then \
+        printf "{{error}}Error: npm is not installed. Please install npm first.{{reset}}\n"; \
+        exit 1; \
+    else \
+        printf "{{success}}✓ npm found: $(npm --version){{reset}}\n"; \
+    fi
+    @# Install uniffi-bindgen-react-native globally if not already installed
+    @if ! npm list -g uniffi-bindgen-react-native > /dev/null 2>&1; then \
+        printf "{{info}}Installing uniffi-bindgen-react-native globally...{{reset}}\n" && \
+        npm install -g uniffi-bindgen-react-native; \
+    else \
+        printf "{{success}}✓ uniffi-bindgen-react-native already installed globally{{reset}}\n"; \
+    fi
+
 # Setup complete development environment
-setup: install-tools install-rust
+setup: install-tools install-rust install-uniffi-deps
     @printf "{{success}}{{bold}}Development environment setup complete!{{reset}}\n"
 
 # Check the with local OS target
@@ -48,6 +86,11 @@ test:
 lint:
     @just header "Running clippy"
     cargo clippy --workspace --all-targets --all-features
+
+# Check for unused dependencies
+udeps:
+    @just header "Checking for unused dependencies"
+    cargo udeps --workspace --all-targets
 
 # Run format for the workspace
 fmt:
@@ -86,6 +129,7 @@ ci:
     just run-single-check "TOML formatting" "taplo fmt --check" || ERROR=1; \
     just run-single-check "Check" "cargo check --workspace" || ERROR=1; \
     just run-single-check "Clippy" "cargo clippy --workspace --all-targets --all-features -- --deny warnings" || ERROR=1; \
+    just run-single-check "Unused dependencies" "cargo udeps --workspace --all-targets" || ERROR=1; \
     just run-single-check "Test suite" "cargo test --verbose --workspace" || ERROR=1; \
     just run-single-check "Doc check" "RUSTDOCFLAGS=\"-D warnings\" cargo doc --no-deps --all-features" || ERROR=1; \
     printf "\n{{bold}}CI Summary:{{reset}}\n"; \

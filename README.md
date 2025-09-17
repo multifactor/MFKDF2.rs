@@ -16,19 +16,18 @@ This repository contains the canonical Rust implementation of MFKDF2, with a foc
 - **Cross-Language Support**: Core logic is written in Rust, with bindings for other languages like TypeScript, Python, and more.
 - **Secure by Design**: Built with modern cryptographic primitives and a strong focus on security best practices.
 
-## What's Missing
+## Roadmap
 
 For this library to be considered fully production-ready, the following items should be addressed:
 
-- **Complete Factor Implementation**: Not all proposed MFKDF2 factors have been implemented (e.g., `UUID`, `OOBA`, `Passkeys`).
+- **Complete Factor Implementation**: Not all proposed MFKDF2 factors have been implemented (e.g., `OOBA`, `Passkeys`, fuzzy encryption, etc.).
 - **Comprehensive Tests**: While basic tests are in place, more extensive testing is needed, including:
   - Differential testing against the reference JavaScript implementation.
   - Complete unit and integration tests for all factors and policies.
 - **Complete Language Bindings**: While the framework is in place, bindings for languages like Python, Kotlin, Swift, and Go are not yet complete.
-- **Documentation**: The `mdbook` for detailed documentation and usage examples has not been set up yet.
+- **Documentation**: Detailed documentation and usage examples have not been set up yet.
 - **Detailed `CONTRIBUTING.md`**: A more detailed guide for contributors.
 - **Formal Security Audit**: The library has not yet undergone a formal, third-party security audit.
-- **Code of Conduct**: A formal Code of Conduct to foster a welcoming and inclusive community.
 
 ## Project Layout
 
@@ -47,8 +46,10 @@ To use `mfkdf2` in your Rust project, add it as a dependency in your `Cargo.toml
 
 ```toml
 [dependencies]
-mfkdf2 = "0.1.0" # Replace with the latest version
+mfkdf2 = { version = "0.1.0", git = "https://github.com/multifactor/mfkdf2.rs.git" } 
 ```
+
+This will be updated to a published version once the library is ready for production.
 
 ## Setup
 
@@ -75,6 +76,8 @@ This library uses [UniFFI](https://mozilla.github.io/uniffi-rs/) to generate bin
     just test-bindings
     ```
 
+See more details in the [mfkdf2-web README](mfkdf2-web/README.md).
+
 **Python:**
 
 To generate Python bindings, run the following command:
@@ -88,27 +91,24 @@ cargo run --bin uniffi-bindgen generate --library target/debug/libmfkdf2.dylib -
 *Note: The following is a conceptual example. The exact API may differ.*
 
 ```rust
-use mfkdf2::{Factor, Key, Policy};
-use mfkdf2::factors::{Password, Totp};
+use mfkdf2::{derive, setup};
+use mfkdf2::setup::{factors::hotp::HOTPOptions, password::PasswordOptions, key::MFKDF2Options};
+use mfkdf2::derive::factors::{hotp::HOTPOptions, password::PasswordOptions};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     // 1. Define factors
-    let password_factor = Password::new("my-super-secret-password", None)?;
-    let totp_factor = Totp::new("base32-encoded-secret", None)?;
+    let password_factor = setup::password("my-super-secret-password", PasswordOptions::default())?;
+    let totp_factor = setup::hotp("base32-encoded-secret", HOTPOptions::default())?;
 
-    // 2. Define a policy
-    let policy = Policy::new(vec![
-        Box::new(password_factor),
-        Box::new(totp_factor),
-    ]);
+    // 2. Set up the key with the policy
+    let key = setup::key(vec![password_factor, totp_factor], MFKDF2Options::default())?;
 
-    // 3. Set up the key with the policy
-    let key = Key::new_from_policy(&policy)?;
+    println!("Key: {:?}", key);
 
-    // 4. Derive the key using user inputs
-    let derived_key = key.derive(vec![
-        "my-super-secret-password".into(),
-        "123456".into(), // User-provided TOTP code
+    // 3. Derive the key using user inputs
+    let derived_key = derive::key(key.policy, vec![
+        derive::factors::password("my-super-secret-password")?,
+        derive::factors::hotp("123456")?, // User-provided TOTP code
     ])?;
 
     println!("Derived Key: {:?}", derived_key);
@@ -117,22 +117,33 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 }
 ```
 
-## API Documentation
+## Development
 
-Detailed API documentation is available on [docs.rs](https://docs.rs/mfkdf2).
+This project uses [just](https://github.com/casey/just#cross-platform) for managing project-specific build commands. To install just, run:
 
-## Contributing
+```bash
+cargo install just
+```
 
-We welcome contributions! Please see our [Contributing Guidelines](CONTRIBUTING.md) for more details on how to get involved.
+### Quick Start
 
-## License
+```bash
+# Install all development dependencies (Rust tools, UniFFI, Node.js packages)
+just setup
 
-> [!NOTE] TODO
-> add license
+# See all available commands
+just
 
-This project is licensed under either of:
+# Run the full CI pipeline locally
+just ci
+```
 
-*   Apache License, Version 2.0, ([LICENSE-APACHE](LICENSE-APACHE) or http://www.apache.org/licenses/LICENSE-2.0)
-*   MIT license ([LICENSE-MIT](LICENSE-MIT) or http://opensource.org/licenses/MIT)
+### Common Commands
 
-at your option.
+- `just check` - Build the workspace
+- `just test` - Run all tests
+- `just lint` - Run clippy linting
+- `just udeps` - Check for unused dependencies
+- `just fmt` - Format code (Rust + TOML)
+- `just gen-ts-bindings` - Generate TypeScript bindings
+- `just test-bindings` - Test the TypeScript bindings
