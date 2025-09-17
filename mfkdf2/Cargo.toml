@@ -27,6 +27,7 @@ rand = { version = "0.8", default-features = false, features = ["std"] }
 # Password Strength
 zxcvbn = { version = "3.1", default-features = false, features = ["ser"] }
 
+# UUID
 uuid = { version = "1.17", default-features = false, features = [
   "serde",
   "v4",
@@ -34,21 +35,16 @@ uuid = { version = "1.17", default-features = false, features = [
   "js",
 ] }
 
-# UUID
 # Encoding
 # TODO (autoparallel): This can be made `no-std` if we need to.
 base64 = { version = "0.22", default-features = false, features = ["std"] }
 
 # Hashing
 argon2 = { version = "0.5.3", default-features = false, features = ["std"] }
-balloon-hash = { version = "0.4", default-features = false, features = [
-  "alloc",
-] }
 
 # TODO: May not need SHA2 anymore.
 sha1 = { version = "0.10", default-features = false }
 sha2 = { version = "0.10", default-features = false }
-sha3 = { version = "0.10", default-features = false }
 
 # HMAC
 hmac = { version = "0.12", default-features = false }
