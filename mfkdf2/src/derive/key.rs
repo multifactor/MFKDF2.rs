@@ -53,9 +53,7 @@ pub async fn key(
   let salt_bytes = general_purpose::STANDARD.decode(&policy.salt)?;
   let salt_arr: [u8; 32] = salt_bytes.try_into().map_err(|_| MFKDF2Error::TryFromVecError)?;
   let mut key = [0u8; 32];
-  Argon2::default()
-    .hash_password_into(&secret_arr, &salt_arr, &mut key)
-    .map_err(|e| MFKDF2Error::Argon2Error(e))?;
+  Argon2::default().hash_password_into(&secret_arr, &salt_arr, &mut key)?;
 
   // TODO (autoparallel): Properly update the policy.
 

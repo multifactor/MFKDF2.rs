@@ -170,14 +170,14 @@ impl FactorTrait for HOTP {
     self.params = serde_json::to_string(&params).unwrap();
 
     // If this is a derive factor (has a code), calculate target and store in options.secret
-    if self.code != 0 {
-      if let (Some(offset), Some(digits)) = (params["offset"].as_u64(), params["digits"].as_u64()) {
-        let modulus = 10_u64.pow(digits as u32);
-        let target = (offset + self.code as u64) % modulus;
+    if self.code != 0
+      && let (Some(offset), Some(digits)) = (params["offset"].as_u64(), params["digits"].as_u64())
+    {
+      let modulus = 10_u64.pow(digits as u32);
+      let target = (offset + self.code as u64) % modulus;
 
-        // Store target as 4-byte big-endian (matches JS implementation)
-        self.target = target as u32;
-      }
+      // Store target as 4-byte big-endian (matches JS implementation)
+      self.target = target as u32;
     }
   }
 }
@@ -235,10 +235,10 @@ pub fn hotp(options: HOTPOptions) -> MFKDF2Result<MFKDF2Factor> {
   let id = Some(options.id.clone().unwrap_or("hotp".to_string()));
 
   // TODO (sambhav): move secret setup from params_setup to here.
-  if let Some(secret) = &options.secret {
-    if secret.len() != 20 {
-      panic!("secret must be 20 bytes");
-    }
+  if let Some(secret) = &options.secret
+    && secret.len() != 20
+  {
+    panic!("secret must be 20 bytes");
   }
 
   // TODO (autoparallel): Code should possibly be an option, though this follows the same pattern as

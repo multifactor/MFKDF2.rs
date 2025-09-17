@@ -1,4 +1,3 @@
-use core::hash;
 // TODO (autoparallel): If we use `no-std`, then this use of `HashSet` will need to be
 // replaced.
 use std::collections::HashSet;
@@ -7,12 +6,10 @@ use argon2::{Argon2, Params, Version};
 use base64::{Engine, engine::general_purpose};
 use rand::{RngCore, rngs::OsRng};
 use serde::{Deserialize, Serialize};
-use serde_json::Value;
 use sha2::{Digest, Sha256};
 use sharks::{Share, Sharks};
 use uuid::Uuid;
 
-use super::*;
 use crate::{
   crypto::{encrypt, hkdf_sha256_with_info},
   error::{MFKDF2Error, MFKDF2Result},
@@ -125,8 +122,7 @@ pub async fn key(
       Some(32),
     )?,
   )
-  .hash_password_into(&secret, &salt, &mut kek)
-  .map_err(|e| MFKDF2Error::Argon2Error(e))?;
+  .hash_password_into(&secret, &salt, &mut kek)?;
 
   // policy key
   let policy_key = encrypt(&key, &kek);

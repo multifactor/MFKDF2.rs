@@ -1,13 +1,9 @@
-use std::rc::Rc;
-
-use base64::prelude::*;
 use hmac::{Hmac, Mac};
-use serde_json::{Value, json};
+use serde_json::Value;
 use sha1::Sha1;
 use sha2::{Sha256, Sha512};
 
 use crate::{
-  crypto::decrypt,
   error::MFKDF2Result,
   setup::factors::{
     FactorType, MFKDF2Factor,
@@ -15,8 +11,10 @@ use crate::{
   },
 };
 
-fn mod_positive(n: i64, m: i64) -> i64 { ((n % m) + m) % m }
+#[allow(dead_code)]
+const fn mod_positive(n: i64, m: i64) -> i64 { ((n % m) + m) % m }
 
+#[allow(dead_code)]
 fn generate_hotp_code(secret: &[u8], counter: u64, hash: &str, digits: u8) -> u32 {
   let counter_bytes = counter.to_be_bytes();
 
@@ -63,7 +61,7 @@ pub fn hotp(code: u32) -> MFKDF2Result<MFKDF2Factor> {
     }),
     // TODO (autoparallel): This is confusing, should probably put an Option here.
     salt:        [0u8; 32].to_vec(),
-    entropy:     Some((6 as f64 * 10.0_f64.log2()) as u32),
+    entropy:     Some((6_f64 * 10.0_f64.log2()) as u32),
   })
 }
 
