@@ -1,6 +1,6 @@
 [<img src="https://raw.githubusercontent.com/multifactor/MFKDF/main/logo.png" height="64">](https://mfkdf.com/ "MFKDF")
 
-[![GitHub issues](https://img.shields.io/github/issues/multifactor/MFKDF)](https://github.com/multifactor/MFKDF2.rs/issues)
+[![GitHub issues](https://img.shields.io/github/issues/multifactor/MFKDF2.rs)](https://github.com/multifactor/MFKDF2.rs/issues)
 [![BSD](https://img.shields.io/badge/license-BSD-brightgreen.svg)](https://github.com/multifactor/MFKDF2.rs/blob/main/LICENSE)
 ![warning](https://img.shields.io/badge/warning-not_production_ready-red)
 
