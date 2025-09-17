@@ -1,8 +1,17 @@
+[<img src="https://raw.githubusercontent.com/multifactor/MFKDF/main/logo.png" height="64">](https://mfkdf.com/ "MFKDF")
+
+[![GitHub issues](https://img.shields.io/github/issues/multifactor/MFKDF)](https://github.com/multifactor/MFKDF2.rs/issues)
+[![BSD](https://img.shields.io/badge/license-BSD-brightgreen.svg)](https://github.com/multifactor/MFKDF2.rs/blob/main/LICENSE)
+![warning](https://img.shields.io/badge/warning-not_production_ready-red)
+
 # MFKDF2: Multi-Factor Key Derivation Function
 
 Multi-Factor Key Derivation Function (MFKDF2) is a modern, highly-secure function designed to derive cryptographic keys from multiple inputs, or "factors". It serves a similar purpose to traditional password-based key derivation functions (PBKDFs) like Argon2 or scrypt, but offers significantly stronger security guarantees by natively supporting a wide range of authentication factors.
 
 This repository contains the canonical Rust implementation of MFKDF2, with a focus on security, performance, and multi-language support through generated bindings.
+
+> [!WARNING]
+> This is not production-ready. Please do not use it in production. Please report any security vulnerabilities to the project maintainers.
 
 ## Features
 
@@ -147,3 +156,15 @@ just ci
 - `just fmt` - Format code (Rust + TOML)
 - `just gen-ts-bindings` - Generate TypeScript bindings
 - `just test-bindings` - Test the TypeScript bindings
+
+## License
+
+This project is licensed under the Clear BSD License. See the [LICENSE](LICENSE) file for details.
+
+## Contributing
+
+See the [CONTRIBUTING.md](CONTRIBUTING.md) file for details.
+
+## Security
+
+See the [SECURITY.md](SECURITY.md) file for details.
