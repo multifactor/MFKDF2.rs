@@ -27,9 +27,14 @@ rand = { version = "0.8", default-features = false, features = ["std"] }
 # Password Strength
 zxcvbn = { version = "3.1", default-features = false, features = ["ser"] }
 
-# UUID
-uuid = { version = "1.17", default-features = false }
+uuid = { version = "1.17", default-features = false, features = [
+  "serde",
+  "v4",
+  "v7",
+  "js",
+] }
 
+# UUID
 # Encoding
 # TODO (autoparallel): This can be made `no-std` if we need to.
 base64 = { version = "0.22", default-features = false, features = ["std"] }

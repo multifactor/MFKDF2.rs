@@ -2,12 +2,12 @@ default:
     @just --list
 
 [private]
-warn := "\\033[33m"
-error := "\\033[31m"
-info := "\\033[34m"
-success := "\\033[32m"
-reset := "\\033[0m"
-bold := "\\033[1m"
+warn := `printf '\x1b[33m'`
+error := `printf '\x1b[31m'`
+info := `printf '\x1b[34m'`
+success := `printf '\x1b[32m'`
+reset := `printf '\x1b[0m'`
+bold := `printf '\x1b[1m'`
 
 # Print formatted headers without shell scripts
 [private]
@@ -127,4 +127,30 @@ _ci-summary-failure:
     @printf "{{error}}{{bold}}Some checks failed. See output above for details.{{reset}}\n"
     @exit 1
 
+# Generate the TypeScript bindings
+gen-ts-bindings:
+    @just header "Generating TypeScript bindings"
+    cd mfkdf2-web && npm i && npm run ubrn:web
+    @echo "Updating index.web.ts implementation"
+    @cp mfkdf2-web/src/index.ts mfkdf2-web/src/index.web.ts
 
+verify-bindings:
+    @just header "Verifying bindings"
+    @if [ ! -d "mfkdf2-web/src/generated" ] || [ -z "$(ls -A mfkdf2-web/src/generated)" ]; then \
+        printf "{{error}}Error: mfkdf2-web/src/generated does not exist or is empty. Run 'just gen-ts-bindings' first.{{reset}}\n"; \
+        exit 1; \
+    fi
+    @if [ ! -d "mfkdf2-web/rust_modules" ]; then \
+        printf "{{error}}Error: mfkdf2-web/rust_modules does not exist. Run 'just gen-ts-bindings' first.{{reset}}\n"; \
+        exit 1; \
+    fi
+    @if [ ! -d "mfkdf2-web/node_modules" ]; then \
+        printf "{{error}}Error: mfkdf2-web/node_modules does not exist. Run 'just gen-ts-bindings' first.{{reset}}\n"; \
+        exit 1; \
+    fi
+    @printf "{{success}}✓ TypeScript bindings verified{{reset}}\n"
+
+test-bindings:
+    @just header "Testing TypeScript bindings"
+    @just verify-bindings  # verify bindings is generated
+    cd mfkdf2-web && npm test
