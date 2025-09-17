@@ -1,0 +1,8 @@
+rust:
+  directory: ../mfkdf2
+  manifestPath: Cargo.toml
+
+web:
+  ts: src/generated/web
+bindings:
+  ts: src/generated/rn

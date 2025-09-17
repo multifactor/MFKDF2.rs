@@ -1,12 +1,36 @@
 use rand::{RngCore, rngs::OsRng};
-use serde_json::json;
+use serde::{Deserialize, Serialize};
+use serde_json::{Value, json};
 use zxcvbn::zxcvbn;
 
 use crate::{
   error::{MFKDF2Error, MFKDF2Result},
-  setup::factors::MFKDF2Factor,
+  setup::factors::{FactorTrait, FactorType, MFKDF2Factor},
 };
 
+#[derive(Clone, Debug, Serialize, Deserialize, uniffi::Record)]
+pub struct Password {
+  pub password: String,
+}
+
+impl FactorTrait for Password {
+  fn kind(&self) -> String { "password".to_string() }
+
+  fn bytes(&self) -> Vec<u8> { self.password.as_bytes().to_vec() }
+
+  fn params_setup(&self, _key: [u8; 32]) -> Value { json!({}) }
+
+  // TODO (sambhav): this returns entropy strength
+  fn output_setup(&self, _key: [u8; 32]) -> Value { json!({}) }
+
+  fn params_derive(&self, _key: [u8; 32]) -> Value { json!({}) }
+
+  fn output_derive(&self, _key: [u8; 32]) -> Value { json!({}) }
+
+  fn include_params(&mut self, _params: Value) {}
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize, uniffi::Record)]
 pub struct PasswordOptions {
   pub id: Option<String>,
 }
@@ -26,14 +50,17 @@ pub fn password(
   OsRng.fill_bytes(&mut salt);
 
   Ok(MFKDF2Factor {
-    kind: "password".to_string(),
-    id: options.id.unwrap_or("password".to_string()),
-    data: password.as_bytes().to_vec(),
-    salt,
-    params: Some(Box::new(|| Box::pin(async { json!({}) }))),
-    entropy: Some(strength.guesses().ilog2()),
-    output: None,
+    id:          Some(options.id.unwrap_or("password".to_string())),
+    factor_type: FactorType::Password(Password { password }),
+    salt:        salt.to_vec(),
+    entropy:     Some(strength.guesses().ilog2()),
   })
+}
+
+#[uniffi::export]
+pub fn setup_password(password: String, options: PasswordOptions) -> MFKDF2Result<MFKDF2Factor> {
+  // Reuse the existing constructor logic
+  crate::setup::factors::password::password(password, options)
 }
 
 #[cfg(test)]

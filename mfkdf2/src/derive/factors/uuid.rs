@@ -15,7 +15,7 @@ pub fn uuid(uuid: Uuid) -> MFKDF2Result<DeriveFactorFn> {
         kind:   "uuid".to_string(),
         data:   uuid.to_string().as_bytes().to_vec(),
         params: None,
-        output: Some(Box::new(move || {
+        output: Some(Box::new(move |_| {
           Box::pin(async move { json!({ "uuid": uuid.to_string() }) })
         })),
       })

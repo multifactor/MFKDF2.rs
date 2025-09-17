@@ -1,11 +1,10 @@
-use thiserror::Error;
-
 pub type MFKDF2Result<T> = Result<T, MFKDF2Error>;
 
 // TODO (autoparallel): It may be worth making this have inner errors, e.g., for factors and other
 // things. That is usually not my style, but it may be nicer for the caller as long as destructuring
 // the error is not too painful.
-#[derive(Error, Debug)]
+#[derive(thiserror::Error, Debug, uniffi::Error)]
+#[uniffi(flat_error)]
 pub enum MFKDF2Error {
   #[error("password cannot be empty!")]
   PasswordEmpty,
@@ -35,8 +34,26 @@ pub enum MFKDF2Error {
   #[error("invalid hmac key!")]
   InvalidHmacKey,
 
+  #[error("invalid HOTP id")]
+  InvalidHotpId,
+
   #[error("invalid HOTP digits! digits must be between 6 and 8")]
   InvalidHOTPDigits,
+
+  #[error("invalid TOTP id")]
+  InvalidTotpId,
+
+  #[error("invalid TOTP digits! digits must be between 6 and 8")]
+  InvalidTOTPDigits,
+
+  #[error("invalid question id")]
+  InvalidQuestionId,
+
+  #[error("invalid uuid")]
+  InvalidUuid,
+
+  #[error(transparent)]
+  Argon2Error(#[from] argon2::Error),
 
   #[error(transparent)]
   SerializeError(#[from] serde_json::Error),

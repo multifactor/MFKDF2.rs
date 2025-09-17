@@ -1,14 +1,11 @@
-use std::rc::Rc;
-
-use serde_json::json;
 use zxcvbn::zxcvbn;
 
 use crate::{
-  derive::{DeriveFactorFn, factors::MFKDF2DerivedFactor},
   error::{MFKDF2Error, MFKDF2Result},
+  setup::factors::{FactorType, MFKDF2Factor, password::Password},
 };
 
-pub fn password(password: impl Into<String>) -> MFKDF2Result<DeriveFactorFn> {
+pub fn password(password: impl Into<String>) -> MFKDF2Result<MFKDF2Factor> {
   let password = std::convert::Into::<String>::into(password);
   if password.is_empty() {
     return Err(MFKDF2Error::PasswordEmpty);
@@ -16,15 +13,19 @@ pub fn password(password: impl Into<String>) -> MFKDF2Result<DeriveFactorFn> {
   let strength = zxcvbn(&password, &[]);
   let strength = strength.guesses().ilog2();
 
-  Ok(Rc::new(move |_params| {
-    let password = password.clone();
-    Box::pin(async move {
-      Ok(MFKDF2DerivedFactor {
-        kind:   "password".to_string(),
-        data:   password.as_bytes().to_vec(),
-        params: None,
-        output: Some(Box::new(move || Box::pin(async move { json!({ "strength": strength }) }))),
-      })
-    })
-  }))
+  Ok(MFKDF2Factor {
+    factor_type: FactorType::Password(Password { password }),
+    // TODO (autoparallel): This is confusing, should probably put an Option here. This pattern
+    // appears in other factors and it's because of the refactoring done. The factors have a
+    // "state" assiociated to them basically (in that they are "setup" or not).
+    salt:        [0u8; 32].to_vec(),
+    entropy:     Some(strength),
+    id:          None,
+  })
+}
+
+#[uniffi::export]
+pub fn derive_password(password: String) -> MFKDF2Result<MFKDF2Factor> {
+  // Reuse the existing constructor logic
+  crate::derive::factors::password::password(password)
 }

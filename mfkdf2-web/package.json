@@ -1,0 +1,52 @@
+{
+  "name": "mfkdf2-web",
+  "version": "0.1.0",
+  "description": "MFKDF2 bindings for web",
+  "author": "Multifactor",
+  "license": "MIT",
+  "type": "module",
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/multifactor/mfkdf2.rs.git"
+  },
+  "scripts": {
+    "ubrn:web": "ubrn build web",
+    "ubrn:checkout": "ubrn checkout",
+    "ubrn:clean": "rm -rfv cpp/ android/CMakeLists.txt android/src/main/java android/*.cpp ios/ src/Native* src/*.web.ts* src/generated/",
+    "typecheck": "tsc",
+    "test": "npx tsx node_modules/mocha/bin/mocha",
+    "test:watch": "npx tsx node_modules/mocha/bin/mocha --watch",
+    "build": "npm run build:esm && npm run build:cjs",
+    "build:esm": "tsc -p tsconfig.esm.json",
+    "build:cjs": "tsc -p tsconfig.cjs.json"
+  },
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "files": [
+    "dist/"
+  ],
+  "dependencies": {
+    "uniffi-bindgen-react-native": "^0.29.3-1"
+  },
+  "devDependencies": {
+    "@types/chai": "^4.3.0",
+    "@types/mocha": "^10.0.0",
+    "@types/node": "^22.5.5",
+    "chai": "^4.3.0",
+    "chai-as-promised": "^7.1.1",
+    "mocha": "^10.0.0",
+    "prettier": "^3.6.2",
+    "ts-node": "^10.9.0",
+    "tsconfig-paths": "^4.2.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.6.2"
+  }
+}

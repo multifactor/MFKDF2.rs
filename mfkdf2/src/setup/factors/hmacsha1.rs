@@ -23,14 +23,14 @@ pub fn hmacsha1(options: HMACSHA1Options) -> MFKDF2Result<MFKDF2Factor> {
     id: options.id.unwrap_or("hmacsha1".to_string()),
     data: secret.to_vec(),
     salt,
-    params: Some(Box::new(move || {
+    params: Some(Box::new(move |_| {
       let challenge = OsRng.r#gen::<u64>();
       let response = crate::crypto::hmacsha1(&secret, challenge);
       let pad = response.iter().zip(secret.iter()).map(|(a, b)| a ^ b).collect::<Vec<u8>>();
       Box::pin(async move { json!({ "challenge": challenge, "pad": pad }) })
     })),
     entropy: Some(160),
-    output: Some(Box::new(move || Box::pin(async move { json!({ "secret": secret }) }))),
+    output: Some(Box::new(move |_| Box::pin(async move { json!({ "secret": secret }) }))),
   })
 }
 
@@ -55,7 +55,7 @@ mod tests {
     assert_eq!(factor.data, known_secret.to_vec());
 
     // Get the challenge and pad from params
-    let params = factor.params.unwrap()().await;
+    let params = factor.params.unwrap()([0u8; 32]).await;
     let challenge = params["challenge"].as_u64().unwrap();
     let pad = params["pad"]
       .as_array()
