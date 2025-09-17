@@ -279,7 +279,7 @@ async fn mock_hotp_mfkdf2()
     id:     Some("hotp_1".to_string()),
     secret: Some(HOTP_SECRET.to_vec()),
     digits: 6,
-    hash:   mfkdf2::setup::factors::hotp::HOTPHash::Sha1,
+    hash:   mfkdf2::setup::factors::hotp::OTPHash::Sha1,
     issuer: "MFKDF".to_string(),
     label:  "test".to_string(),
   })]
@@ -376,7 +376,7 @@ async fn mock_mixed_factors_mfkdf2()
       id:     Some("hotp_1".to_string()),
       secret: Some(HOTP_SECRET.to_vec()),
       digits: 6,
-      hash:   mfkdf2::setup::factors::hotp::HOTPHash::Sha256,
+      hash:   mfkdf2::setup::factors::hotp::OTPHash::Sha256,
       issuer: "MFKDF".to_string(),
       label:  "test".to_string(),
     }),

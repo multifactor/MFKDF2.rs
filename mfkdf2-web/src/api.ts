@@ -66,7 +66,7 @@ export const mfkdf2 = {
         return addKindProperty(f);
       },
       hotp(code: number) {
-        const f = raw.hotp(code);
+        const f = raw.deriveHotp(code);
         return addKindProperty(f);
       },
     },
