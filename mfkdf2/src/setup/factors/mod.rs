@@ -1,5 +1,3 @@
-use std::pin::Pin;
-
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 // pub mod hmacsha1;
@@ -7,12 +5,12 @@ pub mod hotp;
 pub mod password;
 // pub mod question;
 // pub mod stack;
+// pub mod totp;
 // pub mod uuid;
 
 // pub use hmacsha1::hmacsha1;
 pub use hotp::hotp;
 pub use password::password;
-
 // pub use question::question;
 // pub use stack::stack;
 // pub use uuid::uuid;
@@ -21,6 +19,11 @@ pub use password::password;
 pub enum FactorType {
   Password(password::Password),
   HOTP(hotp::HOTP),
+  // Question(question::Question),
+  // UUID(uuid::UUID),
+  // HmacSha1(hmacsha1::HmacSha1),
+  // TOTP(totp::TOTP),
+  // Stack(stack::Stack),
 }
 
 impl FactorType {
@@ -28,6 +31,11 @@ impl FactorType {
     match self {
       FactorType::Password(password) => password,
       FactorType::HOTP(hotp) => hotp,
+      // FactorType::Question(question) => question,
+      // FactorType::UUID(uuid) => uuid,
+      // FactorType::HmacSha1(hmacsha1) => hmacsha1,
+      // FactorType::TOTP(totp) => totp,
+      // FactorType::Stack(stack) => stack,
     }
   }
 
@@ -35,6 +43,11 @@ impl FactorType {
     match self {
       FactorType::Password(password) => password,
       FactorType::HOTP(hotp) => hotp,
+      // FactorType::Question(question) => question,
+      // FactorType::UUID(uuid) => uuid,
+      // FactorType::HmacSha1(hmacsha1) => hmacsha1,
+      // FactorType::TOTP(totp) => totp,
+      // FactorType::Stack(stack) => stack,
     }
   }
 }
@@ -67,21 +80,11 @@ pub trait FactorTrait {
 
 #[derive(Clone, Serialize, Deserialize, uniffi::Record)]
 pub struct MFKDF2Factor {
-  // TODO: Don't need now because we can handle the factor type in the data field (which may want
-  // to be renamed) // TODO (autoparallel): This should be called "type" instead.
-  // pub kind:    String,
   pub id:          Option<String>,
   pub factor_type: FactorType,
-  // pub data:    Vec<u8>,
   // TODO (autoparallel): This is the factor specific salt.
   pub salt:        Vec<u8>,
-  // #[serde(skip)]
-  // pub params:  Option<SetupFactorFn>,
   pub entropy:     Option<u32>,
-  // #[serde(skip)]
-  // pub output:  Option<SetupFactorFn>,
-  // #[serde(skip)]
-  // pub inner: Option<Box<dyn FactorTrait>>,
 }
 
 impl MFKDF2Factor {

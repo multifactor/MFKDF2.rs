@@ -7,13 +7,44 @@ use sha1::Sha1;
 use sha2::{Sha256, Sha512};
 
 use crate::{
-  crypto::{aes256_ecb_decrypt, aes256_ecb_encrypt},
+  crypto::{decrypt, encrypt},
   error::MFKDF2Result,
   setup::factors::{FactorTrait, FactorType, MFKDF2Factor},
 };
 
 #[derive(Clone, Debug, Serialize, Deserialize, uniffi::Record)]
+pub struct HOTPOptions {
+  pub id:     Option<String>,
+  pub secret: Option<Vec<u8>>,
+  pub digits: u8,
+  pub hash:   OTPHash,
+  pub issuer: String,
+  pub label:  String,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize, uniffi::Enum)]
+pub enum OTPHash {
+  Sha1,
+  Sha256,
+  Sha512,
+}
+
+impl Default for HOTPOptions {
+  fn default() -> Self {
+    Self {
+      id:     Some("hotp".to_string()),
+      secret: None,
+      digits: 6,
+      hash:   OTPHash::Sha1,
+      issuer: "MFKDF".to_string(),
+      label:  "mfkdf.com".to_string(),
+    }
+  }
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize, uniffi::Record)]
 pub struct HOTP {
+  // TODO (sambhav): is it safe to add options in the factor struct here?
   pub options: HOTPOptions,
   pub params:  String,
   pub code:    u32,
@@ -54,13 +85,13 @@ impl FactorTrait for HOTP {
       padded_secret.extend(padding);
     }
 
-    let pad = aes256_ecb_encrypt(&padded_secret, &key);
+    let pad = encrypt(&padded_secret, &key);
 
     json!({
       "hash": match self.options.hash {
-        HOTPHash::Sha1 => "sha1",
-        HOTPHash::Sha256 => "sha256",
-        HOTPHash::Sha512 => "sha512"
+        OTPHash::Sha1 => "sha1",
+        OTPHash::Sha256 => "sha256",
+        OTPHash::Sha512 => "sha512"
       },
       "digits": self.options.digits,
       "pad": base64::prelude::BASE64_STANDARD.encode(&pad),
@@ -84,12 +115,14 @@ impl FactorTrait for HOTP {
       "secret": base64::prelude::BASE64_STANDARD.encode(&secret),
       "issuer": self.options.issuer,
       "algorithm": match self.options.hash {
-        HOTPHash::Sha1 => "sha1",
-        HOTPHash::Sha256 => "sha256",
-        HOTPHash::Sha512 => "sha512"
+        OTPHash::Sha1 => "sha1",
+        OTPHash::Sha256 => "sha256",
+        OTPHash::Sha512 => "sha512"
       },
       "digits": self.options.digits,
-      "counter": 1
+      "counter": 1,
+      // TODO (sambhav): either generate uri yourself or use an external lib
+      "uri": ""
     })
   }
 
@@ -98,7 +131,7 @@ impl FactorTrait for HOTP {
     let params: Value = serde_json::from_str(&self.params).unwrap();
     let pad_b64 = params["pad"].as_str().unwrap();
     let pad = base64::prelude::BASE64_STANDARD.decode(pad_b64).unwrap();
-    let decrypted = aes256_ecb_decrypt(pad, &key);
+    let decrypted = decrypt(pad, &key);
     let secret_size = params["secretSize"].as_u64().unwrap() as usize;
     let secret = &decrypted[..secret_size];
 
@@ -106,9 +139,9 @@ impl FactorTrait for HOTP {
     let counter = params["counter"].as_u64().unwrap() + 1;
     let hash = params["hash"].as_str().unwrap();
     let hash = match hash {
-      "sha1" => HOTPHash::Sha1,
-      "sha256" => HOTPHash::Sha256,
-      "sha512" => HOTPHash::Sha512,
+      "sha1" => OTPHash::Sha1,
+      "sha256" => OTPHash::Sha256,
+      "sha512" => OTPHash::Sha512,
       _ => panic!("Unsupported hash algorithm"),
     };
     let generated_code = generate_hotp_code(secret, counter, &hash, self.options.digits);
@@ -129,7 +162,7 @@ impl FactorTrait for HOTP {
     })
   }
 
-  fn output_derive(&self, key: [u8; 32]) -> Value { json!({}) }
+  fn output_derive(&self, _key: [u8; 32]) -> Value { json!({}) }
 
   fn include_params(&mut self, params: Value) {
     // Store the policy parameters for derive phase
@@ -149,53 +182,23 @@ impl FactorTrait for HOTP {
   }
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, uniffi::Record)]
-pub struct HOTPOptions {
-  pub id:     Option<String>,
-  pub secret: Option<Vec<u8>>,
-  pub digits: u8,
-  pub hash:   HOTPHash,
-  pub issuer: String,
-  pub label:  String,
-}
-
-#[derive(Clone, Debug, Serialize, Deserialize, uniffi::Enum)]
-pub enum HOTPHash {
-  Sha1,
-  Sha256,
-  Sha512,
-}
-
-impl Default for HOTPOptions {
-  fn default() -> Self {
-    Self {
-      id:     None,
-      secret: None,
-      digits: 6,
-      hash:   HOTPHash::Sha1,
-      issuer: "MFKDF".to_string(),
-      label:  "mfkdf.com".to_string(),
-    }
-  }
-}
-
 fn mod_positive(n: i64, m: i64) -> i64 { ((n % m) + m) % m }
 
-fn generate_hotp_code(secret: &[u8], counter: u64, hash: &HOTPHash, digits: u8) -> u32 {
+pub fn generate_hotp_code(secret: &[u8], counter: u64, hash: &OTPHash, digits: u8) -> u32 {
   let counter_bytes = counter.to_be_bytes();
 
   let digest = match hash {
-    HOTPHash::Sha1 => {
+    OTPHash::Sha1 => {
       let mut mac = Hmac::<Sha1>::new_from_slice(secret).unwrap();
       mac.update(&counter_bytes);
       mac.finalize().into_bytes().to_vec()
     },
-    HOTPHash::Sha256 => {
+    OTPHash::Sha256 => {
       let mut mac = Hmac::<Sha256>::new_from_slice(secret).unwrap();
       mac.update(&counter_bytes);
       mac.finalize().into_bytes().to_vec()
     },
-    HOTPHash::Sha512 => {
+    OTPHash::Sha512 => {
       let mut mac = Hmac::<Sha512>::new_from_slice(secret).unwrap();
       mac.update(&counter_bytes);
       mac.finalize().into_bytes().to_vec()
@@ -217,7 +220,7 @@ pub fn hotp(options: HOTPOptions) -> MFKDF2Result<MFKDF2Factor> {
   if let Some(ref id) = options.id
     && id.is_empty()
   {
-    return Err(crate::error::MFKDF2Error::InvalidHmacKey);
+    return Err(crate::error::MFKDF2Error::InvalidHotpId);
   }
   if options.digits < 6 || options.digits > 8 {
     return Err(crate::error::MFKDF2Error::InvalidHOTPDigits);
@@ -231,9 +234,10 @@ pub fn hotp(options: HOTPOptions) -> MFKDF2Result<MFKDF2Factor> {
 
   let id = Some(options.id.clone().unwrap_or("hotp".to_string()));
 
+  // TODO (sambhav): move secret setup from params_setup to here.
   if let Some(secret) = &options.secret {
-    if secret.len() != 32 {
-      panic!("secret must be 32 bytes");
+    if secret.len() != 20 {
+      panic!("secret must be 20 bytes");
     }
   }
 
@@ -252,6 +256,9 @@ pub fn hotp(options: HOTPOptions) -> MFKDF2Result<MFKDF2Factor> {
   })
 }
 
+#[uniffi::export]
+pub fn setup_hotp(options: HOTPOptions) -> MFKDF2Result<MFKDF2Factor> { hotp(options) }
+
 #[cfg(test)]
 mod tests {
   #![allow(clippy::unwrap_used)]
@@ -264,7 +271,7 @@ mod tests {
       id:     Some("test_hotp".to_string()),
       secret: Some(b"hello world".to_vec()),
       digits: 6,
-      hash:   HOTPHash::Sha1,
+      hash:   OTPHash::Sha1,
       issuer: "MFKDF".to_string(),
       label:  "test".to_string(),
     };
@@ -302,7 +309,7 @@ mod tests {
   fn test_generate_hotp_code() {
     let secret = b"hello world";
     let counter = 1;
-    let hash = HOTPHash::Sha1;
+    let hash = OTPHash::Sha1;
     let digits = 6;
 
     let code = generate_hotp_code(secret, counter, &hash, digits);
