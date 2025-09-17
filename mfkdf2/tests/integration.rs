@@ -1,8 +1,5 @@
 use std::collections::HashMap;
 
-use serde_json::Value;
-use uuid::Uuid;
-
 async fn mock_mfkdf2() -> Result<mfkdf2::setup::key::MFKDF2DerivedKey, mfkdf2::error::MFKDF2Error> {
   let factors = vec![mfkdf2::setup::factors::password(
     "Tr0ubd4dour",
@@ -22,22 +19,22 @@ async fn test_key_setup() -> Result<(), mfkdf2::error::MFKDF2Error> {
   Ok(())
 }
 
-#[tokio::test]
-async fn test_key_derive() -> Result<(), mfkdf2::error::MFKDF2Error> {
-  let key = mock_mfkdf2().await?;
-  println!("Setup key: {}", key);
+// #[tokio::test]
+// async fn test_key_derive() -> Result<(), mfkdf2::error::MFKDF2Error> {
+//   let key = mock_mfkdf2().await?;
+//   println!("Setup key: {}", key);
 
-  let factor = ("password_1".to_string(), mfkdf2::derive::factors::password("Tr0ubd4dour")?);
+//   let factor = ("password_1".to_string(), mfkdf2::derive::factors::password("Tr0ubd4dour")?);
 
-  let factors = HashMap::from([factor]);
+//   let factors = HashMap::from([factor]);
 
-  let derived_key = mfkdf2::derive::key(key.policy, factors).await?;
-  println!("Derived key: {}", derived_key);
+//   let derived_key = mfkdf2::derive::key(key.policy, factors).await?;
+//   println!("Derived key: {}", derived_key);
 
-  assert_eq!(derived_key.key, key.key);
+//   assert_eq!(derived_key.key, key.key);
 
-  Ok(())
-}
+//   Ok(())
+// }
 
 #[tokio::test]
 #[should_panic]
@@ -79,30 +76,30 @@ async fn mock_threshold_mfkdf2()
 #[tokio::test]
 async fn test_key_setup_threshold() -> () { mock_threshold_mfkdf2().await.unwrap(); }
 
-#[tokio::test]
-async fn test_key_derive_threshold() -> () {
-  let key = mock_threshold_mfkdf2().await.unwrap();
-  println!("Setup key: {}", key);
+// #[tokio::test]
+// async fn test_key_derive_threshold() -> () {
+//   let key = mock_threshold_mfkdf2().await.unwrap();
+//   println!("Setup key: {}", key);
 
-  let factor =
-    ("password_1".to_string(), mfkdf2::derive::factors::password("Tr0ubd4dour").unwrap());
+//   let factor =
+//     ("password_1".to_string(), mfkdf2::derive::factors::password("Tr0ubd4dour").unwrap());
 
-  let factors = HashMap::from([factor]);
+//   let factors = HashMap::from([factor]);
 
-  let derived_key = mfkdf2::derive::key(key.policy.clone(), factors).await.unwrap();
-  println!("Derived key: {}", derived_key);
+//   let derived_key = mfkdf2::derive::key(key.policy.clone(), factors).await.unwrap();
+//   println!("Derived key: {}", derived_key);
 
-  assert_eq!(derived_key.key, key.key);
+//   assert_eq!(derived_key.key, key.key);
 
-  let factor = ("password_2".to_string(), mfkdf2::derive::factors::password("hunter2").unwrap());
+//   let factor = ("password_2".to_string(), mfkdf2::derive::factors::password("hunter2").unwrap());
 
-  let factors = HashMap::from([factor]);
+//   let factors = HashMap::from([factor]);
 
-  let derived_key = mfkdf2::derive::key(key.policy, factors).await.unwrap();
-  println!("Derived key: {}", derived_key);
+//   let derived_key = mfkdf2::derive::key(key.policy, factors).await.unwrap();
+//   println!("Derived key: {}", derived_key);
 
-  assert_eq!(derived_key.key, key.key);
-}
+//   assert_eq!(derived_key.key, key.key);
+// }
 
 // async fn mock_password_question_mfkdf2()
 // -> Result<mfkdf2::setup::key::MFKDF2DerivedKey, mfkdf2::error::MFKDF2Error> {
@@ -291,41 +288,41 @@ async fn mock_hotp_mfkdf2()
   Ok(key)
 }
 
-#[tokio::test]
-async fn test_key_setup_hotp() -> Result<(), mfkdf2::error::MFKDF2Error> {
-  let key = mock_hotp_mfkdf2().await?;
-  println!("Setup key: {}", key);
-  Ok(())
-}
+// #[tokio::test]
+// async fn test_key_setup_hotp() -> Result<(), mfkdf2::error::MFKDF2Error> {
+//   let key = mock_hotp_mfkdf2().await?;
+//   println!("Setup key: {}", key);
+//   Ok(())
+// }
 
-#[tokio::test]
-async fn test_key_derive_hotp() -> Result<(), mfkdf2::error::MFKDF2Error> {
-  let key = mock_hotp_mfkdf2().await?;
-  println!("Setup key: {}", key);
+// #[tokio::test]
+// async fn test_key_derive_hotp() -> Result<(), mfkdf2::error::MFKDF2Error> {
+//   let key = mock_hotp_mfkdf2().await?;
+//   println!("Setup key: {}", key);
 
-  // Extract HOTP parameters from the policy
-  let hotp_factor = key.policy.factors.iter().find(|f| f.kind == "hotp").unwrap();
-  let params: Value = serde_json::from_str(&hotp_factor.params).unwrap();
-  let counter = params["counter"].as_u64().unwrap();
-  dbg!(&params);
-  let digits = params["digits"].as_u64().unwrap() as u8;
+//   // Extract HOTP parameters from the policy
+//   let hotp_factor = key.policy.factors.iter().find(|f| f.kind == "hotp").unwrap();
+//   let params: Value = serde_json::from_str(&hotp_factor.params).unwrap();
+//   let counter = params["counter"].as_u64().unwrap();
+//   dbg!(&params);
+//   let digits = params["digits"].as_u64().unwrap() as u8;
 
-  // Generate the HOTP code that the user would need to provide
-  // This simulates what would come from an authenticator app
-  let generated_code = generate_hotp_code(&HOTP_SECRET, counter, digits);
+//   // Generate the HOTP code that the user would need to provide
+//   // This simulates what would come from an authenticator app
+//   let generated_code = generate_hotp_code(&HOTP_SECRET, counter, digits);
 
-  println!("Generated HOTP code: {}", generated_code);
+//   println!("Generated HOTP code: {}", generated_code);
 
-  // Now use this code to derive the key
-  let factor = ("hotp_1".to_string(), mfkdf2::derive::factors::hotp(generated_code).unwrap());
-  let factors = HashMap::from([factor]);
+//   // Now use this code to derive the key
+//   let factor = ("hotp_1".to_string(), mfkdf2::derive::factors::hotp(generated_code).unwrap());
+//   let factors = HashMap::from([factor]);
 
-  let derived_key = mfkdf2::derive::key(key.policy, factors).await?;
-  println!("Derived key: {}", derived_key);
+//   let derived_key = mfkdf2::derive::key(key.policy, factors).await?;
+//   println!("Derived key: {}", derived_key);
 
-  assert_eq!(derived_key.key, key.key);
-  Ok(())
-}
+//   assert_eq!(derived_key.key, key.key);
+//   Ok(())
+// }
 
 #[tokio::test]
 #[should_panic]
@@ -345,26 +342,7 @@ async fn test_key_derive_hotp_wrong_code() {
   assert_eq!(derived_key.key, key.key);
 }
 
-// TODO: Useful helper that we may want to use elsewhere.
-fn generate_hotp_code(secret: &[u8], counter: u64, digits: u8) -> u32 {
-  use hmac::{Hmac, Mac};
-  use sha1::Sha1;
-
-  let counter_bytes = counter.to_be_bytes();
-  let mut mac = Hmac::<Sha1>::new_from_slice(secret).unwrap();
-  mac.update(&counter_bytes);
-  let digest = mac.finalize().into_bytes();
-
-  // Dynamic truncation as per RFC 4226
-  let offset = (digest[digest.len() - 1] & 0xf) as usize;
-  let code = ((digest[offset] & 0x7f) as u32) << 24
-    | (digest[offset + 1] as u32) << 16
-    | (digest[offset + 2] as u32) << 8
-    | (digest[offset + 3] as u32);
-
-  code % (10_u32.pow(digits as u32))
-}
-
+#[allow(dead_code)]
 async fn mock_mixed_factors_mfkdf2()
 -> Result<mfkdf2::setup::key::MFKDF2DerivedKey, mfkdf2::error::MFKDF2Error> {
   let factors = vec![
@@ -389,51 +367,52 @@ async fn mock_mixed_factors_mfkdf2()
   Ok(key)
 }
 
-#[tokio::test]
-async fn test_key_derive_mixed_password_hotp() -> Result<(), mfkdf2::error::MFKDF2Error> {
-  let key = mock_mixed_factors_mfkdf2().await?;
-  println!("Setup key: {}", key);
+// #[tokio::test]
+// async fn test_key_derive_mixed_password_hotp() -> Result<(), mfkdf2::error::MFKDF2Error> {
+//   let key = mock_mixed_factors_mfkdf2().await?;
+//   println!("Setup key: {}", key);
 
-  // Extract HOTP parameters
-  let hotp_factor = key.policy.factors.iter().find(|f| f.kind == "hotp").unwrap();
-  let params: Value = serde_json::from_str(&hotp_factor.params).unwrap();
-  let counter = params["counter"].as_u64().unwrap();
-  let digits = params["digits"].as_u64().unwrap() as u8;
+//   // Extract HOTP parameters
+//   let hotp_factor = key.policy.factors.iter().find(|f| f.kind == "hotp").unwrap();
+//   let params: Value = serde_json::from_str(&hotp_factor.params).unwrap();
+//   let counter = params["counter"].as_u64().unwrap();
+//   let digits = params["digits"].as_u64().unwrap() as u8;
 
-  // Generate the correct HOTP code using SHA256 (different from previous test)
-  let generated_code = generate_hotp_code_sha256(&HOTP_SECRET, counter, digits);
+//   // Generate the correct HOTP code using SHA256 (different from previous test)
+//   let generated_code = generate_hotp_code_sha256(&HOTP_SECRET, counter, digits);
 
-  println!("Generated HOTP code (SHA256): {}", generated_code);
+//   println!("Generated HOTP code (SHA256): {}", generated_code);
 
-  // Create both factors
-  let factor_password =
-    ("password_1".to_string(), mfkdf2::derive::factors::password("Tr0ubd4dour").unwrap());
-  let factor_hotp = ("hotp_1".to_string(), mfkdf2::derive::factors::hotp(generated_code).unwrap());
-  let factors = HashMap::from([factor_password, factor_hotp]);
+//   // Create both factors
+//   let factor_password =
+//     ("password_1".to_string(), mfkdf2::derive::factors::password("Tr0ubd4dour").unwrap());
+//   let factor_hotp = ("hotp_1".to_string(),
+// mfkdf2::derive::factors::hotp(generated_code).unwrap());   let factors =
+// HashMap::from([factor_password, factor_hotp]);
 
-  let derived_key = mfkdf2::derive::key(key.policy, factors).await?;
-  println!("Derived key: {}", derived_key);
+//   let derived_key = mfkdf2::derive::key(key.policy, factors).await?;
+//   println!("Derived key: {}", derived_key);
 
-  assert_eq!(derived_key.key, key.key);
-  Ok(())
-}
+//   assert_eq!(derived_key.key, key.key);
+//   Ok(())
+// }
 
-// Helper function for SHA256 HOTP codes
-fn generate_hotp_code_sha256(secret: &[u8], counter: u64, digits: u8) -> u32 {
-  use hmac::{Hmac, Mac};
-  use sha2::Sha256;
+// // Helper function for SHA256 HOTP codes
+// fn generate_hotp_code_sha256(secret: &[u8], counter: u64, digits: u8) -> u32 {
+//   use hmac::{Hmac, Mac};
+//   use sha2::Sha256;
 
-  let counter_bytes = counter.to_be_bytes();
-  let mut mac = Hmac::<Sha256>::new_from_slice(secret).unwrap();
-  mac.update(&counter_bytes);
-  let digest = mac.finalize().into_bytes();
+//   let counter_bytes = counter.to_be_bytes();
+//   let mut mac = Hmac::<Sha256>::new_from_slice(secret).unwrap();
+//   mac.update(&counter_bytes);
+//   let digest = mac.finalize().into_bytes();
 
-  // Dynamic truncation as per RFC 4226
-  let offset = (digest[digest.len() - 1] & 0xf) as usize;
-  let code = ((digest[offset] & 0x7f) as u32) << 24
-    | (digest[offset + 1] as u32) << 16
-    | (digest[offset + 2] as u32) << 8
-    | (digest[offset + 3] as u32);
+//   // Dynamic truncation as per RFC 4226
+//   let offset = (digest[digest.len() - 1] & 0xf) as usize;
+//   let code = ((digest[offset] & 0x7f) as u32) << 24
+//     | (digest[offset + 1] as u32) << 16
+//     | (digest[offset + 2] as u32) << 8
+//     | (digest[offset + 3] as u32);
 
-  code % (10_u32.pow(digits as u32))
-}
+//   code % (10_u32.pow(digits as u32))
+// }

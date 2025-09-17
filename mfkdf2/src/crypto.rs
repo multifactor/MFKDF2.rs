@@ -59,7 +59,6 @@ pub fn hmacsha256(secret: &[u8], input: &[u8]) -> [u8; 32] {
 
 #[cfg(test)]
 mod tests {
-  use super::*;
 
   #[test]
   fn encrypt_decrypt() {}
