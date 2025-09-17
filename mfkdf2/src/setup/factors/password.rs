@@ -18,15 +18,16 @@ impl FactorTrait for Password {
 
   fn bytes(&self) -> Vec<u8> { self.password.as_bytes().to_vec() }
 
-  fn params_setup(&self, key: [u8; 32]) -> Value { json!({}) }
+  fn params_setup(&self, _key: [u8; 32]) -> Value { json!({}) }
 
-  fn output_setup(&self, key: [u8; 32]) -> Value { json!({}) }
+  // TODO (sambhav): this returns entropy strength
+  fn output_setup(&self, _key: [u8; 32]) -> Value { json!({}) }
 
-  fn params_derive(&self, key: [u8; 32]) -> Value { json!({}) }
+  fn params_derive(&self, _key: [u8; 32]) -> Value { json!({}) }
 
-  fn output_derive(&self, key: [u8; 32]) -> Value { json!({}) }
+  fn output_derive(&self, _key: [u8; 32]) -> Value { json!({}) }
 
-  fn include_params(&mut self, params: Value) {}
+  fn include_params(&mut self, _params: Value) {}
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, uniffi::Record)]
@@ -53,7 +54,6 @@ pub fn password(
     factor_type: FactorType::Password(Password { password }),
     salt:        salt.to_vec(),
     entropy:     Some(strength.guesses().ilog2()),
-    // inner: Some(Box::new(Password {})),
   })
 }
 

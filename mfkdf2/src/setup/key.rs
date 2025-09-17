@@ -1,17 +1,20 @@
-// TODO (autoparallel): If we use `no-std`, then this use of `HashSet` will need to be replaced.
+use core::hash;
+// TODO (autoparallel): If we use `no-std`, then this use of `HashSet` will need to be
+// replaced.
 use std::collections::HashSet;
 
-use argon2::Argon2;
+use argon2::{Argon2, Params, Version};
 use base64::{Engine, engine::general_purpose};
 use rand::{RngCore, rngs::OsRng};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use sha2::{Digest, Sha256};
 use sharks::{Share, Sharks};
+use uuid::Uuid;
 
 use super::*;
 use crate::{
-  crypto::{aes256_ecb_encrypt, hkdf_sha256},
+  crypto::{encrypt, hkdf_sha256_with_info},
   error::{MFKDF2Error, MFKDF2Result},
   setup::factors::{FactorTrait, MFKDF2Factor},
 };
@@ -35,10 +38,9 @@ pub struct MFKDF2Options {
   pub id:        Option<String>,
   pub threshold: Option<u8>,
   pub salt:      Option<Vec<u8>>,
-  // TODO (autoparallel): Add these options.
-  // pub time: Option<u32>,
-  // pub memory: Option<u32>,
-  // pub parallelism: Option<u32>,
+  pub integrity: Option<bool>,
+  pub time:      Option<u32>,
+  pub memory:    Option<u32>,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, Eq, PartialEq, uniffi::Record)]
@@ -92,14 +94,42 @@ pub async fn key(
     },
   };
 
+  // Generate a unique ID for this policy if not provided
+  let policy_id = options.id.unwrap_or_else(|| Uuid::new_v4().to_string());
+
+  // time
+  let time = options.time.unwrap_or(0);
+
+  // memory
+  let memory = options.memory.unwrap_or(0);
+
+  // master secret
   let mut secret: [u8; 32] = [0u8; 32];
   OsRng.fill_bytes(&mut secret);
 
-  // Generate key
   let mut key = [0u8; 32];
-  Argon2::default()
-    .hash_password_into(&secret, &salt, &mut key)
-    .map_err(|e| MFKDF2Error::Argon2Error(e))?;
+  OsRng.fill_bytes(&mut key);
+
+  // Generate key
+  let mut kek = [0u8; 32];
+  // TODO: stack key
+
+  // default key
+  Argon2::new(
+    argon2::Algorithm::Argon2id,
+    Version::default(),
+    Params::new(
+      argon2::Params::DEFAULT_M_COST + memory,
+      argon2::Params::DEFAULT_T_COST + time,
+      1,
+      Some(32),
+    )?,
+  )
+  .hash_password_into(&secret, &salt, &mut kek)
+  .map_err(|e| MFKDF2Error::Argon2Error(e))?;
+
+  // policy key
+  let policy_key = encrypt(&key, &kek);
 
   // Split secret into Shamir shares
   let dealer = Sharks(threshold).dealer_rng(&secret, &mut OsRng);
@@ -112,25 +142,38 @@ pub async fn key(
   let mut real_entropy: Vec<u32> = Vec::new();
 
   for (factor, share) in factors.iter().zip(shares.clone()) {
-    // HKDF stretch & AES-encrypt share
-    let stretched =
-      hkdf_sha256(&factor.factor_type.bytes(), &factor.salt.clone().try_into().unwrap());
-    let pad = aes256_ecb_encrypt(&share, &stretched);
-
-    // Generate factor key
-    let factor_key = hkdf_sha256(&key, &factor.salt.clone().try_into().unwrap());
-    let factor_secret = aes256_ecb_encrypt(&share, &factor_key);
-
-    // TODO (autoparallel): Add params for each factor.
-    let params = factor.factor_type.params_setup(factor_key);
-    // TODO (autoparallel): This should not be an unwrap.
-    outputs.push(factor.factor_type.output_setup(key));
-
+    // Factor id uniqueness
     let id = factor.id.clone();
-
     if !ids.insert(id.clone()) {
       return Err(MFKDF2Error::DuplicateFactorId);
     }
+
+    // HKDF stretch & AES-encrypt share
+    let stretched = hkdf_sha256_with_info(
+      &factor.factor_type.bytes(),
+      &factor.salt.clone().try_into().unwrap(),
+      format!("mfkdf2:factor:pad:{}", &factor.id.clone().unwrap()).as_bytes(),
+    );
+    let pad = encrypt(&share, &stretched);
+
+    // Generate factor key
+    let params_key = hkdf_sha256_with_info(
+      &key,
+      &factor.salt.clone().try_into().unwrap(),
+      format!("mfkdf2:factor:params:{}", &factor.id.clone().unwrap()).as_bytes(),
+    );
+
+    // TODO (autoparallel): Add params for each factor.
+    let params = factor.factor_type.params_setup(params_key);
+    // TODO (autoparallel): This should not be an unwrap.
+    outputs.push(factor.factor_type.output_setup(key));
+
+    let secret_key = hkdf_sha256_with_info(
+      &key,
+      &factor.salt.clone().try_into().unwrap(),
+      format!("mfkdf2:factor:secret:{}", &factor.id.clone().unwrap()).as_bytes(),
+    );
+    let factor_secret = encrypt(&stretched, &secret_key);
 
     // Record entropy statistics (in bits) for this factor.
     theoretical_entropy.push(u32::try_from(factor.factor_type.bytes().len() * 8).unwrap());
@@ -142,18 +185,20 @@ pub async fn key(
       kind:   factor.kind(),
       pad:    general_purpose::STANDARD.encode(pad),
       salt:   general_purpose::STANDARD.encode(factor.salt.clone()),
-      key:    factor_key.to_vec(),
+      key:    params_key.to_vec(), // TODO (sambhav): why is this needed?
       secret: general_purpose::STANDARD.encode(factor_secret),
       params: serde_json::to_string(&params).unwrap(),
     });
   }
 
   // Derive an integrity key specific to the policy and compute a policy HMAC
-  let integrity_key = hkdf_sha256(&key, &salt);
+  let integrity_key = hkdf_sha256_with_info(&key, &salt, "mfkdf2:integrity".as_bytes());
 
   // Hash the signable policy components (threshold, salt, factors) to match JS `extract`
   let encoded_salt = general_purpose::STANDARD.encode(salt);
+  // TODO (sambhav): add a factor extract for signing.
   let mut hasher = Sha256::new();
+  hasher.update(policy_id.as_bytes());
   hasher.update(threshold.to_le_bytes());
   hasher.update(encoded_salt.as_bytes());
 
@@ -176,13 +221,6 @@ pub async fn key(
   let entropy_theoretical = theoretical_sum.min(256);
   let entropy_real = real_sum.min(256);
 
-  // Generate a unique ID for this policy if not provided
-  let policy_id = options.id.unwrap_or_else(|| {
-    let mut id_bytes = [0u8; 16];
-    OsRng.fill_bytes(&mut id_bytes);
-    format!("mfkdf2-{}", general_purpose::STANDARD.encode(id_bytes))
-  });
-
   Ok(MFKDF2DerivedKey {
     policy: Policy {
       schema: "https://mfkdf.com/schema/v2.0.0/policy.json".to_string(),
@@ -191,6 +229,9 @@ pub async fn key(
       salt: general_purpose::STANDARD.encode(salt),
       factors: policy_factors,
       hmac: general_purpose::STANDARD.encode(hmac),
+      time,
+      memory,
+      key: general_purpose::STANDARD.encode(policy_key),
     },
     key: key.to_vec(),
     secret: secret.to_vec(),
@@ -210,4 +251,7 @@ pub struct Policy {
   pub salt:      String,
   pub factors:   Vec<PolicyFactor>,
   pub hmac:      String,
+  pub time:      u32,
+  pub memory:    u32,
+  pub key:       String,
 }

@@ -7,7 +7,7 @@ use sha1::Sha1;
 use sha2::{Sha256, Sha512};
 
 use crate::{
-  crypto::aes256_ecb_decrypt,
+  crypto::decrypt,
   error::MFKDF2Result,
   setup::factors::{
     FactorType, MFKDF2Factor,
@@ -49,7 +49,6 @@ fn generate_hotp_code(secret: &[u8], counter: u64, hash: &str, digits: u8) -> u3
   code % (10_u32.pow(digits as u32))
 }
 
-#[uniffi::export]
 pub fn hotp(code: u32) -> MFKDF2Result<MFKDF2Factor> {
   // Create HOTP factor with the user-provided code
   // The target will be calculated in include_params once we have the policy parameters
@@ -67,3 +66,6 @@ pub fn hotp(code: u32) -> MFKDF2Result<MFKDF2Factor> {
     entropy:     Some((6 as f64 * 10.0_f64.log2()) as u32),
   })
 }
+
+#[uniffi::export]
+pub fn derive_hotp(code: u32) -> MFKDF2Result<MFKDF2Factor> { hotp(code) }

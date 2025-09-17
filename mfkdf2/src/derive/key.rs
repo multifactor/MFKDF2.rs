@@ -5,7 +5,7 @@ use base64::{Engine, engine::general_purpose};
 use sharks::{Share, Sharks};
 
 use crate::{
-  crypto::{aes256_ecb_decrypt, hkdf_sha256},
+  crypto::{decrypt, hkdf_sha256},
   error::{MFKDF2Error, MFKDF2Result},
   setup::{
     factors::{FactorTrait, MFKDF2Factor},
@@ -34,7 +34,7 @@ pub async fn key(
 
     // TODO (autoparallel): This should probably be done with a `MaybeUninit` array.
     let pad = general_purpose::STANDARD.decode(&factor.pad)?;
-    let plaintext = aes256_ecb_decrypt(pad, &stretched);
+    let plaintext = decrypt(pad, &stretched);
 
     // TODO (autoparallel): It would be preferred to know the size of this array at compile
     // time.

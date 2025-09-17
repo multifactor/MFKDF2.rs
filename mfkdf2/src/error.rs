@@ -34,8 +34,23 @@ pub enum MFKDF2Error {
   #[error("invalid hmac key!")]
   InvalidHmacKey,
 
+  #[error("invalid HOTP id")]
+  InvalidHotpId,
+
   #[error("invalid HOTP digits! digits must be between 6 and 8")]
   InvalidHOTPDigits,
+
+  #[error("invalid TOTP id")]
+  InvalidTotpId,
+
+  #[error("invalid TOTP digits! digits must be between 6 and 8")]
+  InvalidTOTPDigits,
+
+  #[error("invalid question id")]
+  InvalidQuestionId,
+
+  #[error("invalid uuid")]
+  InvalidUuid,
 
   #[error(transparent)]
   Argon2Error(#[from] argon2::Error),

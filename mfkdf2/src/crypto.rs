@@ -1,11 +1,10 @@
 use aes::Aes256;
 use cipher::{BlockDecryptMut, BlockEncryptMut, KeyInit, block_padding::NoPadding};
-use ecb::Encryptor;
+use ecb::{Decryptor, Encryptor};
 use hkdf::Hkdf;
 use hmac::{Hmac, Mac};
 use sha1::Sha1;
 use sha2::Sha256;
-use sha3::Sha3_256;
 
 pub fn hkdf_sha256(input: &[u8], salt: &[u8; 32]) -> [u8; 32] {
   let hk = Hkdf::<Sha256>::new(Some(salt), input);
@@ -14,7 +13,15 @@ pub fn hkdf_sha256(input: &[u8], salt: &[u8; 32]) -> [u8; 32] {
   okm
 }
 
-pub fn aes256_ecb_encrypt(data: &[u8], key: &[u8; 32]) -> Vec<u8> {
+pub fn hkdf_sha256_with_info(input: &[u8], salt: &[u8; 32], info: &[u8]) -> [u8; 32] {
+  let hk = Hkdf::<Sha256>::new(Some(salt), input);
+  let mut okm = [0u8; 32];
+  hk.expand(info, &mut okm).expect("HKDF expand");
+  okm
+}
+
+/// Encrypts a buffer using AES256-ECB with the given 32-byte key
+pub fn encrypt(data: &[u8], key: &[u8; 32]) -> Vec<u8> {
   // Ensure the input is a multiple of 16 by zero-padding if necessary.
   let mut buf = {
     let mut v = data.to_vec();
@@ -31,23 +38,16 @@ pub fn aes256_ecb_encrypt(data: &[u8], key: &[u8; 32]) -> Vec<u8> {
   buf
 }
 
-pub fn aes256_ecb_decrypt(mut data: Vec<u8>, key: &[u8; 32]) -> Vec<u8> {
-  use ecb::Decryptor;
+/// Decrypts a buffer using AES256-ECB with the given 32-byte key
+pub fn decrypt(mut data: Vec<u8>, key: &[u8; 32]) -> Vec<u8> {
   let cipher = Decryptor::<Aes256>::new_from_slice(key).expect("Invalid AES key");
   let _ = cipher.decrypt_padded_mut::<NoPadding>(&mut data).expect("ECB decrypt");
   data
 }
 
-pub fn balloon_sha3_256(input: &[u8], salt: &[u8; 32]) -> [u8; 32] {
-  let mut key = [0u8; 32];
-  let balloon = balloon_hash::Balloon::<Sha3_256>::default();
-  balloon.hash_into(input, salt, &mut key).unwrap();
-  key
-}
-
-pub fn hmacsha1(secret: &[u8], challenge: u64) -> [u8; 20] {
+pub fn hmacsha1(secret: &[u8], challenge: &[u8]) -> [u8; 20] {
   let mut mac = <Hmac<Sha1> as Mac>::new_from_slice(secret).unwrap();
-  mac.update(&challenge.to_be_bytes());
+  mac.update(challenge);
   mac.finalize().into_bytes().into()
 }
 
@@ -61,15 +61,6 @@ pub fn hmacsha256(secret: &[u8], input: &[u8]) -> [u8; 32] {
 mod tests {
   use super::*;
 
-  // TODO: We should test this against real known test vectors.
   #[test]
-  fn test_balloon_sha3_256() {
-    let input = b"test";
-    let salt = [0u8; 32];
-    let key = balloon_sha3_256(input, &salt);
-    assert_eq!(key, [
-      73, 231, 77, 172, 3, 246, 133, 157, 117, 140, 46, 54, 81, 82, 218, 209, 45, 30, 196, 30, 223,
-      170, 5, 13, 59, 39, 7, 52, 133, 92, 162, 246
-    ]);
-  }
+  fn encrypt_decrypt() {}
 }
