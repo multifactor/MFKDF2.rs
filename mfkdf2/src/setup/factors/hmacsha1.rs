@@ -1,62 +1,127 @@
-use rand::{Rng, RngCore, rngs::OsRng};
-use serde_json::json;
+use rand::{RngCore, rngs::OsRng};
+use serde::{Deserialize, Serialize};
+use serde_json::{Value, json};
 
-use crate::{error::MFKDF2Result, setup::factors::MFKDF2Factor};
+use crate::{
+  crypto::encrypt,
+  error::{MFKDF2Error, MFKDF2Result},
+  setup::factors::{FactorTrait, MFKDF2Factor},
+};
 
-pub struct HMACSHA1Options {
+#[derive(Clone, Debug, Serialize, Deserialize, uniffi::Record)]
+pub struct HmacSha1Options {
   pub id:     Option<String>,
-  pub secret: Option<[u8; 20]>,
+  pub secret: Option<Vec<u8>>,
 }
 
-pub fn hmacsha1(options: HMACSHA1Options) -> MFKDF2Result<MFKDF2Factor> {
+impl Default for HmacSha1Options {
+  fn default() -> Self { Self { id: Some("hmacsha1".to_string()), secret: None } }
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize, uniffi::Record)]
+pub struct HmacSha1 {
+  // TODO (sambhav): check with @Autoparallel if storing padded secret is correct, otherwise we'd
+  // need to calculate random pad everytime.
+  pub padded_secret: Vec<u8>,
+}
+
+impl FactorTrait for HmacSha1 {
+  fn kind(&self) -> String { "hmacsha1".to_string() }
+
+  fn bytes(&self) -> Vec<u8> { self.padded_secret[..20].to_vec() }
+
+  fn params_setup(&self, _key: [u8; 32]) -> Value {
+    let mut challenge = [0u8; 64];
+    OsRng.fill_bytes(&mut challenge);
+
+    let response = crate::crypto::hmacsha1(&self.padded_secret[..20], &challenge);
+    let mut padded_key = [0u8; 32];
+    padded_key[..response.len()].copy_from_slice(&response);
+    let pad = encrypt(&self.padded_secret, &padded_key);
+
+    json!({
+      "challenge": challenge.to_vec(),
+      "pad": pad,
+    })
+  }
+
+  fn output_setup(&self, _key: [u8; 32]) -> Value {
+    json!({
+      "secret": self.padded_secret[..20],
+    })
+  }
+
+  fn params_derive(&self, _key: [u8; 32]) -> Value { json!({}) }
+
+  fn output_derive(&self, _key: [u8; 32]) -> Value { json!({}) }
+
+  fn include_params(&mut self, _params: Value) {}
+}
+
+pub fn hmacsha1(options: HmacSha1Options) -> MFKDF2Result<MFKDF2Factor> {
+  let id = match options.id {
+    None => Some("hmacsha1".to_string()),
+    Some(ref id) => {
+      if id.is_empty() {
+        return Err(MFKDF2Error::InvalidUuid);
+      }
+      Some(id.clone())
+    },
+  };
+
   let secret = options.secret.unwrap_or_else(|| {
     let mut secret = [0u8; 20];
     OsRng.fill_bytes(&mut secret);
-    secret
+    secret.to_vec()
   });
+  let mut secret_pad = [0u8; 12];
+  OsRng.fill_bytes(&mut secret_pad);
+  let padded_secret = secret.iter().chain(secret_pad.iter()).cloned().collect();
 
   let mut salt = [0u8; 32];
   OsRng.fill_bytes(&mut salt);
 
   Ok(MFKDF2Factor {
-    kind: "hmacsha1".to_string(),
-    id: options.id.unwrap_or("hmacsha1".to_string()),
-    data: secret.to_vec(),
-    salt,
-    params: Some(Box::new(move |_| {
-      let challenge = OsRng.r#gen::<u64>();
-      let response = crate::crypto::hmacsha1(&secret, challenge);
-      let pad = response.iter().zip(secret.iter()).map(|(a, b)| a ^ b).collect::<Vec<u8>>();
-      Box::pin(async move { json!({ "challenge": challenge, "pad": pad }) })
-    })),
+    id,
+    salt: salt.to_vec(),
+    factor_type: super::FactorType::HmacSha1(HmacSha1 { padded_secret }),
     entropy: Some(160),
-    output: Some(Box::new(move |_| Box::pin(async move { json!({ "secret": secret }) }))),
   })
 }
+
+#[uniffi::export]
+pub fn setup_hmacsha1(options: HmacSha1Options) -> MFKDF2Result<MFKDF2Factor> { hmacsha1(options) }
 
 #[cfg(test)]
 mod tests {
   use super::*;
 
-  #[tokio::test]
-  async fn test_hmacsha1_with_known_secret() {
+  #[test]
+  fn test_hmacsha1_with_known_secret() {
     // Use a known secret for deterministic testing
     let known_secret = [
       0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f,
       0x10, 0x11, 0x12, 0x13, 0x14,
     ];
 
-    let factor =
-      hmacsha1(HMACSHA1Options { id: Some("test".to_string()), secret: Some(known_secret) })
-        .unwrap();
+    let factor = hmacsha1(HmacSha1Options {
+      id:     Some("test".to_string()),
+      secret: Some(known_secret.to_vec()),
+    })
+    .unwrap();
 
-    assert_eq!(factor.kind, "hmacsha1");
-    assert_eq!(factor.id, "test");
-    assert_eq!(factor.data, known_secret.to_vec());
+    assert_eq!(factor.kind(), "hmacsha1");
+    assert_eq!(factor.id.unwrap(), "test");
+    assert_eq!(factor.factor_type.bytes(), known_secret.to_vec());
 
     // Get the challenge and pad from params
-    let params = factor.params.unwrap()([0u8; 32]).await;
-    let challenge = params["challenge"].as_u64().unwrap();
+    let params = factor.factor_type.params_setup([0u8; 32]);
+    let challenge = params["challenge"]
+      .as_array()
+      .unwrap()
+      .iter()
+      .map(|v| v.as_u64().unwrap() as u8)
+      .collect::<Vec<u8>>();
     let pad = params["pad"]
       .as_array()
       .unwrap()
@@ -65,29 +130,29 @@ mod tests {
       .collect::<Vec<u8>>();
 
     // Compute HMAC-SHA1 response externally to verify
-    let expected_response = crate::crypto::hmacsha1(&known_secret, challenge);
+    let expected_response = crate::crypto::hmacsha1(&known_secret, &challenge);
 
-    // Verify the pad is correct (response XOR secret)
-    let expected_pad: Vec<u8> =
-      expected_response.iter().zip(known_secret.iter()).map(|(a, b)| a ^ b).collect();
+    // Verify the pad is correct (ENC(secret, key))
+    let mut padded_secret = [0u8; 32];
+    padded_secret[..known_secret.len()].copy_from_slice(&known_secret);
 
-    assert_eq!(pad, expected_pad);
+    let mut padded_key = [0u8; 32];
+    padded_key[..expected_response.len()].copy_from_slice(&expected_response);
 
-    // Verify we can recover the response from pad XOR secret
-    let recovered_response: Vec<u8> =
-      pad.iter().zip(known_secret.iter()).map(|(a, b)| a ^ b).collect();
+    let expected_pad = encrypt(&padded_secret, &padded_key);
 
-    assert_eq!(recovered_response, expected_response.to_vec());
+    // verify partial pad (multiple of 16) is correct
+    assert_eq!(pad[..16], expected_pad[..16]);
   }
 
-  #[tokio::test]
-  async fn test_hmacsha1_random_secret() {
-    let factor = hmacsha1(HMACSHA1Options { id: None, secret: None }).unwrap();
-    assert_eq!(factor.kind, "hmacsha1");
-    assert_eq!(factor.id, "hmacsha1");
-    assert_eq!(factor.data.len(), 20); // Secret should be 20 bytes
-    assert!(factor.params.is_some());
-    assert!(factor.output.is_some());
+  #[test]
+  fn test_hmacsha1_random_secret() {
+    let factor = hmacsha1(HmacSha1Options { id: None, secret: None }).unwrap();
+    assert_eq!(factor.kind(), "hmacsha1");
+    assert_eq!(factor.id.unwrap(), "hmacsha1");
+    assert_eq!(factor.factor_type.bytes().len(), 20); // Secret should be 20 bytes
+    assert!(factor.factor_type.params_setup([0u8; 32]).is_object());
+    assert!(factor.factor_type.output_setup([0u8; 32]).is_object());
     assert_eq!(factor.entropy, Some(160)); // 20 bytes * 8 bits = 160 bits
   }
 }

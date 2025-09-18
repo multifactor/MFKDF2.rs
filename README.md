@@ -55,7 +55,7 @@ To use `mfkdf2` in your Rust project, add it as a dependency in your `Cargo.toml
 
 ```toml
 [dependencies]
-mfkdf2 = { version = "0.1.0", git = "https://github.com/multifactor/mfkdf2.rs.git" } 
+mfkdf2 = { version = "0.1.0", git = "https://github.com/multifactor/mfkdf2.rs.git" }
 ```
 
 This will be updated to a published version once the library is ready for production.

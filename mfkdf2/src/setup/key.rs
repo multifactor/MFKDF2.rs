@@ -147,7 +147,7 @@ pub async fn key(
     // HKDF stretch & AES-encrypt share
     let stretched = hkdf_sha256_with_info(
       &factor.factor_type.bytes(),
-      &factor.salt.clone().try_into().unwrap(),
+      &factor.salt.clone(),
       format!("mfkdf2:factor:pad:{}", &factor.id.clone().unwrap()).as_bytes(),
     );
     let pad = encrypt(&share, &stretched);
@@ -155,7 +155,7 @@ pub async fn key(
     // Generate factor key
     let params_key = hkdf_sha256_with_info(
       &key,
-      &factor.salt.clone().try_into().unwrap(),
+      &factor.salt.clone(),
       format!("mfkdf2:factor:params:{}", &factor.id.clone().unwrap()).as_bytes(),
     );
 
@@ -166,7 +166,7 @@ pub async fn key(
 
     let secret_key = hkdf_sha256_with_info(
       &key,
-      &factor.salt.clone().try_into().unwrap(),
+      &factor.salt.clone(),
       format!("mfkdf2:factor:secret:{}", &factor.id.clone().unwrap()).as_bytes(),
     );
     let factor_secret = encrypt(&stretched, &secret_key);

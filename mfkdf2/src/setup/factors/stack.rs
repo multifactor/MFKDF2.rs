@@ -16,8 +16,9 @@ pub async fn stack(
   OsRng.fill_bytes(&mut salt);
 
   Ok(MFKDF2Factor {
-    kind: "stack".to_string(),
+    // kind: "stack".to_string(),
     id: options.id.unwrap_or("stack".to_string()),
+    // factor_type:
     data: key.key.to_vec(),
     salt,
     params: Some(Box::new(move |_| {

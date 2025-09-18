@@ -20,8 +20,11 @@ impl FactorTrait for Password {
 
   fn params_setup(&self, _key: [u8; 32]) -> Value { json!({}) }
 
-  // TODO (sambhav): this returns entropy strength
-  fn output_setup(&self, _key: [u8; 32]) -> Value { json!({}) }
+  fn output_setup(&self, _key: [u8; 32]) -> Value {
+    json!({
+      "strength": zxcvbn(&self.password, &[]),
+    })
+  }
 
   fn params_derive(&self, _key: [u8; 32]) -> Value { json!({}) }
 
