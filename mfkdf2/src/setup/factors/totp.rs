@@ -132,7 +132,7 @@ pub fn totp(options: TOTPOptions) -> MFKDF2Result<MFKDF2Factor> {
   if let Some(ref id) = options.id
     && id.is_empty()
   {
-    return Err(crate::error::MFKDF2Error::InvalidTotpId);
+    return Err(crate::error::MFKDF2Error::MissingFactorId);
   }
   if options.digits < 6 || options.digits > 8 {
     return Err(crate::error::MFKDF2Error::InvalidTOTPDigits);
@@ -158,12 +158,10 @@ pub fn totp(options: TOTPOptions) -> MFKDF2Result<MFKDF2Factor> {
   let mut salt = [0u8; 32];
   OsRng.fill_bytes(&mut salt);
 
-  let id = Some(options.id.clone().unwrap_or("totp".to_string()));
-
   let entropy = Some((options.digits as f64 * 10.0_f64.log2()) as u32);
 
   Ok(MFKDF2Factor {
-    id,
+    id: Some(options.id.clone().unwrap_or("totp".to_string())),
     factor_type: FactorType::TOTP(TOTP {
       options,
       params: serde_json::to_string(&Value::Null).unwrap(),

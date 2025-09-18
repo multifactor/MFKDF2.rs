@@ -4,8 +4,8 @@ use serde_json::{Value, json};
 
 use crate::{
   crypto::encrypt,
-  error::{MFKDF2Error, MFKDF2Result},
-  setup::factors::{FactorTrait, MFKDF2Factor},
+  error::MFKDF2Result,
+  setup::factors::{FactorTrait, FactorType, MFKDF2Factor},
 };
 
 #[derive(Clone, Debug, Serialize, Deserialize, uniffi::Record)]
@@ -59,15 +59,12 @@ impl FactorTrait for HmacSha1 {
 }
 
 pub fn hmacsha1(options: HmacSha1Options) -> MFKDF2Result<MFKDF2Factor> {
-  let id = match options.id {
-    None => Some("hmacsha1".to_string()),
-    Some(ref id) => {
-      if id.is_empty() {
-        return Err(MFKDF2Error::InvalidUuid);
-      }
-      Some(id.clone())
-    },
-  };
+  // Validation
+  if let Some(ref id) = options.id
+    && id.is_empty()
+  {
+    return Err(crate::error::MFKDF2Error::MissingFactorId);
+  }
 
   let secret = options.secret.unwrap_or_else(|| {
     let mut secret = [0u8; 20];
@@ -82,10 +79,10 @@ pub fn hmacsha1(options: HmacSha1Options) -> MFKDF2Result<MFKDF2Factor> {
   OsRng.fill_bytes(&mut salt);
 
   Ok(MFKDF2Factor {
-    id,
-    salt: salt.to_vec(),
-    factor_type: super::FactorType::HmacSha1(HmacSha1 { padded_secret }),
-    entropy: Some(160),
+    id:          Some(options.id.unwrap_or("hmacsha1".to_string())),
+    salt:        salt.to_vec(),
+    factor_type: FactorType::HmacSha1(HmacSha1 { padded_secret }),
+    entropy:     Some(160),
   })
 }
 

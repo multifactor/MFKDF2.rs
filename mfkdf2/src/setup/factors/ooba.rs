@@ -9,7 +9,7 @@ use sha2::Sha256;
 use crate::{
   crypto::{encrypt, hkdf_sha256_with_info},
   error::{MFKDF2Error, MFKDF2Result},
-  setup::factors::{FactorTrait, MFKDF2Factor},
+  setup::factors::{FactorTrait, FactorType, MFKDF2Factor},
 };
 
 fn generate_alphanumeric_characters(length: u32) -> String {
@@ -104,16 +104,12 @@ impl FactorTrait for Ooba {
 }
 
 pub fn ooba(options: OobaOptions) -> MFKDF2Result<MFKDF2Factor> {
-  let id = match options.id {
-    None => Some("ooba".to_string()),
-    Some(ref id) => {
-      if id.is_empty() {
-        return Err(MFKDF2Error::InvalidOobaId);
-      }
-      Some(id.clone())
-    },
-  };
-
+  // Validation
+  if let Some(ref id) = options.id
+    && id.is_empty()
+  {
+    return Err(crate::error::MFKDF2Error::MissingFactorId);
+  }
   let length = options.length;
   if length == 0 || length > 32 {
     return Err(MFKDF2Error::InvalidOobaLength);
@@ -144,21 +140,21 @@ pub fn ooba(options: OobaOptions) -> MFKDF2Result<MFKDF2Factor> {
   let mut salt = [0u8; 32];
   OsRng.fill_bytes(&mut salt);
 
-  // Approximate entropy: log2(36^length) = length * log2(36)
-  let entropy_bits = (length as f64 * 36f64.log2()).round() as u32;
-
   Ok(MFKDF2Factor {
-    id,
-    salt: salt.to_vec(),
-    factor_type: super::FactorType::OOBA(Ooba {
+    id:          Some(options.id.unwrap_or("ooba".to_string())),
+    salt:        salt.to_vec(),
+    factor_type: FactorType::OOBA(Ooba {
       target: target.to_vec(),
       length,
       jwk: options.key.unwrap(),
       params,
     }),
-    entropy: Some(entropy_bits),
+    entropy:     Some((length as f64 * 36f64.log2()).round() as u32),
   })
 }
+
+#[uniffi::export]
+pub fn setup_ooba(options: OobaOptions) -> MFKDF2Result<MFKDF2Factor> { ooba(options) }
 
 #[cfg(test)]
 mod tests {

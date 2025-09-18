@@ -40,15 +40,12 @@ impl FactorTrait for UUID {
 }
 
 pub fn uuid(options: UUIDOptions) -> MFKDF2Result<MFKDF2Factor> {
-  let id = match options.id {
-    None => Some("uuid".to_string()),
-    Some(ref id) => {
-      if id.is_empty() {
-        return Err(MFKDF2Error::InvalidUuid);
-      }
-      Some(id.clone())
-    },
-  };
+  // Validation
+  if let Some(ref id) = options.id
+    && id.is_empty()
+  {
+    return Err(crate::error::MFKDF2Error::MissingFactorId);
+  }
 
   let uuid = match options.uuid {
     None => Uuid::new_v4(),
@@ -64,10 +61,10 @@ pub fn uuid(options: UUIDOptions) -> MFKDF2Result<MFKDF2Factor> {
   OsRng.fill_bytes(&mut salt);
 
   Ok(MFKDF2Factor {
-    id,
+    id:          Some(options.id.unwrap_or("uuid".to_string())),
     factor_type: FactorType::UUID(UUID { uuid: uuid.to_string() }),
-    salt: salt.to_vec(),
-    entropy: Some(122),
+    salt:        salt.to_vec(),
+    entropy:     Some(122),
   })
 }
 

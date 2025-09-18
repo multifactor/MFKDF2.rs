@@ -42,6 +42,13 @@ pub fn password(
   password: impl Into<String>,
   options: PasswordOptions,
 ) -> MFKDF2Result<MFKDF2Factor> {
+  // Validation
+  if let Some(ref id) = options.id
+    && id.is_empty()
+  {
+    return Err(crate::error::MFKDF2Error::MissingFactorId);
+  }
+
   let password = std::convert::Into::<String>::into(password);
   if password.is_empty() {
     return Err(MFKDF2Error::PasswordEmpty);

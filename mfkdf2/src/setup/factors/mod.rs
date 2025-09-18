@@ -6,11 +6,13 @@ pub mod password;
 pub mod question;
 // pub mod stack;
 pub mod ooba;
+pub mod passkey;
 pub mod totp;
 pub mod uuid;
 
 pub use hmacsha1::hmacsha1;
 pub use hotp::hotp;
+pub use passkey::passkey;
 pub use password::password;
 pub use question::question;
 pub use totp::totp;
@@ -26,6 +28,7 @@ pub enum FactorType {
   HmacSha1(hmacsha1::HmacSha1),
   TOTP(totp::TOTP),
   OOBA(ooba::Ooba),
+  Passkey(passkey::Passkey),
   // Stack(stack::Stack),
 }
 
@@ -39,6 +42,7 @@ impl FactorType {
       FactorType::HmacSha1(hmacsha1) => hmacsha1,
       FactorType::TOTP(totp) => totp,
       FactorType::OOBA(ooba) => ooba,
+      FactorType::Passkey(passkey) => passkey,
       // FactorType::Stack(stack) => stack,
     }
   }
@@ -52,6 +56,7 @@ impl FactorType {
       FactorType::HmacSha1(hmacsha1) => hmacsha1,
       FactorType::TOTP(totp) => totp,
       FactorType::OOBA(ooba) => ooba,
+      FactorType::Passkey(passkey) => passkey,
       // FactorType::Stack(stack) => stack,
     }
   }

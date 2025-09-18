@@ -34,26 +34,14 @@ pub enum MFKDF2Error {
   #[error("invalid hmac key!")]
   InvalidHmacKey,
 
-  #[error("invalid HOTP id")]
-  InvalidHotpId,
-
   #[error("invalid HOTP digits! digits must be between 6 and 8")]
   InvalidHOTPDigits,
-
-  #[error("invalid TOTP id")]
-  InvalidTotpId,
 
   #[error("invalid TOTP digits! digits must be between 6 and 8")]
   InvalidTOTPDigits,
 
-  #[error("invalid question id")]
-  InvalidQuestionId,
-
   #[error("invalid uuid")]
   InvalidUuid,
-
-  #[error("invalid ooba id")]
-  InvalidOobaId,
 
   #[error("invalid ooba length! length must be between 1 and 32")]
   InvalidOobaLength,
