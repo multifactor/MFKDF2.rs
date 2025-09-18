@@ -1,28 +1,31 @@
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-// pub mod hmacsha1;
+pub mod hmacsha1;
 pub mod hotp;
 pub mod password;
-// pub mod question;
+pub mod question;
 // pub mod stack;
-// pub mod totp;
-// pub mod uuid;
+pub mod ooba;
+pub mod totp;
+pub mod uuid;
 
-// pub use hmacsha1::hmacsha1;
+pub use hmacsha1::hmacsha1;
 pub use hotp::hotp;
 pub use password::password;
-// pub use question::question;
+pub use question::question;
+pub use totp::totp;
 // pub use stack::stack;
-// pub use uuid::uuid;
+pub use uuid::uuid;
 
 #[derive(Clone, Debug, Serialize, Deserialize, uniffi::Enum)]
 pub enum FactorType {
   Password(password::Password),
   HOTP(hotp::HOTP),
-  // Question(question::Question),
-  // UUID(uuid::UUID),
-  // HmacSha1(hmacsha1::HmacSha1),
-  // TOTP(totp::TOTP),
+  Question(question::Question),
+  UUID(uuid::UUID),
+  HmacSha1(hmacsha1::HmacSha1),
+  TOTP(totp::TOTP),
+  OOBA(ooba::Ooba),
   // Stack(stack::Stack),
 }
 
@@ -31,10 +34,11 @@ impl FactorType {
     match self {
       FactorType::Password(password) => password,
       FactorType::HOTP(hotp) => hotp,
-      // FactorType::Question(question) => question,
-      // FactorType::UUID(uuid) => uuid,
-      // FactorType::HmacSha1(hmacsha1) => hmacsha1,
-      // FactorType::TOTP(totp) => totp,
+      FactorType::Question(question) => question,
+      FactorType::UUID(uuid) => uuid,
+      FactorType::HmacSha1(hmacsha1) => hmacsha1,
+      FactorType::TOTP(totp) => totp,
+      FactorType::OOBA(ooba) => ooba,
       // FactorType::Stack(stack) => stack,
     }
   }
@@ -43,10 +47,11 @@ impl FactorType {
     match self {
       FactorType::Password(password) => password,
       FactorType::HOTP(hotp) => hotp,
-      // FactorType::Question(question) => question,
-      // FactorType::UUID(uuid) => uuid,
-      // FactorType::HmacSha1(hmacsha1) => hmacsha1,
-      // FactorType::TOTP(totp) => totp,
+      FactorType::Question(question) => question,
+      FactorType::UUID(uuid) => uuid,
+      FactorType::HmacSha1(hmacsha1) => hmacsha1,
+      FactorType::TOTP(totp) => totp,
+      FactorType::OOBA(ooba) => ooba,
       // FactorType::Stack(stack) => stack,
     }
   }
