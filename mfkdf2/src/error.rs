@@ -52,6 +52,18 @@ pub enum MFKDF2Error {
   #[error("invalid uuid")]
   InvalidUuid,
 
+  #[error("invalid ooba id")]
+  InvalidOobaId,
+
+  #[error("invalid ooba length! length must be between 1 and 32")]
+  InvalidOobaLength,
+
+  #[error("missing ooba key")]
+  MissingOobaKey,
+
+  #[error("invalid ooba key")]
+  InvalidOobaKey,
+
   #[error(transparent)]
   Argon2Error(#[from] argon2::Error),
 
