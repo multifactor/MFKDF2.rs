@@ -13,7 +13,7 @@ pub fn hkdf_sha256(input: &[u8], salt: &[u8; 32]) -> [u8; 32] {
   okm
 }
 
-pub fn hkdf_sha256_with_info(input: &[u8], salt: &[u8; 32], info: &[u8]) -> [u8; 32] {
+pub fn hkdf_sha256_with_info(input: &[u8], salt: &[u8], info: &[u8]) -> [u8; 32] {
   let hk = Hkdf::<Sha256>::new(Some(salt), input);
   let mut okm = [0u8; 32];
   hk.expand(info, &mut okm).expect("HKDF expand");

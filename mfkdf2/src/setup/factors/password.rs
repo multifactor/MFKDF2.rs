@@ -5,7 +5,7 @@ use zxcvbn::zxcvbn;
 
 use crate::{
   error::{MFKDF2Error, MFKDF2Result},
-  setup::factors::{FactorTrait, FactorType, MFKDF2Factor},
+  setup::factors::{FactorSetupTrait, FactorSetupType, MFKDF2Factor},
 };
 
 #[derive(Clone, Debug, Serialize, Deserialize, uniffi::Record)]
@@ -13,21 +13,18 @@ pub struct Password {
   pub password: String,
 }
 
-impl FactorTrait for Password {
+impl FactorSetupTrait for Password {
   fn kind(&self) -> String { "password".to_string() }
 
   fn bytes(&self) -> Vec<u8> { self.password.as_bytes().to_vec() }
 
   fn params_setup(&self, _key: [u8; 32]) -> Value { json!({}) }
 
-  // TODO (sambhav): this returns entropy strength
-  fn output_setup(&self, _key: [u8; 32]) -> Value { json!({}) }
-
-  fn params_derive(&self, _key: [u8; 32]) -> Value { json!({}) }
-
-  fn output_derive(&self, _key: [u8; 32]) -> Value { json!({}) }
-
-  fn include_params(&mut self, _params: Value) {}
+  fn output_setup(&self, _key: [u8; 32]) -> Value {
+    json!({
+      "strength": zxcvbn(&self.password, &[]),
+    })
+  }
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, uniffi::Record)]
@@ -39,6 +36,13 @@ pub fn password(
   password: impl Into<String>,
   options: PasswordOptions,
 ) -> MFKDF2Result<MFKDF2Factor> {
+  // Validation
+  if let Some(ref id) = options.id
+    && id.is_empty()
+  {
+    return Err(crate::error::MFKDF2Error::MissingFactorId);
+  }
+
   let password = std::convert::Into::<String>::into(password);
   if password.is_empty() {
     return Err(MFKDF2Error::PasswordEmpty);
@@ -51,7 +55,7 @@ pub fn password(
 
   Ok(MFKDF2Factor {
     id:          Some(options.id.unwrap_or("password".to_string())),
-    factor_type: FactorType::Password(Password { password }),
+    factor_type: FactorSetupType::Password(Password { password }),
     salt:        salt.to_vec(),
     entropy:     Some(strength.guesses().ilog2()),
   })

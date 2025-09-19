@@ -13,7 +13,7 @@ use uuid::Uuid;
 use crate::{
   crypto::{encrypt, hkdf_sha256_with_info},
   error::{MFKDF2Error, MFKDF2Result},
-  setup::factors::{FactorTrait, MFKDF2Factor},
+  setup::factors::{FactorSetupTrait, MFKDF2Factor},
 };
 
 // TODO (autoparallel): We probably can just use the MFKDF2Factor struct directly here.
@@ -35,18 +35,19 @@ pub struct MFKDF2Options {
   pub id:        Option<String>,
   pub threshold: Option<u8>,
   pub salt:      Option<Vec<u8>>,
+  pub stack:     Option<bool>,
   pub integrity: Option<bool>,
   pub time:      Option<u32>,
   pub memory:    Option<u32>,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, Eq, PartialEq, uniffi::Record)]
+#[derive(Clone, Debug, Default, Serialize, Deserialize, Eq, PartialEq, uniffi::Record)]
 pub struct MFKDF2Entropy {
   pub real:        u32,
   pub theoretical: u32,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, Eq, PartialEq, uniffi::Record)]
+#[derive(Clone, Debug, Default, Serialize, Deserialize, Eq, PartialEq, uniffi::Record)]
 pub struct MFKDF2DerivedKey {
   pub policy:  Policy,
   pub key:     Vec<u8>,
@@ -109,20 +110,23 @@ pub async fn key(
 
   // Generate key
   let mut kek = [0u8; 32];
-  // TODO: stack key
-
-  // default key
-  Argon2::new(
-    argon2::Algorithm::Argon2id,
-    Version::default(),
-    Params::new(
-      argon2::Params::DEFAULT_M_COST + memory,
-      argon2::Params::DEFAULT_T_COST + time,
-      1,
-      Some(32),
-    )?,
-  )
-  .hash_password_into(&secret, &salt, &mut kek)?;
+  if options.stack.unwrap_or(false) {
+    // stack key
+    kek = hkdf_sha256_with_info(&secret, &salt, format!("mfkdf2:stack:{}", policy_id).as_bytes());
+  } else {
+    // default key
+    Argon2::new(
+      argon2::Algorithm::Argon2id,
+      Version::default(),
+      Params::new(
+        argon2::Params::DEFAULT_M_COST + memory,
+        argon2::Params::DEFAULT_T_COST + time,
+        1,
+        Some(32),
+      )?,
+    )
+    .hash_password_into(&secret, &salt, &mut kek)?;
+  }
 
   // policy key
   let policy_key = encrypt(&key, &kek);
@@ -147,7 +151,7 @@ pub async fn key(
     // HKDF stretch & AES-encrypt share
     let stretched = hkdf_sha256_with_info(
       &factor.factor_type.bytes(),
-      &factor.salt.clone().try_into().unwrap(),
+      &factor.salt.clone(),
       format!("mfkdf2:factor:pad:{}", &factor.id.clone().unwrap()).as_bytes(),
     );
     let pad = encrypt(&share, &stretched);
@@ -155,7 +159,7 @@ pub async fn key(
     // Generate factor key
     let params_key = hkdf_sha256_with_info(
       &key,
-      &factor.salt.clone().try_into().unwrap(),
+      &factor.salt.clone(),
       format!("mfkdf2:factor:params:{}", &factor.id.clone().unwrap()).as_bytes(),
     );
 
@@ -166,7 +170,7 @@ pub async fn key(
 
     let secret_key = hkdf_sha256_with_info(
       &key,
-      &factor.salt.clone().try_into().unwrap(),
+      &factor.salt.clone(),
       format!("mfkdf2:factor:secret:{}", &factor.id.clone().unwrap()).as_bytes(),
     );
     let factor_secret = encrypt(&stretched, &secret_key);
@@ -237,7 +241,7 @@ pub async fn key(
   })
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, Eq, PartialEq, uniffi::Record)]
+#[derive(Clone, Debug, Default, Serialize, Deserialize, Eq, PartialEq, uniffi::Record)]
 pub struct Policy {
   #[serde(rename = "$schema")]
   pub schema:    String,

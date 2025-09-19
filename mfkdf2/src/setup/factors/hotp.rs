@@ -7,9 +7,9 @@ use sha1::Sha1;
 use sha2::{Sha256, Sha512};
 
 use crate::{
-  crypto::{decrypt, encrypt},
+  crypto::encrypt,
   error::MFKDF2Result,
-  setup::factors::{FactorTrait, FactorType, MFKDF2Factor},
+  setup::factors::{FactorSetupTrait, FactorSetupType, MFKDF2Factor},
 };
 
 #[derive(Clone, Debug, Serialize, Deserialize, uniffi::Record)]
@@ -51,7 +51,7 @@ pub struct HOTP {
   pub target:  u32,
 }
 
-impl FactorTrait for HOTP {
+impl FactorSetupTrait for HOTP {
   fn kind(&self) -> String { "hotp".to_string() }
 
   fn bytes(&self) -> Vec<u8> {
@@ -61,7 +61,7 @@ impl FactorTrait for HOTP {
 
   fn params_setup(&self, key: [u8; 32]) -> Value {
     // Generate or use provided secret
-    let secret = if let Some(secret) = self.options.secret.clone() {
+    let padded_secret = if let Some(secret) = self.options.secret.clone() {
       secret
     } else {
       let mut secret = vec![0u8; 32]; // Default to 32 bytes like JS
@@ -70,20 +70,11 @@ impl FactorTrait for HOTP {
     };
 
     // Generate HOTP code with counter = 1
-    let code = generate_hotp_code(&secret, 1, &self.options.hash, self.options.digits);
+    let code = generate_hotp_code(&padded_secret[..20], 1, &self.options.hash, self.options.digits);
 
     // Calculate offset
     let offset =
       mod_positive(self.target as i64 - code as i64, 10_i64.pow(self.options.digits as u32)) as u32;
-
-    // Pad secret to multiple of 16 for encryption
-    let padding_needed = 16 - (secret.len() % 16);
-    let mut padded_secret = secret.clone();
-    if padding_needed != 16 {
-      let mut padding = vec![0u8; padding_needed];
-      OsRng.fill_bytes(&mut padding);
-      padded_secret.extend(padding);
-    }
 
     let pad = encrypt(&padded_secret, &key);
 
@@ -95,24 +86,17 @@ impl FactorTrait for HOTP {
       },
       "digits": self.options.digits,
       "pad": base64::prelude::BASE64_STANDARD.encode(&pad),
-      "secretSize": secret.len(),
       "counter": 1,
       "offset": offset
     })
   }
 
   fn output_setup(&self, _key: [u8; 32]) -> Value {
-    let secret = self.options.secret.clone().unwrap_or_else(|| {
-      let mut secret = vec![0u8; 32];
-      OsRng.fill_bytes(&mut secret);
-      secret
-    });
-
     json!({
       "scheme": "otpauth",
       "type": "hotp",
       "label": self.options.label,
-      "secret": base64::prelude::BASE64_STANDARD.encode(&secret),
+      "secret": base64::prelude::BASE64_STANDARD.encode(&self.options.secret.clone().unwrap()[..20]),
       "issuer": self.options.issuer,
       "algorithm": match self.options.hash {
         OTPHash::Sha1 => "sha1",
@@ -125,64 +109,9 @@ impl FactorTrait for HOTP {
       "uri": ""
     })
   }
-
-  fn params_derive(&self, key: [u8; 32]) -> Value {
-    // Decrypt the secret using the factor key
-    let params: Value = serde_json::from_str(&self.params).unwrap();
-    let pad_b64 = params["pad"].as_str().unwrap();
-    let pad = base64::prelude::BASE64_STANDARD.decode(pad_b64).unwrap();
-    let decrypted = decrypt(pad, &key);
-    let secret_size = params["secretSize"].as_u64().unwrap() as usize;
-    let secret = &decrypted[..secret_size];
-
-    // Generate HOTP code with incremented counter
-    let counter = params["counter"].as_u64().unwrap() + 1;
-    let hash = params["hash"].as_str().unwrap();
-    let hash = match hash {
-      "sha1" => OTPHash::Sha1,
-      "sha256" => OTPHash::Sha256,
-      "sha512" => OTPHash::Sha512,
-      _ => panic!("Unsupported hash algorithm"),
-    };
-    let generated_code = generate_hotp_code(secret, counter, &hash, self.options.digits);
-
-    // Calculate new offset
-    let new_offset = mod_positive(
-      self.target as i64 - generated_code as i64,
-      10_i64.pow(self.options.digits as u32),
-    ) as u32;
-
-    json!({
-      "hash": hash,
-      "digits": self.options.digits,
-      "pad": pad_b64,
-      "secretSize": secret_size,
-      "counter": counter,
-      "offset": new_offset
-    })
-  }
-
-  fn output_derive(&self, _key: [u8; 32]) -> Value { json!({}) }
-
-  fn include_params(&mut self, params: Value) {
-    // Store the policy parameters for derive phase
-    dbg!(&params);
-    self.params = serde_json::to_string(&params).unwrap();
-
-    // If this is a derive factor (has a code), calculate target and store in options.secret
-    if self.code != 0
-      && let (Some(offset), Some(digits)) = (params["offset"].as_u64(), params["digits"].as_u64())
-    {
-      let modulus = 10_u64.pow(digits as u32);
-      let target = (offset + self.code as u64) % modulus;
-
-      // Store target as 4-byte big-endian (matches JS implementation)
-      self.target = target as u32;
-    }
-  }
 }
 
-fn mod_positive(n: i64, m: i64) -> i64 { ((n % m) + m) % m }
+pub fn mod_positive(n: i64, m: i64) -> i64 { ((n % m) + m) % m }
 
 pub fn generate_hotp_code(secret: &[u8], counter: u64, hash: &OTPHash, digits: u8) -> u32 {
   let counter_bytes = counter.to_be_bytes();
@@ -216,15 +145,27 @@ pub fn generate_hotp_code(secret: &[u8], counter: u64, hash: &OTPHash, digits: u
 }
 
 pub fn hotp(options: HOTPOptions) -> MFKDF2Result<MFKDF2Factor> {
+  let mut options = options;
+
   // Validation
   if let Some(ref id) = options.id
     && id.is_empty()
   {
-    return Err(crate::error::MFKDF2Error::InvalidHotpId);
+    return Err(crate::error::MFKDF2Error::MissingFactorId);
   }
   if options.digits < 6 || options.digits > 8 {
     return Err(crate::error::MFKDF2Error::InvalidHOTPDigits);
   }
+
+  let secret = options.secret.unwrap_or_else(|| {
+    let mut secret = vec![0u8; 20];
+    OsRng.fill_bytes(&mut secret);
+    secret
+  });
+  let mut secret_pad = [0u8; 12];
+  OsRng.fill_bytes(&mut secret_pad);
+  let padded_secret = secret.iter().chain(secret_pad.iter()).cloned().collect();
+  options.secret = Some(padded_secret);
 
   // Generate random target
   let target = OsRng.gen_range(0..10_u32.pow(u32::from(options.digits)));
@@ -232,27 +173,20 @@ pub fn hotp(options: HOTPOptions) -> MFKDF2Result<MFKDF2Factor> {
   let mut salt = [0u8; 32];
   OsRng.fill_bytes(&mut salt);
 
-  let id = Some(options.id.clone().unwrap_or("hotp".to_string()));
-
-  // TODO (sambhav): move secret setup from params_setup to here.
-  if let Some(secret) = &options.secret
-    && secret.len() != 20
-  {
-    panic!("secret must be 20 bytes");
-  }
+  let entropy = Some((options.digits as f64 * 10.0_f64.log2()) as u32);
 
   // TODO (autoparallel): Code should possibly be an option, though this follows the same pattern as
   // the password factor which stores the actual password in the struct.
   Ok(MFKDF2Factor {
-    id,
-    factor_type: FactorType::HOTP(HOTP {
-      options: options.clone(),
+    id: Some(options.id.clone().unwrap_or("hotp".to_string())),
+    factor_type: FactorSetupType::HOTP(HOTP {
+      options,
       params: serde_json::to_string(&Value::Null).unwrap(),
       code: 0,
       target,
     }),
     salt: salt.to_vec(),
-    entropy: Some((options.digits as f64 * 10.0_f64.log2()) as u32),
+    entropy,
   })
 }
 
