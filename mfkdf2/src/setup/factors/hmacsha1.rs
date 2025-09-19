@@ -20,8 +20,9 @@ impl Default for HmacSha1Options {
 
 #[derive(Clone, Debug, Serialize, Deserialize, uniffi::Record)]
 pub struct HmacSha1 {
-  // TODO (sambhav): check with @Autoparallel if storing padded secret is correct, otherwise we'd
-  // need to calculate random pad everytime.
+  // TODO (@lonerapier): i don't like this, it should be a separate derive struct in derive module
+  pub response:      Option<Vec<u8>>,
+  pub params:        Option<String>,
   pub padded_secret: Vec<u8>,
 }
 
@@ -81,7 +82,7 @@ pub fn hmacsha1(options: HmacSha1Options) -> MFKDF2Result<MFKDF2Factor> {
   Ok(MFKDF2Factor {
     id:          Some(options.id.unwrap_or("hmacsha1".to_string())),
     salt:        salt.to_vec(),
-    factor_type: FactorType::HmacSha1(HmacSha1 { padded_secret }),
+    factor_type: FactorType::HmacSha1(HmacSha1 { padded_secret, response: None, params: None }),
     entropy:     Some(160),
   })
 }

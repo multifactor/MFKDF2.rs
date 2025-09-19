@@ -1,36 +1,83 @@
-use std::rc::Rc;
-
-use rand::{Rng, rngs::OsRng};
+use rand::{RngCore, rngs::OsRng};
 use serde_json::{Value, json};
 
 use crate::{
-  derive::{DeriveFactorFn, factors::MFKDF2DerivedFactor},
+  crypto::{decrypt, encrypt},
+  derive::{FactorDeriveTrait, factors::MFKDF2DeriveFactor},
   error::MFKDF2Result,
+  setup::factors::{FactorType, hmacsha1::HmacSha1},
 };
+// pub struct HmacSha1Derived {
+//   pub response:      Vec<u8>,
+//   pub params:        String,
+//   pub padded_secret: Vec<u8>,
+// }
 
-pub struct HMACSHA1Options {
-  pub id:     Option<String>,
-  pub secret: Option<[u8; 20]>,
+impl FactorDeriveTrait for HmacSha1 {
+  fn kind(&self) -> String { "hmacsha1".to_string() }
+
+  fn bytes(&self) -> Vec<u8> { self.padded_secret[..20].to_vec() }
+
+  fn include_params(&mut self, params: Value) -> MFKDF2Result<()> {
+    self.params = Some(serde_json::to_string(&params).unwrap());
+
+    let response = self.response.as_ref().unwrap();
+    let mut padded_key = [0u8; 32];
+    padded_key[..response.len()].copy_from_slice(response);
+
+    let pad = params["pad"]
+      .as_array()
+      .unwrap() // TODO (@lonerapier): use a proper error here?
+      .iter()
+      .map(|v| v.as_u64().unwrap() as u8)
+      .collect::<Vec<u8>>();
+
+    let padded_secret = decrypt(pad, &padded_key);
+    self.padded_secret = padded_secret;
+
+    Ok(())
+  }
+
+  fn params_derive(&self, _key: [u8; 32]) -> Value {
+    let mut challenge = [0u8; 64];
+    OsRng.fill_bytes(&mut challenge);
+
+    let response = crate::crypto::hmacsha1(&self.padded_secret[..20], &challenge);
+    let mut padded_key = [0u8; 32];
+    padded_key[..response.len()].copy_from_slice(&response);
+    let pad = encrypt(&self.padded_secret, &padded_key);
+
+    json!({
+      "challenge": challenge.to_vec(),
+      "pad": pad,
+    })
+  }
+
+  fn output_derive(&self, _key: [u8; 32]) -> Value {
+    json!({
+      "secret": self.padded_secret[..20],
+    })
+  }
 }
 
-pub fn hmacsha1(response: [u8; 20]) -> MFKDF2Result<DeriveFactorFn> {
-  Ok(Rc::new(move |params: Value| {
-    let pad: Vec<u8> =
-      params["pad"].as_array().unwrap().iter().map(|v| v.as_u64().unwrap() as u8).collect();
-    let secret: [u8; 20] = std::array::from_fn(|i| response[i] ^ pad[i]);
+pub fn hmacsha1(response: Vec<u8>) -> MFKDF2Result<MFKDF2DeriveFactor> {
+  if response.len() != 20 {
+    return Err(crate::error::MFKDF2Error::InvalidHmacResponse);
+  }
 
-    Box::pin(async move {
-      Ok(MFKDF2DerivedFactor {
-        kind:   "hmacsha1".to_string(),
-        data:   secret.to_vec(),
-        params: Some(Box::new(move |_| {
-          let challenge = OsRng.r#gen::<u64>();
-          let response = crate::crypto::hmacsha1(&secret, challenge);
-          let pad = response.iter().zip(secret.iter()).map(|(a, b)| a ^ b).collect::<Vec<u8>>();
-          Box::pin(async move { json!({ "challenge": challenge, "pad": pad }) })
-        })),
-        output: Some(Box::new(move |_| Box::pin(async move { json!({ "secret": secret }) }))),
-      })
-    })
-  }))
+  Ok(MFKDF2DeriveFactor {
+    id:          None,
+    factor_type: FactorType::HmacSha1(HmacSha1 {
+      response:      Some(response),
+      params:        None,
+      padded_secret: [0u8; 32].to_vec(),
+    }),
+    salt:        [0u8; 32].to_vec(),
+    entropy:     Some(160),
+  })
+}
+
+#[uniffi::export]
+pub fn derive_hmacsha1(response: Vec<u8>) -> MFKDF2Result<MFKDF2DeriveFactor> {
+  crate::derive::factors::hmacsha1(response)
 }
