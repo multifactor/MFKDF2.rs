@@ -175,7 +175,7 @@ pub fn totp(options: TOTPOptions) -> MFKDF2Result<MFKDF2Factor> {
 
 #[cfg(test)]
 mod tests {
-  use super::*;
+  // use super::*;
 
   #[test]
   fn test_totp() {}

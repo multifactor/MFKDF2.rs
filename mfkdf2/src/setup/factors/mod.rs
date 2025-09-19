@@ -2,11 +2,11 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 pub mod hmacsha1;
 pub mod hotp;
-pub mod password;
-pub mod question;
-// pub mod stack;
 pub mod ooba;
 pub mod passkey;
+pub mod password;
+pub mod question;
+pub mod stack;
 pub mod totp;
 pub mod uuid;
 
@@ -15,8 +15,8 @@ pub use hotp::hotp;
 pub use passkey::passkey;
 pub use password::password;
 pub use question::question;
+pub use stack::stack;
 pub use totp::totp;
-// pub use stack::stack;
 pub use uuid::uuid;
 
 #[derive(Clone, Debug, Serialize, Deserialize, uniffi::Enum)]
@@ -29,7 +29,7 @@ pub enum FactorType {
   TOTP(totp::TOTP),
   OOBA(ooba::Ooba),
   Passkey(passkey::Passkey),
-  // Stack(stack::Stack),
+  Stack(stack::Stack),
 }
 
 impl FactorType {
@@ -43,7 +43,7 @@ impl FactorType {
       FactorType::TOTP(totp) => totp,
       FactorType::OOBA(ooba) => ooba,
       FactorType::Passkey(passkey) => passkey,
-      // FactorType::Stack(stack) => stack,
+      FactorType::Stack(stack) => stack,
     }
   }
 
@@ -57,7 +57,7 @@ impl FactorType {
       FactorType::TOTP(totp) => totp,
       FactorType::OOBA(ooba) => ooba,
       FactorType::Passkey(passkey) => passkey,
-      // FactorType::Stack(stack) => stack,
+      FactorType::Stack(stack) => stack,
     }
   }
 }

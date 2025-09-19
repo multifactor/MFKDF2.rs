@@ -35,6 +35,7 @@ pub struct MFKDF2Options {
   pub id:        Option<String>,
   pub threshold: Option<u8>,
   pub salt:      Option<Vec<u8>>,
+  pub stack:     Option<bool>,
   pub integrity: Option<bool>,
   pub time:      Option<u32>,
   pub memory:    Option<u32>,
