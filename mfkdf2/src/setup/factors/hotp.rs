@@ -179,7 +179,7 @@ pub fn hotp(options: HOTPOptions) -> MFKDF2Result<MFKDF2Factor> {
   // the password factor which stores the actual password in the struct.
   Ok(MFKDF2Factor {
     id: Some(options.id.clone().unwrap_or("hotp".to_string())),
-    factor_type: FactorType::HOTP(HOTP {
+    factor_type: FactorSetupType::HOTP(HOTP {
       options,
       params: serde_json::to_string(&Value::Null).unwrap(),
       code: 0,

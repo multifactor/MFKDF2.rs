@@ -158,7 +158,7 @@ pub fn totp(options: TOTPOptions) -> MFKDF2Result<MFKDF2Factor> {
 
   Ok(MFKDF2Factor {
     id: Some(options.id.clone().unwrap_or("totp".to_string())),
-    factor_type: FactorType::TOTP(TOTP {
+    factor_type: FactorSetupType::TOTP(TOTP {
       options,
       params: serde_json::to_string(&Value::Null).unwrap(),
       code: 0,

@@ -22,7 +22,7 @@ pub use uuid::uuid;
 use crate::derive::FactorDerive;
 
 #[derive(Clone, Debug, Serialize, Deserialize, uniffi::Enum)]
-pub enum FactorType {
+pub enum FactorSetupType {
   Password(password::Password),
   HOTP(hotp::HOTP),
   Question(question::Question),
@@ -37,29 +37,29 @@ pub enum FactorType {
 impl FactorType {
   pub fn inner(&self) -> &dyn Factor {
     match self {
-      FactorType::Password(password) => password,
-      FactorType::HOTP(hotp) => hotp,
-      FactorType::Question(question) => question,
-      FactorType::UUID(uuid) => uuid,
-      FactorType::HmacSha1(hmacsha1) => hmacsha1,
-      FactorType::TOTP(totp) => totp,
-      FactorType::OOBA(ooba) => ooba,
-      FactorType::Passkey(passkey) => passkey,
-      FactorType::Stack(stack) => stack,
+      FactorSetupType::Password(password) => password,
+      FactorSetupType::HOTP(hotp) => hotp,
+      FactorSetupType::Question(question) => question,
+      FactorSetupType::UUID(uuid) => uuid,
+      FactorSetupType::HmacSha1(hmacsha1) => hmacsha1,
+      FactorSetupType::TOTP(totp) => totp,
+      FactorSetupType::OOBA(ooba) => ooba,
+      FactorSetupType::Passkey(passkey) => passkey,
+      FactorSetupType::Stack(stack) => stack,
     }
   }
 
   pub fn inner_mut(&mut self) -> &mut dyn Factor {
     match self {
-      FactorType::Password(password) => password,
-      FactorType::HOTP(hotp) => hotp,
-      FactorType::Question(question) => question,
-      FactorType::UUID(uuid) => uuid,
-      FactorType::HmacSha1(hmacsha1) => hmacsha1,
-      FactorType::TOTP(totp) => totp,
-      FactorType::OOBA(ooba) => ooba,
-      FactorType::Passkey(passkey) => passkey,
-      FactorType::Stack(stack) => stack,
+      FactorSetupType::Password(password) => password,
+      FactorSetupType::HOTP(hotp) => hotp,
+      FactorSetupType::Question(question) => question,
+      FactorSetupType::UUID(uuid) => uuid,
+      FactorSetupType::HmacSha1(hmacsha1) => hmacsha1,
+      FactorSetupType::TOTP(totp) => totp,
+      FactorSetupType::OOBA(ooba) => ooba,
+      FactorSetupType::Passkey(passkey) => passkey,
+      FactorSetupType::Stack(stack) => stack,
     }
   }
 }
@@ -94,7 +94,7 @@ pub trait FactorSetup {
 #[derive(Clone, Serialize, Deserialize, uniffi::Record)]
 pub struct MFKDF2Factor {
   pub id:          Option<String>,
-  pub factor_type: FactorType,
+  pub factor_type: FactorSetupType,
   // TODO (autoparallel): This is the factor specific salt.
   pub salt:        Vec<u8>,
   pub entropy:     Option<u32>,
