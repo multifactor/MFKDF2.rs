@@ -84,7 +84,7 @@ impl Factor for HOTP {}
 pub fn hotp(code: u32) -> MFKDF2Result<MFKDF2Factor> {
   // Create HOTP factor with the user-provided code
   // The target will be calculated in include_params once we have the policy parameters
-  Ok(MFKDF2Factor {
+  Ok(MFKDF2DeriveFactor {
     id:          None,
     factor_type: FactorType::HOTP(HOTP {
       options: HOTPOptions::default(),
