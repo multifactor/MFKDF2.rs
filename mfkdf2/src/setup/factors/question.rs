@@ -78,7 +78,7 @@ pub fn question(answer: impl Into<String>, options: QuestionOptions) -> MFKDF2Re
 
   Ok(MFKDF2Factor {
     id,
-    factor_type: FactorType::Question(Question {
+    factor_type: FactorSetupType::Question(Question {
       options,
       params: serde_json::to_string(&Value::Null).unwrap(),
       answer,

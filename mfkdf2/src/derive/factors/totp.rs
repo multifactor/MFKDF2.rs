@@ -143,7 +143,7 @@ pub fn totp(code: u32, options: Option<TOTPOptions>) -> MFKDF2Result<MFKDF2Facto
 
   Ok(MFKDF2Factor {
     id:          Some("totp".to_string()),
-    factor_type: FactorType::TOTP(TOTP {
+    factor_type: crate::derive::FactorDeriveType::TOTP(TOTP {
       options,
       params: serde_json::to_string(&Value::Null).unwrap(),
       code,
