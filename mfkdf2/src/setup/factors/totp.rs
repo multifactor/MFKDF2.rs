@@ -25,7 +25,7 @@ pub struct TOTPOptions {
   pub time:   Option<SystemTime>,
   pub window: u64,
   pub step:   u64,
-  pub oracle: Option<bool>, // TODO (sambhav): fix this later
+  pub oracle: Option<Vec<u32>>,
 }
 
 impl Default for TOTPOptions {
@@ -73,7 +73,7 @@ impl FactorTrait for TOTP {
       // We add 'i' to generate a window of future OTPs for offline use.
       let counter = (time / 1000) as u64 / self.options.step + i;
       let code =
-        generate_hotp_code(&padded_secret[..20], counter, &self.options.hash, self.options.digits); // TODO (sambhav): fix this
+        generate_hotp_code(&padded_secret[..20], counter, &self.options.hash, self.options.digits);
 
       let offset =
         mod_positive(self.target as i64 - code as i64, 10_i64.pow(self.options.digits as u32))

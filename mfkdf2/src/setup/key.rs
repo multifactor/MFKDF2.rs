@@ -110,20 +110,23 @@ pub async fn key(
 
   // Generate key
   let mut kek = [0u8; 32];
-  // TODO: stack key
-
-  // default key
-  Argon2::new(
-    argon2::Algorithm::Argon2id,
-    Version::default(),
-    Params::new(
-      argon2::Params::DEFAULT_M_COST + memory,
-      argon2::Params::DEFAULT_T_COST + time,
-      1,
-      Some(32),
-    )?,
-  )
-  .hash_password_into(&secret, &salt, &mut kek)?;
+  if options.stack.unwrap_or(false) {
+    // stack key
+    kek = hkdf_sha256_with_info(&secret, &salt, format!("mfkdf2:stack:{}", policy_id).as_bytes());
+  } else {
+    // default key
+    Argon2::new(
+      argon2::Algorithm::Argon2id,
+      Version::default(),
+      Params::new(
+        argon2::Params::DEFAULT_M_COST + memory,
+        argon2::Params::DEFAULT_T_COST + time,
+        1,
+        Some(32),
+      )?,
+    )
+    .hash_password_into(&secret, &salt, &mut kek)?;
+  }
 
   // policy key
   let policy_key = encrypt(&key, &kek);

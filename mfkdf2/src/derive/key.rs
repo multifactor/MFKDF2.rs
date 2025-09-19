@@ -6,16 +6,17 @@ use sharks::{Share, Sharks};
 
 use crate::{
   crypto::{decrypt, hkdf_sha256},
+  derive::factors::MFKDF2DeriveFactor,
   error::{MFKDF2Error, MFKDF2Result},
   setup::{
-    factors::{FactorTrait, MFKDF2Factor},
+    factors::FactorTrait,
     key::{MFKDF2DerivedKey, MFKDF2Entropy, Policy},
   },
 };
 
 pub async fn key(
   policy: Policy,
-  factors: HashMap<String, MFKDF2Factor>,
+  factors: HashMap<String, MFKDF2DeriveFactor>,
 ) -> MFKDF2Result<MFKDF2DerivedKey> {
   let mut shares_bytes = Vec::new();
   for factor in policy.clone().factors {
@@ -70,7 +71,7 @@ pub async fn key(
 #[uniffi::export]
 pub async fn derive_key(
   policy: Policy,
-  factors: HashMap<String, MFKDF2Factor>,
+  factors: HashMap<String, MFKDF2DeriveFactor>,
 ) -> MFKDF2Result<MFKDF2DerivedKey> {
   // Reuse the existing constructor logic
   key(policy, factors).await
