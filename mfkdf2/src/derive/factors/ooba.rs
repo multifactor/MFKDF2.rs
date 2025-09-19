@@ -9,7 +9,7 @@ use crate::{
   derive::{FactorDeriveTrait, factors::MFKDF2DeriveFactor},
   error::{MFKDF2Error, MFKDF2Result},
   setup::factors::{
-    FactorType,
+    FactorSetupType,
     ooba::{Ooba, generate_alphanumeric_characters, rsa_publickey_from_jwk},
   },
 };
@@ -79,7 +79,7 @@ pub fn ooba(code: String) -> MFKDF2Result<MFKDF2DeriveFactor> {
 
   Ok(MFKDF2DeriveFactor {
     id:          Some("ooba".to_string()),
-    factor_type: FactorType::OOBA(Ooba {
+    factor_type: crate::derive::FactorDeriveType::OOBA(Ooba {
       code:   code.to_uppercase(),
       target: vec![],
       length: 0,

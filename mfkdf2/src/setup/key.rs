@@ -13,7 +13,7 @@ use uuid::Uuid;
 use crate::{
   crypto::{encrypt, hkdf_sha256_with_info},
   error::{MFKDF2Error, MFKDF2Result},
-  setup::factors::{FactorTrait, MFKDF2Factor},
+  setup::factors::{FactorSetupTrait, MFKDF2Factor},
 };
 
 // TODO (autoparallel): We probably can just use the MFKDF2Factor struct directly here.
@@ -41,13 +41,13 @@ pub struct MFKDF2Options {
   pub memory:    Option<u32>,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, Eq, PartialEq, uniffi::Record)]
+#[derive(Clone, Debug, Default, Serialize, Deserialize, Eq, PartialEq, uniffi::Record)]
 pub struct MFKDF2Entropy {
   pub real:        u32,
   pub theoretical: u32,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, Eq, PartialEq, uniffi::Record)]
+#[derive(Clone, Debug, Default, Serialize, Deserialize, Eq, PartialEq, uniffi::Record)]
 pub struct MFKDF2DerivedKey {
   pub policy:  Policy,
   pub key:     Vec<u8>,
@@ -241,7 +241,7 @@ pub async fn key(
   })
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, Eq, PartialEq, uniffi::Record)]
+#[derive(Clone, Debug, Default, Serialize, Deserialize, Eq, PartialEq, uniffi::Record)]
 pub struct Policy {
   #[serde(rename = "$schema")]
   pub schema:    String,

@@ -3,9 +3,9 @@ use serde_json::{Value, json};
 
 use crate::{
   crypto::{decrypt, encrypt},
-  derive::{FactorDeriveTrait, factors::MFKDF2DeriveFactor},
+  derive::{FactorDeriveTrait, FactorDeriveType, factors::MFKDF2DeriveFactor},
   error::MFKDF2Result,
-  setup::factors::{FactorType, hmacsha1::HmacSha1},
+  setup::factors::hmacsha1::HmacSha1,
 };
 // pub struct HmacSha1Derived {
 //   pub response:      Vec<u8>,
@@ -67,7 +67,7 @@ pub fn hmacsha1(response: Vec<u8>) -> MFKDF2Result<MFKDF2DeriveFactor> {
 
   Ok(MFKDF2DeriveFactor {
     id:          None,
-    factor_type: FactorType::HmacSha1(HmacSha1 {
+    factor_type: FactorDeriveType::HmacSha1(HmacSha1 {
       response:      Some(response),
       params:        None,
       padded_secret: [0u8; 32].to_vec(),

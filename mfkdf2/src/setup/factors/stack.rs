@@ -5,7 +5,7 @@ use serde_json::{Value, json};
 use crate::{
   error::{MFKDF2Error, MFKDF2Result},
   setup::{
-    factors::{FactorTrait, FactorType, MFKDF2Factor},
+    factors::{FactorSetupTrait, FactorSetupType, MFKDF2Factor},
     key::{self, MFKDF2DerivedKey, MFKDF2Options},
   },
 };
@@ -37,7 +37,7 @@ pub struct Stack {
   pub key:     MFKDF2DerivedKey,
 }
 
-impl FactorTrait for Stack {
+impl FactorSetupTrait for Stack {
   fn kind(&self) -> String { "stack".to_string() }
 
   fn bytes(&self) -> Vec<u8> { self.key.key.clone() }
@@ -49,12 +49,6 @@ impl FactorTrait for Stack {
   fn output_setup(&self, _key: [u8; 32]) -> Value {
     serde_json::to_value(&self.key).unwrap_or(json!({}))
   }
-
-  fn params_derive(&self, _key: [u8; 32]) -> Value { json!({}) }
-
-  fn output_derive(&self, _key: [u8; 32]) -> Value { json!({}) }
-
-  fn include_params(&mut self, _params: Value) {}
 }
 
 pub async fn stack(
@@ -80,7 +74,7 @@ pub async fn stack(
 
   Ok(MFKDF2Factor {
     id,
-    factor_type: FactorType::Stack(Stack { factors, key: key.clone() }),
+    factor_type: FactorSetupType::Stack(Stack { factors, key: key.clone() }),
     salt: salt.to_vec(),
     entropy: Some(key.entropy.real),
   })

@@ -5,7 +5,7 @@ use crate::{
   derive::{FactorDeriveTrait, factors::MFKDF2DeriveFactor},
   error::{MFKDF2Error, MFKDF2Result},
   setup::factors::{
-    FactorType,
+    FactorSetupType,
     question::{Question, QuestionOptions},
   },
 };
@@ -39,7 +39,7 @@ pub fn question(answer: impl Into<String>) -> MFKDF2Result<MFKDF2DeriveFactor> {
     id:          None,
     // TODO (@lonerapier): MaybeUninit is a better type here that is initialised at
     // [`crate::derive::FactorDeriveTrait::include_params`]
-    factor_type: FactorType::Question(Question {
+    factor_type: crate::derive::FactorDeriveType::Question(Question {
       options: QuestionOptions::default(),
       params:  serde_json::to_string(&Value::Null).unwrap(),
       answer:  answer.clone(),

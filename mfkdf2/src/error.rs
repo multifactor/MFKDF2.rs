@@ -61,6 +61,9 @@ pub enum MFKDF2Error {
   #[error("invalid ooba code")]
   InvalidOobaCode,
 
+  #[error("invalid passkey secret length")]
+  InvalidPasskeySecretLength,
+
   #[error("missing derive params: {0}")]
   MissingDeriveParams(String),
 

@@ -5,7 +5,7 @@ use zxcvbn::zxcvbn;
 
 use crate::{
   error::{MFKDF2Error, MFKDF2Result},
-  setup::factors::{FactorTrait, FactorType, MFKDF2Factor},
+  setup::factors::{FactorSetupTrait, FactorSetupType, MFKDF2Factor},
 };
 
 #[derive(Clone, Debug, Serialize, Deserialize, uniffi::Record)]
@@ -13,7 +13,7 @@ pub struct Password {
   pub password: String,
 }
 
-impl FactorTrait for Password {
+impl FactorSetupTrait for Password {
   fn kind(&self) -> String { "password".to_string() }
 
   fn bytes(&self) -> Vec<u8> { self.password.as_bytes().to_vec() }
@@ -25,12 +25,6 @@ impl FactorTrait for Password {
       "strength": zxcvbn(&self.password, &[]),
     })
   }
-
-  fn params_derive(&self, _key: [u8; 32]) -> Value { json!({}) }
-
-  fn output_derive(&self, _key: [u8; 32]) -> Value { json!({}) }
-
-  fn include_params(&mut self, _params: Value) {}
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, uniffi::Record)]
@@ -61,7 +55,7 @@ pub fn password(
 
   Ok(MFKDF2Factor {
     id:          Some(options.id.unwrap_or("password".to_string())),
-    factor_type: FactorType::Password(Password { password }),
+    factor_type: FactorSetupType::Password(Password { password }),
     salt:        salt.to_vec(),
     entropy:     Some(strength.guesses().ilog2()),
   })

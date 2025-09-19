@@ -5,7 +5,7 @@ use serde_json::{Value, json};
 use crate::{
   crypto::encrypt,
   error::MFKDF2Result,
-  setup::factors::{FactorTrait, FactorType, MFKDF2Factor},
+  setup::factors::{FactorSetupTrait, FactorSetupType, MFKDF2Factor},
 };
 
 #[derive(Clone, Debug, Serialize, Deserialize, uniffi::Record)]
@@ -26,7 +26,7 @@ pub struct HmacSha1 {
   pub padded_secret: Vec<u8>,
 }
 
-impl FactorTrait for HmacSha1 {
+impl FactorSetupTrait for HmacSha1 {
   fn kind(&self) -> String { "hmacsha1".to_string() }
 
   fn bytes(&self) -> Vec<u8> { self.padded_secret[..20].to_vec() }
@@ -51,12 +51,6 @@ impl FactorTrait for HmacSha1 {
       "secret": self.padded_secret[..20],
     })
   }
-
-  fn params_derive(&self, _key: [u8; 32]) -> Value { json!({}) }
-
-  fn output_derive(&self, _key: [u8; 32]) -> Value { json!({}) }
-
-  fn include_params(&mut self, _params: Value) {}
 }
 
 pub fn hmacsha1(options: HmacSha1Options) -> MFKDF2Result<MFKDF2Factor> {
@@ -82,7 +76,11 @@ pub fn hmacsha1(options: HmacSha1Options) -> MFKDF2Result<MFKDF2Factor> {
   Ok(MFKDF2Factor {
     id:          Some(options.id.unwrap_or("hmacsha1".to_string())),
     salt:        salt.to_vec(),
-    factor_type: FactorType::HmacSha1(HmacSha1 { padded_secret, response: None, params: None }),
+    factor_type: FactorSetupType::HmacSha1(HmacSha1 {
+      padded_secret,
+      response: None,
+      params: None,
+    }),
     entropy:     Some(160),
   })
 }

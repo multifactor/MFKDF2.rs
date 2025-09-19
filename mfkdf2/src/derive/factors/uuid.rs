@@ -4,7 +4,7 @@ use uuid::Uuid;
 use crate::{
   derive::{FactorDeriveTrait, factors::MFKDF2DeriveFactor},
   error::{MFKDF2Error, MFKDF2Result},
-  setup::factors::{FactorType, uuid::UUID},
+  setup::factors::{FactorSetupType, uuid::UUID},
 };
 
 impl FactorDeriveTrait for UUID {
@@ -28,7 +28,7 @@ pub fn uuid(uuid: String) -> MFKDF2Result<MFKDF2DeriveFactor> {
 
   Ok(MFKDF2DeriveFactor {
     id:          None,
-    factor_type: FactorType::UUID(UUID { uuid }),
+    factor_type: crate::derive::FactorDeriveType::UUID(UUID { uuid }),
     entropy:     Some(0),
     salt:        [0u8; 32].to_vec(),
   })

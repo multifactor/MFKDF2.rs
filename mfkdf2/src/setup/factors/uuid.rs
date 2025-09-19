@@ -5,7 +5,7 @@ pub use uuid::Uuid;
 
 use crate::{
   error::{MFKDF2Error, MFKDF2Result},
-  setup::factors::{FactorTrait, FactorType, MFKDF2Factor},
+  setup::factors::{FactorSetupTrait, FactorSetupType, MFKDF2Factor},
 };
 
 #[derive(Clone, Debug, Serialize, Deserialize, uniffi::Record)]
@@ -23,7 +23,7 @@ pub struct UUID {
   pub uuid: String,
 }
 
-impl FactorTrait for UUID {
+impl FactorSetupTrait for UUID {
   fn kind(&self) -> String { "uuid".to_string() }
 
   fn bytes(&self) -> Vec<u8> { self.uuid.as_bytes().to_vec() }
@@ -35,12 +35,6 @@ impl FactorTrait for UUID {
       "uuid": self.uuid.clone(),
     })
   }
-
-  fn params_derive(&self, _key: [u8; 32]) -> Value { json!({}) }
-
-  fn output_derive(&self, _key: [u8; 32]) -> Value { json!({}) }
-
-  fn include_params(&mut self, _params: Value) {}
 }
 
 pub fn uuid(options: UUIDOptions) -> MFKDF2Result<MFKDF2Factor> {
@@ -66,7 +60,7 @@ pub fn uuid(options: UUIDOptions) -> MFKDF2Result<MFKDF2Factor> {
 
   Ok(MFKDF2Factor {
     id:          Some(options.id.unwrap_or("uuid".to_string())),
-    factor_type: FactorType::UUID(UUID { uuid: uuid.to_string() }),
+    factor_type: FactorSetupType::UUID(UUID { uuid: uuid.to_string() }),
     salt:        salt.to_vec(),
     entropy:     Some(122),
   })

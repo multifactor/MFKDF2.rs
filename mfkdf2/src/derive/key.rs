@@ -6,17 +6,16 @@ use sharks::{Share, Sharks};
 
 use crate::{
   crypto::{decrypt, hkdf_sha256},
-  derive::factors::MFKDF2DeriveFactor,
+  derive::{FactorDeriveTrait, factors::MFKDF2DeriveFactor},
   error::{MFKDF2Error, MFKDF2Result},
-  setup::{
-    factors::FactorTrait,
-    key::{MFKDF2DerivedKey, MFKDF2Entropy, Policy},
-  },
+  setup::key::{MFKDF2DerivedKey, MFKDF2Entropy, Policy},
 };
 
-pub async fn key(
+pub fn key(
   policy: Policy,
   factors: HashMap<String, MFKDF2DeriveFactor>,
+  verify: bool,
+  stack: bool,
 ) -> MFKDF2Result<MFKDF2DerivedKey> {
   let mut shares_bytes = Vec::new();
   for factor in policy.clone().factors {
@@ -25,7 +24,7 @@ pub async fn key(
       None => continue,
     };
 
-    material.factor_type.include_params(serde_json::from_str(&factor.params).unwrap());
+    material.factor_type.include_params(serde_json::from_str(&factor.params).unwrap())?;
 
     // TODO (autoparallel): This should probably be done with a `MaybeUninit` array.
     let salt_bytes = general_purpose::STANDARD.decode(&factor.salt)?;
@@ -69,10 +68,12 @@ pub async fn key(
 }
 
 #[uniffi::export]
-pub async fn derive_key(
+pub fn derive_key(
   policy: Policy,
   factors: HashMap<String, MFKDF2DeriveFactor>,
+  verify: bool,
+  stack: bool,
 ) -> MFKDF2Result<MFKDF2DerivedKey> {
   // Reuse the existing constructor logic
-  key(policy, factors).await
+  key(policy, factors, verify, stack)
 }

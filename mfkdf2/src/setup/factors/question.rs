@@ -5,7 +5,7 @@ use zxcvbn::zxcvbn;
 
 use crate::{
   error::{MFKDF2Error, MFKDF2Result},
-  setup::factors::{FactorTrait, FactorType, MFKDF2Factor},
+  setup::factors::{FactorSetupTrait, FactorSetupType, MFKDF2Factor},
 };
 
 #[derive(Clone, Debug, Serialize, Deserialize, uniffi::Record)]
@@ -16,7 +16,7 @@ pub struct Question {
   pub answer:  String,
 }
 
-impl FactorTrait for Question {
+impl FactorSetupTrait for Question {
   fn kind(&self) -> String { "question".to_string() }
 
   fn bytes(&self) -> Vec<u8> { self.answer.as_bytes().to_vec() }
@@ -32,12 +32,6 @@ impl FactorTrait for Question {
       "strength": zxcvbn(&self.answer, &[]),
     })
   }
-
-  fn params_derive(&self, _key: [u8; 32]) -> Value { json!({}) }
-
-  fn output_derive(&self, _key: [u8; 32]) -> Value { json!({}) }
-
-  fn include_params(&mut self, _params: Value) {}
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, uniffi::Record)]
@@ -82,7 +76,7 @@ pub fn question(answer: impl Into<String>, options: QuestionOptions) -> MFKDF2Re
 
   Ok(MFKDF2Factor {
     id,
-    factor_type: FactorType::Question(Question {
+    factor_type: FactorSetupType::Question(Question {
       options,
       params: serde_json::to_string(&Value::Null).unwrap(),
       answer,

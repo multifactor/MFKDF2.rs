@@ -9,7 +9,7 @@ use crate::{
   crypto::encrypt,
   error::MFKDF2Result,
   setup::factors::{
-    FactorTrait, FactorType, MFKDF2Factor,
+    FactorSetupTrait, FactorSetupType, MFKDF2Factor,
     hotp::{OTPHash, generate_hotp_code},
   },
 };
@@ -55,7 +55,7 @@ pub struct TOTP {
 
 fn mod_positive(n: i64, m: i64) -> i64 { ((n % m) + m) % m }
 
-impl FactorTrait for TOTP {
+impl FactorSetupTrait for TOTP {
   fn kind(&self) -> String { "totp".to_string() }
 
   fn bytes(&self) -> Vec<u8> { self.target.to_be_bytes().to_vec() }
@@ -117,12 +117,6 @@ impl FactorTrait for TOTP {
       "uri": ""
     })
   }
-
-  fn params_derive(&self, _key: [u8; 32]) -> Value { json!({}) }
-
-  fn output_derive(&self, _key: [u8; 32]) -> Value { json!({}) }
-
-  fn include_params(&mut self, _params: Value) {}
 }
 
 pub fn totp(options: TOTPOptions) -> MFKDF2Result<MFKDF2Factor> {
@@ -162,7 +156,7 @@ pub fn totp(options: TOTPOptions) -> MFKDF2Result<MFKDF2Factor> {
 
   Ok(MFKDF2Factor {
     id: Some(options.id.clone().unwrap_or("totp".to_string())),
-    factor_type: FactorType::TOTP(TOTP {
+    factor_type: FactorSetupType::TOTP(TOTP {
       options,
       params: serde_json::to_string(&Value::Null).unwrap(),
       code: 0,
