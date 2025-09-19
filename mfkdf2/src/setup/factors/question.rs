@@ -12,6 +12,7 @@ use crate::{
 pub struct Question {
   // TODO (sambhav): does this option need to be added here?
   pub options: QuestionOptions,
+  pub params:  String,
   pub answer:  String,
 }
 
@@ -81,7 +82,11 @@ pub fn question(answer: impl Into<String>, options: QuestionOptions) -> MFKDF2Re
 
   Ok(MFKDF2Factor {
     id,
-    factor_type: FactorType::Question(Question { options, answer }),
+    factor_type: FactorType::Question(Question {
+      options,
+      params: serde_json::to_string(&Value::Null).unwrap(),
+      answer,
+    }),
     salt: salt.to_vec(),
     entropy: Some(entropy),
   })

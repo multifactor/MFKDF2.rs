@@ -14,6 +14,10 @@ pub struct UUIDOptions {
   pub uuid: Option<String>,
 }
 
+impl Default for UUIDOptions {
+  fn default() -> Self { Self { id: Some("uuid".to_string()), uuid: None } }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, uniffi::Record)]
 pub struct UUID {
   pub uuid: String,
