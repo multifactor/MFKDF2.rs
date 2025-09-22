@@ -1,6 +1,8 @@
 use std::collections::HashMap;
 
-async fn mock_mfkdf2() -> Result<mfkdf2::setup::key::MFKDF2DerivedKey, mfkdf2::error::MFKDF2Error> {
+use mfkdf2::classes::mfkdf_derived_key::MFKDF2DerivedKey;
+
+async fn mock_mfkdf2() -> Result<MFKDF2DerivedKey, mfkdf2::error::MFKDF2Error> {
   let factors = vec![mfkdf2::setup::factors::password(
     "Tr0ubd4dour",
     mfkdf2::setup::factors::password::PasswordOptions { id: Some("password_1".to_string()) },
@@ -19,22 +21,22 @@ async fn test_key_setup() -> Result<(), mfkdf2::error::MFKDF2Error> {
   Ok(())
 }
 
-// #[tokio::test]
-// async fn test_key_derive() -> Result<(), mfkdf2::error::MFKDF2Error> {
-//   let key = mock_mfkdf2().await?;
-//   println!("Setup key: {}", key);
+#[tokio::test]
+async fn test_key_derive() -> Result<(), mfkdf2::error::MFKDF2Error> {
+  let key = mock_mfkdf2().await?;
+  println!("Setup key: {}", key);
 
-//   let factor = ("password_1".to_string(), mfkdf2::derive::factors::password("Tr0ubd4dour")?);
+  let factor = ("password_1".to_string(), mfkdf2::derive::factors::password("Tr0ubd4dour")?);
 
-//   let factors = HashMap::from([factor]);
+  let factors = HashMap::from([factor]);
 
-//   let derived_key = mfkdf2::derive::key(key.policy, factors).await?;
-//   println!("Derived key: {}", derived_key);
+  let derived_key = mfkdf2::derive::key(key.policy, factors, false, false)?;
+  println!("Derived key: {}", derived_key);
 
-//   assert_eq!(derived_key.key, key.key);
+  assert_eq!(derived_key.key, key.key);
 
-//   Ok(())
-// }
+  Ok(())
+}
 
 #[tokio::test]
 #[should_panic]
@@ -47,14 +49,13 @@ async fn test_key_derive_fail() -> () {
 
   let factors = HashMap::from([factor]);
 
-  let derived_key = mfkdf2::derive::key(key.policy, factors).await.unwrap();
+  let derived_key = mfkdf2::derive::key(key.policy, factors, false, false).unwrap();
   println!("Derived key: {}", derived_key);
 
   assert_eq!(derived_key.key, key.key);
 }
 
-async fn mock_threshold_mfkdf2()
--> Result<mfkdf2::setup::key::MFKDF2DerivedKey, mfkdf2::error::MFKDF2Error> {
+async fn mock_threshold_mfkdf2() -> Result<MFKDF2DerivedKey, mfkdf2::error::MFKDF2Error> {
   let factors = vec![
     mfkdf2::setup::factors::password(
       "Tr0ubd4dour",
@@ -76,30 +77,30 @@ async fn mock_threshold_mfkdf2()
 #[tokio::test]
 async fn test_key_setup_threshold() -> () { mock_threshold_mfkdf2().await.unwrap(); }
 
-// #[tokio::test]
-// async fn test_key_derive_threshold() -> () {
-//   let key = mock_threshold_mfkdf2().await.unwrap();
-//   println!("Setup key: {}", key);
+#[tokio::test]
+async fn test_key_derive_threshold() -> () {
+  let key = mock_threshold_mfkdf2().await.unwrap();
+  println!("Setup key: {}", key);
 
-//   let factor =
-//     ("password_1".to_string(), mfkdf2::derive::factors::password("Tr0ubd4dour").unwrap());
+  let factor =
+    ("password_1".to_string(), mfkdf2::derive::factors::password("Tr0ubd4dour").unwrap());
 
-//   let factors = HashMap::from([factor]);
+  let factors = HashMap::from([factor]);
 
-//   let derived_key = mfkdf2::derive::key(key.policy.clone(), factors).await.unwrap();
-//   println!("Derived key: {}", derived_key);
+  let derived_key = mfkdf2::derive::key(key.policy.clone(), factors, false, false).unwrap();
+  println!("Derived key: {}", derived_key);
 
-//   assert_eq!(derived_key.key, key.key);
+  assert_eq!(derived_key.key, key.key);
 
-//   let factor = ("password_2".to_string(), mfkdf2::derive::factors::password("hunter2").unwrap());
+  let factor = ("password_2".to_string(), mfkdf2::derive::factors::password("hunter2").unwrap());
 
-//   let factors = HashMap::from([factor]);
+  let factors = HashMap::from([factor]);
 
-//   let derived_key = mfkdf2::derive::key(key.policy, factors).await.unwrap();
-//   println!("Derived key: {}", derived_key);
+  let derived_key = mfkdf2::derive::key(key.policy, factors, false, false).unwrap();
+  println!("Derived key: {}", derived_key);
 
-//   assert_eq!(derived_key.key, key.key);
-// }
+  assert_eq!(derived_key.key, key.key);
+}
 
 // async fn mock_password_question_mfkdf2()
 // -> Result<mfkdf2::setup::key::MFKDF2DerivedKey, mfkdf2::error::MFKDF2Error> {
@@ -270,8 +271,7 @@ async fn test_key_setup_threshold() -> () { mock_threshold_mfkdf2().await.unwrap
 
 const HOTP_SECRET: [u8; 32] = [0u8; 32];
 
-async fn mock_hotp_mfkdf2()
--> Result<mfkdf2::setup::key::MFKDF2DerivedKey, mfkdf2::error::MFKDF2Error> {
+async fn mock_hotp_mfkdf2() -> Result<MFKDF2DerivedKey, mfkdf2::error::MFKDF2Error> {
   let factors = vec![mfkdf2::setup::factors::hotp(mfkdf2::setup::factors::hotp::HOTPOptions {
     id:     Some("hotp_1".to_string()),
     secret: Some(HOTP_SECRET.to_vec()),
@@ -335,7 +335,7 @@ async fn test_key_derive_hotp_wrong_code() {
   let factor = ("hotp_1".to_string(), mfkdf2::derive::factors::hotp(wrong_code).unwrap());
   let factors = HashMap::from([factor]);
 
-  let derived_key = mfkdf2::derive::key(key.policy, factors).await.unwrap();
+  let derived_key = mfkdf2::derive::key(key.policy, factors, false, false).unwrap();
   println!("Derived key: {}", derived_key);
 
   // This should fail because the wrong code will produce a different target
@@ -343,8 +343,7 @@ async fn test_key_derive_hotp_wrong_code() {
 }
 
 #[allow(dead_code)]
-async fn mock_mixed_factors_mfkdf2()
--> Result<mfkdf2::setup::key::MFKDF2DerivedKey, mfkdf2::error::MFKDF2Error> {
+async fn mock_mixed_factors_mfkdf2() -> Result<MFKDF2DerivedKey, mfkdf2::error::MFKDF2Error> {
   let factors = vec![
     mfkdf2::setup::factors::password(
       "Tr0ubd4dour",

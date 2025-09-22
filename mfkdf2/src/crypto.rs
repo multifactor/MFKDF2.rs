@@ -6,13 +6,6 @@ use hmac::{Hmac, Mac};
 use sha1::Sha1;
 use sha2::Sha256;
 
-pub fn hkdf_sha256(input: &[u8], salt: &[u8; 32]) -> [u8; 32] {
-  let hk = Hkdf::<Sha256>::new(Some(salt), input);
-  let mut okm = [0u8; 32];
-  hk.expand(&[], &mut okm).expect("HKDF expand");
-  okm
-}
-
 pub fn hkdf_sha256_with_info(input: &[u8], salt: &[u8], info: &[u8]) -> [u8; 32] {
   let hk = Hkdf::<Sha256>::new(Some(salt), input);
   let mut okm = [0u8; 32];
@@ -59,7 +52,93 @@ pub fn hmacsha256(secret: &[u8], input: &[u8]) -> [u8; 32] {
 
 #[cfg(test)]
 mod tests {
+  use rand::{RngCore, rngs::OsRng};
+
+  use super::*;
 
   #[test]
-  fn encrypt_decrypt() {}
+  fn test_encrypt_decrypt_roundtrip() {
+    let mut key = [0u8; 32];
+    OsRng.fill_bytes(&mut key);
+
+    let mut data = [0u8; 32]; // multiple of 16
+    OsRng.fill_bytes(&mut data);
+
+    let encrypted = encrypt(&data, &key);
+    let decrypted = decrypt(encrypted, &key);
+
+    assert_eq!(&decrypted[..data.len()], &data[..]);
+  }
+
+  #[test]
+  fn test_encrypt_decrypt_roundtrip_non_multiple() {
+    let mut key = [0u8; 32];
+    OsRng.fill_bytes(&mut key);
+
+    let mut data = [0u8; 42]; // not a multiple of 16
+    OsRng.fill_bytes(&mut data);
+
+    let encrypted = encrypt(&data, &key);
+    let decrypted = decrypt(encrypted, &key);
+
+    assert_eq!(&decrypted[..data.len()], &data[..]);
+  }
+
+  #[test]
+  fn test_decrypt_with_wrong_key() {
+    let mut key1 = [0u8; 32];
+    OsRng.fill_bytes(&mut key1);
+    let mut key2 = [0u8; 32];
+    OsRng.fill_bytes(&mut key2);
+
+    let mut data = [0u8; 32];
+    OsRng.fill_bytes(&mut data);
+
+    let encrypted = encrypt(&data, &key1);
+    let decrypted = decrypt(encrypted, &key2);
+
+    assert_ne!(&decrypted[..data.len()], &data[..]);
+  }
+
+  #[test]
+  fn test_decrypt_modified_ciphertext() {
+    let mut key = [0u8; 32];
+    OsRng.fill_bytes(&mut key);
+
+    let mut data = [0u8; 32];
+    OsRng.fill_bytes(&mut data);
+
+    let mut encrypted = encrypt(&data, &key);
+    encrypted[0] ^= 0xff; // Modify a byte
+
+    let decrypted = decrypt(encrypted, &key);
+
+    assert_ne!(&decrypted[..data.len()], &data[..]);
+  }
+
+  #[test]
+  fn test_ciphertext_length() {
+    let mut key = [0u8; 32];
+    OsRng.fill_bytes(&mut key);
+
+    // Test with data length that is a multiple of 16
+    let data1 = vec![0u8; 32];
+    let encrypted1 = encrypt(&data1, &key);
+    assert_eq!(encrypted1.len(), 32);
+
+    // Test with data length that is not a multiple of 16
+    let data2 = vec![0u8; 33];
+    let encrypted2 = encrypt(&data2, &key);
+    assert_eq!(encrypted2.len(), 48); // next multiple of 16
+  }
+
+  #[test]
+  #[should_panic]
+  fn test_decrypt_invalid_length() {
+    let mut key = [0u8; 32];
+    OsRng.fill_bytes(&mut key);
+
+    let data = vec![0u8; 17]; // Not a multiple of 16
+    decrypt(data, &key); // This should panic
+  }
 }
