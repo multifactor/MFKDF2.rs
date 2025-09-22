@@ -23,13 +23,13 @@ impl FactorMetadata for Question {
 impl FactorSetup for Question {
   fn bytes(&self) -> Vec<u8> { self.answer.as_bytes().to_vec() }
 
-  fn params_setup(&self, _key: [u8; 32]) -> Value {
+  fn params(&self, _key: [u8; 32]) -> Value {
     json!({
       "question": self.options.question.clone().unwrap_or_default(),
     })
   }
 
-  fn output_setup(&self, _key: [u8; 32]) -> Value {
+  fn output(&self, _key: [u8; 32]) -> Value {
     json!({
       "strength": zxcvbn(&self.answer, &[]),
     })
@@ -78,7 +78,7 @@ pub fn question(answer: impl Into<String>, options: QuestionOptions) -> MFKDF2Re
 
   Ok(MFKDF2Factor {
     id,
-    factor_type: FactorSetupType::Question(Question {
+    factor_type: FactorType::Question(Question {
       options,
       params: serde_json::to_string(&Value::Null).unwrap(),
       answer,

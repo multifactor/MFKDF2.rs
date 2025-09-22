@@ -30,7 +30,9 @@ impl FactorDeriveTrait for Password {
   }
 }
 
-pub fn password(password: impl Into<String>) -> MFKDF2Result<MFKDF2DeriveFactor> {
+impl Factor for Password {}
+
+pub fn password(password: impl Into<String>) -> MFKDF2Result<MFKDF2Factor> {
   let password = std::convert::Into::<String>::into(password);
   if password.is_empty() {
     return Err(MFKDF2Error::PasswordEmpty);
@@ -38,8 +40,8 @@ pub fn password(password: impl Into<String>) -> MFKDF2Result<MFKDF2DeriveFactor>
   let strength = zxcvbn(&password, &[]);
   let strength = strength.guesses().ilog2();
 
-  Ok(MFKDF2DeriveFactor {
-    factor_type: crate::derive::FactorDeriveType::Password(Password { password }),
+  Ok(MFKDF2Factor {
+    factor_type: FactorType::Password(Password { password }),
     // TODO (autoparallel): This is confusing, should probably put an Option here. This pattern
     // appears in other factors and it's because of the refactoring done. The factors have a
     // "state" assiociated to them basically (in that they are "setup" or not).

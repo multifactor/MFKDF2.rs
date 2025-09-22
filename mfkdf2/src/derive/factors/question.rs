@@ -34,7 +34,7 @@ pub fn question(answer: impl Into<String>) -> MFKDF2Result<MFKDF2Factor> {
     id:          None,
     // TODO (@lonerapier): MaybeUninit is a better type here that is initialised at
     // [`crate::derive::FactorDeriveTrait::include_params`]
-    factor_type: crate::derive::FactorDeriveType::Question(Question {
+    factor_type: FactorType::Question(Question {
       options: QuestionOptions::default(),
       params:  serde_json::to_string(&Value::Null).unwrap(),
       answer:  answer.clone(),

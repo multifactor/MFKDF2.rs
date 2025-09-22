@@ -55,7 +55,7 @@ impl FactorMetadata for HmacSha1 {
 impl FactorSetup for HmacSha1 {
   fn bytes(&self) -> Vec<u8> { self.padded_secret[..20].to_vec() }
 
-  fn params_setup(&self, _key: [u8; 32]) -> Value {
+  fn params(&self, _key: [u8; 32]) -> Value {
     let mut challenge = [0u8; 64];
     OsRng.fill_bytes(&mut challenge);
 
@@ -70,7 +70,7 @@ impl FactorSetup for HmacSha1 {
     })
   }
 
-  fn output_setup(&self, _key: [u8; 32]) -> Value {
+  fn output(&self, _key: [u8; 32]) -> Value {
     json!({
       "secret": self.padded_secret[..20],
     })
@@ -100,11 +100,7 @@ pub fn hmacsha1(options: HmacSha1Options) -> MFKDF2Result<MFKDF2Factor> {
   Ok(MFKDF2Factor {
     id:          Some(options.id.unwrap_or("hmacsha1".to_string())),
     salt:        salt.to_vec(),
-    factor_type: FactorSetupType::HmacSha1(HmacSha1 {
-      padded_secret,
-      response: None,
-      params: None,
-    }),
+    factor_type: FactorType::HmacSha1(HmacSha1 { padded_secret, response: None, params: None }),
     entropy:     Some(160),
   })
 }
@@ -162,8 +158,8 @@ mod tests {
     assert_eq!(factor.kind(), "hmacsha1");
     assert_eq!(factor.id.unwrap(), "hmacsha1");
     assert_eq!(factor.factor_type.bytes().len(), 20); // Secret should be 20 bytes
-    assert!(factor.factor_type.params_setup([0u8; 32]).is_object());
-    assert!(factor.factor_type.output_setup([0u8; 32]).is_object());
+    assert!(factor.factor_type.params([0u8; 32]).is_object());
+    assert!(factor.factor_type.output([0u8; 32]).is_object());
     assert_eq!(factor.entropy, Some(160)); // 20 bytes * 8 bits = 160 bits
   }
 
