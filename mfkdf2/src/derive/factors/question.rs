@@ -18,9 +18,7 @@ impl FactorDerive for Question {
 
   fn params_derive(&self, _key: [u8; 32]) -> Value { serde_json::from_str(&self.params).unwrap() }
 
-  fn output_derive(&self, _key: [u8; 32]) -> Value {
-    json!({"strength": zxcvbn(&self.answer, &[])})
-  }
+  fn output_derive(&self) -> Value { json!({"strength": zxcvbn(&self.answer, &[])}) }
 }
 impl Factor for Question {}
 

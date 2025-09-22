@@ -28,6 +28,7 @@ pub struct PolicyFactor {
   pub key:    Vec<u8>,
   pub secret: String,
   pub params: String,
+  pub hint:   String,
 }
 
 #[derive(Default, Clone, Serialize, Deserialize, uniffi::Record)]
@@ -188,6 +189,7 @@ pub async fn key(
       key:    params_key.to_vec(), // TODO (sambhav): why is this needed?
       secret: general_purpose::STANDARD.encode(factor_secret),
       params: serde_json::to_string(&params).unwrap(),
+      hint:   "".to_string(),
     });
   }
 

@@ -94,7 +94,7 @@ impl FactorDerive for TOTP {
     })
   }
 
-  fn output_derive(&self, _key: [u8; 32]) -> Value { json!({}) }
+  fn output_derive(&self) -> Value { json!({}) }
 }
 
 impl Factor for TOTP {}

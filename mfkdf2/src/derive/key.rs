@@ -1,13 +1,14 @@
 use std::collections::HashMap;
 
-use argon2::Argon2;
+use argon2::{Argon2, Params, Version};
 use base64::{Engine, engine::general_purpose};
 use sharks::{Share, Sharks};
 
 use crate::{
-  crypto::{decrypt, hkdf_sha256},
+  crypto::{decrypt, hkdf_sha256_with_info, hmacsha256},
   derive::FactorDerive,
   error::{MFKDF2Error, MFKDF2Result},
+  integrity::extract,
   setup::{
     factors::{FactorSetup, MFKDF2Factor},
     key::{MFKDF2DerivedKey, MFKDF2Entropy, Policy},
@@ -21,27 +22,62 @@ pub fn key(
   stack: bool,
 ) -> MFKDF2Result<MFKDF2DerivedKey> {
   let mut shares_bytes = Vec::new();
+  let mut outputs = HashMap::new();
+
   for factor in policy.clone().factors {
     let mut material = match factors.get(factor.id.as_str()).cloned() {
       Some(material) => material,
       None => continue,
     };
 
-    material.factor_type.include_params(serde_json::from_str(&factor.params).unwrap())?;
+    if material.kind() == String::from("persisted") {
+      shares_bytes.push(material.data());
+    } else {
+      material.factor_type.include_params(serde_json::from_str(&factor.params).unwrap())?;
 
-    // TODO (autoparallel): This should probably be done with a `MaybeUninit` array.
-    let salt_bytes = general_purpose::STANDARD.decode(&factor.salt)?;
-    let salt_arr: [u8; 32] = salt_bytes.try_into().map_err(|_| MFKDF2Error::TryFromVecError)?;
+      // TODO (autoparallel): This should probably be done with a `MaybeUninit` array.
+      let salt_bytes = general_purpose::STANDARD.decode(&factor.salt)?;
 
-    let stretched = hkdf_sha256(&material.factor_type.bytes(), &salt_arr);
+      let stretched = hkdf_sha256_with_info(
+        &material.data(),
+        &salt_bytes,
+        format!("mfkdf2:factor:pad:{}", factor.id).as_bytes(),
+      );
 
-    // TODO (autoparallel): This should probably be done with a `MaybeUninit` array.
-    let pad = general_purpose::STANDARD.decode(&factor.pad)?;
-    let plaintext = decrypt(pad, &stretched);
+      // TODO (autoparallel): This should probably be done with a `MaybeUninit` array.
+      let pad = general_purpose::STANDARD.decode(&factor.pad)?;
+      let plaintext = decrypt(pad, &stretched);
 
-    // TODO (autoparallel): It would be preferred to know the size of this array at compile
-    // time.
-    shares_bytes.push(plaintext);
+      if !factor.hint.is_empty() {
+        let buffer = hkdf_sha256_with_info(
+          &stretched,
+          &material.salt,
+          format!("mfkdf2:factor:hint:{}", factor.id).as_bytes(),
+        );
+
+        let binary_string: String =
+          buffer.iter().map(|byte| format!("{:08b}", byte)).collect::<Vec<_>>().join("");
+
+        // Take the last `hint_len` characters
+        let hint = binary_string
+          .chars()
+          .rev()
+          .take(factor.hint.len())
+          .collect::<Vec<_>>()
+          .into_iter()
+          .rev()
+          .collect::<String>();
+
+        if hint != factor.hint {
+          return Err(MFKDF2Error::HintMismatch(factor.id));
+        }
+      }
+
+      // TODO (autoparallel): It would be preferred to know the size of this array at compile
+      // time.
+      shares_bytes.push(plaintext);
+      outputs.insert(factor.id, material.factor_type.output_derive());
+    }
   }
 
   let shares_vec: Vec<Share> = shares_bytes
@@ -52,19 +88,61 @@ pub fn key(
   let sharks = Sharks(policy.threshold);
   let secret = sharks.recover(&shares_vec).map_err(|_| MFKDF2Error::ShareRecoveryError)?;
   let secret_arr: [u8; 32] = secret[..32].try_into().map_err(|_| MFKDF2Error::TryFromVecError)?;
-
   let salt_bytes = general_purpose::STANDARD.decode(&policy.salt)?;
-  let salt_arr: [u8; 32] = salt_bytes.try_into().map_err(|_| MFKDF2Error::TryFromVecError)?;
-  let mut key = [0u8; 32];
-  Argon2::default().hash_password_into(&secret_arr, &salt_arr, &mut key)?;
 
-  // TODO (autoparallel): Properly update the policy.
+  // Generate key
+  let mut kek = [0u8; 32];
+  if stack {
+    // stack key
+    kek =
+      hkdf_sha256_with_info(&secret, &salt_bytes, format!("mfkdf2:stack:{}", policy.id).as_bytes());
+  } else {
+    // default key
+    Argon2::new(
+      argon2::Algorithm::Argon2id,
+      Version::default(),
+      Params::new(
+        argon2::Params::DEFAULT_M_COST + policy.memory,
+        argon2::Params::DEFAULT_T_COST + policy.time,
+        1,
+        Some(32),
+      )?,
+    )
+    .hash_password_into(&secret, &salt_bytes, &mut kek)?;
+  }
+
+  let policy_key_bytes = general_purpose::STANDARD.decode(policy.key.clone())?;
+  let key = decrypt(policy_key_bytes, &kek);
+
+  let mut new_policy = policy.clone();
+
+  for factor in new_policy.factors.iter_mut() {
+    let material = match factors.get(factor.id.as_str()).cloned() {
+      Some(material) => material,
+      None => continue,
+    };
+
+    let params_key = hkdf_sha256_with_info(
+      &key,
+      factor.salt.as_bytes(),
+      format!("mfkdf2:factor:params:{}", factor.id).as_bytes(),
+    );
+    let params = material.factor_type.params(params_key);
+    factor.params = serde_json::to_string(&params)?;
+  }
+
+  let integrity_key = hkdf_sha256_with_info(&key, &salt_bytes, "mfkdf2:integrity".as_bytes());
+  if verify {
+    let integrity_data = extract(&new_policy);
+    let digest = hmacsha256(&integrity_key, &integrity_data);
+    new_policy.hmac = general_purpose::STANDARD.encode(digest);
+  }
 
   Ok(MFKDF2DerivedKey {
-    policy,
-    key: key.to_vec(),
-    secret: secret_arr.to_vec(),
-    shares: shares_vec.into_iter().map(|s| Vec::from(&s)).collect(),
+    policy:  new_policy,
+    key:     key.to_vec(),
+    secret:  secret_arr.to_vec(),
+    shares:  shares_vec.into_iter().map(|s| Vec::from(&s)).collect(),
     outputs: Vec::new(),
     entropy: MFKDF2Entropy { real: 0, theoretical: 0 },
   })

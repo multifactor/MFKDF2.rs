@@ -70,6 +70,9 @@ pub enum MFKDF2Error {
   #[error("invalid derive params: {0}")]
   InvalidDeriveParams(String),
 
+  #[error("hint does not match for factor {0}")]
+  HintMismatch(String),
+
   #[error(transparent)]
   Argon2Error(#[from] argon2::Error),
 

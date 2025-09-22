@@ -33,7 +33,7 @@ impl FactorDerive for Stack {
     serde_json::to_value(&self.key.policy).unwrap_or(json!({}))
   }
 
-  fn output_derive(&self, _key: [u8; 32]) -> Value {
+  fn output_derive(&self) -> Value {
     // Return the full key object, similar to the JS version
     serde_json::to_value(&self.key).unwrap_or(json!({}))
   }

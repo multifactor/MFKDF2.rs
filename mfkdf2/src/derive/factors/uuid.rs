@@ -12,7 +12,7 @@ impl FactorDerive for UUID {
 
   fn params_derive(&self, _key: [u8; 32]) -> serde_json::Value { json!({}) }
 
-  fn output_derive(&self, _key: [u8; 32]) -> serde_json::Value {
+  fn output_derive(&self) -> serde_json::Value {
     json!({
       "uuid": self.uuid.clone(),
     })

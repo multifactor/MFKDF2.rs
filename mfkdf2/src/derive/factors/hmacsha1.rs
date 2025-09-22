@@ -44,7 +44,7 @@ impl FactorDerive for HmacSha1 {
     })
   }
 
-  fn output_derive(&self, _key: [u8; 32]) -> Value {
+  fn output_derive(&self) -> Value {
     json!({
       "secret": self.padded_secret[..20],
     })

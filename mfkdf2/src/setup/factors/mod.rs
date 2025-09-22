@@ -99,6 +99,8 @@ pub struct MFKDF2Factor {
 
 impl MFKDF2Factor {
   pub fn kind(&self) -> String { self.factor_type.kind() }
+
+  pub fn data(&self) -> Vec<u8> { self.factor_type.bytes() }
 }
 
 impl std::fmt::Debug for MFKDF2Factor {

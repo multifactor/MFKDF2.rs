@@ -11,9 +11,7 @@ impl FactorDerive for Password {
 
   fn params_derive(&self, _key: [u8; 32]) -> Value { json!({}) }
 
-  fn output_derive(&self, _key: [u8; 32]) -> Value {
-    json!({"strength": zxcvbn(&self.password, &[])})
-  }
+  fn output_derive(&self) -> Value { json!({"strength": zxcvbn(&self.password, &[])}) }
 }
 
 impl Factor for Password {}

@@ -10,7 +10,7 @@ pub trait FactorDerive {
   fn include_params(&mut self, params: Value) -> MFKDF2Result<()>;
   // TODO (@lonerapier): wrap the return value in result here too
   fn params_derive(&self, key: [u8; 32]) -> Value;
-  fn output_derive(&self, key: [u8; 32]) -> Value;
+  fn output_derive(&self) -> Value;
 }
 
 impl FactorDerive for FactorType {
@@ -20,5 +20,5 @@ impl FactorDerive for FactorType {
 
   fn params_derive(&self, key: [u8; 32]) -> Value { self.inner().params_derive(key) }
 
-  fn output_derive(&self, key: [u8; 32]) -> Value { self.inner().output_derive(key) }
+  fn output_derive(&self) -> Value { self.inner().output_derive() }
 }
