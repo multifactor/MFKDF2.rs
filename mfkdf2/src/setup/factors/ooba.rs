@@ -9,7 +9,7 @@ use sha2::Sha256;
 use crate::{
   crypto::{encrypt, hkdf_sha256_with_info},
   error::{MFKDF2Error, MFKDF2Result},
-  setup::factors::{FactorSetupTrait, FactorSetupType, MFKDF2Factor},
+  setup::factors::{FactorMetadata, FactorSetup, FactorType, MFKDF2Factor},
 };
 
 pub fn generate_alphanumeric_characters(length: u32) -> String {
@@ -65,12 +65,14 @@ pub fn rsa_publickey_from_jwk(key: &str) -> RsaPublicKey {
   RsaPublicKey::new(n, e).unwrap()
 }
 
-impl FactorSetupTrait for Ooba {
+impl FactorMetadata for Ooba {
   fn kind(&self) -> String { "ooba".to_string() }
+}
 
+impl FactorSetup for Ooba {
   fn bytes(&self) -> Vec<u8> { self.target.clone() }
 
-  fn params_setup(&self, _key: [u8; 32]) -> Value {
+  fn params(&self, _key: [u8; 32]) -> Value {
     let code = generate_alphanumeric_characters(self.length.into()).to_uppercase();
 
     let prev_key = hkdf_sha256_with_info(code.as_bytes(), &[], &[]);
@@ -96,7 +98,7 @@ impl FactorSetupTrait for Ooba {
     })
   }
 
-  fn output_setup(&self, _key: [u8; 32]) -> Value { json!({}) }
+  fn output(&self, _key: [u8; 32]) -> Value { json!({}) }
 }
 
 pub fn ooba(options: OobaOptions) -> MFKDF2Result<MFKDF2Factor> {
@@ -139,7 +141,7 @@ pub fn ooba(options: OobaOptions) -> MFKDF2Result<MFKDF2Factor> {
   Ok(MFKDF2Factor {
     id:          Some(options.id.unwrap_or("ooba".to_string())),
     salt:        salt.to_vec(),
-    factor_type: FactorSetupType::OOBA(Ooba {
+    factor_type: FactorType::OOBA(Ooba {
       code: String::new(),
       target: target.to_vec(),
       length,

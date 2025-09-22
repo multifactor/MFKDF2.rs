@@ -6,14 +6,17 @@ use sharks::{Share, Sharks};
 
 use crate::{
   crypto::{decrypt, hkdf_sha256},
-  derive::{FactorDeriveTrait, factors::MFKDF2DeriveFactor},
+  derive::FactorDerive,
   error::{MFKDF2Error, MFKDF2Result},
-  setup::key::{MFKDF2DerivedKey, MFKDF2Entropy, Policy},
+  setup::{
+    factors::{FactorSetup, MFKDF2Factor},
+    key::{MFKDF2DerivedKey, MFKDF2Entropy, Policy},
+  },
 };
 
 pub fn key(
   policy: Policy,
-  factors: HashMap<String, MFKDF2DeriveFactor>,
+  factors: HashMap<String, MFKDF2Factor>,
   verify: bool,
   stack: bool,
 ) -> MFKDF2Result<MFKDF2DerivedKey> {
@@ -70,7 +73,7 @@ pub fn key(
 #[uniffi::export]
 pub fn derive_key(
   policy: Policy,
-  factors: HashMap<String, MFKDF2DeriveFactor>,
+  factors: HashMap<String, MFKDF2Factor>,
   verify: bool,
   stack: bool,
 ) -> MFKDF2Result<MFKDF2DerivedKey> {

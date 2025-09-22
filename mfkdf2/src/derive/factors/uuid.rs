@@ -2,16 +2,12 @@ use serde_json::json;
 use uuid::Uuid;
 
 use crate::{
-  derive::{FactorDeriveTrait, factors::MFKDF2DeriveFactor},
+  derive::FactorDerive,
   error::{MFKDF2Error, MFKDF2Result},
-  setup::factors::{FactorSetupType, uuid::UUID},
+  setup::factors::{Factor, FactorType, MFKDF2Factor, uuid::UUID},
 };
 
-impl FactorDeriveTrait for UUID {
-  fn kind(&self) -> String { "uuid".to_string() }
-
-  fn bytes(&self) -> Vec<u8> { self.uuid.as_bytes().to_vec() }
-
+impl FactorDerive for UUID {
   fn include_params(&mut self, _params: serde_json::Value) -> MFKDF2Result<()> { Ok(()) }
 
   fn params_derive(&self, _key: [u8; 32]) -> serde_json::Value { json!({}) }
@@ -22,19 +18,20 @@ impl FactorDeriveTrait for UUID {
     })
   }
 }
+impl Factor for UUID {}
 
-pub fn uuid(uuid: String) -> MFKDF2Result<MFKDF2DeriveFactor> {
+pub fn uuid(uuid: String) -> MFKDF2Result<MFKDF2Factor> {
   let _ = Uuid::parse_str(&uuid).map_err(|_| MFKDF2Error::InvalidUuid)?;
 
-  Ok(MFKDF2DeriveFactor {
+  Ok(MFKDF2Factor {
     id:          None,
-    factor_type: crate::derive::FactorDeriveType::UUID(UUID { uuid }),
+    factor_type: FactorType::UUID(UUID { uuid }),
     entropy:     Some(0),
     salt:        [0u8; 32].to_vec(),
   })
 }
 
 #[uniffi::export]
-pub fn derive_uuid(uuid: String) -> MFKDF2Result<MFKDF2DeriveFactor> {
+pub fn derive_uuid(uuid: String) -> MFKDF2Result<MFKDF2Factor> {
   crate::derive::factors::uuid(uuid)
 }

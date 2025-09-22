@@ -5,25 +5,15 @@ use serde_json::{Value, json};
 
 use crate::{
   crypto::decrypt,
-  derive::{FactorDeriveTrait, factors::MFKDF2DeriveFactor},
+  derive::FactorDerive,
   error::{MFKDF2Error, MFKDF2Result},
   setup::factors::{
-    FactorSetupType,
+    Factor, FactorType, MFKDF2Factor,
     hotp::{OTPHash, generate_hotp_code, mod_positive},
     totp::{TOTP, TOTPOptions},
   },
 };
-// #[derive(Clone, Debug, Serialize, Deserialize, uniffi::Record)]
-// pub struct TOTPDeriveOptions {
-//   pub time:   Option<SystemTime>,
-//   pub oracle: Option<bool>,
-// }
-
-impl FactorDeriveTrait for TOTP {
-  fn kind(&self) -> String { "totp".to_string() }
-
-  fn bytes(&self) -> Vec<u8> { self.target.to_be_bytes().to_vec() }
-
+impl FactorDerive for TOTP {
   fn include_params(&mut self, params: Value) -> MFKDF2Result<()> {
     self.params = serde_json::to_string(&params).unwrap();
 
@@ -107,7 +97,9 @@ impl FactorDeriveTrait for TOTP {
   fn output_derive(&self, _key: [u8; 32]) -> Value { json!({}) }
 }
 
-pub fn totp(code: u32, options: TOTPOptions) -> MFKDF2Result<MFKDF2DeriveFactor> {
+impl Factor for TOTP {}
+
+pub fn totp(code: u32, options: TOTPOptions) -> MFKDF2Result<MFKDF2Factor> {
   let mut options = options;
 
   // Validation
@@ -115,9 +107,9 @@ pub fn totp(code: u32, options: TOTPOptions) -> MFKDF2Result<MFKDF2DeriveFactor>
     options.time = Some(SystemTime::now());
   }
 
-  Ok(MFKDF2DeriveFactor {
+  Ok(MFKDF2Factor {
     id:          Some("totp".to_string()),
-    factor_type: crate::derive::FactorDeriveType::TOTP(TOTP {
+    factor_type: FactorType::TOTP(TOTP {
       options,
       params: serde_json::to_string(&Value::Null).unwrap(),
       code,
@@ -126,4 +118,9 @@ pub fn totp(code: u32, options: TOTPOptions) -> MFKDF2Result<MFKDF2DeriveFactor>
     salt:        [0u8; 32].to_vec(),
     entropy:     Some(0), // TODO (@lonerapier): is entropy used anywhere after derive?
   })
+}
+
+#[uniffi::export]
+pub fn derive_totp(code: u32, options: TOTPOptions) -> MFKDF2Result<MFKDF2Factor> {
+  totp(code, options)
 }

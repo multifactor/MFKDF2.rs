@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use rand::{RngCore, rngs::OsRng};
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
@@ -5,7 +7,7 @@ use serde_json::{Value, json};
 use crate::{
   error::{MFKDF2Error, MFKDF2Result},
   setup::{
-    factors::{FactorSetupTrait, FactorSetupType, MFKDF2Factor},
+    factors::{FactorMetadata, FactorSetup, FactorType, MFKDF2Factor},
     key::{self, MFKDF2DerivedKey, MFKDF2Options},
   },
 };
@@ -33,22 +35,22 @@ impl Into<MFKDF2Options> for StackOptions {
 
 #[derive(Clone, Debug, Serialize, Deserialize, uniffi::Record)]
 pub struct Stack {
-  pub factors: Vec<MFKDF2Factor>,
+  pub factors: HashMap<String, MFKDF2Factor>,
   pub key:     MFKDF2DerivedKey,
 }
 
-impl FactorSetupTrait for Stack {
+impl FactorMetadata for Stack {
   fn kind(&self) -> String { "stack".to_string() }
+}
 
+impl FactorSetup for Stack {
   fn bytes(&self) -> Vec<u8> { self.key.key.clone() }
 
-  fn params_setup(&self, _key: [u8; 32]) -> Value {
+  fn params(&self, _key: [u8; 32]) -> Value {
     serde_json::to_value(&self.key.policy).unwrap_or(json!({}))
   }
 
-  fn output_setup(&self, _key: [u8; 32]) -> Value {
-    serde_json::to_value(&self.key).unwrap_or(json!({}))
-  }
+  fn output(&self, _key: [u8; 32]) -> Value { serde_json::to_value(&self.key).unwrap_or(json!({})) }
 }
 
 pub async fn stack(
@@ -72,9 +74,12 @@ pub async fn stack(
   let mut salt = [0u8; 32];
   OsRng.fill_bytes(&mut salt);
 
+  let mut factor_map = HashMap::new();
+  let _ = factors.into_iter().map(|f| factor_map.insert(f.id.clone().unwrap(), f));
+
   Ok(MFKDF2Factor {
     id,
-    factor_type: FactorSetupType::Stack(Stack { factors, key: key.clone() }),
+    factor_type: FactorType::Stack(Stack { factors: factor_map, key: key.clone() }),
     salt: salt.to_vec(),
     entropy: Some(key.entropy.real),
   })

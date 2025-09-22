@@ -9,7 +9,7 @@ use sha2::{Sha256, Sha512};
 use crate::{
   crypto::encrypt,
   error::MFKDF2Result,
-  setup::factors::{FactorSetupTrait, FactorSetupType, MFKDF2Factor},
+  setup::factors::{FactorMetadata, FactorSetup, FactorType, MFKDF2Factor},
 };
 
 #[derive(Clone, Debug, Serialize, Deserialize, uniffi::Record)]
@@ -51,15 +51,14 @@ pub struct HOTP {
   pub target:  u32,
 }
 
-impl FactorSetupTrait for HOTP {
+impl FactorMetadata for HOTP {
   fn kind(&self) -> String { "hotp".to_string() }
+}
 
-  fn bytes(&self) -> Vec<u8> {
-    // For setup factors, return the secret or empty vec
-    self.target.to_be_bytes().to_vec()
-  }
+impl FactorSetup for HOTP {
+  fn bytes(&self) -> Vec<u8> { self.target.to_be_bytes().to_vec() }
 
-  fn params_setup(&self, key: [u8; 32]) -> Value {
+  fn params(&self, key: [u8; 32]) -> Value {
     // Generate or use provided secret
     let padded_secret = if let Some(secret) = self.options.secret.clone() {
       secret
@@ -91,7 +90,7 @@ impl FactorSetupTrait for HOTP {
     })
   }
 
-  fn output_setup(&self, _key: [u8; 32]) -> Value {
+  fn output(&self, _key: [u8; 32]) -> Value {
     json!({
       "scheme": "otpauth",
       "type": "hotp",
@@ -179,7 +178,7 @@ pub fn hotp(options: HOTPOptions) -> MFKDF2Result<MFKDF2Factor> {
   // the password factor which stores the actual password in the struct.
   Ok(MFKDF2Factor {
     id: Some(options.id.clone().unwrap_or("hotp".to_string())),
-    factor_type: FactorSetupType::HOTP(HOTP {
+    factor_type: FactorType::HOTP(HOTP {
       options,
       params: serde_json::to_string(&Value::Null).unwrap(),
       code: 0,

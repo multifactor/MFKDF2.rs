@@ -2,19 +2,15 @@ use serde_json::{Value, json};
 use zxcvbn::zxcvbn;
 
 use crate::{
-  derive::{FactorDeriveTrait, factors::MFKDF2DeriveFactor},
+  derive::FactorDerive,
   error::{MFKDF2Error, MFKDF2Result},
   setup::factors::{
-    FactorSetupType,
+    Factor, FactorType, MFKDF2Factor,
     question::{Question, QuestionOptions},
   },
 };
 
-impl FactorDeriveTrait for Question {
-  fn kind(&self) -> String { "question".to_string() }
-
-  fn bytes(&self) -> Vec<u8> { self.answer.as_bytes().to_vec() }
-
+impl FactorDerive for Question {
   fn include_params(&mut self, params: Value) -> MFKDF2Result<()> {
     self.params = serde_json::to_string(&params).unwrap();
     Ok(())
@@ -26,8 +22,9 @@ impl FactorDeriveTrait for Question {
     json!({"strength": zxcvbn(&self.answer, &[])})
   }
 }
+impl Factor for Question {}
 
-pub fn question(answer: impl Into<String>) -> MFKDF2Result<MFKDF2DeriveFactor> {
+pub fn question(answer: impl Into<String>) -> MFKDF2Result<MFKDF2Factor> {
   let answer = answer.into();
   if answer.is_empty() {
     return Err(MFKDF2Error::AnswerEmpty);
@@ -35,11 +32,11 @@ pub fn question(answer: impl Into<String>) -> MFKDF2Result<MFKDF2DeriveFactor> {
   let answer = answer.to_lowercase().replace(|c: char| !c.is_alphanumeric(), "").trim().to_string();
   let strength = zxcvbn(&answer, &[]);
 
-  Ok(MFKDF2DeriveFactor {
+  Ok(MFKDF2Factor {
     id:          None,
     // TODO (@lonerapier): MaybeUninit is a better type here that is initialised at
     // [`crate::derive::FactorDeriveTrait::include_params`]
-    factor_type: crate::derive::FactorDeriveType::Question(Question {
+    factor_type: FactorType::Question(Question {
       options: QuestionOptions::default(),
       params:  serde_json::to_string(&Value::Null).unwrap(),
       answer:  answer.clone(),
@@ -50,4 +47,4 @@ pub fn question(answer: impl Into<String>) -> MFKDF2Result<MFKDF2DeriveFactor> {
 }
 
 #[uniffi::export]
-pub fn derive_question(answer: String) -> MFKDF2Result<MFKDF2DeriveFactor> { question(answer) }
+pub fn derive_question(answer: String) -> MFKDF2Result<MFKDF2Factor> { question(answer) }

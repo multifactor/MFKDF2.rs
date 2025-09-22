@@ -3,21 +3,12 @@ use serde_json::{Value, json};
 
 use crate::{
   crypto::{decrypt, encrypt},
-  derive::{FactorDeriveTrait, FactorDeriveType, factors::MFKDF2DeriveFactor},
+  derive::FactorDerive,
   error::MFKDF2Result,
-  setup::factors::hmacsha1::HmacSha1,
+  setup::factors::{Factor, FactorType, MFKDF2Factor, hmacsha1::HmacSha1},
 };
-// pub struct HmacSha1Derived {
-//   pub response:      Vec<u8>,
-//   pub params:        String,
-//   pub padded_secret: Vec<u8>,
-// }
 
-impl FactorDeriveTrait for HmacSha1 {
-  fn kind(&self) -> String { "hmacsha1".to_string() }
-
-  fn bytes(&self) -> Vec<u8> { self.padded_secret[..20].to_vec() }
-
+impl FactorDerive for HmacSha1 {
   fn include_params(&mut self, params: Value) -> MFKDF2Result<()> {
     self.params = Some(serde_json::to_string(&params).unwrap());
 
@@ -60,14 +51,16 @@ impl FactorDeriveTrait for HmacSha1 {
   }
 }
 
-pub fn hmacsha1(response: Vec<u8>) -> MFKDF2Result<MFKDF2DeriveFactor> {
+impl Factor for HmacSha1 {}
+
+pub fn hmacsha1(response: Vec<u8>) -> MFKDF2Result<MFKDF2Factor> {
   if response.len() != 20 {
     return Err(crate::error::MFKDF2Error::InvalidHmacResponse);
   }
 
-  Ok(MFKDF2DeriveFactor {
+  Ok(MFKDF2Factor {
     id:          None,
-    factor_type: FactorDeriveType::HmacSha1(HmacSha1 {
+    factor_type: FactorType::HmacSha1(HmacSha1 {
       response:      Some(response),
       params:        None,
       padded_secret: [0u8; 32].to_vec(),
@@ -78,6 +71,6 @@ pub fn hmacsha1(response: Vec<u8>) -> MFKDF2Result<MFKDF2DeriveFactor> {
 }
 
 #[uniffi::export]
-pub fn derive_hmacsha1(response: Vec<u8>) -> MFKDF2Result<MFKDF2DeriveFactor> {
+pub fn derive_hmacsha1(response: Vec<u8>) -> MFKDF2Result<MFKDF2Factor> {
   crate::derive::factors::hmacsha1(response)
 }

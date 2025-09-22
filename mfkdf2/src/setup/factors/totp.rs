@@ -9,7 +9,7 @@ use crate::{
   crypto::encrypt,
   error::MFKDF2Result,
   setup::factors::{
-    FactorSetupTrait, FactorSetupType, MFKDF2Factor,
+    FactorMetadata, FactorSetup, FactorType, MFKDF2Factor,
     hotp::{OTPHash, generate_hotp_code},
   },
 };
@@ -55,12 +55,14 @@ pub struct TOTP {
 
 fn mod_positive(n: i64, m: i64) -> i64 { ((n % m) + m) % m }
 
-impl FactorSetupTrait for TOTP {
+impl FactorMetadata for TOTP {
   fn kind(&self) -> String { "totp".to_string() }
+}
 
+impl FactorSetup for TOTP {
   fn bytes(&self) -> Vec<u8> { self.target.to_be_bytes().to_vec() }
 
-  fn params_setup(&self, key: [u8; 32]) -> Value {
+  fn params(&self, key: [u8; 32]) -> Value {
     let time =
       self.options.time.unwrap().duration_since(SystemTime::UNIX_EPOCH).unwrap().as_millis();
     let mut offsets = Vec::with_capacity((4 * self.options.window) as usize);
@@ -99,7 +101,7 @@ impl FactorSetupTrait for TOTP {
     })
   }
 
-  fn output_setup(&self, _key: [u8; 32]) -> Value {
+  fn output(&self, _key: [u8; 32]) -> Value {
     json!({
       "scheme": "otpauth",
       "type": "totp",
@@ -156,7 +158,7 @@ pub fn totp(options: TOTPOptions) -> MFKDF2Result<MFKDF2Factor> {
 
   Ok(MFKDF2Factor {
     id: Some(options.id.clone().unwrap_or("totp".to_string())),
-    factor_type: FactorSetupType::TOTP(TOTP {
+    factor_type: FactorType::TOTP(TOTP {
       options,
       params: serde_json::to_string(&Value::Null).unwrap(),
       code: 0,

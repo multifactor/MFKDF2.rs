@@ -6,19 +6,15 @@ use sha2::Sha256;
 
 use crate::{
   crypto::{decrypt, encrypt, hkdf_sha256_with_info},
-  derive::{FactorDeriveTrait, factors::MFKDF2DeriveFactor},
+  derive::FactorDerive,
   error::{MFKDF2Error, MFKDF2Result},
   setup::factors::{
-    FactorSetupType,
+    Factor, FactorType, MFKDF2Factor,
     ooba::{Ooba, generate_alphanumeric_characters, rsa_publickey_from_jwk},
   },
 };
 
-impl FactorDeriveTrait for Ooba {
-  fn kind(&self) -> String { "ooba".to_string() }
-
-  fn bytes(&self) -> Vec<u8> { self.target.clone() }
-
+impl FactorDerive for Ooba {
   fn include_params(&mut self, params: Value) -> MFKDF2Result<()> {
     let pad_b64 =
       params["pad"].as_str().ok_or(MFKDF2Error::MissingDeriveParams("pad".to_string()))?;
@@ -72,14 +68,16 @@ impl FactorDeriveTrait for Ooba {
   fn output_derive(&self, _key: [u8; 32]) -> Value { json!({}) }
 }
 
-pub fn ooba(code: String) -> MFKDF2Result<MFKDF2DeriveFactor> {
+impl Factor for Ooba {}
+
+pub fn ooba(code: String) -> MFKDF2Result<MFKDF2Factor> {
   if code.is_empty() {
     return Err(MFKDF2Error::InvalidOobaCode);
   }
 
-  Ok(MFKDF2DeriveFactor {
+  Ok(MFKDF2Factor {
     id:          Some("ooba".to_string()),
-    factor_type: crate::derive::FactorDeriveType::OOBA(Ooba {
+    factor_type: FactorType::OOBA(Ooba {
       code:   code.to_uppercase(),
       target: vec![],
       length: 0,

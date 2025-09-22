@@ -1,5 +1,3 @@
-use serde::{Deserialize, Serialize};
-
 pub mod hmacsha1;
 pub mod hotp;
 pub mod ooba;
@@ -19,15 +17,3 @@ pub use question::question;
 pub use stack::stack;
 pub use totp::totp;
 pub use uuid::uuid;
-
-use crate::derive::FactorDeriveType;
-
-#[derive(Clone, Debug, Serialize, Deserialize, uniffi::Record)]
-pub struct MFKDF2DeriveFactor {
-  pub id:          Option<String>,
-  // TODO (@lonerapier): create a new derive factor type
-  pub factor_type: FactorDeriveType,
-  // TODO (autoparallel): This is the factor specific salt.
-  pub salt:        Vec<u8>,
-  pub entropy:     Option<u32>,
-}

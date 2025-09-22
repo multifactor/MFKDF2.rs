@@ -3,22 +3,15 @@ use serde_json::{Value, json};
 
 use crate::{
   crypto::decrypt,
-  derive::{FactorDeriveTrait, factors::MFKDF2DeriveFactor},
+  derive::FactorDerive,
   error::MFKDF2Result,
   setup::factors::{
-    FactorSetupType,
+    Factor, FactorType, MFKDF2Factor,
     hotp::{HOTP, HOTPOptions, OTPHash, generate_hotp_code, mod_positive},
   },
 };
 
-impl FactorDeriveTrait for HOTP {
-  fn kind(&self) -> String { "hotp".to_string() }
-
-  fn bytes(&self) -> Vec<u8> {
-    // For setup factors, return the secret or empty vec
-    self.target.to_be_bytes().to_vec()
-  }
-
+impl FactorDerive for HOTP {
   fn include_params(&mut self, params: Value) -> MFKDF2Result<()> {
     // Store the policy parameters for derive phase
     dbg!(&params);
@@ -75,12 +68,14 @@ impl FactorDeriveTrait for HOTP {
   fn output_derive(&self, _key: [u8; 32]) -> Value { json!({}) }
 }
 
-pub fn hotp(code: u32) -> MFKDF2Result<MFKDF2DeriveFactor> {
+impl Factor for HOTP {}
+
+pub fn hotp(code: u32) -> MFKDF2Result<MFKDF2Factor> {
   // Create HOTP factor with the user-provided code
   // The target will be calculated in include_params once we have the policy parameters
-  Ok(MFKDF2DeriveFactor {
+  Ok(MFKDF2Factor {
     id:          None,
-    factor_type: crate::derive::FactorDeriveType::HOTP(HOTP {
+    factor_type: FactorType::HOTP(HOTP {
       options: HOTPOptions::default(),
       // TODO (autoparallel): This is confusing, should probably put an Option here.
       params: serde_json::to_string(&Value::Null).unwrap(),
@@ -94,4 +89,4 @@ pub fn hotp(code: u32) -> MFKDF2Result<MFKDF2DeriveFactor> {
 }
 
 #[uniffi::export]
-pub fn derive_hotp(code: u32) -> MFKDF2Result<MFKDF2DeriveFactor> { hotp(code) }
+pub fn derive_hotp(code: u32) -> MFKDF2Result<MFKDF2Factor> { hotp(code) }

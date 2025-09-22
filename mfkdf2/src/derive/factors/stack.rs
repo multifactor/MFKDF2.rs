@@ -4,25 +4,21 @@ use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 
 use crate::{
-  derive::{FactorDeriveTrait, factors::MFKDF2DeriveFactor},
+  derive::FactorDerive,
   error::{MFKDF2Error, MFKDF2Result},
   setup::{
-    factors::FactorSetupType,
+    factors::{Factor, FactorType, MFKDF2Factor, stack::Stack},
     key::{MFKDF2DerivedKey, Policy},
   },
 };
 
 #[derive(Clone, Debug, Serialize, Deserialize, uniffi::Record)]
 pub struct DeriveStack {
-  pub factors: HashMap<String, MFKDF2DeriveFactor>,
+  pub factors: HashMap<String, MFKDF2Factor>,
   pub key:     MFKDF2DerivedKey,
 }
 
-impl FactorDeriveTrait for DeriveStack {
-  fn kind(&self) -> String { "stack".to_string() }
-
-  fn bytes(&self) -> Vec<u8> { self.key.key.clone() }
-
+impl FactorDerive for Stack {
   fn include_params(&mut self, params: Value) -> MFKDF2Result<()> {
     // Stack factors don't need to include params during derivation
     // The key derivation is handled by the derive_key function
@@ -42,18 +38,16 @@ impl FactorDeriveTrait for DeriveStack {
     serde_json::to_value(&self.key).unwrap_or(json!({}))
   }
 }
+impl Factor for Stack {}
 
-pub fn stack(factors: HashMap<String, MFKDF2DeriveFactor>) -> MFKDF2Result<MFKDF2DeriveFactor> {
+pub fn stack(factors: HashMap<String, MFKDF2Factor>) -> MFKDF2Result<MFKDF2Factor> {
   if factors.is_empty() {
     return Err(MFKDF2Error::InvalidDeriveParams("factors".to_string()));
   }
 
-  Ok(MFKDF2DeriveFactor {
+  Ok(MFKDF2Factor {
     id:          Some("stack".to_string()),
-    factor_type: crate::derive::FactorDeriveType::Stack(DeriveStack {
-      factors,
-      key: MFKDF2DerivedKey::default(),
-    }),
+    factor_type: FactorType::Stack(Stack { factors, key: MFKDF2DerivedKey::default() }),
     salt:        [0u8; 32].to_vec(),
     entropy:     None,
   })

@@ -13,7 +13,7 @@ use uuid::Uuid;
 use crate::{
   crypto::{encrypt, hkdf_sha256_with_info},
   error::{MFKDF2Error, MFKDF2Result},
-  setup::factors::{FactorSetupTrait, MFKDF2Factor},
+  setup::factors::{FactorSetup, MFKDF2Factor},
 };
 
 // TODO (autoparallel): We probably can just use the MFKDF2Factor struct directly here.
@@ -164,9 +164,9 @@ pub async fn key(
     );
 
     // TODO (autoparallel): Add params for each factor.
-    let params = factor.factor_type.params_setup(params_key);
+    let params = factor.factor_type.params(params_key);
     // TODO (autoparallel): This should not be an unwrap.
-    outputs.push(factor.factor_type.output_setup(key));
+    outputs.push(factor.factor_type.output(key));
 
     let secret_key = hkdf_sha256_with_info(
       &key,

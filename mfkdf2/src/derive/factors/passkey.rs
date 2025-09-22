@@ -1,16 +1,12 @@
 use serde_json::{Value, json};
 
 use crate::{
-  derive::{FactorDeriveTrait, factors::MFKDF2DeriveFactor},
+  derive::FactorDerive,
   error::{MFKDF2Error, MFKDF2Result},
-  setup::factors::{FactorSetupType, passkey::Passkey},
+  setup::factors::{Factor, FactorType, MFKDF2Factor, passkey::Passkey},
 };
 
-impl FactorDeriveTrait for Passkey {
-  fn kind(&self) -> String { "passkey".to_string() }
-
-  fn bytes(&self) -> Vec<u8> { self.secret.clone() }
-
+impl FactorDerive for Passkey {
   fn include_params(&mut self, _params: Value) -> MFKDF2Result<()> {
     // Passkey factor has no parameters from setup
     Ok(())
@@ -20,15 +16,16 @@ impl FactorDeriveTrait for Passkey {
 
   fn output_derive(&self, _key: [u8; 32]) -> Value { json!({}) }
 }
+impl Factor for Passkey {}
 
-pub fn passkey(secret: Vec<u8>) -> MFKDF2Result<MFKDF2DeriveFactor> {
+pub fn passkey(secret: Vec<u8>) -> MFKDF2Result<MFKDF2Factor> {
   if secret.len() != 32 {
     return Err(MFKDF2Error::InvalidPasskeySecretLength);
   }
 
-  Ok(MFKDF2DeriveFactor {
+  Ok(MFKDF2Factor {
     id:          Some("passkey".to_string()),
-    factor_type: crate::derive::FactorDeriveType::Passkey(Passkey { secret }),
+    factor_type: FactorType::Passkey(Passkey { secret }),
     salt:        [0u8; 32].to_vec(),
     entropy:     None,
   })

@@ -4,7 +4,7 @@ use serde_json::{Value, json};
 
 use crate::{
   error::{MFKDF2Error, MFKDF2Result},
-  setup::factors::{FactorSetupTrait, FactorSetupType, MFKDF2Factor},
+  setup::factors::{FactorMetadata, FactorSetup, FactorType, MFKDF2Factor},
 };
 
 #[derive(Clone, Debug, Serialize, Deserialize, uniffi::Record)]
@@ -12,14 +12,16 @@ pub struct Passkey {
   pub secret: Vec<u8>,
 }
 
-impl FactorSetupTrait for Passkey {
+impl FactorMetadata for Passkey {
   fn kind(&self) -> String { "passkey".to_string() }
+}
 
+impl FactorSetup for Passkey {
   fn bytes(&self) -> Vec<u8> { self.secret.clone() }
 
-  fn params_setup(&self, _key: [u8; 32]) -> Value { json!({}) }
+  fn params(&self, _key: [u8; 32]) -> Value { json!({}) }
 
-  fn output_setup(&self, _key: [u8; 32]) -> Value { json!({}) }
+  fn output(&self, _key: [u8; 32]) -> Value { json!({}) }
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, uniffi::Record)]
@@ -44,7 +46,7 @@ pub fn passkey(secret: Vec<u8>, options: PasskeyOptions) -> MFKDF2Result<MFKDF2F
 
   Ok(MFKDF2Factor {
     id:          Some(options.id.unwrap_or("passkey".to_string())),
-    factor_type: FactorSetupType::Passkey(Passkey { secret }),
+    factor_type: FactorType::Passkey(Passkey { secret }),
     salt:        salt.to_vec(),
     entropy:     Some(256),
   })
