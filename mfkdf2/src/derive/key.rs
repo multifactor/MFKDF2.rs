@@ -5,13 +5,14 @@ use base64::{Engine, engine::general_purpose};
 use sharks::{Share, Sharks};
 
 use crate::{
+  classes::mfkdf_derived_key::MFKDF2DerivedKey,
   crypto::{decrypt, hkdf_sha256_with_info, hmacsha256},
   derive::FactorDerive,
   error::{MFKDF2Error, MFKDF2Result},
-  integrity::extract,
+  policy::Policy,
   setup::{
     factors::{FactorSetup, MFKDF2Factor},
-    key::{MFKDF2DerivedKey, MFKDF2Entropy, Policy},
+    key::MFKDF2Entropy,
   },
 };
 
@@ -133,7 +134,7 @@ pub fn key(
 
   let integrity_key = hkdf_sha256_with_info(&key, &salt_bytes, "mfkdf2:integrity".as_bytes());
   if verify {
-    let integrity_data = extract(&new_policy);
+    let integrity_data = new_policy.extract();
     let digest = hmacsha256(&integrity_key, &integrity_data);
     new_policy.hmac = general_purpose::STANDARD.encode(digest);
   }

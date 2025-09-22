@@ -1,18 +1,19 @@
 use sha2::{Digest, Sha256};
 
-use crate::setup::key::{Policy, PolicyFactor};
+use crate::{policy::Policy, setup::key::PolicyFactor};
 
-/// Extracts the signable content from a policy object (matches JS extract).
-pub fn extract(policy: &Policy) -> [u8; 32] {
-  let mut hasher = Sha256::new();
+impl Policy {
+  pub fn extract(&self) -> [u8; 32] {
+    let mut hasher = Sha256::new();
 
-  hasher.update(extract_policy_core(policy));
+    hasher.update(extract_policy_core(self));
 
-  for factor in &policy.factors {
-    hasher.update(extract_factor(factor));
+    for factor in &self.factors {
+      hasher.update(extract_factor(factor));
+    }
+
+    hasher.finalize().into()
   }
-
-  hasher.finalize().into()
 }
 
 /// Extracts the core signable content from a policy object.

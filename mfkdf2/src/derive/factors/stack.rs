@@ -4,14 +4,12 @@ use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 
 use crate::{
+  classes::mfkdf_derived_key::MFKDF2DerivedKey,
   derive::FactorDerive,
   error::{MFKDF2Error, MFKDF2Result},
-  setup::{
-    factors::{Factor, FactorType, MFKDF2Factor, stack::Stack},
-    key::{MFKDF2DerivedKey, Policy},
-  },
+  policy::Policy,
+  setup::factors::{Factor, FactorType, MFKDF2Factor, stack::Stack},
 };
-
 #[derive(Clone, Debug, Serialize, Deserialize, uniffi::Record)]
 pub struct DeriveStack {
   pub factors: HashMap<String, MFKDF2Factor>,

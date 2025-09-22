@@ -11,8 +11,10 @@ use sharks::{Share, Sharks};
 use uuid::Uuid;
 
 use crate::{
+  classes::mfkdf_derived_key::MFKDF2DerivedKey,
   crypto::{encrypt, hkdf_sha256_with_info},
   error::{MFKDF2Error, MFKDF2Result},
+  policy::Policy,
   setup::factors::{FactorSetup, MFKDF2Factor},
 };
 
@@ -46,27 +48,6 @@ pub struct MFKDF2Options {
 pub struct MFKDF2Entropy {
   pub real:        u32,
   pub theoretical: u32,
-}
-
-#[derive(Clone, Debug, Default, Serialize, Deserialize, Eq, PartialEq, uniffi::Record)]
-pub struct MFKDF2DerivedKey {
-  pub policy:  Policy,
-  pub key:     Vec<u8>,
-  pub secret:  Vec<u8>,
-  pub shares:  Vec<Vec<u8>>,
-  pub outputs: Vec<String>,
-  pub entropy: MFKDF2Entropy,
-}
-
-impl std::fmt::Display for MFKDF2DerivedKey {
-  fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-    write!(
-      f,
-      "MFKDF2DerivedKey {{ key: {}, secret: {} }}",
-      base64::Engine::encode(&general_purpose::STANDARD, self.key.clone()),
-      base64::Engine::encode(&general_purpose::STANDARD, self.secret.clone()),
-    )
-  }
 }
 
 #[uniffi::export]
@@ -241,19 +222,4 @@ pub async fn key(
     outputs: outputs.iter().map(|o| serde_json::to_string(o).unwrap()).collect(),
     entropy: MFKDF2Entropy { real: entropy_real, theoretical: entropy_theoretical },
   })
-}
-
-#[derive(Clone, Debug, Default, Serialize, Deserialize, Eq, PartialEq, uniffi::Record)]
-pub struct Policy {
-  #[serde(rename = "$schema")]
-  pub schema:    String,
-  #[serde(rename = "$id")]
-  pub id:        String,
-  pub threshold: u8,
-  pub salt:      String,
-  pub factors:   Vec<PolicyFactor>,
-  pub hmac:      String,
-  pub time:      u32,
-  pub memory:    u32,
-  pub key:       String,
 }
