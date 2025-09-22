@@ -24,7 +24,7 @@ pub fn uuid(uuid: String) -> MFKDF2Result<MFKDF2Factor> {
 
   Ok(MFKDF2Factor {
     id:          None,
-    factor_type: crate::derive::FactorDeriveType::UUID(UUID { uuid }),
+    factor_type: FactorType::UUID(UUID { uuid }),
     entropy:     Some(0),
     salt:        [0u8; 32].to_vec(),
   })

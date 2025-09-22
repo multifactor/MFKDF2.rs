@@ -57,7 +57,7 @@ pub fn password(
 
   Ok(MFKDF2Factor {
     id:          Some(options.id.unwrap_or("password".to_string())),
-    factor_type: FactorSetupType::Password(Password { password }),
+    factor_type: FactorType::Password(Password { password }),
     salt:        salt.to_vec(),
     entropy:     Some(strength.guesses().ilog2()),
   })

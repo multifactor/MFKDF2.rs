@@ -151,7 +151,7 @@ pub fn ooba(options: OobaOptions) -> MFKDF2Result<MFKDF2Factor> {
   Ok(MFKDF2Factor {
     id:          Some(options.id.unwrap_or("ooba".to_string())),
     salt:        salt.to_vec(),
-    factor_type: FactorSetupType::OOBA(Ooba {
+    factor_type: FactorType::OOBA(Ooba {
       code: String::new(),
       target: target.to_vec(),
       length,

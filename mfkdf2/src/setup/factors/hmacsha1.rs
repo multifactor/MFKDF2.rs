@@ -100,11 +100,7 @@ pub fn hmacsha1(options: HmacSha1Options) -> MFKDF2Result<MFKDF2Factor> {
   Ok(MFKDF2Factor {
     id:          Some(options.id.unwrap_or("hmacsha1".to_string())),
     salt:        salt.to_vec(),
-    factor_type: FactorSetupType::HmacSha1(HmacSha1 {
-      padded_secret,
-      response: None,
-      params: None,
-    }),
+    factor_type: FactorType::HmacSha1(HmacSha1 { padded_secret, response: None, params: None }),
     entropy:     Some(160),
   })
 }

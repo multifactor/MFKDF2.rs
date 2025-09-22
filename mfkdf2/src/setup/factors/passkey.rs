@@ -46,7 +46,7 @@ pub fn passkey(secret: Vec<u8>, options: PasskeyOptions) -> MFKDF2Result<MFKDF2F
 
   Ok(MFKDF2Factor {
     id:          Some(options.id.unwrap_or("passkey".to_string())),
-    factor_type: FactorSetupType::Passkey(Passkey { secret }),
+    factor_type: FactorType::Passkey(Passkey { secret }),
     salt:        salt.to_vec(),
     entropy:     Some(256),
   })

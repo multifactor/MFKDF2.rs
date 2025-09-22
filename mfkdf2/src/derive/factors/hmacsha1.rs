@@ -64,7 +64,7 @@ impl FactorDerive for HmacSha1 {
 pub fn hmacsha1(response: HmacSha1Response) -> MFKDF2Result<MFKDF2Factor> {
   Ok(MFKDF2Factor {
     id:          None,
-    factor_type: FactorDeriveType::HmacSha1(HmacSha1 {
+    factor_type: FactorType::HmacSha1(HmacSha1 {
       response:      Some(response),
       params:        None,
       padded_secret: [0u8; 32].to_vec(),

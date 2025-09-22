@@ -62,7 +62,7 @@ pub fn uuid(options: UUIDOptions) -> MFKDF2Result<MFKDF2Factor> {
 
   Ok(MFKDF2Factor {
     id:          Some(options.id.unwrap_or("uuid".to_string())),
-    factor_type: FactorSetupType::UUID(UUID { uuid: uuid.to_string() }),
+    factor_type: FactorType::UUID(UUID { uuid: uuid.to_string() }),
     salt:        salt.to_vec(),
     entropy:     Some(122),
   })
