@@ -71,9 +71,9 @@ impl FactorMetadata for FactorType {
 impl FactorSetup for FactorType {
   fn bytes(&self) -> Vec<u8> { self.inner().bytes() }
 
-  fn params(&self, key: [u8; 32]) -> Value { self.inner().params(key) }
+  fn params_setup(&self, key: [u8; 32]) -> Value { self.inner().params_setup(key) }
 
-  fn output(&self, key: [u8; 32]) -> Value { self.inner().output(key) }
+  fn output_setup(&self, key: [u8; 32]) -> Value { self.inner().output_setup(key) }
 }
 
 pub trait FactorMetadata {
@@ -84,8 +84,8 @@ pub trait Factor: FactorMetadata + FactorSetup + FactorDerive {}
 
 pub trait FactorSetup {
   fn bytes(&self) -> Vec<u8>;
-  fn params(&self, key: [u8; 32]) -> Value;
-  fn output(&self, key: [u8; 32]) -> Value;
+  fn params_setup(&self, key: [u8; 32]) -> Value;
+  fn output_setup(&self, key: [u8; 32]) -> Value;
 }
 
 #[derive(Clone, Serialize, Deserialize, uniffi::Record)]

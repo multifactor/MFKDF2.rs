@@ -39,3 +39,36 @@ pub fn password(password: impl Into<String>) -> MFKDF2Result<MFKDF2Factor> {
 pub fn derive_password(password: String) -> MFKDF2Result<MFKDF2Factor> {
   crate::derive::factors::password::password(password)
 }
+
+#[cfg(test)]
+mod tests {
+  use zxcvbn::Entropy;
+
+  use super::*;
+  use crate::{error::MFKDF2Error, setup::factors::FactorSetup};
+
+  #[test]
+  fn test_password_empty() {
+    let err = password("").unwrap_err();
+    assert!(matches!(err, MFKDF2Error::PasswordEmpty));
+  }
+
+  #[test]
+  fn test_password_valid() {
+    let factor = password("hello").unwrap();
+    assert_eq!(factor.id, None);
+
+    match &factor.factor_type {
+      FactorType::Password(p) => {
+        assert_eq!(p.password, "hello");
+        assert_eq!(factor.factor_type.bytes(), "hello".as_bytes());
+        let params = p.params_derive([0; 32]);
+        let output = p.output_derive();
+        // let strength: Entropy = serde_json::from_value(output["strength"].clone()).unwrap();
+        // assert_eq!(strength.guesses().ilog2(), factor.entropy.unwrap());
+        assert_eq!(params, json!({}));
+      },
+      _ => panic!("Wrong factor type"),
+    }
+  }
+}

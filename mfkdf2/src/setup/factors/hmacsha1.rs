@@ -17,10 +17,8 @@ pub struct HmacSha1Options {
 impl Default for HmacSha1Options {
   fn default() -> Self { Self { id: Some("hmacsha1".to_string()), secret: None } }
 }
-
 #[derive(Clone, Debug, Serialize, Deserialize, uniffi::Record)]
 pub struct HmacSha1 {
-  // TODO (@lonerapier): i don't like this, it should be a separate derive struct in derive module
   pub response:      Option<Vec<u8>>,
   pub params:        Option<String>,
   pub padded_secret: Vec<u8>,
@@ -33,7 +31,7 @@ impl FactorMetadata for HmacSha1 {
 impl FactorSetup for HmacSha1 {
   fn bytes(&self) -> Vec<u8> { self.padded_secret[..20].to_vec() }
 
-  fn params(&self, _key: [u8; 32]) -> Value {
+  fn params_setup(&self, _key: [u8; 32]) -> Value {
     let mut challenge = [0u8; 64];
     OsRng.fill_bytes(&mut challenge);
 
@@ -43,12 +41,12 @@ impl FactorSetup for HmacSha1 {
     let pad = encrypt(&self.padded_secret, &padded_key);
 
     json!({
-      "challenge": challenge.to_vec(),
-      "pad": pad,
+      "challenge": hex::encode(challenge),
+      "pad": hex::encode(pad),
     })
   }
 
-  fn output(&self, _key: [u8; 32]) -> Value {
+  fn output_setup(&self, _key: [u8; 32]) -> Value {
     json!({
       "secret": self.padded_secret[..20],
     })
@@ -90,45 +88,36 @@ pub fn setup_hmacsha1(options: HmacSha1Options) -> MFKDF2Result<MFKDF2Factor> { 
 mod tests {
   use super::*;
 
-  #[test]
-  fn test_hmacsha1_with_known_secret() {
-    // Use a known secret for deterministic testing
-    let known_secret = [
-      0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f,
-      0x10, 0x11, 0x12, 0x13, 0x14,
-    ];
+  const SECRET: [u8; 20] = [
+    0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f, 0x10,
+    0x11, 0x12, 0x13, 0x14,
+  ];
 
-    let factor = hmacsha1(HmacSha1Options {
-      id:     Some("test".to_string()),
-      secret: Some(known_secret.to_vec()),
-    })
-    .unwrap();
+  fn mock_construction() -> MFKDF2Factor {
+    hmacsha1(HmacSha1Options { id: Some("test".to_string()), secret: Some(SECRET.to_vec()) })
+      .unwrap()
+  }
+
+  #[test]
+  fn known_secret() {
+    // Use a known secret for deterministic testing
+    let factor = mock_construction();
 
     assert_eq!(factor.kind(), "hmacsha1");
     assert_eq!(factor.id.unwrap(), "test");
-    assert_eq!(factor.factor_type.bytes(), known_secret.to_vec());
+    assert_eq!(factor.factor_type.bytes(), SECRET.to_vec());
 
     // Get the challenge and pad from params
-    let params = factor.factor_type.params([0u8; 32]);
-    let challenge = params["challenge"]
-      .as_array()
-      .unwrap()
-      .iter()
-      .map(|v| v.as_u64().unwrap() as u8)
-      .collect::<Vec<u8>>();
-    let pad = params["pad"]
-      .as_array()
-      .unwrap()
-      .iter()
-      .map(|v| v.as_u64().unwrap() as u8)
-      .collect::<Vec<u8>>();
+    let params = factor.factor_type.params_setup([0u8; 32]);
+    let challenge = hex::decode(params["challenge"].as_str().unwrap()).unwrap();
+    let pad = hex::decode(params["pad"].as_str().unwrap()).unwrap();
 
     // Compute HMAC-SHA1 response externally to verify
-    let expected_response = crate::crypto::hmacsha1(&known_secret, &challenge);
+    let expected_response = crate::crypto::hmacsha1(&SECRET, &challenge);
 
     // Verify the pad is correct (ENC(secret, key))
     let mut padded_secret = [0u8; 32];
-    padded_secret[..known_secret.len()].copy_from_slice(&known_secret);
+    padded_secret[..SECRET.len()].copy_from_slice(&SECRET);
 
     let mut padded_key = [0u8; 32];
     padded_key[..expected_response.len()].copy_from_slice(&expected_response);
@@ -140,13 +129,33 @@ mod tests {
   }
 
   #[test]
-  fn test_hmacsha1_random_secret() {
+  fn random_secret() {
     let factor = hmacsha1(HmacSha1Options { id: None, secret: None }).unwrap();
     assert_eq!(factor.kind(), "hmacsha1");
     assert_eq!(factor.id.unwrap(), "hmacsha1");
     assert_eq!(factor.factor_type.bytes().len(), 20); // Secret should be 20 bytes
-    assert!(factor.factor_type.params([0u8; 32]).is_object());
-    assert!(factor.factor_type.output([0u8; 32]).is_object());
+    assert!(factor.factor_type.params_setup([0u8; 32]).is_object());
+    assert!(factor.factor_type.output_setup([0u8; 32]).is_object());
     assert_eq!(factor.entropy, Some(160)); // 20 bytes * 8 bits = 160 bits
+  }
+
+  #[test]
+  fn output_setup() {
+    let factor = mock_construction();
+    let output = factor.factor_type.output_setup([0u8; 32]);
+    let secret = output["secret"]
+      .as_array()
+      .unwrap()
+      .iter()
+      .map(|v| v.as_u64().unwrap() as u8)
+      .collect::<Vec<u8>>();
+
+    assert_eq!(secret, factor.factor_type.bytes());
+  }
+
+  #[test]
+  fn invalid_id() {
+    let result = hmacsha1(HmacSha1Options { id: Some("".to_string()), secret: None });
+    assert!(matches!(result, Err(crate::error::MFKDF2Error::MissingFactorId)));
   }
 }

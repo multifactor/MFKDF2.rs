@@ -21,6 +21,8 @@ pub fn generate_alphanumeric_characters(length: u32) -> String {
     .collect()
 }
 
+pub struct OobaPublicKey(pub RsaPublicKey);
+
 #[derive(Clone, Debug, Serialize, Deserialize, uniffi::Record)]
 pub struct OobaOptions {
   pub id:     Option<String>,
@@ -36,33 +38,39 @@ impl Default for OobaOptions {
 #[derive(Clone, Debug, Serialize, Deserialize, uniffi::Record)]
 pub struct Ooba {
   pub target: Vec<u8>,
-  // TODO (@lonerapier): this looks like a security bug
-  pub code:   String,
   pub length: u8,
   pub jwk:    String,
   pub params: String,
 }
 
-pub fn rsa_publickey_from_jwk(key: &str) -> RsaPublicKey {
-  let jwk: Jwk = serde_json::from_str(key).expect("Should parse JWK successfully");
+impl TryFrom<&str> for OobaPublicKey {
+  type Error = MFKDF2Error;
 
-  let n_str = match &jwk.algorithm {
-    jsonwebtoken::jwk::AlgorithmParameters::RSA(rsa_params) => &rsa_params.n,
-    _ => panic!("Expected RSA algorithm parameters"),
-  };
-  let e_str = match &jwk.algorithm {
-    jsonwebtoken::jwk::AlgorithmParameters::RSA(rsa_params) => &rsa_params.e,
-    _ => panic!("Expected RSA algorithm parameters"),
-  };
+  fn try_from(key: &str) -> Result<Self, Self::Error> {
+    let jwk: Jwk = serde_json::from_str(key).map_err(MFKDF2Error::SerializeError)?;
 
-  let n = rsa::BigUint::from_bytes_be(
-    &base64::engine::general_purpose::URL_SAFE_NO_PAD.decode(n_str).unwrap(),
-  );
-  let e = rsa::BigUint::from_bytes_be(
-    &base64::engine::general_purpose::URL_SAFE_NO_PAD.decode(e_str).unwrap(),
-  );
+    let n_str = match &jwk.algorithm {
+      jsonwebtoken::jwk::AlgorithmParameters::RSA(rsa_params) => &rsa_params.n,
+      _ => return Err(MFKDF2Error::InvalidOobaKey),
+    };
+    let e_str = match &jwk.algorithm {
+      jsonwebtoken::jwk::AlgorithmParameters::RSA(rsa_params) => &rsa_params.e,
+      _ => return Err(MFKDF2Error::InvalidOobaKey),
+    };
 
-  RsaPublicKey::new(n, e).unwrap()
+    let n = rsa::BigUint::from_bytes_be(
+      &base64::engine::general_purpose::URL_SAFE_NO_PAD
+        .decode(n_str)
+        .map_err(|e| MFKDF2Error::DecodeError(e))?,
+    );
+    let e = rsa::BigUint::from_bytes_be(
+      &base64::engine::general_purpose::URL_SAFE_NO_PAD
+        .decode(e_str)
+        .map_err(|e| MFKDF2Error::DecodeError(e))?,
+    );
+
+    Ok(OobaPublicKey(RsaPublicKey::new(n, e).map_err(|_| MFKDF2Error::InvalidOobaKey)?))
+  }
 }
 
 impl FactorMetadata for Ooba {
@@ -72,7 +80,7 @@ impl FactorMetadata for Ooba {
 impl FactorSetup for Ooba {
   fn bytes(&self) -> Vec<u8> { self.target.clone() }
 
-  fn params(&self, _key: [u8; 32]) -> Value {
+  fn params_setup(&self, _key: [u8; 32]) -> Value {
     let code = generate_alphanumeric_characters(self.length.into()).to_uppercase();
 
     let prev_key = hkdf_sha256_with_info(code.as_bytes(), &[], &[]);
@@ -82,23 +90,23 @@ impl FactorSetup for Ooba {
       Ok(params) => params,
       Err(_) => json!({}),
     };
-    params["code"] = serde_json::Value::String(code);
+    params["code"] = json!(code);
 
     let plaintext = serde_json::to_vec(&params).expect("Should serialize params to bytes");
-    let key = rsa_publickey_from_jwk(&self.jwk);
+    let key = OobaPublicKey::try_from(self.jwk.as_str()).expect("JWK should be valid");
     let ciphertext =
-      key.encrypt(&mut OsRng, Oaep::new::<Sha256>(), &plaintext).expect("Should encrypt params");
+      key.0.encrypt(&mut OsRng, Oaep::new::<Sha256>(), &plaintext).expect("Should encrypt params");
 
     json!({
         "length": self.length,
         "key": self.jwk,
-        "params": self.params,
+        "params": params,
         "next": hex::encode(ciphertext),
         "pad": general_purpose::STANDARD.encode(pad),
     })
   }
 
-  fn output(&self, _key: [u8; 32]) -> Value { json!({}) }
+  fn output_setup(&self, _key: [u8; 32]) -> Value { json!({}) }
 }
 
 pub fn ooba(options: OobaOptions) -> MFKDF2Result<MFKDF2Factor> {
@@ -142,7 +150,6 @@ pub fn ooba(options: OobaOptions) -> MFKDF2Result<MFKDF2Factor> {
     id:          Some(options.id.unwrap_or("ooba".to_string())),
     salt:        salt.to_vec(),
     factor_type: FactorType::OOBA(Ooba {
-      code: String::new(),
       target: target.to_vec(),
       length,
       jwk: options.key.unwrap(),
@@ -158,9 +165,10 @@ pub fn setup_ooba(options: OobaOptions) -> MFKDF2Result<MFKDF2Factor> { ooba(opt
 #[cfg(test)]
 mod tests {
   use super::*;
+  use crate::crypto::decrypt;
 
   const TEST_JWK: &str = r#"{
-    "key_ops": ["encrypt"],
+    "key_ops": ["encrypt", "decrypt"],
     "ext": true,
     "alg": "RSA-OAEP-256",
     "kty": "RSA",
@@ -168,9 +176,148 @@ mod tests {
     "e": "AQAB"
   }"#;
 
+  fn mock_construction() -> MFKDF2Factor {
+    let options = OobaOptions {
+      id:     Some("test".to_string()),
+      length: 8,
+      key:    Some(TEST_JWK.to_string()),
+      params: Some(r#"{"foo":"bar"}"#.to_string()),
+    };
+
+    let result = ooba(options);
+    assert!(result.is_ok());
+
+    result.unwrap()
+  }
+
   #[test]
-  fn test_ooba() {
-    let jwk: Jwk = serde_json::from_str(TEST_JWK).expect("Should parse JWK successfully");
-    println!("{:?}", jwk);
+  fn construction() {
+    let options = OobaOptions {
+      id:     Some("test".to_string()),
+      length: 8,
+      key:    Some(TEST_JWK.to_string()),
+      params: Some(r#"{"foo":"bar"}"#.to_string()),
+    };
+
+    let result = ooba(options);
+    assert!(result.is_ok());
+
+    let factor = result.unwrap();
+    assert_eq!(factor.id, Some("test".to_string()));
+    assert_eq!(factor.salt.len(), 32);
+
+    assert!(matches!(factor.factor_type, FactorType::OOBA(_)));
+    if let FactorType::OOBA(ooba_factor) = factor.factor_type {
+      assert_eq!(ooba_factor.length, 8);
+      assert_eq!(ooba_factor.jwk, TEST_JWK.to_string());
+      assert_eq!(ooba_factor.params, r#"{"foo":"bar"}"#.to_string());
+      assert_eq!(ooba_factor.target.len(), 32);
+    }
+  }
+
+  #[test]
+  fn empty_id() {
+    let options = OobaOptions {
+      id:     Some("".to_string()),
+      length: 6,
+      key:    Some(TEST_JWK.to_string()),
+      params: None,
+    };
+    let result = ooba(options);
+    assert!(matches!(result, Err(MFKDF2Error::MissingFactorId)));
+  }
+
+  #[test]
+  fn zero_length() {
+    let options = OobaOptions {
+      id:     Some("test".to_string()),
+      length: 0,
+      key:    Some(TEST_JWK.to_string()),
+      params: None,
+    };
+    let result = ooba(options);
+    assert!(matches!(result, Err(MFKDF2Error::InvalidOobaLength)));
+  }
+
+  #[test]
+  fn large_length() {
+    let options = OobaOptions {
+      id:     Some("test".to_string()),
+      length: 33,
+      key:    Some(TEST_JWK.to_string()),
+      params: None,
+    };
+    let result = ooba(options);
+    assert!(matches!(result, Err(MFKDF2Error::InvalidOobaLength)));
+  }
+
+  #[test]
+  fn missing_key() {
+    let options =
+      OobaOptions { id: Some("test".to_string()), length: 6, key: None, params: None };
+    let result = ooba(options);
+    assert!(matches!(result, Err(MFKDF2Error::MissingOobaKey)));
+  }
+
+  #[test]
+  fn invalid_key_format() {
+    let options = OobaOptions {
+      id:     Some("test".to_string()),
+      length: 6,
+      key:    Some("not-a-jwk".to_string()),
+      params: None,
+    };
+    let result = ooba(options);
+    assert!(matches!(result, Err(MFKDF2Error::SerializeError(_))));
+  }
+
+  #[test]
+  fn not_rsa_key() {
+    const TEST_EC_JWK: &str = r#"{
+      "kty": "EC",
+      "crv": "P-256",
+      "x": "MKBCTNIcKUSDii11ySs3526iDZ8AiTo7Tu6KPAqv7D4",
+      "y": "4Etl6SRW2YiLUrN5vfvlogunL7_vC1Gja-9XRUPKnsI"
+    }"#;
+
+    let options = OobaOptions {
+      id:     Some("test".to_string()),
+      length: 6,
+      key:    Some(TEST_EC_JWK.to_string()),
+      params: None,
+    };
+    let result = ooba(options);
+    assert!(matches!(result, Err(MFKDF2Error::InvalidOobaKey)));
+  }
+
+  #[test]
+  fn params() {
+    let factor = mock_construction();
+
+    let ooba: Ooba = match factor.factor_type {
+      FactorType::OOBA(ooba) => ooba,
+      _ => panic!("Factor type should be Ooba"),
+    };
+
+    let params = ooba.params_setup([0u8; 32]);
+    assert!(params.is_object());
+
+    // check params.next is equal to params.params
+    let setup_params = params["params"].clone();
+
+    let code = setup_params["code"].as_str().unwrap();
+
+    let prev_key = hkdf_sha256_with_info(code.as_bytes(), &[], &[]);
+    let pad = general_purpose::STANDARD.decode(params["pad"].as_str().unwrap()).unwrap();
+    let target = decrypt(pad, &prev_key);
+
+    assert_eq!(ooba.target, target);
+  }
+
+  #[test]
+  fn output() {
+    let factor = mock_construction();
+    let output = factor.factor_type.output_setup([0u8; 32]);
+    assert!(output.is_object());
   }
 }

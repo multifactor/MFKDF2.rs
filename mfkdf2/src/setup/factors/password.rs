@@ -20,9 +20,9 @@ impl FactorMetadata for Password {
 impl FactorSetup for Password {
   fn bytes(&self) -> Vec<u8> { self.password.as_bytes().to_vec() }
 
-  fn params(&self, _key: [u8; 32]) -> Value { json!({}) }
+  fn params_setup(&self, _key: [u8; 32]) -> Value { json!({}) }
 
-  fn output(&self, _key: [u8; 32]) -> Value {
+  fn output_setup(&self, _key: [u8; 32]) -> Value {
     json!({
       "strength": zxcvbn(&self.password, &[]),
     })
@@ -72,15 +72,45 @@ pub fn setup_password(password: String, options: PasswordOptions) -> MFKDF2Resul
 #[cfg(test)]
 mod tests {
 
-  use super::*;
+  use serde_json::json;
 
-  #[tokio::test]
-  async fn test_password_strength() {
+  use super::*;
+  use crate::{error::MFKDF2Error, setup::factors::FactorSetup};
+
+  #[test]
+  fn password_strength() {
     let factor = password("password", PasswordOptions { id: None }).unwrap();
     assert_eq!(factor.entropy, Some(1));
 
     let factor =
       password("98p23uijafjj--ah77yhfraklhjaza!?a3", PasswordOptions { id: None }).unwrap();
     assert_eq!(factor.entropy, Some(63));
+  }
+
+  #[test]
+  fn password_empty() {
+    let err = password("", PasswordOptions { id: None }).unwrap_err();
+    assert!(matches!(err, MFKDF2Error::PasswordEmpty));
+  }
+
+  #[test]
+  fn password_empty_id() {
+    let err = password("password", PasswordOptions { id: Some("".to_string()) }).unwrap_err();
+    assert!(matches!(err, MFKDF2Error::MissingFactorId));
+  }
+
+  #[test]
+  fn password_valid() {
+    let factor = password("hello", PasswordOptions { id: None }).unwrap();
+    assert_eq!(factor.id, Some("password".to_string()));
+    match &factor.factor_type {
+      FactorType::Password(p) => {
+        assert_eq!(p.password, "hello");
+        assert_eq!(p.bytes(), "hello".as_bytes());
+        let params = p.params_setup([0; 32]);
+        assert_eq!(params, json!({}));
+      },
+      _ => panic!("Wrong factor type"),
+    }
   }
 }

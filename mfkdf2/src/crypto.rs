@@ -57,7 +57,7 @@ mod tests {
   use super::*;
 
   #[test]
-  fn test_encrypt_decrypt_roundtrip() {
+  fn encrypt_decrypt_roundtrip() {
     let mut key = [0u8; 32];
     OsRng.fill_bytes(&mut key);
 
@@ -71,7 +71,7 @@ mod tests {
   }
 
   #[test]
-  fn test_encrypt_decrypt_roundtrip_non_multiple() {
+  fn encrypt_decrypt_roundtrip_non_multiple() {
     let mut key = [0u8; 32];
     OsRng.fill_bytes(&mut key);
 
@@ -85,7 +85,7 @@ mod tests {
   }
 
   #[test]
-  fn test_decrypt_with_wrong_key() {
+  fn decrypt_with_wrong_key() {
     let mut key1 = [0u8; 32];
     OsRng.fill_bytes(&mut key1);
     let mut key2 = [0u8; 32];
@@ -101,7 +101,7 @@ mod tests {
   }
 
   #[test]
-  fn test_decrypt_modified_ciphertext() {
+  fn decrypt_modified_ciphertext() {
     let mut key = [0u8; 32];
     OsRng.fill_bytes(&mut key);
 
@@ -117,7 +117,7 @@ mod tests {
   }
 
   #[test]
-  fn test_ciphertext_length() {
+  fn ciphertext_length() {
     let mut key = [0u8; 32];
     OsRng.fill_bytes(&mut key);
 
@@ -134,11 +134,21 @@ mod tests {
 
   #[test]
   #[should_panic]
-  fn test_decrypt_invalid_length() {
+  fn decrypt_invalid_length() {
     let mut key = [0u8; 32];
     OsRng.fill_bytes(&mut key);
 
     let data = vec![0u8; 17]; // Not a multiple of 16
     decrypt(data, &key); // This should panic
+  }
+
+  #[test]
+  fn test_hmacsha1() {
+    let key = hex::decode("e60ab41d81d5494a90593d484d68f676a60a2450").unwrap();
+    let challenge = "hello";
+
+    let res = hmacsha1(&key, challenge.as_bytes());
+
+    assert_eq!(hex::encode(res), "1292826fd25cdc59e5f83d3e11aa561610562875");
   }
 }

@@ -1,6 +1,6 @@
 // TODO (autoparallel): If we use `no-std`, then this use of `HashSet` will need to be
 // replaced.
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 
 use argon2::{Argon2, Params, Version};
 use base64::{Engine, engine::general_purpose};
@@ -26,8 +26,6 @@ pub struct PolicyFactor {
   pub kind:   String,
   pub pad:    String,
   pub salt:   String,
-  #[serde(skip)]
-  pub key:    Vec<u8>,
   pub secret: String,
   pub params: String,
   pub hint:   String,
@@ -119,7 +117,7 @@ pub async fn key(
 
   let mut policy_factors = Vec::new();
   let mut ids = HashSet::new();
-  let mut outputs = Vec::new();
+  let mut outputs = HashMap::new();
   let mut theoretical_entropy: Vec<u32> = Vec::new();
   let mut real_entropy: Vec<u32> = Vec::new();
 
@@ -146,9 +144,9 @@ pub async fn key(
     );
 
     // TODO (autoparallel): Add params for each factor.
-    let params = factor.factor_type.params(params_key);
+    let params = factor.factor_type.params_setup(params_key);
     // TODO (autoparallel): This should not be an unwrap.
-    outputs.push(factor.factor_type.output(key));
+    outputs.insert(factor.id.clone().unwrap(), factor.factor_type.output_setup(key).to_string());
 
     let secret_key = hkdf_sha256_with_info(
       &key,
@@ -167,7 +165,6 @@ pub async fn key(
       kind:   factor.kind(),
       pad:    general_purpose::STANDARD.encode(pad),
       salt:   general_purpose::STANDARD.encode(factor.salt.clone()),
-      key:    params_key.to_vec(), // TODO (sambhav): why is this needed?
       secret: general_purpose::STANDARD.encode(factor_secret),
       params: serde_json::to_string(&params).unwrap(),
       hint:   "".to_string(),
@@ -219,7 +216,7 @@ pub async fn key(
     key: key.to_vec(),
     secret: secret.to_vec(),
     shares,
-    outputs: outputs.iter().map(|o| serde_json::to_string(o).unwrap()).collect(),
+    outputs,
     entropy: MFKDF2Entropy { real: entropy_real, theoretical: entropy_theoretical },
   })
 }

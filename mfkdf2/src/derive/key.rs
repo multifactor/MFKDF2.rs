@@ -77,7 +77,7 @@ pub fn key(
       // TODO (autoparallel): It would be preferred to know the size of this array at compile
       // time.
       shares_bytes.push(plaintext);
-      outputs.insert(factor.id, material.factor_type.output_derive());
+      outputs.insert(factor.id, material.factor_type.output_derive().to_string());
     }
   }
 
@@ -128,7 +128,7 @@ pub fn key(
       factor.salt.as_bytes(),
       format!("mfkdf2:factor:params:{}", factor.id).as_bytes(),
     );
-    let params = material.factor_type.params(params_key);
+    let params = material.factor_type.params_setup(params_key);
     factor.params = serde_json::to_string(&params)?;
   }
 
@@ -140,11 +140,11 @@ pub fn key(
   }
 
   Ok(MFKDF2DerivedKey {
-    policy:  new_policy,
-    key:     key.to_vec(),
-    secret:  secret_arr.to_vec(),
-    shares:  shares_vec.into_iter().map(|s| Vec::from(&s)).collect(),
-    outputs: Vec::new(),
+    policy: new_policy,
+    key: key.to_vec(),
+    secret: secret_arr.to_vec(),
+    shares: shares_vec.into_iter().map(|s| Vec::from(&s)).collect(),
+    outputs,
     entropy: MFKDF2Entropy { real: 0, theoretical: 0 },
   })
 }
