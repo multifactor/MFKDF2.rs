@@ -95,8 +95,75 @@ pub fn setup_question(answer: String, options: QuestionOptions) -> MFKDF2Result<
 
 #[cfg(test)]
 mod tests {
-
   use super::*;
+
+  fn mock_construction() -> MFKDF2Factor {
+    let options = QuestionOptions {
+      id:       Some("test-question".to_string()),
+      question: Some("What is your favorite color?".to_string()),
+    };
+    let result = question("Blue! No, Yellow!", options);
+    assert!(result.is_ok());
+    result.unwrap()
+  }
+
+  #[test]
+  fn construction() {
+    let options = QuestionOptions {
+      id:       Some("test-question".to_string()),
+      question: Some("What is your favorite color?".to_string()),
+    };
+    let result = question("Blue! No, Yellow!", options);
+    assert!(result.is_ok());
+
+    let factor = result.unwrap();
+    assert_eq!(factor.id, Some("test-question".to_string()));
+    assert_eq!(factor.salt.len(), 32);
+
+    assert!(matches!(factor.factor_type, FactorType::Question(_)));
+    if let FactorType::Question(q) = factor.factor_type {
+      assert_eq!(q.answer, "bluenoyellow");
+      assert_eq!(q.options.question, Some("What is your favorite color?".to_string()));
+    }
+  }
+
+  #[test]
+  fn empty_answer() {
+    let options = QuestionOptions::default();
+    let result = question("", options);
+    assert!(matches!(result, Err(MFKDF2Error::AnswerEmpty)));
+  }
+
+  #[test]
+  fn empty_id() {
+    let options = QuestionOptions { id: Some("".to_string()), question: None };
+    let result = question("some answer", options);
+    assert!(matches!(result, Err(MFKDF2Error::MissingFactorId)));
+  }
+
+  #[test]
+  fn params() {
+    let factor = mock_construction();
+    let question_factor: Question = match factor.factor_type {
+      FactorType::Question(q) => q,
+      _ => panic!("Factor type should be Question"),
+    };
+
+    let params = question_factor.params_setup([0u8; 32]);
+    assert!(params.is_object());
+    assert_eq!(params["question"], "What is your favorite color?");
+  }
+
+  #[test]
+  fn output() {
+    let factor = mock_construction();
+    let output = factor.factor_type.output_setup([0u8; 32]);
+    assert!(output.is_object());
+    assert!(output["strength"].is_object());
+    assert!(output["strength"]["score"].is_number());
+    assert!(output["strength"]["guesses"].is_number());
+    assert!(output["strength"]["guesses_log10"].is_number());
+  }
 
   #[test]
   fn test_question_strength() {
@@ -106,5 +173,15 @@ mod tests {
     })
     .unwrap();
     assert_eq!(factor.entropy, Some(9));
+  }
+
+  #[test]
+  fn answer_normalization() {
+    let factor = question("  My answer is... 'Test 123!' ", QuestionOptions::default()).unwrap();
+    if let FactorType::Question(q) = factor.factor_type {
+      assert_eq!(q.answer, "myansweristest123");
+    } else {
+      panic!("Wrong factor type");
+    }
   }
 }
