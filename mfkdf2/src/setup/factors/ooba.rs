@@ -38,8 +38,6 @@ impl Default for OobaOptions {
 #[derive(Clone, Debug, Serialize, Deserialize, uniffi::Record)]
 pub struct Ooba {
   pub target: Vec<u8>,
-  // TODO (@lonerapier): this looks like a security bug
-  pub code:   String,
   pub length: u8,
   pub jwk:    String,
   pub params: String,
@@ -82,7 +80,7 @@ impl FactorMetadata for Ooba {
 impl FactorSetup for Ooba {
   fn bytes(&self) -> Vec<u8> { self.target.clone() }
 
-  fn params(&self, _key: [u8; 32]) -> Value {
+  fn params_setup(&self, _key: [u8; 32]) -> Value {
     let code = generate_alphanumeric_characters(self.length.into()).to_uppercase();
 
     let prev_key = hkdf_sha256_with_info(code.as_bytes(), &[], &[]);
@@ -108,7 +106,7 @@ impl FactorSetup for Ooba {
     })
   }
 
-  fn output(&self, _key: [u8; 32]) -> Value { json!({}) }
+  fn output_setup(&self, _key: [u8; 32]) -> Value { json!({}) }
 }
 
 pub fn ooba(options: OobaOptions) -> MFKDF2Result<MFKDF2Factor> {
@@ -152,7 +150,6 @@ pub fn ooba(options: OobaOptions) -> MFKDF2Result<MFKDF2Factor> {
     id:          Some(options.id.unwrap_or("ooba".to_string())),
     salt:        salt.to_vec(),
     factor_type: FactorType::OOBA(Ooba {
-      code: String::new(),
       target: target.to_vec(),
       length,
       jwk: options.key.unwrap(),

@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use base64::engine::general_purpose;
 use serde::{Deserialize, Serialize};
 
@@ -9,7 +11,7 @@ pub struct MFKDF2DerivedKey {
   pub key:     Vec<u8>,
   pub secret:  Vec<u8>,
   pub shares:  Vec<Vec<u8>>,
-  pub outputs: Vec<String>,
+  pub outputs: HashMap<String, String>,
   pub entropy: MFKDF2Entropy,
 }
 
