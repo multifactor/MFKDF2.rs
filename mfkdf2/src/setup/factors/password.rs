@@ -20,9 +20,9 @@ impl FactorMetadata for Password {
 impl FactorSetup for Password {
   fn bytes(&self) -> Vec<u8> { self.password.as_bytes().to_vec() }
 
-  fn params(&self, _key: [u8; 32]) -> Value { json!({}) }
+  fn params_setup(&self, _key: [u8; 32]) -> Value { json!({}) }
 
-  fn output(&self, _key: [u8; 32]) -> Value {
+  fn output_setup(&self, _key: [u8; 32]) -> Value {
     json!({
       "strength": zxcvbn(&self.password, &[]),
     })
