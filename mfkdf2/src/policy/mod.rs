@@ -1,7 +1,7 @@
-pub mod setup;
-pub mod evaluate;
 pub mod derive;
+pub mod evaluate;
 pub mod logic;
+pub mod setup;
 
 use std::collections::HashSet;
 

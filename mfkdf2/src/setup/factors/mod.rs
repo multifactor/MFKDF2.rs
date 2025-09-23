@@ -80,7 +80,7 @@ pub trait FactorMetadata {
   fn kind(&self) -> String;
 }
 
-pub trait Factor: FactorMetadata + FactorSetup + FactorDerive {}
+pub trait Factor: std::fmt::Debug + FactorMetadata + FactorSetup + FactorDerive {}
 
 pub trait FactorSetup {
   fn bytes(&self) -> Vec<u8>;
