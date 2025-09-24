@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 
 use crate::{
-  classes::mfkdf_derived_key::MFKDF2DerivedKey,
+  definitions::mfkdf_derived_key::MFKDF2DerivedKey,
   derive::FactorDerive,
   error::{MFKDF2Error, MFKDF2Result},
   policy::Policy,
@@ -75,10 +75,10 @@ mod tests {
 
     let stack_factor = setup_stack(factors, options).await.unwrap();
     // let params = stack_factor.factor_type.params_setup([0; 32]);
-    let setup_derived_key = crate::setup::key(vec![stack_factor], MFKDF2Options::default())
+
+    crate::setup::key(vec![stack_factor], MFKDF2Options::default())
       .await
-      .expect("derived key should be created");
-    setup_derived_key
+      .expect("derived key should be created")
   }
 
   #[tokio::test]

@@ -71,6 +71,7 @@ pub fn hmacsha1(response: HmacSha1Response) -> MFKDF2Result<MFKDF2Factor> {
   })
 }
 
+// TODO (@lonerapier): remove this once bindings are done, and refactor as builder pattern
 #[uniffi::export]
 pub fn derive_hmacsha1(response: HmacSha1Response) -> MFKDF2Result<MFKDF2Factor> {
   crate::derive::factors::hmacsha1(response)

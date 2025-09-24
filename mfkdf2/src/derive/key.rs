@@ -5,8 +5,8 @@ use base64::{Engine, engine::general_purpose};
 use sharks::{Share, Sharks};
 
 use crate::{
-  classes::mfkdf_derived_key::MFKDF2DerivedKey,
   crypto::{decrypt, hkdf_sha256_with_info, hmacsha256},
+  definitions::mfkdf_derived_key::MFKDF2DerivedKey,
   derive::FactorDerive,
   error::{MFKDF2Error, MFKDF2Result},
   policy::Policy,
@@ -381,8 +381,7 @@ mod tests {
 
     let setup_factors =
       vec![setup_password_factor.clone(), setup_hotp_factor.clone(), setup_totp_factor.clone()];
-    let mut options = setup::key::MFKDF2Options::default();
-    options.threshold = Some(2);
+    let options = setup::key::MFKDF2Options { threshold: Some(2), ..Default::default() };
     let setup_derived_key = setup::key::key(setup_factors, options).await.unwrap();
 
     // Derivation phase
@@ -456,8 +455,7 @@ mod tests {
       setup_totp_factor.clone(),
       setup_ooba_factor.clone(),
     ];
-    let mut options = setup::key::MFKDF2Options::default();
-    options.threshold = Some(3);
+    let options = setup::key::MFKDF2Options { threshold: Some(3), ..Default::default() };
     let setup_derived_key = setup::key::key(setup_factors, options).await.unwrap();
 
     // Derivation phase

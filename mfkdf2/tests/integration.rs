@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use mfkdf2::classes::mfkdf_derived_key::MFKDF2DerivedKey;
+use mfkdf2::definitions::mfkdf_derived_key::MFKDF2DerivedKey;
 
 async fn mock_mfkdf2() -> Result<MFKDF2DerivedKey, mfkdf2::error::MFKDF2Error> {
   let factors = vec![mfkdf2::setup::factors::password(
@@ -103,7 +103,7 @@ async fn test_key_derive_threshold() -> () {
 }
 
 async fn mock_password_question_mfkdf2()
--> Result<mfkdf2::classes::mfkdf_derived_key::MFKDF2DerivedKey, mfkdf2::error::MFKDF2Error> {
+-> Result<mfkdf2::definitions::mfkdf_derived_key::MFKDF2DerivedKey, mfkdf2::error::MFKDF2Error> {
   let factors = vec![
     mfkdf2::setup::factors::password(
       "Tr0ubd4dour",

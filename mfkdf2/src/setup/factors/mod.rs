@@ -80,10 +80,13 @@ pub trait FactorMetadata {
   fn kind(&self) -> String;
 }
 
+// TODO (@lonerapier): refactor trait system with more associated types and remove this marker trait
+// TODO: add default + debug as well
 pub trait Factor: std::fmt::Debug + FactorMetadata + FactorSetup + FactorDerive {}
 
 pub trait FactorSetup {
   fn bytes(&self) -> Vec<u8>;
+  // TODO (@lonerapier): rename to params, output
   fn params_setup(&self, key: [u8; 32]) -> Value;
   fn output_setup(&self, key: [u8; 32]) -> Value;
 }

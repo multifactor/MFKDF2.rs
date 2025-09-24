@@ -10,8 +10,8 @@ use sharks::{Share, Sharks};
 use uuid::Uuid;
 
 use crate::{
-  classes::mfkdf_derived_key::MFKDF2DerivedKey,
   crypto::{encrypt, hkdf_sha256_with_info, hmacsha256},
+  definitions::mfkdf_derived_key::MFKDF2DerivedKey,
   error::{MFKDF2Error, MFKDF2Result},
   policy::Policy,
   setup::factors::{FactorSetup, MFKDF2Factor},
@@ -254,12 +254,8 @@ mod tests {
   ];
 
   fn generate_factors(num: usize) -> Vec<MFKDF2Factor> {
-    let mut factors = Vec::new();
-
-    factors.push(
-      password("password123", PasswordOptions { id: Some("pw".to_string()), ..Default::default() })
-        .unwrap(),
-    );
+    let mut factors =
+      vec![password("password123", PasswordOptions { id: Some("pw".to_string()) }).unwrap()];
 
     factors.push(
       hmacsha1(HmacSha1Options {
@@ -398,8 +394,7 @@ mod tests {
   #[tokio::test]
   async fn key_construction_with_threshold(#[case] num_factors: usize, #[case] threshold: u8) {
     let factors = generate_factors(num_factors);
-    let mut options = MFKDF2Options::default();
-    options.threshold = Some(threshold);
+    let options = MFKDF2Options { threshold: Some(threshold), ..Default::default() };
 
     let derived_key = key(factors.clone(), options.clone()).await.unwrap();
 
@@ -450,9 +445,7 @@ mod tests {
     #[case] threshold: u8,
   ) {
     let factors = generate_factors(num_factors);
-    let mut options = MFKDF2Options::default();
-    options.threshold = Some(threshold);
-
+    let options = MFKDF2Options { threshold: Some(threshold), ..Default::default() };
     let derived_key_result = key(factors.clone(), options.clone()).await;
 
     assert!(matches!(derived_key_result, Err(MFKDF2Error::InvalidThreshold)));
