@@ -8,6 +8,7 @@ use crate::{policy::Policy, setup::key::MFKDF2Entropy};
 #[derive(Clone, Debug, Default, Serialize, Deserialize, Eq, PartialEq, uniffi::Record)]
 pub struct MFKDF2DerivedKey {
   pub policy:  Policy,
+  // TODO (@lonerapier): move to uniffi custom type
   pub key:     Vec<u8>,
   pub secret:  Vec<u8>,
   pub shares:  Vec<Vec<u8>>,
