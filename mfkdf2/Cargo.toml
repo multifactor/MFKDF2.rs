@@ -73,5 +73,5 @@ getrandom = { version = "0.2", features = ["js"] }
 
 [dev-dependencies]
 # itertools = "0.14"
-rstest    = "0.25"
-tokio = { version = "1.42", features = ["full"] }
+rstest = "0.25"
+tokio  = { version = "1.42", features = ["full"] }
