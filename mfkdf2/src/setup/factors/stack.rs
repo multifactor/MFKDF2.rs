@@ -70,7 +70,9 @@ pub async fn stack(
     },
   };
 
-  let mfkdf_options: MFKDF2Options = options.into();
+  let mut mfkdf_options: MFKDF2Options = options.into();
+  mfkdf_options.stack = Some(true);
+
   let key = key::key(factors.clone(), mfkdf_options).await?;
 
   // per-factor salt
@@ -78,7 +80,9 @@ pub async fn stack(
   OsRng.fill_bytes(&mut salt);
 
   let mut factor_map = HashMap::new();
-  let _ = factors.into_iter().map(|f| factor_map.insert(f.id.clone().unwrap(), f));
+  factors.into_iter().for_each(|f| {
+    factor_map.insert(f.id.clone().unwrap(), f);
+  });
 
   Ok(MFKDF2Factor {
     id,
@@ -102,7 +106,7 @@ mod tests {
   use crate::setup::factors::password::{PasswordOptions, password};
 
   #[tokio::test]
-  async fn test_setup_stack_construction() {
+  async fn setup_stack_construction() {
     let factor1 =
       password("password123", PasswordOptions { id: Some("pwd1".to_string()) }).unwrap();
     let factor2 =
@@ -139,7 +143,7 @@ mod tests {
   }
 
   #[tokio::test]
-  async fn test_setup_stack_params_and_output() {
+  async fn setup_stack_params_and_output() {
     let factor = password("password123", PasswordOptions { id: Some("pwd1".to_string()) }).unwrap();
     let options =
       StackOptions { id: Some("my-stack".to_string()), threshold: Some(1), salt: None };
@@ -161,7 +165,7 @@ mod tests {
   }
 
   #[tokio::test]
-  async fn test_setup_stack_no_factors() {
+  async fn setup_stack_no_factors() {
     let options =
       StackOptions { id: Some("my-stack".to_string()), threshold: Some(1), salt: None };
 

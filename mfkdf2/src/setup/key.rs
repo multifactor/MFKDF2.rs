@@ -6,13 +6,12 @@ use argon2::{Argon2, Params, Version};
 use base64::{Engine, engine::general_purpose};
 use rand::{RngCore, rngs::OsRng};
 use serde::{Deserialize, Serialize};
-use sha2::{Digest, Sha256};
 use sharks::{Share, Sharks};
 use uuid::Uuid;
 
 use crate::{
   classes::mfkdf_derived_key::MFKDF2DerivedKey,
-  crypto::{encrypt, hkdf_sha256_with_info},
+  crypto::{encrypt, hkdf_sha256_with_info, hmacsha256},
   error::{MFKDF2Error, MFKDF2Result},
   policy::Policy,
   setup::factors::{FactorSetup, MFKDF2Factor},
@@ -31,15 +30,34 @@ pub struct PolicyFactor {
   pub hint:   String,
 }
 
-#[derive(Default, Clone, Serialize, Deserialize, uniffi::Record)]
+#[derive(Clone, Serialize, Deserialize, uniffi::Record)]
 pub struct MFKDF2Options {
   pub id:        Option<String>,
   pub threshold: Option<u8>,
+  // TODO (@lonerapier): use uniffi custom type
   pub salt:      Option<Vec<u8>>,
   pub stack:     Option<bool>,
   pub integrity: Option<bool>,
   pub time:      Option<u32>,
   pub memory:    Option<u32>,
+}
+
+impl Default for MFKDF2Options {
+  fn default() -> Self {
+    let mut rng = OsRng;
+    let mut salt = [0u8; 32];
+    rng.fill_bytes(&mut salt);
+
+    Self {
+      id:        Some(uuid::Uuid::new_v4().to_string()),
+      threshold: None,
+      salt:      Some(salt.to_vec()),
+      stack:     None,
+      integrity: Some(false),
+      time:      Some(0),
+      memory:    Some(0),
+    }
+  }
 }
 
 #[derive(Clone, Debug, Default, Serialize, Deserialize, Eq, PartialEq, uniffi::Record)]
@@ -54,16 +72,16 @@ pub async fn key(
   options: MFKDF2Options,
 ) -> MFKDF2Result<MFKDF2DerivedKey> {
   // Sets the threshold to be the number of factors (n of n) if not provided.
-  let threshold = options.clone().threshold.unwrap_or(factors.len() as u8);
+  let threshold = options.threshold.unwrap_or(factors.len() as u8);
 
   // Check threshold against number of factors
   // TODO (autoparallel): This should be compile-time checkable? Or at least an error.
-  if !(1..=factors.len()).contains(&(threshold as usize)) {
+  if factors.is_empty() || !(1..=factors.len()).contains(&(threshold as usize)) {
     return Err(MFKDF2Error::InvalidThreshold);
   }
 
   // Generate salt & secret if not provided
-  let salt: [u8; 32] = match options.clone().salt {
+  let salt: [u8; 32] = match options.salt {
     Some(salt) => salt.try_into().unwrap(),
     None => {
       let mut salt = [0u8; 32];
@@ -122,6 +140,7 @@ pub async fn key(
   let mut real_entropy: Vec<u32> = Vec::new();
 
   for (factor, share) in factors.iter().zip(shares.clone()) {
+    // dbg!(&share);
     // Factor id uniqueness
     let id = factor.id.clone();
     if !ids.insert(id.clone()) {
@@ -143,7 +162,6 @@ pub async fn key(
       format!("mfkdf2:factor:params:{}", &factor.id.clone().unwrap()).as_bytes(),
     );
 
-    // TODO (autoparallel): Add params for each factor.
     let params = factor.factor_type.params_setup(params_key);
     // TODO (autoparallel): This should not be an unwrap.
     outputs.insert(factor.id.clone().unwrap(), factor.factor_type.output_setup(key).to_string());
@@ -171,23 +189,25 @@ pub async fn key(
     });
   }
 
+  let mut policy = Policy {
+    schema: "https://mfkdf.com/schema/v2.0.0/policy.json".to_string(),
+    id: policy_id,
+    threshold,
+    salt: general_purpose::STANDARD.encode(salt),
+    factors: policy_factors,
+    hmac: "".to_string(),
+    time,
+    memory,
+    key: general_purpose::STANDARD.encode(policy_key),
+  };
+
   // Derive an integrity key specific to the policy and compute a policy HMAC
-  let integrity_key = hkdf_sha256_with_info(&key, &salt, "mfkdf2:integrity".as_bytes());
-
-  // Hash the signable policy components (threshold, salt, factors) to match JS `extract`
-  let encoded_salt = general_purpose::STANDARD.encode(salt);
-  // TODO (sambhav): add a factor extract for signing.
-  let mut hasher = Sha256::new();
-  hasher.update(policy_id.as_bytes());
-  hasher.update(threshold.to_le_bytes());
-  hasher.update(encoded_salt.as_bytes());
-
-  // Serialize factors deterministically so the same digest is produced
-  let factors_json = serde_json::to_string(&factors).map_err(MFKDF2Error::SerializeError)?;
-  hasher.update(factors_json.as_bytes());
-  let policy_data = hasher.finalize();
-
-  let hmac = crate::crypto::hmacsha256(&integrity_key, policy_data.as_slice());
+  if options.integrity.unwrap_or_default() {
+    let integrity_data = policy.extract();
+    let integrity_key = hkdf_sha256_with_info(&key, &salt, "mfkdf2:integrity".as_bytes());
+    let digest = hmacsha256(&integrity_key, &integrity_data);
+    policy.hmac = general_purpose::STANDARD.encode(digest);
+  }
 
   // Calculate entropy
   theoretical_entropy.sort_unstable();
@@ -202,21 +222,239 @@ pub async fn key(
   let entropy_real = real_sum.min(256);
 
   Ok(MFKDF2DerivedKey {
-    policy: Policy {
-      schema: "https://mfkdf.com/schema/v2.0.0/policy.json".to_string(),
-      id: policy_id,
-      threshold,
-      salt: general_purpose::STANDARD.encode(salt),
-      factors: policy_factors,
-      hmac: general_purpose::STANDARD.encode(hmac),
-      time,
-      memory,
-      key: general_purpose::STANDARD.encode(policy_key),
-    },
+    policy,
     key: key.to_vec(),
     secret: secret.to_vec(),
     shares,
     outputs,
     entropy: MFKDF2Entropy { real: entropy_real, theoretical: entropy_theoretical },
   })
+}
+
+#[cfg(test)]
+mod tests {
+  use rstest::rstest;
+
+  use super::*;
+  use crate::{
+    crypto::decrypt,
+    setup::factors::{
+      hmacsha1::{HmacSha1Options, hmacsha1},
+      hotp::{HOTPOptions, hotp},
+      password::{PasswordOptions, password},
+      question::{QuestionOptions, question},
+      totp::{TOTPOptions, totp},
+      uuid::{UUIDOptions, uuid},
+    },
+  };
+
+  const HMACSHA1_SECRET: [u8; 20] = [
+    0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f, 0x10,
+    0x11, 0x12, 0x13, 0x14,
+  ];
+
+  fn generate_factors(num: usize) -> Vec<MFKDF2Factor> {
+    let mut factors = Vec::new();
+
+    factors.push(
+      password("password123", PasswordOptions { id: Some("pw".to_string()), ..Default::default() })
+        .unwrap(),
+    );
+
+    factors.push(
+      hmacsha1(HmacSha1Options {
+        id:     Some("hmac".to_string()),
+        secret: Some(HMACSHA1_SECRET.to_vec()),
+      })
+      .unwrap(),
+    );
+
+    factors.push(hotp(HOTPOptions { id: Some("hotp".to_string()), ..Default::default() }).unwrap());
+
+    factors.push(totp(TOTPOptions { id: Some("totp".to_string()), ..Default::default() }).unwrap());
+
+    factors.push(
+      question("an answer", QuestionOptions {
+        id: Some("question".to_string()),
+        ..Default::default()
+      })
+      .unwrap(),
+    );
+
+    factors.push(uuid(UUIDOptions { id: Some("uuid".to_string()), ..Default::default() }).unwrap());
+
+    factors.into_iter().take(num).collect()
+  }
+
+  #[rstest]
+  #[case::password_only(vec![password("password123", PasswordOptions::default()).unwrap()])]
+  #[case::hmacsha1_only(vec![hmacsha1(HmacSha1Options {
+    id:     Some("hmacsha1".to_string()),
+    secret: Some(HMACSHA1_SECRET.to_vec()),
+  })
+  .unwrap()])]
+  #[case::password_and_hmacsha1(vec![
+    password("password123", PasswordOptions::default()).unwrap(),
+    hmacsha1(HmacSha1Options {
+      id:     Some("hmacsha1".to_string()),
+      secret: Some(HMACSHA1_SECRET.to_vec()),
+    })
+    .unwrap()
+  ])]
+  #[case::all_three(vec![
+    password("password123", PasswordOptions::default()).unwrap(),
+    hmacsha1(HmacSha1Options {
+      id:     Some("hmacsha1".to_string()),
+      secret: Some(HMACSHA1_SECRET.to_vec()),
+    })
+    .unwrap(),
+    hotp(HOTPOptions::default()).unwrap()
+  ])]
+  #[case::totp_only(vec![totp(TOTPOptions::default()).unwrap()])]
+  #[case::password_and_totp(vec![
+    password("password123", PasswordOptions::default()).unwrap(),
+    totp(TOTPOptions::default()).unwrap()
+  ])]
+  #[case::all_four(vec![
+    password("password123", PasswordOptions::default()).unwrap(),
+    hmacsha1(HmacSha1Options {
+      id:     Some("hmacsha1".to_string()),
+      secret: Some(HMACSHA1_SECRET.to_vec()),
+    })
+    .unwrap(),
+    hotp(HOTPOptions::default()).unwrap(),
+    totp(TOTPOptions::default()).unwrap()
+  ])]
+  #[case::question_only(vec![question("my secret answer", QuestionOptions::default()).unwrap()])]
+  #[case::uuid_only(vec![uuid(UUIDOptions::default()).unwrap()])]
+  #[tokio::test]
+  async fn key_construction(#[case] factors: Vec<MFKDF2Factor>) {
+    let options = MFKDF2Options::default();
+    let derived_key = key(factors.clone(), options.clone()).await.unwrap();
+
+    let salt = general_purpose::STANDARD.decode(derived_key.policy.salt.clone()).unwrap();
+    let mut kek = [0u8; 32];
+    Argon2::new(
+      argon2::Algorithm::Argon2id,
+      Version::default(),
+      Params::new(
+        argon2::Params::DEFAULT_M_COST + options.memory.unwrap(),
+        argon2::Params::DEFAULT_T_COST + options.time.unwrap(),
+        1,
+        Some(32),
+      )
+      .unwrap(),
+    )
+    .hash_password_into(&derived_key.secret, &salt, &mut kek)
+    .unwrap();
+
+    let policy_key = general_purpose::STANDARD.decode(derived_key.policy.key.clone()).unwrap();
+    let key = decrypt(policy_key, &kek);
+
+    assert_eq!(derived_key.policy.id, options.id.unwrap());
+    assert_eq!(derived_key.policy.threshold as usize, factors.len());
+    assert_eq!(derived_key.policy.salt, general_purpose::STANDARD.encode(options.salt.unwrap()));
+    assert_eq!(derived_key.policy.time, options.time.unwrap());
+    assert_eq!(derived_key.policy.memory, options.memory.unwrap());
+
+    assert_eq!(derived_key.key, key);
+
+    // verify factor secret is encrypted with key
+    let mut shares = Vec::new();
+    for factor in &derived_key.policy.factors {
+      let secret_key = hkdf_sha256_with_info(
+        &key,
+        &general_purpose::STANDARD.decode(factor.salt.clone()).unwrap(),
+        format!("mfkdf2:factor:secret:{}", &factor.id).as_bytes(),
+      );
+      let factor_secret = general_purpose::STANDARD.decode(factor.secret.clone()).unwrap();
+      let stretched = decrypt(factor_secret, &secret_key).try_into().unwrap();
+
+      let pad = general_purpose::STANDARD.decode(factor.pad.clone()).unwrap();
+      let factor_share = decrypt(pad, &stretched);
+
+      shares.push(factor_share);
+    }
+
+    // combine shares to get secret
+    let shares_vec: Vec<Share> = shares
+      .iter()
+      .map(|b| Share::try_from(&b[..]).map_err(|_| MFKDF2Error::TryFromVecError))
+      .collect::<Result<Vec<Share>, _>>()
+      .unwrap();
+
+    let sharks = Sharks(derived_key.policy.threshold);
+    let secret = sharks.recover(&shares_vec).unwrap();
+
+    assert_eq!(secret[..32], derived_key.secret);
+  }
+
+  #[rstest]
+  #[case(3, 1)]
+  #[case(3, 2)]
+  #[case(3, 3)]
+  #[case(5, 2)]
+  #[case(5, 5)]
+  #[tokio::test]
+  async fn key_construction_with_threshold(#[case] num_factors: usize, #[case] threshold: u8) {
+    let factors = generate_factors(num_factors);
+    let mut options = MFKDF2Options::default();
+    options.threshold = Some(threshold);
+
+    let derived_key = key(factors.clone(), options.clone()).await.unwrap();
+
+    assert_eq!(derived_key.policy.threshold, threshold);
+
+    let salt = general_purpose::STANDARD.decode(derived_key.policy.salt.clone()).unwrap();
+    let mut kek = [0u8; 32];
+    Argon2::new(
+      argon2::Algorithm::Argon2id,
+      Version::default(),
+      Params::new(
+        argon2::Params::DEFAULT_M_COST + options.memory.unwrap(),
+        argon2::Params::DEFAULT_T_COST + options.time.unwrap(),
+        1,
+        Some(32),
+      )
+      .unwrap(),
+    )
+    .hash_password_into(&derived_key.secret, &salt, &mut kek)
+    .unwrap();
+
+    let policy_key = general_purpose::STANDARD.decode(derived_key.policy.key.clone()).unwrap();
+    let key = decrypt(policy_key, &kek);
+    assert_eq!(derived_key.key, key);
+
+    let shares_to_recover: Vec<Vec<u8>> =
+      derived_key.shares.iter().take(threshold as usize).cloned().collect();
+
+    let shares_vec: Vec<Share> = shares_to_recover
+      .iter()
+      .map(|b| Share::try_from(&b[..]).map_err(|_| MFKDF2Error::TryFromVecError))
+      .collect::<Result<Vec<Share>, _>>()
+      .unwrap();
+
+    let sharks = Sharks(threshold);
+    let recovered_secret = sharks.recover(&shares_vec).unwrap();
+
+    assert_eq!(recovered_secret[..32], derived_key.secret);
+  }
+
+  #[rstest]
+  #[case(3, 0)]
+  #[case(3, 4)]
+  #[case(0, 0)]
+  #[tokio::test]
+  async fn key_construction_with_invalid_threshold(
+    #[case] num_factors: usize,
+    #[case] threshold: u8,
+  ) {
+    let factors = generate_factors(num_factors);
+    let mut options = MFKDF2Options::default();
+    options.threshold = Some(threshold);
+
+    let derived_key_result = key(factors.clone(), options.clone()).await;
+
+    assert!(matches!(derived_key_result, Err(MFKDF2Error::InvalidThreshold)));
+  }
 }

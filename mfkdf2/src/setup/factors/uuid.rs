@@ -88,10 +88,8 @@ mod tests {
   #[test]
   fn with_provided_valid_uuid() {
     let valid_uuid = "f9bf78b9-54e7-4696-97dc-5e750de4c592";
-    let options = UUIDOptions {
-      id:   Some("test_valid".to_string()),
-      uuid: Some(valid_uuid.to_string()),
-    };
+    let options =
+      UUIDOptions { id: Some("test_valid".to_string()), uuid: Some(valid_uuid.to_string()) };
     let factor = uuid(options).unwrap();
     let factor_uuid = match factor.factor_type {
       FactorType::UUID(u) => u.uuid,
@@ -103,10 +101,8 @@ mod tests {
   #[test]
   fn with_invalid_uuid() {
     let invalid_uuid = "not-a-uuid";
-    let options = UUIDOptions {
-      id:   Some("test_invalid".to_string()),
-      uuid: Some(invalid_uuid.to_string()),
-    };
+    let options =
+      UUIDOptions { id: Some("test_invalid".to_string()), uuid: Some(invalid_uuid.to_string()) };
     let result = uuid(options);
     assert!(matches!(result, Err(MFKDF2Error::InvalidUuid)));
   }
@@ -114,10 +110,8 @@ mod tests {
   #[test]
   fn with_empty_uuid() {
     let empty_uuid = "";
-    let options = UUIDOptions {
-      id:   Some("test_empty_uuid".to_string()),
-      uuid: Some(empty_uuid.to_string()),
-    };
+    let options =
+      UUIDOptions { id: Some("test_empty_uuid".to_string()), uuid: Some(empty_uuid.to_string()) };
     let result = uuid(options);
     assert!(matches!(result, Err(MFKDF2Error::InvalidUuid)));
   }

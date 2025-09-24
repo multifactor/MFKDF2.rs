@@ -14,6 +14,7 @@ pub trait FactorDerive {
 }
 
 impl FactorDerive for FactorType {
+  // TODO: add associated types for params
   fn include_params(&mut self, params: Value) -> MFKDF2Result<()> {
     self.inner_mut().include_params(params)
   }

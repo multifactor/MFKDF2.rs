@@ -32,6 +32,7 @@ pub fn encrypt(data: &[u8], key: &[u8; 32]) -> Vec<u8> {
 }
 
 /// Decrypts a buffer using AES256-ECB with the given 32-byte key
+// TODO (@lonerapier): check every use of decrypt and unpad properly or use assert.
 pub fn decrypt(mut data: Vec<u8>, key: &[u8; 32]) -> Vec<u8> {
   let cipher = Decryptor::<Aes256>::new_from_slice(key).expect("Invalid AES key");
   let _ = cipher.decrypt_padded_mut::<NoPadding>(&mut data).expect("ECB decrypt");

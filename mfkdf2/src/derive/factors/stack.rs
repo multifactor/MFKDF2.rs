@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 
-use crate::{ 
+use crate::{
   classes::mfkdf_derived_key::MFKDF2DerivedKey,
   derive::FactorDerive,
   error::{MFKDF2Error, MFKDF2Result},
@@ -27,14 +27,10 @@ impl FactorDerive for Stack {
   }
 
   fn params_derive(&self, _key: [u8; 32]) -> Value {
-    // Return the policy as params, similar to the JS version
     serde_json::to_value(&self.key.policy).unwrap_or(json!({}))
   }
 
-  fn output_derive(&self) -> Value {
-    // Return the full key object, similar to the JS version
-    serde_json::to_value(&self.key).unwrap_or(json!({}))
-  }
+  fn output_derive(&self) -> Value { serde_json::to_value(&self.key).unwrap_or(json!({})) }
 }
 impl Factor for Stack {}
 
@@ -53,119 +49,84 @@ pub fn stack(factors: HashMap<String, MFKDF2Factor>) -> MFKDF2Result<MFKDF2Facto
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use crate::{
-        derive::factors::password::derive_password,
-        setup::factors::{
-            password::{password as setup_password, PasswordOptions},
-            stack::{setup_stack, StackOptions},
-            FactorSetup,
-        },
-    };
-    use std::collections::HashMap;
+  use std::collections::HashMap;
 
-    async fn setup_test_stack() -> (MFKDF2Factor, Value) {
-        let factor1 =
-            setup_password("password123", PasswordOptions { id: Some("pwd1".to_string()) }).unwrap();
-        let factor2 =
-            setup_password("password456", PasswordOptions { id: Some("pwd2".to_string()) }).unwrap();
-        let factors = vec![factor1, factor2];
+  use super::*;
+  use crate::{
+    derive::factors::password::derive_password,
+    setup::{
+      factors::{
+        password::{PasswordOptions, password as setup_password},
+        stack::{StackOptions, setup_stack},
+      },
+      key::MFKDF2Options,
+    },
+  };
 
-        let options = StackOptions {
-            id: Some("my-stack".to_string()),
-            threshold: Some(2),
-            salt: None,
-        };
+  async fn setup_test_stack() -> MFKDF2DerivedKey {
+    let factor1 =
+      setup_password("password123", PasswordOptions { id: Some("pwd1".to_string()) }).unwrap();
+    let factor2 =
+      setup_password("password456", PasswordOptions { id: Some("pwd2".to_string()) }).unwrap();
+    let factors = vec![factor1, factor2];
 
-        let stack_factor = setup_stack(factors, options).await.unwrap();
-        let params = stack_factor.factor_type.params_setup([0; 32]);
-        (stack_factor, params)
-    }
+    let options =
+      StackOptions { id: Some("my-stack".to_string()), threshold: Some(2), salt: None };
 
-    #[tokio::test]
-    async fn test_derive_stack_round_trip() {
-        let (setup_stack_factor, setup_params) = setup_test_stack().await;
+    let stack_factor = setup_stack(factors, options).await.unwrap();
+    // let params = stack_factor.factor_type.params_setup([0; 32]);
+    let setup_derived_key = crate::setup::key(vec![stack_factor], MFKDF2Options::default())
+      .await
+      .expect("derived key should be created");
+    setup_derived_key
+  }
 
-        let derive_factor1 = derive_password("password123".to_string()).unwrap();
-        let derive_factor2 = derive_password("password456".to_string()).unwrap();
+  #[tokio::test]
+  async fn derive_stack_round_trip() {
+    let setup_derived_key = setup_test_stack().await;
 
-        let mut derive_factors = HashMap::new();
-        derive_factors.insert("pwd1".to_string(), derive_factor1);
-        derive_factors.insert("pwd2".to_string(), derive_factor2);
+    let derive_factor1 = derive_password("password123".to_string()).unwrap();
+    let derive_factor2 = derive_password("password456".to_string()).unwrap();
 
-        let mut derive_stack_factor = stack(derive_factors).unwrap();
+    let mut derive_factors = HashMap::new();
+    derive_factors.insert("pwd1".to_string(), derive_factor1);
+    derive_factors.insert("pwd2".to_string(), derive_factor2);
 
-        let result = derive_stack_factor.factor_type.include_params(setup_params);
-        assert!(result.is_ok());
+    let derive_stack_factor = stack(derive_factors).unwrap();
 
-        if let FactorType::Stack(setup_stack) = setup_stack_factor.factor_type {
-            if let FactorType::Stack(derive_stack) = derive_stack_factor.factor_type {
-                assert_eq!(derive_stack.key.key, setup_stack.key.key);
-                assert_eq!(
-                    serde_json::to_string(&derive_stack.key.policy).unwrap(),
-                    serde_json::to_string(&setup_stack.key.policy).unwrap()
-                );
-            } else {
-                panic!("Expected derive Stack factor type");
-            }
-        } else {
-            panic!("Expected setup Stack factor type");
-        }
-    }
+    let derive_key = crate::derive::key(
+      setup_derived_key.policy,
+      HashMap::from([("my-stack".to_string(), derive_stack_factor)]),
+      false,
+      false,
+    );
+    assert!(derive_key.is_ok());
+    let derive_key = derive_key.unwrap();
 
-    #[test]
-    fn test_derive_stack_empty_factors() {
-        let factors = HashMap::new();
-        let result = stack(factors);
-        assert!(matches!(
-            result,
-            Err(MFKDF2Error::InvalidDeriveParams(s)) if s == "factors"
-        ));
-    }
+    assert_eq!(setup_derived_key.key, derive_key.key);
+  }
 
-    #[tokio::test]
-    async fn test_derive_stack_invalid_params() {
-        let mut derive_stack_factor = stack(HashMap::from([(
-            "pwd1".to_string(),
-            derive_password("p".to_string()).unwrap(),
-        )]))
+  #[test]
+  fn derive_stack_empty_factors() {
+    let factors = HashMap::new();
+    let result = stack(factors);
+    assert!(matches!(
+        result,
+        Err(MFKDF2Error::InvalidDeriveParams(s)) if s == "factors"
+    ));
+  }
+
+  #[tokio::test]
+  async fn derive_stack_invalid_params() {
+    let mut derive_stack_factor =
+      stack(HashMap::from([("pwd1".to_string(), derive_password("p".to_string()).unwrap())]))
         .unwrap();
 
-        let invalid_params = json!("not a policy");
-        let result = derive_stack_factor.factor_type.include_params(invalid_params);
-        assert!(matches!(
-            result,
-            Err(MFKDF2Error::InvalidDeriveParams(s)) if s == "params"
-        ));
-    }
-
-    #[tokio::test]
-    async fn test_derive_stack_params_and_output() {
-        let (_setup_stack_factor, setup_params) = setup_test_stack().await;
-
-        let mut derive_factors = HashMap::new();
-        derive_factors.insert(
-            "pwd1".to_string(),
-            derive_password("password123".to_string()).unwrap(),
-        );
-        derive_factors.insert(
-            "pwd2".to_string(),
-            derive_password("password456".to_string()).unwrap(),
-        );
-
-        let mut derive_stack_factor = stack(derive_factors).unwrap();
-        derive_stack_factor.factor_type.include_params(setup_params).unwrap();
-
-        let params_derive = derive_stack_factor.factor_type.params_derive([0; 32]);
-        let output_derive = derive_stack_factor.factor_type.output_derive();
-
-        if let FactorType::Stack(stack) = derive_stack_factor.factor_type {
-            let expected_params = serde_json::to_value(&stack.key.policy).unwrap();
-            let expected_output = serde_json::to_value(&stack.key).unwrap();
-            assert_eq!(params_derive, expected_params);
-            assert_eq!(output_derive, expected_output);
-        } else {
-            panic!("Expected Stack factor type");
-        }
-    }
+    let invalid_params = json!("not a policy");
+    let result = derive_stack_factor.factor_type.include_params(invalid_params);
+    assert!(matches!(
+        result,
+        Err(MFKDF2Error::InvalidDeriveParams(s)) if s == "params"
+    ));
+  }
 }

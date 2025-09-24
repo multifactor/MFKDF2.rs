@@ -306,7 +306,7 @@ mod tests {
   }
 
   #[test]
-  fn test_params_setup_pad_decryption() {
+  fn params_setup_pad_decryption() {
     let key = [0u8; 32];
     let secret = b"my-secret-password".to_vec();
     let options = HOTPOptions { secret: Some(secret), ..Default::default() };
@@ -329,7 +329,7 @@ mod tests {
   }
 
   #[test]
-  fn test_params_setup_offset_calculation() {
+  fn params_setup_offset_calculation() {
     let key = [0u8; 32];
     let secret = b"my-secret-password".to_vec();
     let options = HOTPOptions { secret: Some(secret), ..Default::default() };

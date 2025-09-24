@@ -108,7 +108,7 @@ mod tests {
   use crate::setup::factors::{FactorSetup, hotp::setup_hotp};
 
   #[test]
-  fn test_hotp_round_trip() {
+  fn hotp_round_trip() {
     // Setup phase
     let secret = b"hello world".to_vec();
     let hotp_options = HOTPOptions {
@@ -138,7 +138,6 @@ mod tests {
     let padded_secret = hotp.options.secret.as_ref().unwrap();
     let correct_code =
       generate_hotp_code(&padded_secret[..20], counter, &hotp.options.hash, hotp.options.digits);
-    dbg!(&correct_code);
     let expected_target = u32::from_be_bytes(factor.data().clone().try_into().unwrap());
 
     // Verify the relationship: target = (offset + correct_code) % 10^digits
@@ -155,7 +154,7 @@ mod tests {
   }
 
   #[test]
-  fn test_hotp_derive_params_increment() {
+  fn hotp_derive_params_increment() {
     // Test that derive params increment the counter correctly
     let secret = b"hello world".to_vec();
     let mock_key = [42u8; 32];
@@ -173,6 +172,7 @@ mod tests {
     let setup_params = factor.factor_type.params_setup(mock_key);
 
     // Create a derive instance and generate new params
+    // NOTE: this is an incorrect code
     let mut derive_factor = derive_hotp(123456).unwrap();
     derive_factor.factor_type.include_params(setup_params.clone()).unwrap();
 
@@ -190,7 +190,7 @@ mod tests {
   }
 
   #[test]
-  fn test_include_params_missing_offset() {
+  fn include_params_missing_offset() {
     let mut derive_factor = derive_hotp(123456).unwrap();
     let params = json!({ "digits": 6 });
     let result = derive_factor.factor_type.include_params(params);

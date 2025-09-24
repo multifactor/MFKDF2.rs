@@ -33,7 +33,7 @@ impl FactorDerive for TOTP {
       .ok_or(MFKDF2Error::MissingDeriveParams("digits".to_string()))?;
     let start = params
       .get("start")
-      .and_then(Value::as_u64)
+      .and_then(Value::as_u64) // TODO (@lonerapier): time is u128, but is being serialized to u64
       .ok_or(MFKDF2Error::MissingDeriveParams("start".to_string()))?;
     let offsets_b64 = params
       .get("offsets")
@@ -116,17 +116,17 @@ impl FactorDerive for TOTP {
     }
 
     json!({
-        "start": time,
-        "hash": match self.options.hash {
-            OTPHash::Sha1 => "sha1",
-            OTPHash::Sha256 => "sha256",
-            OTPHash::Sha512 => "sha512",
-        },
-        "digits": self.options.digits,
-        "step": self.options.step,
-        "window": self.options.window,
-        "pad": base64::prelude::BASE64_STANDARD.encode(&pad),
-        "offsets": base64::prelude::BASE64_STANDARD.encode(&new_offsets),
+      "start": time,
+      "hash": match self.options.hash {
+          OTPHash::Sha1 => "sha1",
+          OTPHash::Sha256 => "sha256",
+          OTPHash::Sha512 => "sha512",
+      },
+      "digits": self.options.digits,
+      "step": self.options.step,
+      "window": self.options.window,
+      "pad": base64::prelude::BASE64_STANDARD.encode(&pad),
+      "offsets": base64::prelude::BASE64_STANDARD.encode(&new_offsets),
     })
   }
 
@@ -182,9 +182,21 @@ mod tests {
       label:  "test".to_string(),
     }
   }
+  fn factor_params_for_test() -> Value {
+    let offsets = vec![0u8; 4 * 5]; // 4 bytes per offset * window size
+    json!({
+      "digits": 6,
+      "hash": "sha1",
+      "pad": "cGFk",
+      "start": SystemTime::now().duration_since(SystemTime::UNIX_EPOCH).unwrap().as_millis(),
+      "step": 30,
+      "window": 5,
+      "offsets": base64::prelude::BASE64_STANDARD.encode(&offsets)
+    })
+  }
 
   #[test]
-  fn test_totp_round_trip() {
+  fn totp_round_trip() {
     let setup_options = get_test_totp_options();
     // can't get secret here, because it will be padded inside totp()
     let step = setup_options.step;
@@ -195,9 +207,9 @@ mod tests {
     let factor = setup_totp::totp(setup_options).unwrap();
 
     let secret = if let FactorType::TOTP(f) = &factor.factor_type {
-        f.options.secret.as_ref().unwrap().clone()
+      f.options.secret.as_ref().unwrap().clone()
     } else {
-        panic!("wrong factor type");
+      panic!("wrong factor type");
     };
 
     let mock_key = [42u8; 32];
@@ -220,7 +232,7 @@ mod tests {
   }
 
   #[test]
-  fn test_totp_derive_params() {
+  fn totp_derive_params() {
     let setup_options = get_test_totp_options();
     let factor = setup_totp::totp(setup_options).unwrap();
     let mock_key = [42u8; 32];
@@ -243,7 +255,7 @@ mod tests {
   }
 
   #[test]
-  fn test_totp_window_exceeded() {
+  fn totp_window_exceeded() {
     let mut setup_options = get_test_totp_options();
     let start_time = SystemTime::now();
     setup_options.time = Some(start_time);
@@ -263,7 +275,7 @@ mod tests {
   }
 
   #[test]
-  fn test_include_params_missing_step() {
+  fn totp_include_params_missing_step() {
     let mut derive_factor = derive_totp(123456, get_test_totp_options()).unwrap();
     let mut params = factor_params_for_test();
     params["step"] = Value::Null;
@@ -272,24 +284,11 @@ mod tests {
   }
 
   #[test]
-  fn test_include_params_missing_window() {
+  fn totp_include_params_missing_window() {
     let mut derive_factor = derive_totp(123456, get_test_totp_options()).unwrap();
     let mut params = factor_params_for_test();
     params["window"] = Value::Null;
     let result = derive_factor.factor_type.include_params(params);
     assert!(matches!(result, Err(MFKDF2Error::MissingDeriveParams(s)) if s == "window"));
-  }
-
-  fn factor_params_for_test() -> Value {
-    let offsets = vec![0u8; 4 * 5]; // 4 bytes per offset * window size
-    json!({
-      "digits": 6,
-      "hash": "sha1",
-      "pad": "cGFk",
-      "start": SystemTime::now().duration_since(SystemTime::UNIX_EPOCH).unwrap().as_millis(),
-      "step": 30,
-      "window": 5,
-      "offsets": base64::prelude::BASE64_STANDARD.encode(&offsets)
-    })
   }
 }
