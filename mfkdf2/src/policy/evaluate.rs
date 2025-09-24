@@ -14,10 +14,10 @@ pub(crate) fn evaluate_internal(policy: &Policy, factor_set: &HashSet<String>) -
 
   for factor in &policy.factors {
     if factor.kind == "stack" {
-      if let Ok(nested_policy) = serde_json::from_str::<Policy>(&factor.params) {
-        if evaluate_internal(&nested_policy, factor_set) {
-          actual += 1;
-        }
+      if let Ok(nested_policy) = serde_json::from_str::<Policy>(&factor.params)
+        && evaluate_internal(&nested_policy, factor_set)
+      {
+        actual += 1;
       }
     } else if factor_set.contains(&factor.id) {
       actual += 1;

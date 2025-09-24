@@ -31,10 +31,10 @@ impl Policy {
     let mut list: Vec<String> = Vec::new();
     for factor in &self.factors {
       list.push(factor.id.clone());
-      if factor.kind == "stack" {
-        if let Ok(nested) = json::from_str::<Policy>(&factor.params) {
-          list.extend(nested.ids());
-        }
+      if factor.kind == "stack"
+        && let Ok(nested) = json::from_str::<Policy>(&factor.params)
+      {
+        list.extend(nested.ids());
       }
     }
     list

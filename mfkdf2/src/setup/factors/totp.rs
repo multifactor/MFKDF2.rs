@@ -84,7 +84,7 @@ impl FactorSetup for TOTP {
       offsets.extend_from_slice(&offset.to_be_bytes());
     }
 
-    let pad = encrypt(&padded_secret, &key);
+    let pad = encrypt(padded_secret, &key);
 
     json!({
         "start": time,

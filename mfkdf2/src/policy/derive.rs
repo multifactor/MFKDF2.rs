@@ -17,17 +17,17 @@ fn expand(
 
   for factor in &policy.factors {
     if factor.kind == "stack" {
-      if let Ok(nested_policy) = serde_json::from_str::<Policy>(&factor.params) {
-        if evaluate_internal(&nested_policy, factor_set) {
-          let nested_expanded = expand(&nested_policy, factors, factor_set)?;
-          let stack_factor = create_stack_factor(nested_expanded)?;
-          parsed_factors.insert(factor.id.clone(), stack_factor);
-        }
+      if let Ok(nested_policy) = serde_json::from_str::<Policy>(&factor.params)
+        && evaluate_internal(&nested_policy, factor_set)
+      {
+        let nested_expanded = expand(&nested_policy, factors, factor_set)?;
+        let stack_factor = create_stack_factor(nested_expanded)?;
+        parsed_factors.insert(factor.id.clone(), stack_factor);
       }
-    } else if factor_set.contains(&factor.id) {
-      if let Some(factor_impl) = factors.get(&factor.id) {
-        parsed_factors.insert(factor.id.clone(), factor_impl.clone());
-      }
+    } else if factor_set.contains(&factor.id)
+      && let Some(factor_impl) = factors.get(&factor.id)
+    {
+      parsed_factors.insert(factor.id.clone(), factor_impl.clone());
     }
   }
 

@@ -20,16 +20,18 @@ pub struct StackOptions {
   pub salt:      Option<Vec<u8>>,
 }
 
-impl Into<MFKDF2Options> for StackOptions {
-  fn into(self) -> MFKDF2Options {
+impl From<StackOptions> for MFKDF2Options {
+  fn from(value: StackOptions) -> Self {
+    let StackOptions { id, threshold, salt } = value;
+
     MFKDF2Options {
-      id:        self.id,
-      threshold: self.threshold,
-      salt:      self.salt,
-      stack:     Some(true),
+      id,
+      threshold,
+      salt,
+      stack: Some(true),
       integrity: Some(false),
-      time:      None,
-      memory:    None,
+      time: None,
+      memory: None,
     }
   }
 }
@@ -70,10 +72,7 @@ pub async fn stack(
     },
   };
 
-  let mut mfkdf_options: MFKDF2Options = options.into();
-  mfkdf_options.stack = Some(true);
-
-  let key = key::key(factors.clone(), mfkdf_options).await?;
+  let key = key::key(factors.clone(), options.into()).await?;
 
   // per-factor salt
   let mut salt = [0u8; 32];

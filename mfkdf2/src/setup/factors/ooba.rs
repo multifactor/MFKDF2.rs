@@ -61,12 +61,12 @@ impl TryFrom<&str> for OobaPublicKey {
     let n = rsa::BigUint::from_bytes_be(
       &base64::engine::general_purpose::URL_SAFE_NO_PAD
         .decode(n_str)
-        .map_err(|e| MFKDF2Error::DecodeError(e))?,
+        .map_err(MFKDF2Error::DecodeError)?,
     );
     let e = rsa::BigUint::from_bytes_be(
       &base64::engine::general_purpose::URL_SAFE_NO_PAD
         .decode(e_str)
-        .map_err(|e| MFKDF2Error::DecodeError(e))?,
+        .map_err(MFKDF2Error::DecodeError)?,
     );
 
     Ok(OobaPublicKey(RsaPublicKey::new(n, e).map_err(|_| MFKDF2Error::InvalidOobaKey)?))
@@ -129,7 +129,7 @@ pub fn ooba(options: OobaOptions) -> MFKDF2Result<MFKDF2Factor> {
   };
 
   let key: Jwk = if let Some(ref key) = options.key {
-    serde_json::from_str(key).map_err(|e| MFKDF2Error::SerializeError(e))?
+    serde_json::from_str(key).map_err(MFKDF2Error::SerializeError)?
   } else {
     return Err(MFKDF2Error::MissingOobaKey);
   };

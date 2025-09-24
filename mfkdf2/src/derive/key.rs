@@ -30,7 +30,7 @@ pub fn key(
       None => continue,
     };
 
-    if material.kind() == String::from("persisted") {
+    if material.kind() == "persisted" {
       shares_bytes.push(material.data());
     } else {
       material.factor_type.include_params(serde_json::from_str(&factor.params).unwrap())?;
