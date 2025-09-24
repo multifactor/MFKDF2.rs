@@ -95,3 +95,78 @@ pub async fn setup_stack(
 ) -> MFKDF2Result<MFKDF2Factor> {
   stack(factors, options).await
 }
+
+#[cfg(test)]
+mod tests {
+  use super::*;
+  use crate::setup::factors::password::{PasswordOptions, password};
+
+  #[tokio::test]
+  async fn test_setup_stack_construction() {
+    let factor1 =
+      password("password123", PasswordOptions { id: Some("pwd1".to_string()) }).unwrap();
+    let factor2 =
+      password("password456", PasswordOptions { id: Some("pwd2".to_string()) }).unwrap();
+    let factors = vec![factor1.clone(), factor2.clone()];
+
+    let options =
+      StackOptions { id: Some("my-stack".to_string()), threshold: Some(2), salt: None };
+
+    let stack_factor = setup_stack(factors, options).await.unwrap();
+
+    assert_eq!(stack_factor.id.as_deref(), Some("my-stack"));
+    assert_eq!(stack_factor.kind(), "stack");
+
+    if let FactorType::Stack(stack) = stack_factor.factor_type {
+      assert_eq!(stack.factors.len(), 2);
+      assert!(stack.factors.contains_key("pwd1"));
+      assert!(stack.factors.contains_key("pwd2"));
+      assert!(!stack.key.key.is_empty());
+      assert_eq!(stack.key.policy.threshold, 2);
+    } else {
+      panic!("Expected Stack factor type");
+    }
+  }
+
+  #[tokio::test]
+  async fn test_setup_stack_empty_id() {
+    let factor = password("password123", PasswordOptions { id: Some("pwd1".to_string()) }).unwrap();
+    let options =
+      StackOptions { id: Some("".to_string()), threshold: None, salt: None };
+
+    let result = setup_stack(vec![factor], options).await;
+    assert!(matches!(result, Err(MFKDF2Error::MissingFactorId)));
+  }
+
+  #[tokio::test]
+  async fn test_setup_stack_params_and_output() {
+    let factor = password("password123", PasswordOptions { id: Some("pwd1".to_string()) }).unwrap();
+    let options =
+      StackOptions { id: Some("my-stack".to_string()), threshold: Some(1), salt: None };
+
+    let stack_factor = setup_stack(vec![factor], options).await.unwrap();
+    let key = [0u8; 32];
+
+    let params = stack_factor.factor_type.params_setup(key);
+    let output = stack_factor.factor_type.output_setup(key);
+
+    if let FactorType::Stack(stack) = stack_factor.factor_type {
+      let expected_params = serde_json::to_value(&stack.key.policy).unwrap();
+      let expected_output = serde_json::to_value(&stack.key).unwrap();
+      assert_eq!(params, expected_params);
+      assert_eq!(output, expected_output);
+    } else {
+      panic!("Expected Stack factor type");
+    }
+  }
+
+  #[tokio::test]
+  async fn test_setup_stack_no_factors() {
+    let options =
+      StackOptions { id: Some("my-stack".to_string()), threshold: Some(1), salt: None };
+
+    let result = setup_stack(vec![], options).await;
+    // This should fail inside key generation because there are no factors to build a policy from.
+    assert!(result.is_err());
+  }
+}

@@ -63,7 +63,7 @@ mod tests {
   }
 
   #[test]
-  fn test_question_ok() {
+  fn question_ok() {
     let result = question("blue");
     assert!(result.is_ok());
     let factor = result.unwrap();
@@ -75,13 +75,13 @@ mod tests {
   }
 
   #[test]
-  fn test_question_empty_answer() {
+  fn empty_answer() {
     let result = question("");
     assert!(matches!(result, Err(MFKDF2Error::AnswerEmpty)));
   }
 
   #[test]
-  fn test_answer_normalization() {
+  fn normalization() {
     let result = question("  Blue! Is My Favorite Color.  ");
     assert!(result.is_ok());
     let factor = result.unwrap();
@@ -93,7 +93,7 @@ mod tests {
   }
 
   #[test]
-  fn test_include_and_derive_params() {
+  fn include_and_derive_params() {
     // 1. Setup a factor to get setup_params
     let setup_factor = mock_question_setup();
     let setup_params = setup_factor.factor_type.params_setup([0u8; 32]);
@@ -123,7 +123,7 @@ mod tests {
   }
 
   #[test]
-  fn test_output_derive() {
+  fn output_derive() {
     let result = question("password123");
     assert!(result.is_ok());
     let factor = result.unwrap();

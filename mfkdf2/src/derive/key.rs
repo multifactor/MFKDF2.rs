@@ -132,9 +132,9 @@ pub fn key(
     factor.params = serde_json::to_string(&params)?;
   }
 
-  let integrity_key = hkdf_sha256_with_info(&key, &salt_bytes, "mfkdf2:integrity".as_bytes());
   if verify {
     let integrity_data = new_policy.extract();
+    let integrity_key = hkdf_sha256_with_info(&key, &salt_bytes, "mfkdf2:integrity".as_bytes());
     let digest = hmacsha256(&integrity_key, &integrity_data);
     new_policy.hmac = general_purpose::STANDARD.encode(digest);
   }

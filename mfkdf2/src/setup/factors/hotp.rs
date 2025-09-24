@@ -22,7 +22,7 @@ pub struct HOTPOptions {
   pub label:  String,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, uniffi::Enum)]
+#[derive(Clone, Debug, Serialize, Deserialize, uniffi::Enum, PartialEq, Eq)]
 pub enum OTPHash {
   Sha1,
   Sha256,
@@ -110,6 +110,7 @@ impl FactorSetup for HOTP {
   }
 }
 
+#[inline]
 pub fn mod_positive(n: i64, m: i64) -> i64 { ((n % m) + m) % m }
 
 pub fn generate_hotp_code(secret: &[u8], counter: u64, hash: &OTPHash, digits: u8) -> u32 {

@@ -5,7 +5,10 @@ use crate::{
   crypto::{decrypt, encrypt},
   derive::FactorDerive,
   error::MFKDF2Result,
-  setup::factors::{Factor, FactorType, MFKDF2Factor, hmacsha1::HmacSha1},
+  setup::factors::{
+    Factor, FactorType, MFKDF2Factor,
+    hmacsha1::{HmacSha1, HmacSha1Response},
+  },
 };
 
 impl FactorDerive for HmacSha1 {
@@ -14,7 +17,7 @@ impl FactorDerive for HmacSha1 {
 
     let response = self.response.as_ref().unwrap();
     let mut padded_key = [0u8; 32];
-    padded_key[..response.len()].copy_from_slice(response);
+    padded_key[..response.0.len()].copy_from_slice(&response.0);
 
     let pad = hex::decode(
       params
@@ -55,11 +58,7 @@ impl FactorDerive for HmacSha1 {
 
 impl Factor for HmacSha1 {}
 
-pub fn hmacsha1(response: Vec<u8>) -> MFKDF2Result<MFKDF2Factor> {
-  if response.len() != 20 {
-    return Err(crate::error::MFKDF2Error::InvalidHmacResponse);
-  }
-
+pub fn hmacsha1(response: HmacSha1Response) -> MFKDF2Result<MFKDF2Factor> {
   Ok(MFKDF2Factor {
     id:          None,
     factor_type: FactorType::HmacSha1(HmacSha1 {
@@ -73,7 +72,7 @@ pub fn hmacsha1(response: Vec<u8>) -> MFKDF2Result<MFKDF2Factor> {
 }
 
 #[uniffi::export]
-pub fn derive_hmacsha1(response: Vec<u8>) -> MFKDF2Result<MFKDF2Factor> {
+pub fn derive_hmacsha1(response: HmacSha1Response) -> MFKDF2Result<MFKDF2Factor> {
   crate::derive::factors::hmacsha1(response)
 }
 
@@ -110,22 +109,13 @@ mod tests {
       .collect::<Vec<u8>>();
     let response = crate::crypto::hmacsha1(&secret, &challenge);
 
-    let result = hmacsha1(response.to_vec());
+    let result = hmacsha1(response.into());
     assert!(result.is_ok());
     let factor = result.unwrap();
     match factor.factor_type {
       FactorType::HmacSha1(hmac) => hmac,
       _ => panic!("Factor type should be HmacSha1"),
     }
-  }
-
-  #[test]
-  fn invalid_response_length() {
-    let result = hmacsha1(vec![0; 19]);
-    assert!(matches!(result, Err(MFKDF2Error::InvalidHmacResponse)));
-
-    let result = hmacsha1(vec![0; 21]);
-    assert!(matches!(result, Err(MFKDF2Error::InvalidHmacResponse)));
   }
 
   #[test]

@@ -17,9 +17,33 @@ pub struct HmacSha1Options {
 impl Default for HmacSha1Options {
   fn default() -> Self { Self { id: Some("hmacsha1".to_string()), secret: None } }
 }
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct HmacSha1Response(pub [u8; 20]);
+
+uniffi::custom_type!(HmacSha1Response, Vec<u8>, {
+  lower: |r| r.0.to_vec(),
+  try_lift: |v: Vec<u8>| {
+    if v.len() == 20 {
+      let mut arr = [0u8; 20];
+      arr.copy_from_slice(&v);
+      Ok(HmacSha1Response(arr))
+    } else {
+      Err(uniffi::deps::anyhow::anyhow!(
+        "Expected Vec<u8> of length 20, got {}",
+        v.len()
+      ))
+    }
+  }
+});
+
+impl From<[u8; 20]> for HmacSha1Response {
+  fn from(value: [u8; 20]) -> Self { HmacSha1Response(value) }
+}
+
 #[derive(Clone, Debug, Serialize, Deserialize, uniffi::Record)]
 pub struct HmacSha1 {
-  pub response:      Option<Vec<u8>>,
+  pub response:      Option<HmacSha1Response>,
   pub params:        Option<String>,
   pub padded_secret: Vec<u8>,
 }

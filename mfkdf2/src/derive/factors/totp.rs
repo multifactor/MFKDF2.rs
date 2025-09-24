@@ -15,29 +15,65 @@ use crate::{
 };
 impl FactorDerive for TOTP {
   fn include_params(&mut self, params: Value) -> MFKDF2Result<()> {
-    self.params = serde_json::to_string(&params).unwrap();
+    self.params = serde_json::to_string(&params)
+      .map_err(|e| MFKDF2Error::InvalidDeriveParams(format!("invalid params: {}", e)))?;
 
-    let step = params["step"].as_u64().unwrap();
-    let window = params["window"].as_u64().unwrap();
-    let digits = params["digits"].as_u64().unwrap();
+    // TODO (@lonerapier): create a type for factor params and serialize/deser using that.
+    let step = params
+      .get("step")
+      .and_then(Value::as_u64)
+      .ok_or(MFKDF2Error::MissingDeriveParams("step".to_string()))?;
+    let window = params
+      .get("window")
+      .and_then(Value::as_u64)
+      .ok_or(MFKDF2Error::MissingDeriveParams("window".to_string()))?;
+    let digits = params
+      .get("digits")
+      .and_then(Value::as_u64)
+      .ok_or(MFKDF2Error::MissingDeriveParams("digits".to_string()))?;
+    let start = params
+      .get("start")
+      .and_then(Value::as_u64)
+      .ok_or(MFKDF2Error::MissingDeriveParams("start".to_string()))?;
+    let offsets_b64 = params
+      .get("offsets")
+      .and_then(Value::as_str)
+      .ok_or(MFKDF2Error::MissingDeriveParams("offsets".to_string()))?;
+    let offsets = base64::prelude::BASE64_STANDARD.decode(offsets_b64).map_err(|e| {
+      MFKDF2Error::InvalidDeriveParams(format!("invalid base64 for offsets: {}", e))
+    })?;
 
-    let offsets: Vec<u8> =
-      params["offsets"].as_array().unwrap().iter().map(|v| v.as_u64().unwrap() as u8).collect();
-    let start_counter = params["start"].as_u64().unwrap() / (step * 1000);
-    let now_counter =
-      self.options.time.unwrap().duration_since(SystemTime::UNIX_EPOCH).unwrap().as_millis() as u64
-        / (step * 1000);
+    let start_counter = start / (step * 1000);
+    let now_counter = self
+      .options
+      .time
+      .ok_or(MFKDF2Error::MissingDeriveParams("time".to_string()))?
+      .duration_since(SystemTime::UNIX_EPOCH)
+      .unwrap()
+      .as_millis() as u64
+      / (step * 1000);
 
     let index = (now_counter - start_counter) as usize;
     if index >= window as usize {
       return Err(MFKDF2Error::TOTPWindowExceeded);
     }
 
-    let mut offset = offsets[index] as u32;
+    let offset_start = index * 4;
+    let offset_end = offset_start + 4;
+    if offsets.len() < offset_end {
+      return Err(MFKDF2Error::InvalidDeriveParams(
+        "offsets array is too small for the current index".to_string(),
+      ));
+    }
+    let mut offset =
+      u32::from_be_bytes(offsets[offset_start..offset_end].try_into().map_err(|_| {
+        MFKDF2Error::InvalidDeriveParams("failed to read 4-byte offset from offsets".to_string())
+      })?);
+
     let oracle_time = (now_counter * step * 1000) as usize;
     if self.options.oracle.is_some() && self.options.oracle.as_ref().unwrap().len() > oracle_time {
       offset = mod_positive(
-        (offset - self.options.oracle.as_ref().unwrap()[oracle_time]) as i64,
+        offset as i64 - self.options.oracle.as_ref().unwrap()[oracle_time] as i64,
         10_i64.pow(digits as u32),
       ) as u32;
     }
@@ -71,7 +107,7 @@ impl FactorDerive for TOTP {
       if self.options.oracle.is_some() && self.options.oracle.as_ref().unwrap().len() > oracle_time
       {
         offset = mod_positive(
-          (offset - self.options.oracle.as_ref().unwrap()[oracle_time]) as i64,
+          offset as i64 - self.options.oracle.as_ref().unwrap()[oracle_time] as i64,
           10_i64.pow(self.options.digits as u32),
         ) as u32;
       }
@@ -123,4 +159,137 @@ pub fn totp(code: u32, options: TOTPOptions) -> MFKDF2Result<MFKDF2Factor> {
 #[uniffi::export]
 pub fn derive_totp(code: u32, options: TOTPOptions) -> MFKDF2Result<MFKDF2Factor> {
   totp(code, options)
+}
+
+#[cfg(test)]
+mod tests {
+  use std::time::{Duration, SystemTime};
+
+  use super::*;
+  use crate::setup::factors::{FactorSetup, totp as setup_totp};
+
+  fn get_test_totp_options() -> TOTPOptions {
+    setup_totp::TOTPOptions {
+      id:     Some("totp-test".to_string()),
+      secret: Some(b"hello world".to_vec()),
+      digits: 6,
+      hash:   OTPHash::Sha1,
+      step:   30,
+      window: 5,
+      time:   Some(SystemTime::now()),
+      oracle: None,
+      issuer: "MFKDF".to_string(),
+      label:  "test".to_string(),
+    }
+  }
+
+  #[test]
+  fn test_totp_round_trip() {
+    let setup_options = get_test_totp_options();
+    // can't get secret here, because it will be padded inside totp()
+    let step = setup_options.step;
+    let digits = setup_options.digits;
+    let hash = setup_options.hash.clone();
+    let time = setup_options.time.unwrap();
+
+    let factor = setup_totp::totp(setup_options).unwrap();
+
+    let secret = if let FactorType::TOTP(f) = &factor.factor_type {
+        f.options.secret.as_ref().unwrap().clone()
+    } else {
+        panic!("wrong factor type");
+    };
+
+    let mock_key = [42u8; 32];
+    let setup_params = factor.factor_type.params_setup(mock_key);
+
+    let now_millis = time.duration_since(SystemTime::UNIX_EPOCH).unwrap().as_millis() as u64;
+    let counter = now_millis / (step * 1000);
+
+    let correct_code = generate_hotp_code(&secret[..20], counter, &hash, digits);
+
+    let mut derive_options = get_test_totp_options();
+    derive_options.secret = None; // Secret is not available at derive time
+    derive_options.time = Some(time);
+    let mut derive_material = derive_totp(correct_code, derive_options).unwrap();
+
+    derive_material.factor_type.include_params(setup_params).unwrap();
+
+    let derived_target = derive_material.data();
+    assert_ne!(derived_target, 0_u32.to_be_bytes());
+  }
+
+  #[test]
+  fn test_totp_derive_params() {
+    let setup_options = get_test_totp_options();
+    let factor = setup_totp::totp(setup_options).unwrap();
+    let mock_key = [42u8; 32];
+    let setup_params = factor.factor_type.params_setup(mock_key);
+
+    let mut derive_options = get_test_totp_options();
+    derive_options.secret = None;
+    let mut derive_factor = derive_totp(123456, derive_options).unwrap();
+    derive_factor.factor_type.include_params(setup_params.clone()).unwrap();
+
+    let derive_params = derive_factor.factor_type.params_derive(mock_key);
+
+    let original_start = setup_params["start"].as_u64().unwrap();
+    let new_start = derive_params["start"].as_u64().unwrap();
+    assert!(new_start >= original_start);
+
+    let new_offsets_b64 = derive_params["offsets"].as_str().unwrap();
+    let new_offsets = base64::prelude::BASE64_STANDARD.decode(new_offsets_b64).unwrap();
+    assert_eq!(new_offsets.len(), 4 * 5); // 4 bytes per offset * window size
+  }
+
+  #[test]
+  fn test_totp_window_exceeded() {
+    let mut setup_options = get_test_totp_options();
+    let start_time = SystemTime::now();
+    setup_options.time = Some(start_time);
+
+    let factor = setup_totp::totp(setup_options).unwrap();
+    let mock_key = [42u8; 32];
+    let setup_params = factor.factor_type.params_setup(mock_key);
+
+    let future_time = start_time + Duration::from_secs(30 * 10); // 10 steps into the future, outside of window 5
+    let mut derive_options = get_test_totp_options();
+    derive_options.secret = None;
+    derive_options.time = Some(future_time);
+    let mut derive_material = derive_totp(123456, derive_options).unwrap();
+
+    let result = derive_material.factor_type.include_params(setup_params);
+    assert!(matches!(result, Err(MFKDF2Error::TOTPWindowExceeded)));
+  }
+
+  #[test]
+  fn test_include_params_missing_step() {
+    let mut derive_factor = derive_totp(123456, get_test_totp_options()).unwrap();
+    let mut params = factor_params_for_test();
+    params["step"] = Value::Null;
+    let result = derive_factor.factor_type.include_params(params);
+    assert!(matches!(result, Err(MFKDF2Error::MissingDeriveParams(s)) if s == "step"));
+  }
+
+  #[test]
+  fn test_include_params_missing_window() {
+    let mut derive_factor = derive_totp(123456, get_test_totp_options()).unwrap();
+    let mut params = factor_params_for_test();
+    params["window"] = Value::Null;
+    let result = derive_factor.factor_type.include_params(params);
+    assert!(matches!(result, Err(MFKDF2Error::MissingDeriveParams(s)) if s == "window"));
+  }
+
+  fn factor_params_for_test() -> Value {
+    let offsets = vec![0u8; 4 * 5]; // 4 bytes per offset * window size
+    json!({
+      "digits": 6,
+      "hash": "sha1",
+      "pad": "cGFk",
+      "start": SystemTime::now().duration_since(SystemTime::UNIX_EPOCH).unwrap().as_millis(),
+      "step": 30,
+      "window": 5,
+      "offsets": base64::prelude::BASE64_STANDARD.encode(&offsets)
+    })
+  }
 }

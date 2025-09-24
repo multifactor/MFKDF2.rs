@@ -171,8 +171,160 @@ pub fn totp(options: TOTPOptions) -> MFKDF2Result<MFKDF2Factor> {
 
 #[cfg(test)]
 mod tests {
-  // use super::*;
+  use std::time::Duration;
+
+  use super::*;
+  use crate::{crypto::decrypt, error::MFKDF2Error};
+
+  fn mock_construction() -> MFKDF2Factor {
+    let options = TOTPOptions {
+      id: Some("test".to_string()),
+      digits: 8,
+      secret: Some(b"my-secret-is-super-secret-12345".to_vec()), // 31 bytes
+      time: Some(SystemTime::UNIX_EPOCH + Duration::from_secs(1672531200)), /* 2023-01-01
+                                                                  * 00:00:00 UTC */
+      ..Default::default()
+    };
+
+    let result = totp(options);
+    assert!(result.is_ok());
+
+    result.unwrap()
+  }
 
   #[test]
-  fn test_totp() {}
+  fn construction() {
+    let options = TOTPOptions {
+      id: Some("test".to_string()),
+      digits: 8,
+      hash: OTPHash::Sha256,
+      issuer: "TestCorp".to_string(),
+      label: "tester@testcorp.com".to_string(),
+      ..Default::default()
+    };
+
+    let result = totp(options);
+    assert!(result.is_ok());
+
+    let factor = result.unwrap();
+    assert_eq!(factor.id, Some("test".to_string()));
+    assert_eq!(factor.salt.len(), 32);
+
+    assert!(matches!(factor.factor_type, FactorType::TOTP(_)));
+    if let FactorType::TOTP(totp_factor) = factor.factor_type {
+      assert_eq!(totp_factor.options.digits, 8);
+      assert_eq!(totp_factor.options.hash, OTPHash::Sha256);
+      assert_eq!(totp_factor.options.issuer, "TestCorp".to_string());
+      assert_eq!(totp_factor.options.label, "tester@testcorp.com".to_string());
+      assert!(totp_factor.options.secret.is_some());
+      assert_eq!(totp_factor.options.secret.as_ref().unwrap().len(), 32); // 20 bytes generated + 12 bytes padding
+      assert!(totp_factor.target < 10_u32.pow(8));
+    }
+  }
+
+  #[test]
+  fn empty_id() {
+    let options = TOTPOptions { id: Some("".to_string()), ..Default::default() };
+    let result = totp(options);
+    assert!(matches!(result, Err(MFKDF2Error::MissingFactorId)));
+  }
+
+  #[test]
+  fn invalid_digits_too_low() {
+    let options = TOTPOptions { digits: 5, ..Default::default() };
+    let result = totp(options);
+    assert!(matches!(result, Err(MFKDF2Error::InvalidTOTPDigits)));
+  }
+
+  #[test]
+  fn invalid_digits_too_high() {
+    let options = TOTPOptions { digits: 9, ..Default::default() };
+    let result = totp(options);
+    assert!(matches!(result, Err(MFKDF2Error::InvalidTOTPDigits)));
+  }
+
+  #[test]
+  fn secret_generation() {
+    let options = TOTPOptions { secret: None, ..Default::default() };
+    let result = totp(options);
+    assert!(result.is_ok());
+    let factor = result.unwrap();
+    if let FactorType::TOTP(totp_factor) = factor.factor_type {
+      assert!(totp_factor.options.secret.is_some());
+      // 20 bytes generated + 12 bytes padding
+      assert_eq!(totp_factor.options.secret.as_ref().unwrap().len(), 32);
+    } else {
+      panic!("Wrong factor type");
+    }
+  }
+
+  #[test]
+  fn params_setup() {
+    let factor = mock_construction();
+    let key = [0u8; 32];
+
+    let totp_factor = match factor.factor_type {
+      FactorType::TOTP(ref f) => f,
+      _ => panic!("Factor type should be TOTP"),
+    };
+
+    let params = totp_factor.params_setup(key);
+    assert!(params.is_object());
+
+    assert_eq!(params["start"], 1672531200000_u64);
+    assert_eq!(params["hash"], "sha1");
+    assert_eq!(params["digits"], 8);
+    assert_eq!(params["step"], 30);
+    assert_eq!(params["window"], 87600);
+
+    let pad_b64 = params["pad"].as_str().unwrap();
+    let pad = base64::prelude::BASE64_STANDARD.decode(pad_b64).unwrap();
+    let decrypted_secret = decrypt(pad, &key);
+    let original_secret = totp_factor.options.secret.as_ref().unwrap();
+    assert_eq!(&decrypted_secret[..original_secret.len()], original_secret.as_slice());
+
+    let offsets_b64 = params["offsets"].as_str().unwrap();
+    let offsets = base64::prelude::BASE64_STANDARD.decode(offsets_b64).unwrap();
+    assert_eq!(offsets.len(), 4 * 87600);
+  }
+
+  #[test]
+  fn output_setup() {
+    let factor = mock_construction();
+    let key = [0u8; 32];
+
+    let totp_factor = match factor.factor_type {
+      FactorType::TOTP(ref f) => f,
+      _ => panic!("Factor type should be TOTP"),
+    };
+
+    let output = totp_factor.output_setup(key);
+    assert!(output.is_object());
+
+    assert_eq!(output["scheme"], "otpauth");
+    assert_eq!(output["type"], "totp");
+    assert_eq!(output["label"], "mfkdf.com");
+    assert_eq!(output["issuer"], "MFKDF");
+    assert_eq!(output["algorithm"], "sha1");
+    assert_eq!(output["digits"], 8);
+    assert_eq!(output["period"], 30);
+
+    let secret_b64 = output["secret"].as_str().unwrap();
+    let secret = base64::prelude::BASE64_STANDARD.decode(secret_b64).unwrap();
+    assert_eq!(secret.len(), 20);
+    assert_eq!(secret, &totp_factor.options.secret.as_ref().unwrap()[..20]);
+  }
+
+  #[test]
+  fn bytes() {
+    let factor = mock_construction();
+    let totp_factor = match factor.factor_type {
+      FactorType::TOTP(ref f) => f,
+      _ => panic!("Factor type should be TOTP"),
+    };
+
+    let bytes = totp_factor.bytes();
+    let expected_bytes = totp_factor.target.to_be_bytes();
+    assert_eq!(bytes, expected_bytes);
+  }
 }

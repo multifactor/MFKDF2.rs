@@ -29,7 +29,7 @@ impl FactorSetup for Password {
   }
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, uniffi::Record)]
+#[derive(Clone, Debug, Default, Serialize, Deserialize, uniffi::Record)]
 pub struct PasswordOptions {
   pub id: Option<String>,
 }
