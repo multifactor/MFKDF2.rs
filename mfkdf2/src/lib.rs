@@ -1,6 +1,5 @@
 uniffi::setup_scaffolding!();
 
-pub mod classes;
 pub mod crypto;
 pub mod definitions;
 pub mod derive;

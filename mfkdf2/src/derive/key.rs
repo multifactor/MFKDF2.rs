@@ -5,7 +5,6 @@ use base64::{Engine, engine::general_purpose};
 use sharks::{Share, Sharks};
 
 use crate::{
-  classes::mfkdf_derived_key::MFKDF2DerivedKey,
   crypto::{decrypt, hkdf_sha256_with_info, hmacsha256},
   definitions::mfkdf_derived_key::MFKDF2DerivedKey,
   derive::FactorDerive,
