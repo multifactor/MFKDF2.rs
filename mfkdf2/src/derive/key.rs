@@ -339,7 +339,7 @@ mod tests {
       &totp.options.hash,
       totp.options.digits,
     );
-    let mut derive_totp_factor = derive_totp(totp_code as u32, TOTPOptions::default()).unwrap();
+    let mut derive_totp_factor = derive_totp(totp_code as u32, None).unwrap();
     derive_totp_factor.id = Some("totp".to_string());
     derive_factors_map.insert("totp".to_string(), derive_totp_factor);
 

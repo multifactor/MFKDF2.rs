@@ -140,7 +140,6 @@ pub async fn key(
   let mut real_entropy: Vec<u32> = Vec::new();
 
   for (factor, share) in factors.iter().zip(shares.clone()) {
-    // dbg!(&share);
     // Factor id uniqueness
     let id = factor.id.clone();
     if !ids.insert(id.clone()) {

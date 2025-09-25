@@ -110,7 +110,7 @@ mod tests {
   #[test]
   fn hotp_round_trip() {
     // Setup phase
-    let secret = b"hello world".to_vec();
+    let secret = b"hello world mfkdf2!!".to_vec();
     let hotp_options = HOTPOptions {
       id:     Some("hotp".to_string()),
       secret: Some(secret.clone()),
@@ -156,7 +156,7 @@ mod tests {
   #[test]
   fn hotp_derive_params_increment() {
     // Test that derive params increment the counter correctly
-    let secret = b"hello world".to_vec();
+    let secret = b"hello world mfkdf2!!".to_vec();
     let mock_key = [42u8; 32];
 
     let hotp_options = HOTPOptions {
