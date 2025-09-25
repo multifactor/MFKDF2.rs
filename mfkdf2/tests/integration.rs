@@ -16,13 +16,13 @@ async fn mock_mfkdf2_password() -> Result<MFKDF2DerivedKey, mfkdf2::error::MFKDF
 }
 
 #[tokio::test]
-async fn test_key_setup() -> Result<(), mfkdf2::error::MFKDF2Error> {
+async fn key_setup() -> Result<(), mfkdf2::error::MFKDF2Error> {
   mock_mfkdf2_password().await?;
   Ok(())
 }
 
 #[tokio::test]
-async fn test_key_derive() -> Result<(), mfkdf2::error::MFKDF2Error> {
+async fn key_derive() -> Result<(), mfkdf2::error::MFKDF2Error> {
   let key = mock_mfkdf2_password().await?;
   println!("Setup key: {}", key);
 
@@ -40,7 +40,7 @@ async fn test_key_derive() -> Result<(), mfkdf2::error::MFKDF2Error> {
 
 #[tokio::test]
 #[should_panic]
-async fn test_key_derive_fail() -> () {
+async fn key_derive_fail() -> () {
   let key = mock_mfkdf2_password().await.unwrap();
   println!("Setup key: {}", key);
 
@@ -75,10 +75,10 @@ async fn mock_threshold_mfkdf2() -> Result<MFKDF2DerivedKey, mfkdf2::error::MFKD
 }
 
 #[tokio::test]
-async fn test_key_setup_threshold() -> () { mock_threshold_mfkdf2().await.unwrap(); }
+async fn key_setup_threshold() -> () { mock_threshold_mfkdf2().await.unwrap(); }
 
 #[tokio::test]
-async fn test_key_derive_threshold() -> () {
+async fn key_derive_threshold() -> () {
   let key = mock_threshold_mfkdf2().await.unwrap();
   println!("Setup key: {}", key);
 
@@ -123,13 +123,13 @@ async fn mock_password_question_mfkdf2()
 }
 
 #[tokio::test]
-async fn test_key_setup_password_question() -> () {
+async fn key_setup_password_question() -> () {
   let key = mock_password_question_mfkdf2().await.unwrap();
   println!("Setup key: {}", key);
 }
 
 #[tokio::test]
-async fn test_key_derive_password_question() -> () {
+async fn key_derive_password_question() -> () {
   let key = mock_password_question_mfkdf2().await.unwrap();
   println!("Setup key: {}", key);
 
@@ -159,7 +159,7 @@ async fn mock_uuid_mfkdf2() -> Result<MFKDF2DerivedKey, mfkdf2::error::MFKDF2Err
 }
 
 #[tokio::test]
-async fn test_key_derive_uuid() -> () {
+async fn key_derive_uuid() -> () {
   let key = mock_uuid_mfkdf2().await.unwrap();
   println!("Setup key: {}", key);
 
@@ -195,7 +195,7 @@ async fn mock_hmacsha1_mfkdf2() -> Result<MFKDF2DerivedKey, mfkdf2::error::MFKDF
 }
 
 #[tokio::test]
-async fn test_key_derive_hmacsha1() -> Result<(), mfkdf2::error::MFKDF2Error> {
+async fn key_derive_hmacsha1() -> Result<(), mfkdf2::error::MFKDF2Error> {
   let key = mock_hmacsha1_mfkdf2().await?;
   println!("Setup key: {}", key);
 
@@ -223,7 +223,7 @@ async fn test_key_derive_hmacsha1() -> Result<(), mfkdf2::error::MFKDF2Error> {
 }
 
 #[tokio::test]
-async fn test_policy_json_schema_compliance() {
+async fn policy_json_schema_compliance() {
   let key = mock_mfkdf2_password().await.unwrap();
 
   // Serialize the policy to JSON
@@ -262,6 +262,15 @@ async fn test_policy_json_schema_compliance() {
 
 const HOTP_SECRET: [u8; 20] = [0u8; 20];
 const TOTP_SECRET: [u8; 20] = [0u8; 20];
+const PASSKEY_SECRET: [u8; 32] = [7; 32];
+const TEST_JWK: &str = r#"{
+    "key_ops": ["encrypt", "decrypt"],
+    "ext": true,
+    "alg": "RSA-OAEP-256",
+    "kty": "RSA",
+    "n": "1jR1L4H7Wov2W3XWlw1OII-fh_YuzfbZgpMCeSIPUd5oPvyvRf8nshkclQ9EQy6QlCZPX0HzCqkGokppxirKisyjfAlremiL8H60t2aapN_T3eClJ3KUxyEO1cejWoKejD86OtL_DWc04odInpcRmFgAF8mgjbEZRD0oSzaGlr70Ezi8p0yhpMTFM2Ltn0LG6SJ2_LGQwpEFNFf7790IoNpx8vKIZq0Ok1dGhC808f2t0ZhVFmxYnR-fp1jxd5B9nYDkjyJbWQK4vPlpAOgHw9v8G2Cg2X1TX2Ywr19tB249es2NlOYrFRQugzPyKfuVYxpFgoJfMuP83SPx-RvK6w",
+    "e": "AQAB"
+  }"#;
 
 async fn mock_hotp_mfkdf2() -> Result<MFKDF2DerivedKey, mfkdf2::error::MFKDF2Error> {
   let factors = vec![mfkdf2::setup::factors::hotp(mfkdf2::setup::factors::hotp::HOTPOptions {
@@ -399,101 +408,162 @@ async fn key_derive_mixed_password_hotp() -> Result<(), mfkdf2::error::MFKDF2Err
   Ok(())
 }
 
-async fn mock_threshold_factors_totp_mfkdf2() -> Result<MFKDF2DerivedKey, mfkdf2::error::MFKDF2Error>
-{
-  let factors = vec![
-    mfkdf2::setup::factors::password(
+use rstest::rstest;
+
+fn create_setup_factor(name: &str) -> mfkdf2::setup::factors::MFKDF2Factor {
+  match name {
+    "password" => mfkdf2::setup::factors::password(
       "Tr0ubd4dour",
       mfkdf2::setup::factors::password::PasswordOptions { id: Some("password_1".to_string()) },
-    ),
-    mfkdf2::setup::factors::hotp(mfkdf2::setup::factors::hotp::HOTPOptions {
+    )
+    .unwrap(),
+    "hotp" => mfkdf2::setup::factors::hotp(mfkdf2::setup::factors::hotp::HOTPOptions {
       id:     Some("hotp_1".to_string()),
       secret: Some(HOTP_SECRET.to_vec()),
       digits: 6,
       hash:   mfkdf2::setup::factors::hotp::OTPHash::Sha256,
       issuer: "MFKDF".to_string(),
       label:  "test".to_string(),
-    }),
-    mfkdf2::setup::factors::totp(mfkdf2::setup::factors::totp::TOTPOptions {
+    })
+    .unwrap(),
+    "totp" => mfkdf2::setup::factors::totp(mfkdf2::setup::factors::totp::TOTPOptions {
       id: Some("totp_1".to_string()),
       secret: Some(TOTP_SECRET.to_vec()),
-
       ..Default::default()
-    }),
-  ]
-  .into_iter()
-  .collect::<Result<Vec<_>, _>>()?;
-
-  let options = mfkdf2::setup::key::MFKDF2Options { threshold: Some(2), ..Default::default() };
-  let key = mfkdf2::setup::key(factors, options).await?;
-  Ok(key)
+    })
+    .unwrap(),
+    "hmacsha1" =>
+      mfkdf2::setup::factors::hmacsha1(mfkdf2::setup::factors::hmacsha1::HmacSha1Options {
+        id:     Some("hmacsha1_1".to_string()),
+        secret: Some(HMACSHA1_SECRET.to_vec()),
+      })
+      .unwrap(),
+    "question" => mfkdf2::setup::factors::question::question(
+      "my secret answer",
+      mfkdf2::setup::factors::question::QuestionOptions {
+        id:       Some("question_1".to_string()),
+        question: Some("What is my secret?".to_string()),
+      },
+    )
+    .unwrap(),
+    "uuid" => mfkdf2::setup::factors::uuid::uuid(mfkdf2::setup::factors::uuid::UUIDOptions {
+      id:   Some("uuid_1".to_string()),
+      uuid: Some("f9bf78b9-54e7-4696-97dc-5e750de4c592".to_string()),
+    })
+    .unwrap(),
+    "ooba" => mfkdf2::setup::factors::ooba::ooba(mfkdf2::setup::factors::ooba::OobaOptions {
+      id:     Some("ooba_1".to_string()),
+      length: 8,
+      key:    Some(TEST_JWK.to_string()),
+      params: Some(r#"{"foo":"bar"}"#.to_string()),
+    })
+    .unwrap(),
+    "passkey" => mfkdf2::setup::factors::passkey::passkey(
+      PASSKEY_SECRET.to_vec(),
+      mfkdf2::setup::factors::passkey::PasskeyOptions { id: Some("passkey_1".to_string()) },
+    )
+    .unwrap(),
+    _ => panic!("Unknown factor type for setup: {}", name),
+  }
 }
 
+pub fn create_derive_factor(
+  name: &str,
+  policy: &mfkdf2::policy::Policy,
+) -> (String, mfkdf2::setup::factors::MFKDF2Factor) {
+  match name {
+    "password" =>
+      ("password_1".to_string(), mfkdf2::derive::factors::password("Tr0ubd4dour").unwrap()),
+    "hotp" => {
+      let factor_policy = policy.factors.iter().find(|f| f.id == "hotp_1").unwrap();
+      let params: serde_json::Value = serde_json::from_str(&factor_policy.params).unwrap();
+      let counter = params["counter"].as_u64().unwrap();
+      let digits = params["digits"].as_u64().unwrap() as u8;
+      let hash = serde_json::from_value(params["hash"].clone()).unwrap();
+
+      let generated_code =
+        mfkdf2::setup::factors::hotp::generate_hotp_code(&HOTP_SECRET, counter, &hash, digits);
+      ("hotp_1".to_string(), mfkdf2::derive::factors::hotp(generated_code).unwrap())
+    },
+    "totp" => {
+      let factor_policy = policy.factors.iter().find(|f| f.id == "totp_1").unwrap();
+      let params: serde_json::Value = serde_json::from_str(&factor_policy.params).unwrap();
+      let time = params["start"].as_u64().unwrap();
+      let step = params["step"].as_u64().unwrap();
+      let hash = serde_json::from_value(params["hash"].clone()).unwrap();
+      let digits = params["digits"].as_u64().unwrap() as u8;
+      let counter = time / (step * 1000);
+
+      let totp_code =
+        mfkdf2::setup::factors::hotp::generate_hotp_code(&TOTP_SECRET, counter, &hash, digits);
+      ("totp_1".to_string(), mfkdf2::derive::factors::totp(totp_code, None).unwrap())
+    },
+    "hmacsha1" => {
+      let factor_policy = policy.factors.iter().find(|f| f.id == "hmacsha1_1").unwrap();
+      let params: serde_json::Value = serde_json::from_str(&factor_policy.params).unwrap();
+      let challenge = hex::decode(params["challenge"].as_str().unwrap()).unwrap();
+      let response = mfkdf2::crypto::hmacsha1(&HMACSHA1_SECRET, &challenge);
+      ("hmacsha1_1".to_string(), mfkdf2::derive::factors::hmacsha1(response.into()).unwrap())
+    },
+    "question" =>
+      ("question_1".to_string(), mfkdf2::derive::factors::question("my secret answer").unwrap()),
+    "uuid" => (
+      "uuid_1".to_string(),
+      mfkdf2::derive::factors::uuid("f9bf78b9-54e7-4696-97dc-5e750de4c592".to_string()).unwrap(),
+    ),
+    "ooba" => {
+      let factor_policy = policy.factors.iter().find(|f| f.id == "ooba_1").unwrap();
+      let params: serde_json::Value = serde_json::from_str(&factor_policy.params).unwrap();
+      let code = params["params"]["code"].as_str().unwrap();
+      ("ooba_1".to_string(), mfkdf2::derive::factors::ooba(code.to_string()).unwrap())
+    },
+    "passkey" => (
+      "passkey_1".to_string(),
+      mfkdf2::derive::factors::passkey::passkey(PASSKEY_SECRET.to_vec()).unwrap(),
+    ),
+    _ => panic!("Unknown factor type for derive: {}", name),
+  }
+}
+
+#[rstest]
+#[case(vec!["password", "hotp", "totp"], 2, vec![vec!["password", "hotp"], vec!["password", "totp"]], 1)]
+#[case(vec!["password", "hotp", "totp"], 3, vec![vec!["password", "hotp", "totp"]], 1)]
+#[case(vec!["password", "hotp", "totp", "hmacsha1"], 3, vec![vec!["password", "hotp", "totp"], vec!["password", "hotp", "hmacsha1"]], 1)]
+#[case(vec!["question", "uuid"], 2, vec![vec!["question", "uuid"]], 1)]
+#[case(vec!["ooba", "passkey", "password"], 2, vec![vec!["ooba", "passkey"], vec!["password", "passkey"]], 1)]
+#[case(vec!["password", "hotp"], 2, vec![vec!["password", "hotp"]], 3)]
 #[tokio::test]
-async fn key_derive_mixed_password_hotp_totp() -> Result<(), mfkdf2::error::MFKDF2Error> {
-  let key = mock_threshold_factors_totp_mfkdf2().await?;
-  println!("Setup key: {}", key);
+async fn key_derivation_combinations(
+  #[case] setup_factor_names: Vec<&str>,
+  #[case] threshold: u8,
+  #[case] derive_combinations: Vec<Vec<&str>>,
+  #[case] derivation_runs: u32,
+) -> Result<(), mfkdf2::error::MFKDF2Error> {
+  // 1. Setup key
+  let setup_factors: Vec<_> = setup_factor_names.into_iter().map(create_setup_factor).collect();
 
-  // Extract HOTP parameters
-  let hotp_factor = key.policy.factors.iter().find(|f| f.kind == "hotp").unwrap();
-  let params: serde_json::Value = serde_json::from_str(&hotp_factor.params).unwrap();
-  let counter = params["counter"].as_u64().unwrap();
-  let digits = params["digits"].as_u64().unwrap() as u8;
-  let hash = match params["hash"].as_str().unwrap() {
-    "sha1" => OTPHash::Sha1,
-    "sha256" => OTPHash::Sha256,
-    "sha512" => OTPHash::Sha512,
-    _ => panic!("unknown hash algrorithm"),
-  };
+  let options =
+    mfkdf2::setup::key::MFKDF2Options { threshold: Some(threshold), ..Default::default() };
+  let setup_key = mfkdf2::setup::key(setup_factors, options).await?;
 
-  // derive 1
+  // 2. Loop through derivation combinations
+  for combo in derive_combinations {
+    let mut policy_for_run = setup_key.policy.clone();
+    for i in 0..derivation_runs {
+      let derive_factors: HashMap<_, _> =
+        combo.iter().map(|name| create_derive_factor(name, &policy_for_run)).collect();
 
-  // Generate the correct HOTP code using SHA256
-  let generated_code =
-    mfkdf2::setup::factors::hotp::generate_hotp_code(&HOTP_SECRET, counter, &hash, digits);
+      let derived_key = mfkdf2::derive::key(policy_for_run.clone(), derive_factors, false, false)?;
 
-  println!("Generated HOTP code (SHA256): {}", generated_code);
+      assert_eq!(
+        derived_key.key, setup_key.key,
+        "Failed for combination: {:?}, iteration: {}",
+        combo, i
+      );
 
-  // Create both factors
-  let factor_password =
-    ("password_1".to_string(), mfkdf2::derive::factors::password("Tr0ubd4dour").unwrap());
-  let factor_hotp = ("hotp_1".to_string(), mfkdf2::derive::factors::hotp(generated_code).unwrap());
-  let factors = HashMap::from([factor_password, factor_hotp]);
-
-  let derived_key = mfkdf2::derive::key(key.policy, factors, false, false)?;
-  println!("Derived key: {}", derived_key);
-
-  assert_eq!(derived_key.key, key.key);
-
-  // derive 2
-
-  // Generate the correct TOTP code using SHA256
-  let policy_totp_factor = derived_key.policy.factors.iter().find(|f| f.kind == "totp").unwrap();
-  let totp_params: serde_json::Value = serde_json::from_str(&policy_totp_factor.params).unwrap();
-  let time = totp_params["start"].as_u64().unwrap();
-  let step = totp_params["step"].as_u64().unwrap();
-  let hash = match totp_params["hash"].as_str().unwrap() {
-    "sha1" => OTPHash::Sha1,
-    "sha256" => OTPHash::Sha256,
-    "sha512" => OTPHash::Sha512,
-    _ => panic!("unknown hash algrorithm"),
-  };
-  let digits = totp_params["digits"].as_u64().unwrap() as u8;
-  let counter = time / (step * 1000);
-
-  let totp_code =
-    mfkdf2::setup::factors::hotp::generate_hotp_code(&TOTP_SECRET, counter, &hash, digits);
-
-  // Create both factors
-  let factor_password =
-    ("password_1".to_string(), mfkdf2::derive::factors::password("Tr0ubd4dour").unwrap());
-  let factor_totp = ("totp_1".to_string(), mfkdf2::derive::factors::totp(totp_code, None).unwrap());
-  let factors = HashMap::from([factor_password, factor_totp]);
-
-  let derived_key_2 = mfkdf2::derive::key(derived_key.policy, factors, false, false)?;
-  println!("Derived key: {}", derived_key_2);
-
-  assert_eq!(derived_key_2.key, derived_key.key);
+      policy_for_run = derived_key.policy;
+    }
+  }
 
   Ok(())
 }

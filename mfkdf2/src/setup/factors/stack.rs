@@ -13,7 +13,7 @@ use crate::{
   },
 };
 
-#[derive(Clone, Debug, Serialize, Deserialize, uniffi::Record)]
+#[derive(Clone, Debug, Default, Serialize, Deserialize, uniffi::Record)]
 pub struct StackOptions {
   pub id:        Option<String>,
   pub threshold: Option<u8>,

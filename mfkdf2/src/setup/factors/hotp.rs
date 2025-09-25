@@ -26,8 +26,11 @@ pub struct HOTPOptions {
 
 #[derive(Clone, Debug, Serialize, Deserialize, uniffi::Enum, PartialEq, Eq)]
 pub enum OTPHash {
+  #[serde(rename = "sha1")]
   Sha1,
+  #[serde(rename = "sha256")]
   Sha256,
+  #[serde(rename = "sha512")]
   Sha512,
 }
 

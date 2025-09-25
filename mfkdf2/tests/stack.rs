@@ -1,152 +1,222 @@
-// use std::collections::HashMap;
+use std::collections::HashMap;
 
-// async fn setup_stack() -> Result<mfkdf2::setup::key::MFKDF2DerivedKey,
-// mfkdf2::error::MFKDF2Error> {   let stacked_factors = vec![
-//     mfkdf2::setup::factors::password(
-//       "Tr0ubd4dour",
-//       mfkdf2::setup::factors::password::PasswordOptions { id: Some("password_1".to_string()) },
-//     ),
-//     mfkdf2::setup::factors::password(
-//       "hunter2",
-//       mfkdf2::setup::factors::password::PasswordOptions { id: Some("password_2".to_string()) },
-//     ),
-//   ]
-//   .into_iter()
-//   .collect::<Result<Vec<_>, _>>()?;
+use mfkdf2::{policy::Policy, setup::factors::hmacsha1::HmacSha1Response};
 
-//   let key = mfkdf2::setup::key(
-//     vec![
-//       mfkdf2::setup::factors::stack(stacked_factors,
-// mfkdf2::setup::key::MFKDF2Options::default())         .await?,
-//       mfkdf2::setup::factors::password(
-//         "my-secure-password",
-//         mfkdf2::setup::factors::password::PasswordOptions { id: Some("password_3".to_string()) },
-//       )?,
-//     ],
-//     mfkdf2::setup::key::MFKDF2Options { id: None, threshold: Some(1), salt: None },
-//   )
-//   .await?;
-//   Ok(key)
-// }
+const HMACSHA1_SECRET: [u8; 20] = [
+  0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f, 0x10,
+  0x11, 0x12, 0x13, 0x14,
+];
 
-// #[tokio::test]
-// async fn test_stack() {
-//   let key = setup_stack().await.unwrap();
-//   println!("Setup key: {}", key);
-// }
+async fn mock_setup_stack()
+-> Result<mfkdf2::definitions::mfkdf_derived_key::MFKDF2DerivedKey, mfkdf2::error::MFKDF2Error> {
+  let stacked_factors = vec![
+    mfkdf2::setup::factors::password(
+      "Tr0ubd4dour",
+      mfkdf2::setup::factors::password::PasswordOptions { id: Some("password_1".to_string()) },
+    ),
+    mfkdf2::setup::factors::question::question(
+      "my secret answer",
+      mfkdf2::setup::factors::question::QuestionOptions {
+        id:       Some("question_1".to_string()),
+        question: Some("What is my secret?".to_string()),
+      },
+    ),
+  ]
+  .into_iter()
+  .collect::<Result<Vec<_>, _>>()?;
 
-// #[tokio::test]
-// async fn test_stack_derive() {
-//   let key = setup_stack().await.unwrap();
-//   println!("Setup key: {}", key);
+  let stacked_factors_2 = vec![
+    mfkdf2::setup::factors::uuid::uuid(mfkdf2::setup::factors::uuid::UUIDOptions {
+      id:   Some("uuid_1".to_string()),
+      uuid: Some("f9bf78b9-54e7-4696-97dc-5e750de4c592".to_string()),
+    }),
+    mfkdf2::setup::factors::hmacsha1(mfkdf2::setup::factors::hmacsha1::HmacSha1Options {
+      id:     Some("hmacsha1_1".to_string()),
+      secret: Some(HMACSHA1_SECRET.to_vec()),
+    }),
+  ]
+  .into_iter()
+  .collect::<Result<Vec<_>, _>>()?;
 
-//   let derived_key = mfkdf2::derive::key(
-//     key.policy.clone(),
-//     HashMap::from([(
-//       "stack".to_string(),
-//       mfkdf2::derive::factors::stack(HashMap::from([
-//         ("password_1".to_string(), mfkdf2::derive::factors::password("Tr0ubd4dour").unwrap()),
-//         ("password_2".to_string(), mfkdf2::derive::factors::password("hunter2").unwrap()),
-//       ]))
-//       .unwrap(),
-//     )]),
-//   )
-//   .await
-//   .unwrap();
-//   println!("Derived key: {}", derived_key);
+  let key = mfkdf2::setup::key(
+    vec![
+      mfkdf2::setup::factors::stack(stacked_factors, mfkdf2::setup::factors::stack::StackOptions {
+        id: Some("stack_1".to_string()),
+        ..Default::default()
+      })
+      .await?,
+      mfkdf2::setup::factors::stack(
+        stacked_factors_2,
+        mfkdf2::setup::factors::stack::StackOptions {
+          id: Some("stack_2".to_string()),
+          ..Default::default()
+        },
+      )
+      .await?,
+      mfkdf2::setup::factors::password(
+        "my-secure-password",
+        mfkdf2::setup::factors::password::PasswordOptions { id: Some("password_3".to_string()) },
+      )?,
+    ],
+    mfkdf2::setup::key::MFKDF2Options { threshold: Some(1), ..Default::default() },
+  )
+  .await?;
+  Ok(key)
+}
 
-//   assert_eq!(derived_key.key, key.key);
+#[tokio::test]
+async fn stack_setup() {
+  let key = mock_setup_stack().await.unwrap();
+  println!("Setup key: {}", key);
+}
 
-//   let derived_key = mfkdf2::derive::key(
-//     key.policy,
-//     HashMap::from([(
-//       "password_3".to_string(),
-//       mfkdf2::derive::factors::password("my-secure-password").unwrap(),
-//     )]),
-//   )
-//   .await
-//   .unwrap();
-//   println!("Derived key: {}", derived_key);
-//   assert_eq!(derived_key.key, key.key);
-// }
+#[tokio::test]
+async fn stack_derive() {
+  let key = mock_setup_stack().await.unwrap();
+  println!("Setup key: {}", key);
 
-// #[tokio::test]
-// #[should_panic]
-// async fn test_stack_derive_fail() {
-//   let key = setup_stack().await.unwrap();
-//   println!("Setup key: {}", key);
+  let derived_key = mfkdf2::derive::key(
+    key.policy.clone(),
+    HashMap::from([(
+      "stack_1".to_string(),
+      mfkdf2::derive::factors::stack(HashMap::from([
+        ("password_1".to_string(), mfkdf2::derive::factors::password("Tr0ubd4dour").unwrap()),
+        ("question_1".to_string(), mfkdf2::derive::factors::question("my secret answer").unwrap()),
+      ]))
+      .unwrap(),
+    )]),
+    false,
+    false,
+  )
+  .unwrap();
+  println!("Derived key: {}", derived_key);
+  assert_eq!(derived_key.key, key.key);
 
-//   let derived_key = mfkdf2::derive::key(
-//     key.policy,
-//     HashMap::from([(
-//       "password_3".to_string(),
-//       mfkdf2::derive::factors::password("wrong_password").unwrap(),
-//     )]),
-//   )
-//   .await
-//   .unwrap();
-//   println!("Derived key: {}", derived_key);
-//   assert_eq!(derived_key.key, key.key);
-// }
+  let derived_key = mfkdf2::derive::key(
+    key.policy,
+    HashMap::from([(
+      "password_3".to_string(),
+      mfkdf2::derive::factors::password("my-secure-password").unwrap(),
+    )]),
+    false,
+    false,
+  )
+  .unwrap();
+  println!("Derived key: {}", derived_key);
+  assert_eq!(derived_key.key, key.key);
 
-// #[tokio::test]
-// #[should_panic]
-// async fn test_stack_derive_fail_second() {
-//   let key = setup_stack().await.unwrap();
-//   println!("Setup key: {}", key);
+  let stack_factor_policy = serde_json::from_str::<Policy>(
+    derived_key.policy.factors.iter().find(|f| f.id == "stack_2").unwrap().params.as_str(),
+  )
+  .unwrap();
+  let factor_policy = stack_factor_policy.factors.iter().find(|f| f.id == "hmacsha1_1").unwrap();
+  let params: serde_json::Value = serde_json::from_str(&factor_policy.params).unwrap();
+  let challenge = hex::decode(params["challenge"].as_str().unwrap()).unwrap();
+  let response = mfkdf2::crypto::hmacsha1(&HMACSHA1_SECRET, &challenge);
+  let derived_key = mfkdf2::derive::key(
+    derived_key.policy,
+    HashMap::from([(
+      "stack_2".to_string(),
+      mfkdf2::derive::factors::stack(HashMap::from([
+        (
+          "uuid_1".to_string(),
+          mfkdf2::derive::factors::uuid("f9bf78b9-54e7-4696-97dc-5e750de4c592".to_string())
+            .unwrap(),
+        ),
+        (
+          "hmacsha1_1".to_string(),
+          mfkdf2::derive::factors::hmacsha1(HmacSha1Response::from(response)).unwrap(),
+        ),
+      ]))
+      .unwrap(),
+    )]),
+    false,
+    false,
+  )
+  .unwrap();
+  println!("Derived key: {}", derived_key);
+  assert_eq!(derived_key.key, key.key);
+}
 
-//   let derived_key = mfkdf2::derive::key(
-//     key.policy.clone(),
-//     HashMap::from([(
-//       "stack".to_string(),
-//       mfkdf2::derive::factors::stack(HashMap::from([(
-//         "password_1".to_string(),
-//         mfkdf2::derive::factors::password("Tr0ubd4dour").unwrap(),
-//       )]))
-//       .unwrap(),
-//     )]),
-//   )
-//   .await
-//   .unwrap();
-//   println!("Derived key: {}", derived_key);
-//   assert_eq!(derived_key.key, key.key);
-// }
+#[tokio::test]
+#[should_panic]
+async fn stack_derive_fail() {
+  let key = mock_setup_stack().await.unwrap();
+  println!("Setup key: {}", key);
 
-// #[tokio::test]
-// async fn test_stack_policy_json_schema_compliance() {
-//   let key = setup_stack().await.unwrap();
+  let derived_key = mfkdf2::derive::key(
+    key.policy,
+    HashMap::from([(
+      "password_3".to_string(),
+      mfkdf2::derive::factors::password("wrong_password").unwrap(),
+    )]),
+    false,
+    false,
+  )
+  .unwrap();
+  println!("Derived key: {}", derived_key);
+  assert_eq!(derived_key.key, key.key);
+}
 
-//   // Serialize the policy to JSON
-//   let policy_json = serde_json::to_string_pretty(&key.policy).unwrap();
-//   println!("Policy JSON:\n{}", policy_json);
+#[tokio::test]
+#[should_panic]
+async fn stack_derive_fail_second() {
+  let key = mock_setup_stack().await.unwrap();
+  println!("Setup key: {}", key);
 
-//   // Parse it back to ensure it's valid JSON
-//   let parsed: serde_json::Value = serde_json::from_str(&policy_json).unwrap();
+  let derived_key = mfkdf2::derive::key(
+    key.policy.clone(),
+    HashMap::from([(
+      "stack".to_string(),
+      mfkdf2::derive::factors::stack(HashMap::from([(
+        "password_1".to_string(),
+        mfkdf2::derive::factors::password("Tr0ubd4dour").unwrap(),
+      )]))
+      .unwrap(),
+    )]),
+    false,
+    false,
+  )
+  .unwrap();
+  println!("Derived key: {}", derived_key);
+  assert_eq!(derived_key.key, key.key);
+}
 
-//   // Check that all required schema fields are present
-//   assert!(parsed.get("$schema").is_some(), "Missing $schema field");
-//   assert!(parsed.get("$id").is_some(), "Missing $id field");
-//   assert!(parsed.get("threshold").is_some(), "Missing threshold field");
-//   assert!(parsed.get("salt").is_some(), "Missing salt field");
-//   assert!(parsed.get("factors").is_some(), "Missing factors field");
-//   assert!(parsed.get("hmac").is_some(), "Missing hmac field");
+#[tokio::test]
+async fn stack_policy_json_schema_compliance() {
+  let key = mock_setup_stack().await.unwrap();
 
-//   // Check schema URL
-//   let schema = parsed.get("$schema").unwrap().as_str().unwrap();
-//   assert_eq!(schema, "https://mfkdf.com/schema/v2.0.0/policy.json");
+  // Serialize the policy to JSON
+  let policy_json = serde_json::to_string_pretty(&key.policy).unwrap();
+  println!("Policy JSON:\n{}", policy_json);
 
-//   // Check factors array structure
-//   let factors = parsed.get("factors").unwrap().as_array().unwrap();
-//   assert!(!factors.is_empty(), "Factors array should not be empty");
+  // Parse it back to ensure it's valid JSON
+  let parsed: serde_json::Value = serde_json::from_str(&policy_json).unwrap();
 
-//   for factor in factors {
-//     assert!(factor.get("id").is_some(), "Factor missing id field");
-//     assert!(factor.get("type").is_some(), "Factor missing type field");
-//     assert!(factor.get("pad").is_some(), "Factor missing pad field");
-//     assert!(factor.get("salt").is_some(), "Factor missing salt field");
-//     assert!(factor.get("secret").is_some(), "Factor missing secret field");
-//     assert!(factor.get("params").is_some(), "Factor missing params field");
-//   }
+  // Check that all required schema fields are present
+  assert!(parsed.get("$schema").is_some(), "Missing $schema field");
+  assert!(parsed.get("$id").is_some(), "Missing $id field");
+  assert!(parsed.get("threshold").is_some(), "Missing threshold field");
+  assert!(parsed.get("salt").is_some(), "Missing salt field");
+  assert!(parsed.get("factors").is_some(), "Missing factors field");
+  assert!(parsed.get("hmac").is_some(), "Missing hmac field");
 
-//   println!("✅ Policy JSON schema compliance test passed!");
-// }
+  // Check schema URL
+  let schema = parsed.get("$schema").unwrap().as_str().unwrap();
+  assert_eq!(schema, "https://mfkdf.com/schema/v2.0.0/policy.json");
+
+  // Check factors array structure
+  let factors = parsed.get("factors").unwrap().as_array().unwrap();
+  assert!(!factors.is_empty(), "Factors array should not be empty");
+
+  for factor in factors {
+    assert!(factor.get("id").is_some(), "Factor missing id field");
+    assert!(factor.get("type").is_some(), "Factor missing type field");
+    assert!(factor.get("pad").is_some(), "Factor missing pad field");
+    assert!(factor.get("salt").is_some(), "Factor missing salt field");
+    assert!(factor.get("secret").is_some(), "Factor missing secret field");
+    assert!(factor.get("params").is_some(), "Factor missing params field");
+  }
+
+  println!("✅ Policy JSON schema compliance test passed!");
+}
