@@ -135,8 +135,8 @@ impl FactorDerive for TOTP {
 
 impl Factor for TOTP {}
 
-pub fn totp(code: u32, options: TOTPOptions) -> MFKDF2Result<MFKDF2Factor> {
-  let mut options = options;
+pub fn totp(code: u32, options: Option<TOTPOptions>) -> MFKDF2Result<MFKDF2Factor> {
+  let mut options = if let Some(options) = options { options } else { TOTPOptions::default() };
 
   // Validation
   if options.time.is_none() {
@@ -157,7 +157,7 @@ pub fn totp(code: u32, options: TOTPOptions) -> MFKDF2Result<MFKDF2Factor> {
 }
 
 #[uniffi::export]
-pub fn derive_totp(code: u32, options: TOTPOptions) -> MFKDF2Result<MFKDF2Factor> {
+pub fn derive_totp(code: u32, options: Option<TOTPOptions>) -> MFKDF2Result<MFKDF2Factor> {
   totp(code, options)
 }
 
@@ -171,7 +171,7 @@ mod tests {
   fn get_test_totp_options() -> TOTPOptions {
     setup_totp::TOTPOptions {
       id:     Some("totp-test".to_string()),
-      secret: Some(b"hello world".to_vec()),
+      secret: Some(b"hello world mfkdf2!!".to_vec()),
       digits: 6,
       hash:   OTPHash::Sha1,
       step:   30,
@@ -223,7 +223,7 @@ mod tests {
     let mut derive_options = get_test_totp_options();
     derive_options.secret = None; // Secret is not available at derive time
     derive_options.time = Some(time);
-    let mut derive_material = derive_totp(correct_code, derive_options).unwrap();
+    let mut derive_material = derive_totp(correct_code, Some(derive_options)).unwrap();
 
     derive_material.factor_type.include_params(setup_params).unwrap();
 
@@ -240,7 +240,7 @@ mod tests {
 
     let mut derive_options = get_test_totp_options();
     derive_options.secret = None;
-    let mut derive_factor = derive_totp(123456, derive_options).unwrap();
+    let mut derive_factor = derive_totp(123456, Some(derive_options)).unwrap();
     derive_factor.factor_type.include_params(setup_params.clone()).unwrap();
 
     let derive_params = derive_factor.factor_type.params_derive(mock_key);
@@ -268,7 +268,7 @@ mod tests {
     let mut derive_options = get_test_totp_options();
     derive_options.secret = None;
     derive_options.time = Some(future_time);
-    let mut derive_material = derive_totp(123456, derive_options).unwrap();
+    let mut derive_material = derive_totp(123456, Some(derive_options)).unwrap();
 
     let result = derive_material.factor_type.include_params(setup_params);
     assert!(matches!(result, Err(MFKDF2Error::TOTPWindowExceeded)));
@@ -276,7 +276,7 @@ mod tests {
 
   #[test]
   fn totp_include_params_missing_step() {
-    let mut derive_factor = derive_totp(123456, get_test_totp_options()).unwrap();
+    let mut derive_factor = derive_totp(123456, None).unwrap();
     let mut params = factor_params_for_test();
     params["step"] = Value::Null;
     let result = derive_factor.factor_type.include_params(params);
@@ -285,7 +285,7 @@ mod tests {
 
   #[test]
   fn totp_include_params_missing_window() {
-    let mut derive_factor = derive_totp(123456, get_test_totp_options()).unwrap();
+    let mut derive_factor = derive_totp(123456, None).unwrap();
     let mut params = factor_params_for_test();
     params["window"] = Value::Null;
     let result = derive_factor.factor_type.include_params(params);

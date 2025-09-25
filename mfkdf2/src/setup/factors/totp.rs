@@ -130,8 +130,16 @@ pub fn totp(options: TOTPOptions) -> MFKDF2Result<MFKDF2Factor> {
   {
     return Err(crate::error::MFKDF2Error::MissingFactorId);
   }
+  let id = options.id.clone().unwrap_or("totp".to_string());
   if options.digits < 6 || options.digits > 8 {
     return Err(crate::error::MFKDF2Error::InvalidTOTPDigits);
+  }
+
+  // secret length validation
+  if let Some(ref secret) = options.secret {
+    if secret.len() != 20 {
+      return Err(crate::error::MFKDF2Error::InvalidSecretLength(id.clone()));
+    }
   }
 
   let secret = options.secret.unwrap_or_else(|| {
@@ -157,7 +165,7 @@ pub fn totp(options: TOTPOptions) -> MFKDF2Result<MFKDF2Factor> {
   let entropy = Some((options.digits as f64 * 10.0_f64.log2()) as u32);
 
   Ok(MFKDF2Factor {
-    id: Some(options.id.clone().unwrap_or("totp".to_string())),
+    id: Some(id),
     factor_type: FactorType::TOTP(TOTP {
       options,
       params: serde_json::to_string(&Value::Null).unwrap(),
@@ -180,9 +188,9 @@ mod tests {
     let options = TOTPOptions {
       id: Some("test".to_string()),
       digits: 8,
-      secret: Some(b"my-secret-is-super-secret-12345".to_vec()), // 31 bytes
+      secret: Some(b"my-super-secret-1234".to_vec()), // 31 bytes
       time: Some(SystemTime::UNIX_EPOCH + Duration::from_secs(1672531200)), /* 2023-01-01
-                                                                  * 00:00:00 UTC */
+                                                       * 00:00:00 UTC */
       ..Default::default()
     };
 
@@ -241,6 +249,16 @@ mod tests {
     let options = TOTPOptions { digits: 9, ..Default::default() };
     let result = totp(options);
     assert!(matches!(result, Err(MFKDF2Error::InvalidTOTPDigits)));
+  }
+
+  #[test]
+  fn invalid_secret_length() {
+    let options = TOTPOptions {
+      secret: Some(b"my-secret-is-super-secret-123456".to_vec()),
+      ..Default::default()
+    };
+    let result = totp(options);
+    assert!(matches!(result, Err(MFKDF2Error::InvalidSecretLength(_))));
   }
 
   #[test]
