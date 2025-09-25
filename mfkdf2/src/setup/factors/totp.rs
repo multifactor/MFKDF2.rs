@@ -136,11 +136,10 @@ pub fn totp(options: TOTPOptions) -> MFKDF2Result<MFKDF2Factor> {
   }
 
   // secret length validation
-  if let Some(ref secret) = options.secret {
-    if secret.len() != 20 {
+  if let Some(ref secret) = options.secret
+    && secret.len() != 20 {
       return Err(crate::error::MFKDF2Error::InvalidSecretLength(id.clone()));
     }
-  }
 
   let secret = options.secret.unwrap_or_else(|| {
     let mut secret = vec![0u8; 20];
