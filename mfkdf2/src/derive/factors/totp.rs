@@ -136,7 +136,7 @@ impl FactorDerive for TOTP {
 impl Factor for TOTP {}
 
 pub fn totp(code: u32, options: Option<TOTPOptions>) -> MFKDF2Result<MFKDF2Factor> {
-  let mut options = if let Some(options) = options { options } else { TOTPOptions::default() };
+  let mut options = options.unwrap_or_default();
 
   // Validation
   if options.time.is_none() {
