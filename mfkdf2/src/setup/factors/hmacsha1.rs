@@ -55,7 +55,7 @@ impl FactorMetadata for HmacSha1 {
 impl FactorSetup for HmacSha1 {
   fn bytes(&self) -> Vec<u8> { self.padded_secret[..20].to_vec() }
 
-  fn params_setup(&self, _key: [u8; 32]) -> Value {
+  fn setup(&self, _key: [u8; 32]) -> Value {
     let mut challenge = [0u8; 64];
     OsRng.fill_bytes(&mut challenge);
 
@@ -70,7 +70,7 @@ impl FactorSetup for HmacSha1 {
     })
   }
 
-  fn output_setup(&self, _key: [u8; 32]) -> Value {
+  fn output(&self, _key: [u8; 32]) -> Value {
     json!({
       "secret": self.padded_secret[..20],
     })

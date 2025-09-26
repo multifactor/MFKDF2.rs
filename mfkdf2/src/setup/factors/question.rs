@@ -23,13 +23,13 @@ impl FactorMetadata for Question {
 impl FactorSetup for Question {
   fn bytes(&self) -> Vec<u8> { self.answer.as_bytes().to_vec() }
 
-  fn params_setup(&self, _key: [u8; 32]) -> Value {
+  fn setup(&self, _key: [u8; 32]) -> Value {
     json!({
       "question": self.options.question.clone().unwrap_or_default(),
     })
   }
 
-  fn output_setup(&self, _key: [u8; 32]) -> Value {
+  fn output(&self, _key: [u8; 32]) -> Value {
     json!({
       "strength": zxcvbn(&self.answer, &[]),
     })

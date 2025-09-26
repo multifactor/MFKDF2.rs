@@ -49,13 +49,11 @@ impl FactorMetadata for Stack {
 impl FactorSetup for Stack {
   fn bytes(&self) -> Vec<u8> { self.key.key.clone() }
 
-  fn params_setup(&self, _key: [u8; 32]) -> Value {
+  fn setup(&self, _key: [u8; 32]) -> Value {
     serde_json::to_value(&self.key.policy).unwrap_or(json!({}))
   }
 
-  fn output_setup(&self, _key: [u8; 32]) -> Value {
-    serde_json::to_value(&self.key).unwrap_or(json!({}))
-  }
+  fn output(&self, _key: [u8; 32]) -> Value { serde_json::to_value(&self.key).unwrap_or(json!({})) }
 }
 
 pub async fn stack(
