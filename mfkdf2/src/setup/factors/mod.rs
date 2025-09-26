@@ -100,6 +100,7 @@ pub trait FactorSetup {
   fn output(&self, key: [u8; 32]) -> Value;
 }
 
+// TODO (@lonerapier): move factor to its own module
 #[derive(Clone, Serialize, Deserialize, uniffi::Record)]
 pub struct MFKDF2Factor {
   pub id:          Option<String>,
@@ -118,7 +119,7 @@ impl MFKDF2Factor {
 impl std::fmt::Debug for MFKDF2Factor {
   fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
     f.debug_struct("MFKDF2Factor")
-      .field("kind", &self.factor_type.kind())
+      .field("kind", &self.kind())
       .field("id", &self.id)
       .field("data", &self.factor_type)
       .field("salt", &self.salt)

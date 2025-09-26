@@ -80,7 +80,7 @@ mod tests {
     let options = UUIDOptions { id: Some("test".to_string()), uuid: None };
     let factor = uuid(options).unwrap();
     assert_eq!(factor.id, Some("test".to_string()));
-    assert_eq!(factor.factor_type.kind(), "uuid");
+    assert_eq!(factor.kind(), "uuid");
     assert_eq!(factor.salt.len(), 32);
     assert_eq!(factor.entropy, Some(122));
   }
