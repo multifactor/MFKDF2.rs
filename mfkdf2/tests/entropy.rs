@@ -9,15 +9,12 @@ async fn entropy_3_of_3_passwords() -> Result<(), mfkdf2::error::MFKDF2Error> {
     vec![
       mfkdf2::setup::factors::password("12345678", PasswordOptions {
         id: Some("password1".to_string()),
-        ..Default::default()
       })?,
       mfkdf2::setup::factors::password("ABCDEFGH", PasswordOptions {
         id: Some("password2".to_string()),
-        ..Default::default()
       })?,
       mfkdf2::setup::factors::password("abcdefgh", PasswordOptions {
         id: Some("password3".to_string()),
-        ..Default::default()
       })?,
     ],
     MFKDF2Options { threshold: Some(3), ..Default::default() },
@@ -38,15 +35,12 @@ async fn entropy_2_of_3_passwords() -> Result<(), mfkdf2::error::MFKDF2Error> {
     vec![
       mfkdf2::setup::factors::password("12345678", PasswordOptions {
         id: Some("password1".to_string()),
-        ..Default::default()
       })?,
       mfkdf2::setup::factors::password("ABCDEFGH", PasswordOptions {
         id: Some("password2".to_string()),
-        ..Default::default()
       })?,
       mfkdf2::setup::factors::password("abcdefgh", PasswordOptions {
         id: Some("password3".to_string()),
-        ..Default::default()
       })?,
     ],
     MFKDF2Options { threshold: Some(2), ..Default::default() },
@@ -67,15 +61,12 @@ async fn entropy_1_of_3_passwords() -> Result<(), mfkdf2::error::MFKDF2Error> {
     vec![
       mfkdf2::setup::factors::password("12345678", PasswordOptions {
         id: Some("password1".to_string()),
-        ..Default::default()
       })?,
       mfkdf2::setup::factors::password("ABCDEFGH", PasswordOptions {
         id: Some("password2".to_string()),
-        ..Default::default()
       })?,
       mfkdf2::setup::factors::password("abcdefgh", PasswordOptions {
         id: Some("password3".to_string()),
-        ..Default::default()
       })?,
     ],
     MFKDF2Options { threshold: Some(1), ..Default::default() },
@@ -85,7 +76,7 @@ async fn entropy_1_of_3_passwords() -> Result<(), mfkdf2::error::MFKDF2Error> {
   // Expected: floor(log2(4)) and theoretical = 8*8*1
   let expected_real = floor_log2(4.0);
   assert_eq!(setup.entropy.real, expected_real as u32);
-  assert_eq!(setup.entropy.theoretical, 8 * 8 * 1);
+  assert_eq!(setup.entropy.theoretical, (8 * 8));
 
   Ok(())
 }
@@ -97,37 +88,30 @@ async fn entropy_policy_combinators() -> Result<(), mfkdf2::error::MFKDF2Error> 
     mfkdf2::policy::logic::and(
       mfkdf2::setup::factors::password("12345678", PasswordOptions {
         id: Some("password1".to_string()),
-        ..Default::default()
       })?,
       mfkdf2::policy::logic::any(vec![
         mfkdf2::setup::factors::password("12345678", PasswordOptions {
           id: Some("password7".to_string()),
-          ..Default::default()
         })?,
         mfkdf2::policy::logic::or(
           mfkdf2::setup::factors::password("12345678", PasswordOptions {
             id: Some("password3".to_string()),
-            ..Default::default()
           })?,
           mfkdf2::setup::factors::password("12345678", PasswordOptions {
             id: Some("password2".to_string()),
-            ..Default::default()
           })?,
         )
         .await?,
         mfkdf2::policy::logic::and(
           mfkdf2::setup::factors::password("12345678", PasswordOptions {
             id: Some("password4".to_string()),
-            ..Default::default()
           })?,
           mfkdf2::policy::logic::or(
             mfkdf2::setup::factors::password("12345678", PasswordOptions {
               id: Some("password5".to_string()),
-              ..Default::default()
             })?,
             mfkdf2::setup::factors::password("12345678", PasswordOptions {
               id: Some("password6".to_string()),
-              ..Default::default()
             })?,
           )
           .await?,

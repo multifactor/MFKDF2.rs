@@ -1,126 +1,119 @@
 use std::collections::HashMap;
 
-// use rstest::rstest;
+use rstest::rstest;
+
 use crate::{
   derive,
   policy::{
-    self,
+    self, Policy,
     logic::{all, and, any, at_least, or},
   },
   setup::{factors, key::MFKDF2Options},
 };
 
-// // Helper to create a factor by name and id for policy tests
-// fn create_policy_factor(name: &str, id: &str) -> factors::MFKDF2Factor {
-//   match name {
-//     "password" =>
-//       factors::password("password", factors::password::PasswordOptions { id: Some(id.to_string())
-// })         .unwrap(),
-//     "hotp" =>
-//       factors::hotp(factors::hotp::HOTPOptions { id: Some(id.to_string()), ..Default::default()
-// })         .unwrap(),
-//     "totp" =>
-//       factors::totp(factors::totp::TOTPOptions { id: Some(id.to_string()), ..Default::default()
-// })         .unwrap(),
-//     "question" => factors::question("answer", factors::question::QuestionOptions {
-//       id:       Some(id.to_string()),
-//       question: Some("?".to_string()),
-//     })
-//     .unwrap(),
-//     _ => panic!("Unknown factor type: {}", name),
-//   }
-// }
+// Helper to create a factor by name and id for policy tests
+fn create_policy_factor(name: &str, id: &str) -> factors::MFKDF2Factor {
+  match name {
+    "password" =>
+      factors::password("password", factors::password::PasswordOptions { id: Some(id.to_string()) })
+        .unwrap(),
+    "hotp" => factors::hotp(factors::hotp::HOTPOptions {
+      id: Some("hotp".to_string()),
+      secret: Some(vec![0u8; 20]),
+      digits: 6,
+      hash: factors::hotp::OTPHash::Sha256,
+      issuer: "MFKDF".to_string(),
+      label: "test".to_string(),
+      ..Default::default()
+    })
+    .unwrap(),
+    "totp" => factors::totp(factors::totp::TOTPOptions {
+      id: Some(id.to_string()),
+      secret: Some(vec![0u8; 20]),
+      ..Default::default()
+    })
+    .unwrap(),
+    "question" => factors::question("answer", factors::question::QuestionOptions {
+      id:       Some(id.to_string()),
+      question: Some("?".to_string()),
+    })
+    .unwrap(),
+    _ => panic!("Unknown factor type: {}", name),
+  }
+}
 
-// // Helper to create a derive factor by name and id for policy tests
-// fn create_policy_derive_factor(
-//   name: &str,
-//   id: &str,
-//   policy: &crate::policy::Policy,
-// ) -> (String, crate::setup::factors::MFKDF2Factor) {
-//   match name {
-//     "password" => (id.to_string(), derive::factors::password("password").unwrap()),
-//     "question" => (id.to_string(), derive::factors::question("answer").unwrap()),
-//     "hotp" => {
-//       let policy_ids: Vec<_> = policy.factors.iter().map(|f| f.id.as_str()).collect();
-//       println!("[DEBUG] Looking for id '{}' in policy ids: {:?}", id, policy_ids);
-//       let factor_policy = policy.factors.iter().find(|f| f.id == id).unwrap();
-//       let params: serde_json::Value = serde_json::from_str(&factor_policy.params).unwrap();
-//       let counter = params["counter"].as_u64().unwrap();
-//       let digits = params["digits"].as_u64().unwrap() as u8;
-//       let hash = match params["hash"].as_str().unwrap() {
-//         "sha1" => crate::setup::factors::hotp::OTPHash::Sha1,
-//         "sha256" => crate::setup::factors::hotp::OTPHash::Sha256,
-//         "sha512" => crate::setup::factors::hotp::OTPHash::Sha512,
-//         _ => panic!("unknown hash algorithm"),
-//       };
-//       let secret = vec![0u8; 20];
-//       let code = crate::setup::factors::hotp::generate_hotp_code(&secret, counter, &hash,
-// digits);       (id.to_string(), derive::factors::hotp(code).unwrap())
-//     },
-//     "totp" => {
-//       let policy_ids: Vec<_> = policy.factors.iter().map(|f| f.id.as_str()).collect();
-//       println!("[DEBUG] Looking for id '{}' in policy ids: {:?}", id, policy_ids);
-//       let factor_policy = policy.factors.iter().find(|f| f.id == id).unwrap();
-//       let params: serde_json::Value = serde_json::from_str(&factor_policy.params).unwrap();
-//       let time = params["start"].as_u64().unwrap();
-//       let step = params["step"].as_u64().unwrap();
-//       let hash = match params["hash"].as_str().unwrap() {
-//         "sha1" => crate::setup::factors::hotp::OTPHash::Sha1,
-//         "sha256" => crate::setup::factors::hotp::OTPHash::Sha256,
-//         "sha512" => crate::setup::factors::hotp::OTPHash::Sha512,
-//         _ => panic!("unknown hash algorithm"),
-//       };
-//       let digits = params["digits"].as_u64().unwrap() as u8;
-//       let counter = time / (step * 1000);
-//       let secret = vec![0u8; 20];
-//       let code = crate::setup::factors::hotp::generate_hotp_code(&secret, counter, &hash,
-// digits);       (id.to_string(), derive::factors::totp(code, None).unwrap())
-//     },
-//     _ => panic!("Unknown factor type: {}", name),
-//   }
-// }
+// Helper to create a derive factor by name and id for policy tests
+fn create_policy_derive_factor(
+  name: &str,
+  id: &str,
+  policy: &crate::policy::Policy,
+) -> (String, crate::setup::factors::MFKDF2Factor) {
+  match name {
+    "password" => (id.to_string(), derive::factors::password("password").unwrap()),
+    "question" => (id.to_string(), derive::factors::question("answer").unwrap()),
+    "hotp" => {
+      let policy_ids: Vec<_> = policy.factors.iter().map(|f| f.id.as_str()).collect();
+      println!("[DEBUG] Looking for id '{}' in policy ids: {:?}", id, policy_ids);
+      let factor_policy = policy.factors.iter().find(|f| f.id == id).unwrap();
+      let params: serde_json::Value = serde_json::from_str(&factor_policy.params).unwrap();
+      let counter = params["counter"].as_u64().unwrap();
+      let digits = params["digits"].as_u64().unwrap() as u8;
+      let hash = serde_json::from_value(params["hash"].clone()).unwrap();
+      let secret = vec![0u8; 20];
+      let code = crate::setup::factors::hotp::generate_hotp_code(&secret, counter, &hash, digits);
+      (id.to_string(), derive::factors::hotp(code).unwrap())
+    },
+    "totp" => {
+      let policy_ids: Vec<_> = policy.factors.iter().map(|f| f.id.as_str()).collect();
+      println!("[DEBUG] Looking for id '{}' in policy ids: {:?}", id, policy_ids);
+      let factor_policy = policy.factors.iter().find(|f| f.id == id).unwrap();
+      let params: serde_json::Value = serde_json::from_str(&factor_policy.params).unwrap();
+      let time = params["start"].as_u64().unwrap();
+      let step = params["step"].as_u64().unwrap();
+      let hash = serde_json::from_value(params["hash"].clone()).unwrap();
+      let digits = params["digits"].as_u64().unwrap() as u8;
+      let counter = time / (step * 1000);
+      let secret = vec![0u8; 20];
+      let code = crate::setup::factors::hotp::generate_hotp_code(&secret, counter, &hash, digits);
+      (id.to_string(), derive::factors::totp(code, None).unwrap())
+    },
+    _ => panic!("Unknown factor type: {}", name),
+  }
+}
 
-// #[rstest]
-// #[case(vec!["password", "hotp", "totp"], 2, vec![vec!["password", "hotp"], vec!["password",
-// "totp"]], 1)] #[case(vec!["password", "hotp", "totp"], 3, vec![vec!["password", "hotp", "totp"]],
-// 1)] #[case(vec!["question", "password"], 2, vec![vec!["question", "password"]], 2)]
-// #[tokio::test]
-// async fn policy_derivation_combinations(
-//   #[case] factor_names: Vec<&str>,
-//   #[case] threshold: usize,
-//   #[case] derive_combinations: Vec<Vec<&str>>,
-//   #[case] derivation_runs: u32,
-// ) {
-//   // Assign unique ids for each factor for setup
-//   // let ids: Vec<String> = (1..=factor_names.len()).map(|i| format!("id{}", i)).collect();
-//   let factors: Vec<_> = factor_names.iter().map(|n| create_policy_factor(n, n)).collect();
-//   // dbg!(&factors);
+#[rstest]
+#[case(vec!["password", "hotp", "totp"], 2, vec![vec!["password", "hotp"], vec!["password",
+"totp"]], 1)]
+#[case(vec!["password", "hotp", "totp"], 3, vec![vec!["password", "hotp", "totp"]],
+1)]
+#[case(vec!["question", "password"], 2, vec![vec!["question", "password"]], 2)]
+#[tokio::test]
+async fn policy_derivation_combinations(
+  #[case] factor_names: Vec<&str>,
+  #[case] threshold: usize,
+  #[case] derive_combinations: Vec<Vec<&str>>,
+  #[case] derivation_runs: u32,
+) {
+  // Assign unique ids for each factor for setup
+  let factors: Vec<_> = factor_names.iter().map(|n| create_policy_factor(n, n)).collect();
 
-//   // Use at_least logic for threshold policies
-//   let policy_factor = at_least(threshold as u8, factors).await.unwrap();
-//   let setup = policy::setup::setup(policy_factor, MFKDF2Options::default()).await.unwrap();
+  // Use at_least logic for threshold policies
+  let policy_factor = at_least(threshold as u8, factors).await.unwrap();
+  let setup = policy::setup::setup(policy_factor, MFKDF2Options::default()).await.unwrap();
 
-//   // dbg!(&setup.policy);
+  let factors_policy: Policy =
+    serde_json::from_str(setup.policy.factors[0].params.clone().as_str()).unwrap();
 
-//   let factors_policy: Policy =
-//     serde_json::from_str(setup.policy.factors[0].params.clone().as_str()).unwrap();
+  for combo in derive_combinations {
+    for _ in 0..derivation_runs {
+      let derive_factors: HashMap<_, _> =
+        combo.iter().map(|name| create_policy_derive_factor(name, name, &factors_policy)).collect();
 
-//   for combo in derive_combinations {
-//     for _ in 0..derivation_runs {
-//       let derive_factors: HashMap<_, _> = combo
-//         .iter()
-//         .map(|name| {
-//           // let id = name_id_map.get(name).expect("factor name not found in map");
-//           create_policy_derive_factor(name, name, &factors_policy)
-//         })
-//         .collect();
-//       dbg!(&derive_factors);
-
-//       let derived = policy::derive::derive(setup.policy.clone(), derive_factors, None).unwrap();
-//       assert_eq!(derived.key, setup.key, "Failed for combination: {:?}", combo);
-//     }
-//   }
-// }
+      let derived = policy::derive::derive(setup.policy.clone(), derive_factors, None).unwrap();
+      assert_eq!(derived.key, setup.key, "Failed for combination: {:?}", combo);
+    }
+  }
+}
 
 // Helper function to reduce boilerplate
 async fn create_policy_basic_1() -> policy::Policy {

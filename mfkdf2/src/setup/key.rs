@@ -92,12 +92,12 @@ pub async fn key(
 
   let policy_id = if let Some(id) = options.id.clone() {
     if id.is_empty() {
-        return Err(MFKDF2Error::MissingFactorId);
+      return Err(MFKDF2Error::MissingFactorId);
     }
     id
-} else {
+  } else {
     Uuid::new_v4().to_string()
-};
+  };
 
   // time
   let time = options.time.unwrap_or(0);
