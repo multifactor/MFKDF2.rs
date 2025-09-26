@@ -90,8 +90,14 @@ pub async fn key(
     },
   };
 
-  // Generate a unique ID for this policy if not provided
-  let policy_id = options.id.unwrap_or_else(|| Uuid::new_v4().to_string());
+  let policy_id = if let Some(id) = options.id.clone() {
+    if id.is_empty() {
+        return Err(MFKDF2Error::MissingFactorId);
+    }
+    id
+} else {
+    Uuid::new_v4().to_string()
+};
 
   // time
   let time = options.time.unwrap_or(0);
