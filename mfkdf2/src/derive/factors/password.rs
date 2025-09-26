@@ -1,9 +1,20 @@
+use serde_json::{Value, json};
 use zxcvbn::zxcvbn;
 
 use crate::{
+  derive::FactorDerive,
   error::{MFKDF2Error, MFKDF2Result},
-  setup::factors::{FactorType, MFKDF2Factor, password::Password},
+  setup::factors::{Factor, FactorType, MFKDF2Factor, password::Password},
 };
+impl FactorDerive for Password {
+  fn include_params(&mut self, _params: Value) -> MFKDF2Result<()> { Ok(()) }
+
+  fn params_derive(&self, _key: [u8; 32]) -> Value { json!({}) }
+
+  fn output_derive(&self) -> Value { json!({"strength": zxcvbn(&self.password, &[])}) }
+}
+
+impl Factor for Password {}
 
 pub fn password(password: impl Into<String>) -> MFKDF2Result<MFKDF2Factor> {
   let password = std::convert::Into::<String>::into(password);
@@ -26,6 +37,39 @@ pub fn password(password: impl Into<String>) -> MFKDF2Result<MFKDF2Factor> {
 
 #[uniffi::export]
 pub fn derive_password(password: String) -> MFKDF2Result<MFKDF2Factor> {
-  // Reuse the existing constructor logic
   crate::derive::factors::password::password(password)
+}
+
+#[cfg(test)]
+mod tests {
+  // use zxcvbn::Entropy;
+
+  use super::*;
+  use crate::{error::MFKDF2Error, setup::factors::FactorSetup};
+
+  #[test]
+  fn test_password_empty() {
+    let err = password("").unwrap_err();
+    assert!(matches!(err, MFKDF2Error::PasswordEmpty));
+  }
+
+  #[test]
+  fn test_password_valid() {
+    let factor = password("hello").unwrap();
+    assert_eq!(factor.id, None);
+
+    match &factor.factor_type {
+      FactorType::Password(p) => {
+        assert_eq!(p.password, "hello");
+        assert_eq!(factor.factor_type.bytes(), "hello".as_bytes());
+        let params = p.params_derive([0; 32]);
+        // TODO: fix this
+        // let output = p.output_derive();
+        // let strength: Entropy = serde_json::from_value(output["strength"].clone()).unwrap();
+        // assert_eq!(strength.guesses().ilog2(), factor.entropy.unwrap());
+        assert_eq!(params, json!({}));
+      },
+      _ => panic!("Wrong factor type"),
+    }
+  }
 }

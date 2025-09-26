@@ -34,23 +34,41 @@ pub enum MFKDF2Error {
   #[error("invalid hmac key!")]
   InvalidHmacKey,
 
-  #[error("invalid HOTP id")]
-  InvalidHotpId,
-
   #[error("invalid HOTP digits! digits must be between 6 and 8")]
   InvalidHOTPDigits,
-
-  #[error("invalid TOTP id")]
-  InvalidTotpId,
 
   #[error("invalid TOTP digits! digits must be between 6 and 8")]
   InvalidTOTPDigits,
 
-  #[error("invalid question id")]
-  InvalidQuestionId,
+  #[error("TOTP window exceeded")]
+  TOTPWindowExceeded,
 
   #[error("invalid uuid")]
   InvalidUuid,
+
+  #[error("invalid ooba length! length must be between 1 and 32")]
+  InvalidOobaLength,
+
+  #[error("missing ooba key")]
+  MissingOobaKey,
+
+  #[error("invalid ooba key")]
+  InvalidOobaKey,
+
+  #[error("invalid ooba code")]
+  InvalidOobaCode,
+
+  #[error("invalid passkey secret length")]
+  InvalidPasskeySecretLength,
+
+  #[error("missing derive params: {0}")]
+  MissingDeriveParams(String),
+
+  #[error("invalid derive params: {0}")]
+  InvalidDeriveParams(String),
+
+  #[error("hint does not match for factor {0}")]
+  HintMismatch(String),
 
   #[error(transparent)]
   Argon2Error(#[from] argon2::Error),

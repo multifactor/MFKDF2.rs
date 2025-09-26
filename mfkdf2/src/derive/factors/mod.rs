@@ -1,22 +1,19 @@
-// pub mod hmacsha1;
+pub mod hmacsha1;
 pub mod hotp;
+pub mod ooba;
+pub mod passkey;
 pub mod password;
-// pub mod question;
-// pub mod stack;
-// pub mod uuid;
+pub mod question;
+pub mod stack;
+pub mod totp;
+pub mod uuid;
 
-// pub use hmacsha1::hmacsha1;
+pub use hmacsha1::hmacsha1;
 pub use hotp::hotp;
+pub use ooba::ooba;
+pub use passkey::passkey;
 pub use password::password;
-
-// pub use question::question;
-// pub use stack::stack;
-// pub use uuid::uuid;
-// use crate::setup::factors::SetupFactorFn;
-
-// pub struct MFKDF2DerivedFactor {
-//   pub kind:   String,
-//   pub data:   Vec<u8>,
-//   pub params: Option<SetupFactorFn>,
-//   pub output: Option<SetupFactorFn>,
-// }
+pub use question::question;
+pub use stack::stack;
+pub use totp::totp;
+pub use uuid::uuid;
