@@ -62,7 +62,7 @@ impl FactorMetadata for TOTP {
 impl FactorSetup for TOTP {
   fn bytes(&self) -> Vec<u8> { self.target.to_be_bytes().to_vec() }
 
-  fn params_setup(&self, key: [u8; 32]) -> Value {
+  fn setup(&self, key: [u8; 32]) -> Value {
     let time =
       self.options.time.unwrap().duration_since(SystemTime::UNIX_EPOCH).unwrap().as_millis();
     let mut offsets = Vec::with_capacity((4 * self.options.window) as usize);
@@ -101,7 +101,7 @@ impl FactorSetup for TOTP {
     })
   }
 
-  fn output_setup(&self, _key: [u8; 32]) -> Value {
+  fn output(&self, _key: [u8; 32]) -> Value {
     json!({
       "scheme": "otpauth",
       "type": "totp",
@@ -137,9 +137,10 @@ pub fn totp(options: TOTPOptions) -> MFKDF2Result<MFKDF2Factor> {
 
   // secret length validation
   if let Some(ref secret) = options.secret
-    && secret.len() != 20 {
-      return Err(crate::error::MFKDF2Error::InvalidSecretLength(id.clone()));
-    }
+    && secret.len() != 20
+  {
+    return Err(crate::error::MFKDF2Error::InvalidSecretLength(id.clone()));
+  }
 
   let secret = options.secret.unwrap_or_else(|| {
     let mut secret = vec![0u8; 20];
@@ -285,7 +286,7 @@ mod tests {
       _ => panic!("Factor type should be TOTP"),
     };
 
-    let params = totp_factor.params_setup(key);
+    let params = totp_factor.setup(key);
     assert!(params.is_object());
 
     assert_eq!(params["start"], 1672531200000_u64);
@@ -315,7 +316,7 @@ mod tests {
       _ => panic!("Factor type should be TOTP"),
     };
 
-    let output = totp_factor.output_setup(key);
+    let output = totp_factor.output(key);
     assert!(output.is_object());
 
     assert_eq!(output["scheme"], "otpauth");

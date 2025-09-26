@@ -6,7 +6,7 @@ use crate::{
   derive::FactorDerive,
   error::{MFKDF2Error, MFKDF2Result},
   setup::factors::{
-    Factor, FactorType, MFKDF2Factor,
+    FactorType, MFKDF2Factor,
     hotp::{HOTP, HOTPOptions, OTPHash, generate_hotp_code, mod_positive},
   },
 };
@@ -38,7 +38,7 @@ impl FactorDerive for HOTP {
     Ok(())
   }
 
-  fn params_derive(&self, key: [u8; 32]) -> Value {
+  fn params(&self, key: [u8; 32]) -> Value {
     // Decrypt the secret using the factor key
     let params: Value = serde_json::from_str(&self.params).unwrap();
     let pad_b64 = params["pad"].as_str().unwrap();
@@ -76,10 +76,8 @@ impl FactorDerive for HOTP {
     })
   }
 
-  fn output_derive(&self) -> Value { json!({}) }
+  fn output(&self) -> Value { json!({}) }
 }
-
-impl Factor for HOTP {}
 
 pub fn hotp(code: u32) -> MFKDF2Result<MFKDF2Factor> {
   // Create HOTP factor with the user-provided code
@@ -105,7 +103,7 @@ pub fn derive_hotp(code: u32) -> MFKDF2Result<MFKDF2Factor> { hotp(code) }
 #[cfg(test)]
 mod tests {
   use super::*;
-  use crate::setup::factors::{FactorSetup, hotp::setup_hotp};
+  use crate::setup::factors::hotp::setup_hotp;
 
   #[test]
   fn hotp_round_trip() {
@@ -128,7 +126,7 @@ mod tests {
 
     // Simulate the policy creation process
     let mock_key = [42u8; 32]; // Mock factor key
-    let setup_params = factor.factor_type.params_setup(mock_key);
+    let setup_params = factor.factor_type.setup().setup(mock_key);
 
     // Extract the expected HOTP code that should work
     let counter = setup_params["counter"].as_u64().unwrap();
@@ -169,14 +167,14 @@ mod tests {
 
     let factor = setup_hotp(hotp_options).unwrap();
 
-    let setup_params = factor.factor_type.params_setup(mock_key);
+    let setup_params = factor.factor_type.setup().setup(mock_key);
 
     // Create a derive instance and generate new params
     // NOTE: this is an incorrect code
     let mut derive_factor = derive_hotp(123456).unwrap();
     derive_factor.factor_type.include_params(setup_params.clone()).unwrap();
 
-    let derive_params = derive_factor.factor_type.params_derive(mock_key);
+    let derive_params = derive_factor.factor_type.params(mock_key);
 
     // Counter should be incremented
     let original_counter = setup_params["counter"].as_u64().unwrap();

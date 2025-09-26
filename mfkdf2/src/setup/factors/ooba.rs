@@ -80,7 +80,7 @@ impl FactorMetadata for Ooba {
 impl FactorSetup for Ooba {
   fn bytes(&self) -> Vec<u8> { self.target.clone() }
 
-  fn params_setup(&self, _key: [u8; 32]) -> Value {
+  fn setup(&self, _key: [u8; 32]) -> Value {
     let code = generate_alphanumeric_characters(self.length.into()).to_uppercase();
 
     let prev_key = hkdf_sha256_with_info(code.as_bytes(), &[], &[]);
@@ -106,7 +106,7 @@ impl FactorSetup for Ooba {
     })
   }
 
-  fn output_setup(&self, _key: [u8; 32]) -> Value { json!({}) }
+  fn output(&self, _key: [u8; 32]) -> Value { json!({}) }
 }
 
 pub fn ooba(options: OobaOptions) -> MFKDF2Result<MFKDF2Factor> {
@@ -299,7 +299,7 @@ mod tests {
       _ => panic!("Factor type should be Ooba"),
     };
 
-    let params = ooba.params_setup([0u8; 32]);
+    let params = ooba.setup([0u8; 32]);
     assert!(params.is_object());
 
     // check params.next is equal to params.params
@@ -317,7 +317,7 @@ mod tests {
   #[test]
   fn output() {
     let factor = mock_construction();
-    let output = factor.factor_type.output_setup([0u8; 32]);
+    let output = factor.factor_type.output([0u8; 32]);
     assert!(output.is_object());
   }
 }

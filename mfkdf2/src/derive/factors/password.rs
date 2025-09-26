@@ -4,14 +4,14 @@ use zxcvbn::zxcvbn;
 use crate::{
   derive::FactorDerive,
   error::{MFKDF2Error, MFKDF2Result},
-  setup::factors::{Factor, FactorType, MFKDF2Factor, password::Password},
+  setup::factors::{FactorType, MFKDF2Factor, password::Password},
 };
 impl FactorDerive for Password {
   fn include_params(&mut self, _params: Value) -> MFKDF2Result<()> { Ok(()) }
 
-  fn params_derive(&self, _key: [u8; 32]) -> Value { json!({}) }
+  fn params(&self, _key: [u8; 32]) -> Value { json!({}) }
 
-  fn output_derive(&self) -> Value { json!({"strength": zxcvbn(&self.password, &[])}) }
+  fn output(&self) -> Value { json!({"strength": zxcvbn(&self.password, &[])}) }
 }
 
 impl Factor for Password {}
@@ -78,7 +78,7 @@ mod tests {
       FactorType::Password(p) => {
         assert_eq!(p.password, "hello");
         assert_eq!(factor.factor_type.bytes(), "hello".as_bytes());
-        let params = p.params_derive([0; 32]);
+        let params = p.params([0; 32]);
         // TODO: fix this
         // let output = p.output_derive();
         // let strength: Entropy = serde_json::from_value(output["strength"].clone()).unwrap();

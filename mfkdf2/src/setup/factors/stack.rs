@@ -49,13 +49,11 @@ impl FactorMetadata for Stack {
 impl FactorSetup for Stack {
   fn bytes(&self) -> Vec<u8> { self.key.key.clone() }
 
-  fn params_setup(&self, _key: [u8; 32]) -> Value {
+  fn setup(&self, _key: [u8; 32]) -> Value {
     serde_json::to_value(&self.key.policy).unwrap_or(json!({}))
   }
 
-  fn output_setup(&self, _key: [u8; 32]) -> Value {
-    serde_json::to_value(&self.key).unwrap_or(json!({}))
-  }
+  fn output(&self, _key: [u8; 32]) -> Value { serde_json::to_value(&self.key).unwrap_or(json!({})) }
 }
 
 pub async fn stack(
@@ -150,8 +148,8 @@ mod tests {
     let stack_factor = setup_stack(vec![factor], options).await.unwrap();
     let key = [0u8; 32];
 
-    let params = stack_factor.factor_type.params_setup(key);
-    let output = stack_factor.factor_type.output_setup(key);
+    let params = stack_factor.factor_type.setup().setup(key);
+    let output = stack_factor.factor_type.output(key);
 
     if let FactorType::Stack(stack) = stack_factor.factor_type {
       let expected_params = serde_json::to_value(&stack.key.policy).unwrap();

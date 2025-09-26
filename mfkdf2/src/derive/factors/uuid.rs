@@ -4,21 +4,20 @@ use uuid::Uuid;
 use crate::{
   derive::FactorDerive,
   error::{MFKDF2Error, MFKDF2Result},
-  setup::factors::{Factor, FactorType, MFKDF2Factor, uuid::UUID},
+  setup::factors::{FactorType, MFKDF2Factor, uuid::UUID},
 };
 
 impl FactorDerive for UUID {
   fn include_params(&mut self, _params: serde_json::Value) -> MFKDF2Result<()> { Ok(()) }
 
-  fn params_derive(&self, _key: [u8; 32]) -> serde_json::Value { json!({}) }
+  fn params(&self, _key: [u8; 32]) -> serde_json::Value { json!({}) }
 
-  fn output_derive(&self) -> serde_json::Value {
+  fn output(&self) -> serde_json::Value {
     json!({
       "uuid": self.uuid.clone(),
     })
   }
 }
-impl Factor for UUID {}
 
 pub fn uuid(uuid: String) -> MFKDF2Result<MFKDF2Factor> {
   let _ = Uuid::parse_str(&uuid).map_err(|_| MFKDF2Error::InvalidUuid)?;
@@ -64,7 +63,7 @@ mod tests {
   fn output() {
     let valid_uuid = "f9bf78b9-54e7-4696-97dc-5e750de4c592";
     let factor = uuid(valid_uuid.to_string()).unwrap();
-    let output = factor.factor_type.output_derive();
+    let output = factor.factor_type.output();
     assert_eq!(output, json!({ "uuid": valid_uuid }));
   }
 
@@ -78,7 +77,7 @@ mod tests {
     assert!(result.is_ok());
 
     // Test params_derive (returns empty)
-    let params = factor.factor_type.params_derive([0; 32]);
+    let params = factor.factor_type.params([0; 32]);
     assert_eq!(params, json!({}));
   }
 }

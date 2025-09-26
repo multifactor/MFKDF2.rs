@@ -5,7 +5,7 @@ use crate::{
   derive::FactorDerive,
   error::{MFKDF2Error, MFKDF2Result},
   setup::factors::{
-    Factor, FactorType, MFKDF2Factor,
+    FactorType, MFKDF2Factor,
     question::{Question, QuestionOptions},
   },
 };
@@ -16,11 +16,10 @@ impl FactorDerive for Question {
     Ok(())
   }
 
-  fn params_derive(&self, _key: [u8; 32]) -> Value { serde_json::from_str(&self.params).unwrap() }
+  fn params(&self, _key: [u8; 32]) -> Value { serde_json::from_str(&self.params).unwrap() }
 
-  fn output_derive(&self) -> Value { json!({"strength": zxcvbn(&self.answer, &[])}) }
+  fn output(&self) -> Value { json!({"strength": zxcvbn(&self.answer, &[])}) }
 }
-impl Factor for Question {}
 
 pub fn question(answer: impl Into<String>) -> MFKDF2Result<MFKDF2Factor> {
   let answer = answer.into();
@@ -50,7 +49,7 @@ pub fn derive_question(answer: String) -> MFKDF2Result<MFKDF2Factor> { question(
 #[cfg(test)]
 mod tests {
   use super::*;
-  use crate::setup::factors::{FactorSetup, question as setup_question};
+  use crate::setup::factors::question as setup_question;
 
   fn mock_question_setup() -> MFKDF2Factor {
     let options = setup_question::QuestionOptions {
@@ -96,7 +95,7 @@ mod tests {
   fn include_and_derive_params() {
     // 1. Setup a factor to get setup_params
     let setup_factor = mock_question_setup();
-    let setup_params = setup_factor.factor_type.params_setup([0u8; 32]);
+    let setup_params = setup_factor.factor_type.setup().setup([0u8; 32]);
 
     // 2. Create a derive factor
     let derive_factor_result = question("my answer");
@@ -118,7 +117,7 @@ mod tests {
     assert_eq!(stored_params, setup_params);
 
     // 6. Call params_derive and check if it returns the same params
-    let derived_params = question_struct.params_derive([0u8; 32]);
+    let derived_params = question_struct.params([0u8; 32]);
     assert_eq!(derived_params, setup_params);
   }
 
@@ -132,7 +131,7 @@ mod tests {
       _ => panic!("Wrong factor type"),
     };
 
-    let output = question_struct.output_derive();
+    let output = question_struct.output();
     assert!(output.is_object());
     assert!(output["strength"].is_object());
     let score = output["strength"]["score"].as_u64();
