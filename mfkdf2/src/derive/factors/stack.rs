@@ -8,7 +8,7 @@ use crate::{
   derive::FactorDerive,
   error::{MFKDF2Error, MFKDF2Result},
   policy::Policy,
-  setup::factors::{Factor, FactorType, MFKDF2Factor, stack::Stack},
+  setup::factors::{FactorType, MFKDF2Factor, stack::Stack},
 };
 #[derive(Clone, Debug, Serialize, Deserialize, uniffi::Record)]
 pub struct DeriveStack {
@@ -26,13 +26,12 @@ impl FactorDerive for Stack {
     Ok(())
   }
 
-  fn params_derive(&self, _key: [u8; 32]) -> Value {
+  fn params(&self, _key: [u8; 32]) -> Value {
     serde_json::to_value(&self.key.policy).unwrap_or(json!({}))
   }
 
-  fn output_derive(&self) -> Value { serde_json::to_value(&self.key).unwrap_or(json!({})) }
+  fn output(&self) -> Value { serde_json::to_value(&self.key).unwrap_or(json!({})) }
 }
-impl Factor for Stack {}
 
 pub fn stack(factors: HashMap<String, MFKDF2Factor>) -> MFKDF2Result<MFKDF2Factor> {
   if factors.is_empty() {

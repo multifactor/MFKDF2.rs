@@ -8,7 +8,7 @@ use crate::{
   derive::FactorDerive,
   error::{MFKDF2Error, MFKDF2Result},
   setup::factors::{
-    Factor, FactorType, MFKDF2Factor,
+    FactorType, MFKDF2Factor,
     hotp::{OTPHash, generate_hotp_code, mod_positive},
     totp::{TOTP, TOTPOptions},
   },
@@ -83,7 +83,7 @@ impl FactorDerive for TOTP {
     Ok(())
   }
 
-  fn params_derive(&self, key: [u8; 32]) -> Value {
+  fn params(&self, key: [u8; 32]) -> Value {
     let params: Value = serde_json::from_str(&self.params).unwrap();
 
     let pad = params["pad"].as_str().unwrap();
@@ -130,10 +130,8 @@ impl FactorDerive for TOTP {
     })
   }
 
-  fn output_derive(&self) -> Value { json!({}) }
+  fn output(&self) -> Value { json!({}) }
 }
-
-impl Factor for TOTP {}
 
 pub fn totp(code: u32, options: Option<TOTPOptions>) -> MFKDF2Result<MFKDF2Factor> {
   let mut options = options.unwrap_or_default();
@@ -166,7 +164,7 @@ mod tests {
   use std::time::{Duration, SystemTime};
 
   use super::*;
-  use crate::setup::factors::{FactorSetup, totp as setup_totp};
+  use crate::setup::factors::totp as setup_totp;
 
   fn get_test_totp_options() -> TOTPOptions {
     setup_totp::TOTPOptions {
@@ -213,7 +211,7 @@ mod tests {
     };
 
     let mock_key = [42u8; 32];
-    let setup_params = factor.factor_type.params_setup(mock_key);
+    let setup_params = factor.factor_type.setup().setup(mock_key);
 
     let now_millis = time.duration_since(SystemTime::UNIX_EPOCH).unwrap().as_millis() as u64;
     let counter = now_millis / (step * 1000);
@@ -236,14 +234,14 @@ mod tests {
     let setup_options = get_test_totp_options();
     let factor = setup_totp::totp(setup_options).unwrap();
     let mock_key = [42u8; 32];
-    let setup_params = factor.factor_type.params_setup(mock_key);
+    let setup_params = factor.factor_type.setup().setup(mock_key);
 
     let mut derive_options = get_test_totp_options();
     derive_options.secret = None;
     let mut derive_factor = derive_totp(123456, Some(derive_options)).unwrap();
     derive_factor.factor_type.include_params(setup_params.clone()).unwrap();
 
-    let derive_params = derive_factor.factor_type.params_derive(mock_key);
+    let derive_params = derive_factor.factor_type.params(mock_key);
 
     let original_start = setup_params["start"].as_u64().unwrap();
     let new_start = derive_params["start"].as_u64().unwrap();
@@ -262,7 +260,7 @@ mod tests {
 
     let factor = setup_totp::totp(setup_options).unwrap();
     let mock_key = [42u8; 32];
-    let setup_params = factor.factor_type.params_setup(mock_key);
+    let setup_params = factor.factor_type.setup().setup(mock_key);
 
     let future_time = start_time + Duration::from_secs(30 * 10); // 10 steps into the future, outside of window 5
     let mut derive_options = get_test_totp_options();

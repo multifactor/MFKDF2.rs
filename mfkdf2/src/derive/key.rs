@@ -77,7 +77,7 @@ pub fn key(
       // TODO (autoparallel): It would be preferred to know the size of this array at compile
       // time.
       shares_bytes.push(plaintext);
-      outputs.insert(factor.id.clone(), material.factor_type.output_derive().to_string());
+      outputs.insert(factor.id.clone(), material.factor_type.output().to_string());
     }
   }
 
@@ -127,7 +127,7 @@ pub fn key(
       &general_purpose::STANDARD.decode(&factor.salt)?,
       format!("mfkdf2:factor:params:{}", factor.id).as_bytes(),
     );
-    let params = material.factor_type.params_derive(params_key);
+    let params = material.factor_type.params(params_key);
     factor.params = serde_json::to_string(&params)?;
   }
 

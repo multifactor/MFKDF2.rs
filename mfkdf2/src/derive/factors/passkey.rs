@@ -3,7 +3,7 @@ use serde_json::{Value, json};
 use crate::{
   derive::FactorDerive,
   error::{MFKDF2Error, MFKDF2Result},
-  setup::factors::{Factor, FactorType, MFKDF2Factor, passkey::Passkey},
+  setup::factors::{FactorType, MFKDF2Factor, passkey::Passkey},
 };
 
 impl FactorDerive for Passkey {
@@ -12,11 +12,10 @@ impl FactorDerive for Passkey {
     Ok(())
   }
 
-  fn params_derive(&self, _key: [u8; 32]) -> Value { json!({}) }
+  fn params(&self, _key: [u8; 32]) -> Value { json!({}) }
 
-  fn output_derive(&self) -> Value { json!({}) }
+  fn output(&self) -> Value { json!({}) }
 }
-impl Factor for Passkey {}
 
 pub fn passkey(secret: Vec<u8>) -> MFKDF2Result<MFKDF2Factor> {
   if secret.len() != 32 {

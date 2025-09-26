@@ -23,13 +23,13 @@ impl FactorMetadata for Question {
 impl FactorSetup for Question {
   fn bytes(&self) -> Vec<u8> { self.answer.as_bytes().to_vec() }
 
-  fn params_setup(&self, _key: [u8; 32]) -> Value {
+  fn setup(&self, _key: [u8; 32]) -> Value {
     json!({
       "question": self.options.question.clone().unwrap_or_default(),
     })
   }
 
-  fn output_setup(&self, _key: [u8; 32]) -> Value {
+  fn output(&self, _key: [u8; 32]) -> Value {
     json!({
       "strength": zxcvbn(&self.answer, &[]),
     })
@@ -149,7 +149,7 @@ mod tests {
       _ => panic!("Factor type should be Question"),
     };
 
-    let params = question_factor.params_setup([0u8; 32]);
+    let params = question_factor.setup([0u8; 32]);
     assert!(params.is_object());
     assert_eq!(params["question"], "What is your favorite color?");
   }
@@ -157,7 +157,7 @@ mod tests {
   #[test]
   fn output() {
     let factor = mock_construction();
-    let output = factor.factor_type.output_setup([0u8; 32]);
+    let output = factor.factor_type.output([0u8; 32]);
     assert!(output.is_object());
     assert!(output["strength"].is_object());
     assert!(output["strength"]["score"].is_number());
