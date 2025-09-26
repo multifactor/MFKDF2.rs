@@ -100,17 +100,17 @@ mod tests {
     // 2. Create a derive factor
     let derive_factor_result = question("my answer");
     assert!(derive_factor_result.is_ok());
-    let derive_factor = derive_factor_result.unwrap();
+    let mut derive_factor = derive_factor_result.unwrap();
 
-    // 3. Get the inner Question struct
-    let mut question_struct = match derive_factor.factor_type {
+    // 3. Call include_params
+    let result = derive_factor.factor_type.include_params(setup_params.clone());
+    assert!(result.is_ok());
+
+    // 4. Get the inner Question struct
+    let question_struct = match derive_factor.factor_type {
       FactorType::Question(q) => q,
       _ => panic!("Wrong factor type"),
     };
-
-    // 4. Call include_params
-    let result = question_struct.include_params(setup_params.clone());
-    assert!(result.is_ok());
 
     // 5. Check that params were stored
     let stored_params: Value = serde_json::from_str(&question_struct.params).unwrap();

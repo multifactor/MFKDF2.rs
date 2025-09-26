@@ -77,7 +77,7 @@ pub fn key(
       // TODO (autoparallel): It would be preferred to know the size of this array at compile
       // time.
       shares_bytes.push(plaintext);
-      outputs.insert(factor.id.clone(), material.factor_type.output().to_string());
+      outputs.insert(factor.id.clone(), material.factor_type.derive().output().to_string());
     }
   }
 

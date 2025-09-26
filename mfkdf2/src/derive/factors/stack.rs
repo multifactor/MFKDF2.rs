@@ -1,6 +1,5 @@
 use std::collections::HashMap;
 
-use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 
 use crate::{
@@ -10,11 +9,6 @@ use crate::{
   policy::Policy,
   setup::factors::{FactorType, MFKDF2Factor, stack::Stack},
 };
-#[derive(Clone, Debug, Serialize, Deserialize, uniffi::Record)]
-pub struct DeriveStack {
-  pub factors: HashMap<String, MFKDF2Factor>,
-  pub key:     MFKDF2DerivedKey,
-}
 
 impl FactorDerive for Stack {
   fn include_params(&mut self, params: Value) -> MFKDF2Result<()> {

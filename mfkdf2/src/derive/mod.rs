@@ -14,7 +14,7 @@ pub trait FactorDerive {
 }
 
 impl FactorType {
-  pub fn derive(&self) -> &dyn FactorDerive {
+  fn derive(&self) -> &dyn FactorDerive {
     match self {
       FactorType::Password(password) => password,
       FactorType::HOTP(hotp) => hotp,
@@ -28,7 +28,7 @@ impl FactorType {
     }
   }
 
-  pub fn derive_mut(&mut self) -> &mut dyn FactorDerive {
+  fn derive_mut(&mut self) -> &mut dyn FactorDerive {
     match self {
       FactorType::Password(password) => password,
       FactorType::HOTP(hotp) => hotp,
