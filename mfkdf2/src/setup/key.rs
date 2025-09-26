@@ -90,8 +90,14 @@ pub async fn key(
     },
   };
 
-  // Generate a unique ID for this policy if not provided
-  let policy_id = options.id.unwrap_or_else(|| Uuid::new_v4().to_string());
+  let policy_id = if let Some(id) = options.id.clone() {
+    if id.is_empty() {
+      return Err(MFKDF2Error::MissingFactorId);
+    }
+    id
+  } else {
+    Uuid::new_v4().to_string()
+  };
 
   // time
   let time = options.time.unwrap_or(0);
@@ -140,7 +146,6 @@ pub async fn key(
   let mut real_entropy: Vec<u32> = Vec::new();
 
   for (factor, share) in factors.iter().zip(shares.clone()) {
-    // dbg!(&share);
     // Factor id uniqueness
     let id = factor.id.clone();
     if !ids.insert(id.clone()) {
@@ -162,9 +167,9 @@ pub async fn key(
       format!("mfkdf2:factor:params:{}", &factor.id.clone().unwrap()).as_bytes(),
     );
 
-    let params = factor.factor_type.params_setup(params_key);
+    let params = factor.factor_type.setup().setup(params_key);
     // TODO (autoparallel): This should not be an unwrap.
-    outputs.insert(factor.id.clone().unwrap(), factor.factor_type.output_setup(key).to_string());
+    outputs.insert(factor.id.clone().unwrap(), factor.factor_type.output(key).to_string());
 
     let secret_key = hkdf_sha256_with_info(
       &key,

@@ -3,6 +3,8 @@ pub mod evaluate;
 pub mod logic;
 pub mod setup;
 
+#[cfg(test)] mod tests;
+
 use std::collections::HashSet;
 
 use serde::{Deserialize, Serialize};
