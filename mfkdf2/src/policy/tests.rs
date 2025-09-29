@@ -166,7 +166,7 @@ fn create_policy_derive_factor(
       let step = params["step"].as_u64().unwrap();
       let hash = serde_json::from_value(params["hash"].clone()).unwrap();
       let digits = params["digits"].as_u64().unwrap() as u8;
-      let counter = time / (step * 1000);
+      let counter = time as u64 / (step * 1000);
       let secret = vec![0u8; 20];
       let code = crate::setup::factors::hotp::generate_hotp_code(&secret, counter, &hash, digits);
       (id.to_string(), derive::factors::totp(code, None).unwrap())

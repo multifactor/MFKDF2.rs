@@ -10,11 +10,6 @@ use crate::{
     hmacsha1::{HmacSha1, HmacSha1Response},
   },
 };
-// pub struct HmacSha1Derived {
-//   pub response:      Vec<u8>,
-//   pub params:        String,
-//   pub padded_secret: Vec<u8>,
-// }
 
 impl FactorDerive for HmacSha1 {
   fn include_params(&mut self, params: Value) -> MFKDF2Result<()> {
