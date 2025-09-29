@@ -30,7 +30,7 @@ impl FactorMetadata for UUID {
 impl FactorSetup for UUID {
   fn bytes(&self) -> Vec<u8> { self.uuid.as_bytes().to_vec() }
 
-  fn setup(&self, _key: [u8; 32]) -> Value { json!({}) }
+  fn params(&self, _key: [u8; 32]) -> Value { json!({}) }
 
   fn output(&self, _key: [u8; 32]) -> Value {
     json!({

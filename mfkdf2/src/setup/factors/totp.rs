@@ -62,7 +62,7 @@ impl FactorMetadata for TOTP {
 impl FactorSetup for TOTP {
   fn bytes(&self) -> Vec<u8> { self.target.to_be_bytes().to_vec() }
 
-  fn setup(&self, key: [u8; 32]) -> Value {
+  fn params(&self, key: [u8; 32]) -> Value {
     let time =
       self.options.time.unwrap().duration_since(SystemTime::UNIX_EPOCH).unwrap().as_millis();
     let mut offsets = Vec::with_capacity((4 * self.options.window) as usize);

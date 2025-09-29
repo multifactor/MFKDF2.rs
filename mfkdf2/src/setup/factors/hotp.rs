@@ -63,7 +63,7 @@ impl FactorMetadata for HOTP {
 impl FactorSetup for HOTP {
   fn bytes(&self) -> Vec<u8> { self.target.to_be_bytes().to_vec() }
 
-  fn setup(&self, key: [u8; 32]) -> Value {
+  fn params(&self, key: [u8; 32]) -> Value {
     // Generate or use provided secret
     let padded_secret = if let Some(secret) = self.options.secret.clone() {
       secret
