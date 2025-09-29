@@ -223,12 +223,16 @@ async fn evaluate_basic_2() {
 async fn derive_all() {
   let setup = policy::setup::setup(
     all(vec![
-      factors::password("password", factors::password::PasswordOptions {
+      factors::password("password1", factors::password::PasswordOptions {
         id: Some("id1".to_string()),
       })
       .unwrap(),
+      factors::password("password2", factors::password::PasswordOptions {
+        id: Some("id2".to_string()),
+      })
+      .unwrap(),
       factors::question("question", factors::question::QuestionOptions {
-        id:       Some("id2".to_string()),
+        id:       Some("id3".to_string()),
         question: Some("?".to_string()),
       })
       .unwrap(),
@@ -241,10 +245,11 @@ async fn derive_all() {
   .unwrap();
 
   let derived = policy::derive::derive(
-    setup.policy.clone(),
+    setup.policy,
     HashMap::from([
-      ("id1".to_string(), derive::factors::password("password").unwrap()),
-      ("id2".to_string(), derive::factors::question("question").unwrap()),
+      ("id1".to_string(), derive::factors::password("password1").unwrap()),
+      ("id2".to_string(), derive::factors::password("password2").unwrap()),
+      ("id3".to_string(), derive::factors::question("question").unwrap()),
     ]),
     None,
   )
@@ -256,12 +261,16 @@ async fn derive_all() {
 async fn derive_any() {
   let setup = policy::setup::setup(
     any(vec![
-      factors::password("password", factors::password::PasswordOptions {
+      factors::password("password1", factors::password::PasswordOptions {
         id: Some("id1".to_string()),
       })
       .unwrap(),
+      factors::password("password2", factors::password::PasswordOptions {
+        id: Some("id2".to_string()),
+      })
+      .unwrap(),
       factors::question("question", factors::question::QuestionOptions {
-        id:       Some("id2".to_string()),
+        id:       Some("id3".to_string()),
         question: Some("?".to_string()),
       })
       .unwrap(),
@@ -275,7 +284,7 @@ async fn derive_any() {
 
   let derived = policy::derive::derive(
     setup.policy.clone(),
-    HashMap::from([("id1".to_string(), derive::factors::password("password").unwrap())]),
+    HashMap::from([("id1".to_string(), derive::factors::password("password1").unwrap())]),
     None,
   )
   .unwrap();

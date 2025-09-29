@@ -25,7 +25,6 @@ async fn make_policy(
   };
 
   // run async setup synchronously within tests so we can reuse helpers easily
-  
 
   mfkdf2::setup::key(setup_factors, options).await.unwrap()
 }
