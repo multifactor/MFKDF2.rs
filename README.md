@@ -35,6 +35,11 @@ For this library to be considered fully production-ready, the following items sh
   - Derived key features (strengthen, reconstitution, persistence, hints, etc.)
 - **Comprehensive Tests**: While basic tests are in place, more extensive testing is needed, including:
   - Differential testing against the reference JavaScript implementation.
+- **Architecture modifications**: Current architecture mirrors JS reference, and should be moved to natural rust architecture.
+  - Builder pattern for factor (setup, derive) construction
+  - Uniffi custom types
+  - Binding functions shim as a separate module
+  - left todos in the codebase
 - **Complete Language Bindings**: While the framework is in place, bindings for languages like Python, Kotlin, Swift, and Go are not yet complete.
 - **Documentation**: Detailed documentation and usage examples have not been set up yet.
 - **Detailed `CONTRIBUTING.md`**: A more detailed guide for contributors.
