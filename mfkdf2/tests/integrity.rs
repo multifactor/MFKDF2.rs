@@ -25,9 +25,9 @@ async fn make_policy(
   };
 
   // run async setup synchronously within tests so we can reuse helpers easily
-  let setup_key = mfkdf2::setup::key(setup_factors, options).await.unwrap();
+  
 
-  setup_key
+  mfkdf2::setup::key(setup_factors, options).await.unwrap()
 }
 
 fn derive_once(

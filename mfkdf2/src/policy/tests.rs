@@ -18,13 +18,12 @@ fn create_policy_factor(name: &str, id: &str) -> factors::MFKDF2Factor {
       factors::password("password", factors::password::PasswordOptions { id: Some(id.to_string()) })
         .unwrap(),
     "hotp" => factors::hotp(factors::hotp::HOTPOptions {
-      id: Some("hotp".to_string()),
+      id:     Some("hotp".to_string()),
       secret: Some(vec![0u8; 20]),
       digits: 6,
-      hash: factors::hotp::OTPHash::Sha256,
+      hash:   factors::hotp::OTPHash::Sha256,
       issuer: "MFKDF".to_string(),
-      label: "test".to_string(),
-      ..Default::default()
+      label:  "test".to_string(),
     })
     .unwrap(),
     "totp" => factors::totp(factors::totp::TOTPOptions {

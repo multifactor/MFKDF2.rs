@@ -14,24 +14,6 @@ impl FactorDerive for Password {
   fn output(&self) -> Value { json!({"strength": zxcvbn(&self.password, &[])}) }
 }
 
-impl Factor for Password {}
-
-impl FactorDeriveTrait for Password {
-  fn kind(&self) -> String { "password".to_string() }
-
-  fn bytes(&self) -> Vec<u8> { self.password.as_bytes().to_vec() }
-
-  fn include_params(&mut self, _params: Value) -> MFKDF2Result<()> { Ok(()) }
-
-  fn params_derive(&self, _key: [u8; 32]) -> Value { json!({}) }
-
-  fn output_derive(&self, _key: [u8; 32]) -> Value {
-    json!({"strength": zxcvbn(&self.password, &[])})
-  }
-}
-
-impl Factor for Password {}
-
 pub fn password(password: impl Into<String>) -> MFKDF2Result<MFKDF2Factor> {
   let password = std::convert::Into::<String>::into(password);
   if password.is_empty() {

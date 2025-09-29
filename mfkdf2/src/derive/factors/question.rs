@@ -140,6 +140,3 @@ mod tests {
     assert!(score.unwrap() <= 2);
   }
 }
-
-#[uniffi::export]
-pub fn derive_question(answer: String) -> MFKDF2Result<MFKDF2DeriveFactor> { question(answer) }
