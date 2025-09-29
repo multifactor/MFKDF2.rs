@@ -34,6 +34,9 @@ pub enum MFKDF2Error {
   #[error("invalid secret length for factor {0}")]
   InvalidSecretLength(String),
 
+  #[error("policy integrity check failed")]
+  PolicyIntegrityCheckFailed,
+
   #[error("invalid hmac key!")]
   InvalidHmacKey,
 
