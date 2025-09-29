@@ -24,8 +24,6 @@ async fn make_policy(
     ..Default::default()
   };
 
-  // run async setup synchronously within tests so we can reuse helpers easily
-
   mfkdf2::setup::key(setup_factors, options).await.unwrap()
 }
 

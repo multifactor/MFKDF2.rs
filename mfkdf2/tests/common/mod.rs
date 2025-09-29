@@ -193,7 +193,6 @@ pub fn create_setup_factor(name: &str) -> mfkdf2::setup::factors::MFKDF2Factor {
     _ => panic!("Unknown factor type for setup: {}", name),
   }
 }
-
 pub fn create_derive_factor(
   name: &str,
   policy: &mfkdf2::policy::Policy,
@@ -215,11 +214,12 @@ pub fn create_derive_factor(
     "totp" => {
       let factor_policy = policy.factors.iter().find(|f| f.id == "totp_1").unwrap();
       let params: serde_json::Value = serde_json::from_str(&factor_policy.params).unwrap();
-      let time = params["start"].as_u64().unwrap();
+      let time =
+        std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_millis();
       let step = params["step"].as_u64().unwrap();
       let hash = serde_json::from_value(params["hash"].clone()).unwrap();
       let digits = params["digits"].as_u64().unwrap() as u8;
-      let counter = time / (step * 1000);
+      let counter = time as u64 / (step * 1000);
 
       let totp_code =
         mfkdf2::setup::factors::hotp::generate_hotp_code(&TOTP_SECRET, counter, &hash, digits);

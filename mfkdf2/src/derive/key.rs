@@ -170,7 +170,10 @@ pub fn derive_key(
 
 #[cfg(test)]
 mod tests {
-  use std::collections::HashMap;
+  use std::{
+    collections::HashMap,
+    time::{SystemTime, UNIX_EPOCH},
+  };
 
   use serde_json::Value;
 
@@ -336,12 +339,9 @@ mod tests {
     derive_factors_map.insert("hotp".to_string(), derive_hotp_factor);
 
     // TOTP factor
-    let policy_totp_factor =
-      setup_derived_key.policy.factors.iter().find(|f| f.id == "totp").unwrap();
-    let totp_params: Value = serde_json::from_str(&policy_totp_factor.params).unwrap();
     let totp_padded_secret = totp.options.secret.as_ref().unwrap();
-    let time = totp_params["start"].as_u64().unwrap();
-    let counter = time / (totp.options.step * 1000);
+    let time = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_millis();
+    let counter = time as u64 / (totp.options.step * 1000);
     let totp_code = generate_hotp_code(
       &totp_padded_secret[..20],
       counter,
@@ -362,14 +362,12 @@ mod tests {
     derive_factors_map.insert("ooba".to_string(), derive_ooba_factor);
 
     let derived_key =
-      key(setup_derived_key.policy.clone(), derive_factors_map, false, false).unwrap();
+      key(setup_derived_key.policy.clone(), derive_factors_map, true, false).unwrap();
 
     // Assertions
     assert_eq!(derived_key.key, setup_derived_key.key);
     assert_eq!(derived_key.secret, setup_derived_key.secret);
   }
-
-  // TODO: add tests for integrity
 
   #[tokio::test]
   async fn key_derivation_threshold_2_of_3() {
