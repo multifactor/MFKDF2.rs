@@ -29,10 +29,17 @@ This repository contains the canonical Rust implementation of MFKDF2, with a foc
 
 For this library to be considered fully production-ready, the following items should be addressed:
 
-- **Complete Factor Implementation**: Not all proposed MFKDF2 factors have been implemented (e.g., `OOBA`, `Passkeys`, fuzzy encryption, etc.).
+- **Complete Factor Implementation**: Not all proposed MFKDF2 factors have been implemented (e.g., fuzzy encryption, QR,  etc.).
+- **Features**: Not all mfkdf features have been implemented.
+  - Modes of operation: mfchf, mfdpg
+  - Derived key features (strengthen, reconstitution, persistence, hints, etc.)
 - **Comprehensive Tests**: While basic tests are in place, more extensive testing is needed, including:
   - Differential testing against the reference JavaScript implementation.
-  - Complete unit and integration tests for all factors and policies.
+- **Architecture modifications**: Current architecture mirrors JS reference, and should be moved to natural rust architecture.
+  - Builder pattern for factor (setup, derive) construction
+  - Uniffi custom types
+  - Binding functions shim as a separate module
+  - left todos in the codebase
 - **Complete Language Bindings**: While the framework is in place, bindings for languages like Python, Kotlin, Swift, and Go are not yet complete.
 - **Documentation**: Detailed documentation and usage examples have not been set up yet.
 - **Detailed `CONTRIBUTING.md`**: A more detailed guide for contributors.
@@ -45,6 +52,8 @@ This repository is structured as a workspace with several crates:
 - `mfkdf2`: The core Rust library containing the MFKDF2 implementation.
   - `derive`: factor derive construction
   - `setup`: factor setup construction
+  - `definitions`: necessary types required for MFKDF2 key derivation
+  - `policy`: MFKDF2 policy construction
   - `crypto`: utility cryptography module
 - `mfkdf2-web`: TypeScript/WASM bindings for use in web browsers and Node.js.
 - `mfkdf2-py`: Python bindings for the core library.

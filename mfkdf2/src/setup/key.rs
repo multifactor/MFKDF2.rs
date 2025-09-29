@@ -53,7 +53,7 @@ impl Default for MFKDF2Options {
       threshold: None,
       salt:      Some(salt.to_vec()),
       stack:     None,
-      integrity: Some(false),
+      integrity: Some(true),
       time:      Some(0),
       memory:    Some(0),
     }
@@ -90,8 +90,14 @@ pub async fn key(
     },
   };
 
-  // Generate a unique ID for this policy if not provided
-  let policy_id = options.id.unwrap_or_else(|| Uuid::new_v4().to_string());
+  let policy_id = if let Some(id) = options.id.clone() {
+    if id.is_empty() {
+      return Err(MFKDF2Error::MissingFactorId);
+    }
+    id
+  } else {
+    Uuid::new_v4().to_string()
+  };
 
   // time
   let time = options.time.unwrap_or(0);
@@ -140,7 +146,6 @@ pub async fn key(
   let mut real_entropy: Vec<u32> = Vec::new();
 
   for (factor, share) in factors.iter().zip(shares.clone()) {
-    // dbg!(&share);
     // Factor id uniqueness
     let id = factor.id.clone();
     if !ids.insert(id.clone()) {
@@ -150,7 +155,7 @@ pub async fn key(
     // HKDF stretch & AES-encrypt share
     let stretched = hkdf_sha256_with_info(
       &factor.factor_type.bytes(),
-      &factor.salt.clone(),
+      &factor.salt,
       format!("mfkdf2:factor:pad:{}", &factor.id.clone().unwrap()).as_bytes(),
     );
     let pad = encrypt(&share, &stretched);
@@ -162,9 +167,9 @@ pub async fn key(
       format!("mfkdf2:factor:params:{}", &factor.id.clone().unwrap()).as_bytes(),
     );
 
-    let params = factor.factor_type.params_setup(params_key);
+    let params = factor.factor_type.setup().params(params_key);
     // TODO (autoparallel): This should not be an unwrap.
-    outputs.insert(factor.id.clone().unwrap(), factor.factor_type.output_setup(key).to_string());
+    outputs.insert(factor.id.clone().unwrap(), factor.factor_type.output(key).to_string());
 
     let secret_key = hkdf_sha256_with_info(
       &key,
@@ -202,7 +207,7 @@ pub async fn key(
   };
 
   // Derive an integrity key specific to the policy and compute a policy HMAC
-  if options.integrity.unwrap_or_default() {
+  if options.integrity.unwrap_or(true) {
     let integrity_data = policy.extract();
     let integrity_key = hkdf_sha256_with_info(&key, &salt, "mfkdf2:integrity".as_bytes());
     let digest = hmacsha256(&integrity_key, &integrity_data);

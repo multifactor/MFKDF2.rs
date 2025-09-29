@@ -5,7 +5,7 @@ use crate::{
   derive::FactorDerive,
   error::{MFKDF2Error, MFKDF2Result},
   setup::factors::{
-    Factor, FactorType, MFKDF2Factor,
+    FactorType, MFKDF2Factor,
     question::{Question, QuestionOptions},
   },
 };
@@ -16,11 +16,10 @@ impl FactorDerive for Question {
     Ok(())
   }
 
-  fn params_derive(&self, _key: [u8; 32]) -> Value { serde_json::from_str(&self.params).unwrap() }
+  fn params(&self, _key: [u8; 32]) -> Value { serde_json::from_str(&self.params).unwrap() }
 
-  fn output_derive(&self) -> Value { json!({"strength": zxcvbn(&self.answer, &[])}) }
+  fn output(&self) -> Value { json!({"strength": zxcvbn(&self.answer, &[])}) }
 }
-impl Factor for Question {}
 
 pub fn question(answer: impl Into<String>) -> MFKDF2Result<MFKDF2Factor> {
   let answer = answer.into();
@@ -50,7 +49,7 @@ pub fn derive_question(answer: String) -> MFKDF2Result<MFKDF2Factor> { question(
 #[cfg(test)]
 mod tests {
   use super::*;
-  use crate::setup::factors::{FactorSetup, question as setup_question};
+  use crate::setup::factors::question as setup_question;
 
   fn mock_question_setup() -> MFKDF2Factor {
     let options = setup_question::QuestionOptions {
@@ -96,29 +95,29 @@ mod tests {
   fn include_and_derive_params() {
     // 1. Setup a factor to get setup_params
     let setup_factor = mock_question_setup();
-    let setup_params = setup_factor.factor_type.params_setup([0u8; 32]);
+    let setup_params = setup_factor.factor_type.setup().params([0u8; 32]);
 
     // 2. Create a derive factor
     let derive_factor_result = question("my answer");
     assert!(derive_factor_result.is_ok());
-    let derive_factor = derive_factor_result.unwrap();
+    let mut derive_factor = derive_factor_result.unwrap();
 
-    // 3. Get the inner Question struct
-    let mut question_struct = match derive_factor.factor_type {
+    // 3. Call include_params
+    let result = derive_factor.factor_type.include_params(setup_params.clone());
+    assert!(result.is_ok());
+
+    // 4. Get the inner Question struct
+    let question_struct = match derive_factor.factor_type {
       FactorType::Question(q) => q,
       _ => panic!("Wrong factor type"),
     };
-
-    // 4. Call include_params
-    let result = question_struct.include_params(setup_params.clone());
-    assert!(result.is_ok());
 
     // 5. Check that params were stored
     let stored_params: Value = serde_json::from_str(&question_struct.params).unwrap();
     assert_eq!(stored_params, setup_params);
 
     // 6. Call params_derive and check if it returns the same params
-    let derived_params = question_struct.params_derive([0u8; 32]);
+    let derived_params = question_struct.params([0u8; 32]);
     assert_eq!(derived_params, setup_params);
   }
 
@@ -132,7 +131,7 @@ mod tests {
       _ => panic!("Wrong factor type"),
     };
 
-    let output = question_struct.output_derive();
+    let output = question_struct.output();
     assert!(output.is_object());
     assert!(output["strength"].is_object());
     let score = output["strength"]["score"].as_u64();

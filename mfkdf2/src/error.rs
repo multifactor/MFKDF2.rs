@@ -31,6 +31,12 @@ pub enum MFKDF2Error {
   #[error("share recovery failed!")]
   ShareRecoveryError,
 
+  #[error("invalid secret length for factor {0}")]
+  InvalidSecretLength(String),
+
+  #[error("policy integrity check failed")]
+  PolicyIntegrityCheckFailed,
+
   #[error("invalid hmac key!")]
   InvalidHmacKey,
 

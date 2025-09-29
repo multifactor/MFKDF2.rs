@@ -62,7 +62,7 @@ impl FactorMetadata for TOTP {
 impl FactorSetup for TOTP {
   fn bytes(&self) -> Vec<u8> { self.target.to_be_bytes().to_vec() }
 
-  fn params_setup(&self, key: [u8; 32]) -> Value {
+  fn params(&self, key: [u8; 32]) -> Value {
     let time =
       self.options.time.unwrap().duration_since(SystemTime::UNIX_EPOCH).unwrap().as_millis();
     let mut offsets = Vec::with_capacity((4 * self.options.window) as usize);
@@ -101,7 +101,7 @@ impl FactorSetup for TOTP {
     })
   }
 
-  fn output_setup(&self, _key: [u8; 32]) -> Value {
+  fn output(&self, _key: [u8; 32]) -> Value {
     json!({
       "scheme": "otpauth",
       "type": "totp",
@@ -130,8 +130,16 @@ pub fn totp(options: TOTPOptions) -> MFKDF2Result<MFKDF2Factor> {
   {
     return Err(crate::error::MFKDF2Error::MissingFactorId);
   }
+  let id = options.id.clone().unwrap_or("totp".to_string());
   if options.digits < 6 || options.digits > 8 {
     return Err(crate::error::MFKDF2Error::InvalidTOTPDigits);
+  }
+
+  // secret length validation
+  if let Some(ref secret) = options.secret
+    && secret.len() != 20
+  {
+    return Err(crate::error::MFKDF2Error::InvalidSecretLength(id.clone()));
   }
 
   let secret = options.secret.unwrap_or_else(|| {
@@ -157,7 +165,7 @@ pub fn totp(options: TOTPOptions) -> MFKDF2Result<MFKDF2Factor> {
   let entropy = Some((options.digits as f64 * 10.0_f64.log2()) as u32);
 
   Ok(MFKDF2Factor {
-    id: Some(options.id.clone().unwrap_or("totp".to_string())),
+    id: Some(id),
     factor_type: FactorType::TOTP(TOTP {
       options,
       params: serde_json::to_string(&Value::Null).unwrap(),
@@ -180,9 +188,9 @@ mod tests {
     let options = TOTPOptions {
       id: Some("test".to_string()),
       digits: 8,
-      secret: Some(b"my-secret-is-super-secret-12345".to_vec()), // 31 bytes
+      secret: Some(b"my-super-secret-1234".to_vec()), // 31 bytes
       time: Some(SystemTime::UNIX_EPOCH + Duration::from_secs(1672531200)), /* 2023-01-01
-                                                                  * 00:00:00 UTC */
+                                                       * 00:00:00 UTC */
       ..Default::default()
     };
 
@@ -244,6 +252,16 @@ mod tests {
   }
 
   #[test]
+  fn invalid_secret_length() {
+    let options = TOTPOptions {
+      secret: Some(b"my-secret-is-super-secret-123456".to_vec()),
+      ..Default::default()
+    };
+    let result = totp(options);
+    assert!(matches!(result, Err(MFKDF2Error::InvalidSecretLength(_))));
+  }
+
+  #[test]
   fn secret_generation() {
     let options = TOTPOptions { secret: None, ..Default::default() };
     let result = totp(options);
@@ -268,7 +286,7 @@ mod tests {
       _ => panic!("Factor type should be TOTP"),
     };
 
-    let params = totp_factor.params_setup(key);
+    let params = totp_factor.params(key);
     assert!(params.is_object());
 
     assert_eq!(params["start"], 1672531200000_u64);
@@ -298,7 +316,7 @@ mod tests {
       _ => panic!("Factor type should be TOTP"),
     };
 
-    let output = totp_factor.output_setup(key);
+    let output = totp_factor.output(key);
     assert!(output.is_object());
 
     assert_eq!(output["scheme"], "otpauth");

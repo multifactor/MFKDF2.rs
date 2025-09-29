@@ -20,9 +20,9 @@ impl FactorMetadata for Password {
 impl FactorSetup for Password {
   fn bytes(&self) -> Vec<u8> { self.password.as_bytes().to_vec() }
 
-  fn params_setup(&self, _key: [u8; 32]) -> Value { json!({}) }
+  fn params(&self, _key: [u8; 32]) -> Value { json!({}) }
 
-  fn output_setup(&self, _key: [u8; 32]) -> Value {
+  fn output(&self, _key: [u8; 32]) -> Value {
     json!({
       "strength": zxcvbn(&self.password, &[]),
     })
@@ -107,7 +107,7 @@ mod tests {
       FactorType::Password(p) => {
         assert_eq!(p.password, "hello");
         assert_eq!(p.bytes(), "hello".as_bytes());
-        let params = p.params_setup([0; 32]);
+        let params = p.params([0; 32]);
         assert_eq!(params, json!({}));
       },
       _ => panic!("Wrong factor type"),

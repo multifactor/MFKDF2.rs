@@ -30,9 +30,9 @@ impl FactorMetadata for UUID {
 impl FactorSetup for UUID {
   fn bytes(&self) -> Vec<u8> { self.uuid.as_bytes().to_vec() }
 
-  fn params_setup(&self, _key: [u8; 32]) -> Value { json!({}) }
+  fn params(&self, _key: [u8; 32]) -> Value { json!({}) }
 
-  fn output_setup(&self, _key: [u8; 32]) -> Value {
+  fn output(&self, _key: [u8; 32]) -> Value {
     json!({
       "uuid": self.uuid.clone(),
     })
@@ -80,7 +80,7 @@ mod tests {
     let options = UUIDOptions { id: Some("test".to_string()), uuid: None };
     let factor = uuid(options).unwrap();
     assert_eq!(factor.id, Some("test".to_string()));
-    assert_eq!(factor.factor_type.kind(), "uuid");
+    assert_eq!(factor.kind(), "uuid");
     assert_eq!(factor.salt.len(), 32);
     assert_eq!(factor.entropy, Some(122));
   }

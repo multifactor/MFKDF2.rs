@@ -15,6 +15,8 @@ use crate::{
 #[derive(Clone, Debug, Serialize, Deserialize, uniffi::Record)]
 pub struct HOTPOptions {
   pub id:     Option<String>,
+  // TODO (@lonerapier): use trait based type update for secret
+  // Initially this should be 20 bytes, that later gets padded to 32 during construction.
   pub secret: Option<Vec<u8>>,
   pub digits: u8,
   pub hash:   OTPHash,
@@ -24,8 +26,11 @@ pub struct HOTPOptions {
 
 #[derive(Clone, Debug, Serialize, Deserialize, uniffi::Enum, PartialEq, Eq)]
 pub enum OTPHash {
+  #[serde(rename = "sha1")]
   Sha1,
+  #[serde(rename = "sha256")]
   Sha256,
+  #[serde(rename = "sha512")]
   Sha512,
 }
 
@@ -58,7 +63,7 @@ impl FactorMetadata for HOTP {
 impl FactorSetup for HOTP {
   fn bytes(&self) -> Vec<u8> { self.target.to_be_bytes().to_vec() }
 
-  fn params_setup(&self, key: [u8; 32]) -> Value {
+  fn params(&self, key: [u8; 32]) -> Value {
     // Generate or use provided secret
     let padded_secret = if let Some(secret) = self.options.secret.clone() {
       secret
@@ -90,7 +95,7 @@ impl FactorSetup for HOTP {
     })
   }
 
-  fn output_setup(&self, _key: [u8; 32]) -> Value {
+  fn output(&self, _key: [u8; 32]) -> Value {
     json!({
       "scheme": "otpauth",
       "type": "hotp",
@@ -153,8 +158,18 @@ pub fn hotp(options: HOTPOptions) -> MFKDF2Result<MFKDF2Factor> {
   {
     return Err(crate::error::MFKDF2Error::MissingFactorId);
   }
+  let id = options.id.clone().unwrap_or("hotp".to_string());
+
   if options.digits < 6 || options.digits > 8 {
     return Err(crate::error::MFKDF2Error::InvalidHOTPDigits);
+  }
+
+  // TODO (@lonerapier); remove this validation later using static secret type
+  // secret length validation
+  if let Some(ref secret) = options.secret
+    && secret.len() != 20
+  {
+    return Err(crate::error::MFKDF2Error::InvalidSecretLength(id.clone()));
   }
 
   let secret = options.secret.unwrap_or_else(|| {
@@ -178,7 +193,7 @@ pub fn hotp(options: HOTPOptions) -> MFKDF2Result<MFKDF2Factor> {
   // TODO (autoparallel): Code should possibly be an option, though this follows the same pattern as
   // the password factor which stores the actual password in the struct.
   Ok(MFKDF2Factor {
-    id: Some(options.id.clone().unwrap_or("hotp".to_string())),
+    id: Some(id),
     factor_type: FactorType::HOTP(HOTP {
       options,
       params: serde_json::to_string(&Value::Null).unwrap(),
@@ -202,7 +217,7 @@ mod tests {
     let key = [0u8; 32];
     let options = HOTPOptions {
       id:     Some("test_hotp".to_string()),
-      secret: Some(b"hello world".to_vec()),
+      secret: Some(b"hello world mfkdf2!!".to_vec()),
       digits: 6,
       hash:   OTPHash::Sha1,
       issuer: "MFKDF".to_string(),
@@ -215,7 +230,7 @@ mod tests {
     assert_eq!(factor.factor_type.bytes().len(), 4); // u32 target as bytes
 
     // Test that params can be generated
-    let params = factor.factor_type.params_setup(key);
+    let params = factor.factor_type.setup().params(key);
     assert!(params["hash"].is_string());
     assert!(params["digits"].is_number());
     assert!(params["pad"].is_string());
@@ -233,8 +248,8 @@ mod tests {
     assert_eq!(factor.id, Some("hotp".to_string()));
     assert_eq!(factor.factor_type.bytes().len(), 4);
     assert!(factor.entropy.is_some());
-    assert!(factor.factor_type.params_setup(key).is_object());
-    assert!(factor.factor_type.output_setup(key).is_object());
+    assert!(factor.factor_type.setup().params(key).is_object());
+    assert!(factor.factor_type.output(key).is_object());
   }
 
   #[test]
@@ -292,7 +307,7 @@ mod tests {
   fn test_hotp_setup() {
     let options = HOTPOptions {
       id:     Some("hotp".to_string()),
-      secret: Some(b"hello world".to_vec()),
+      secret: Some(b"hello world mfkdf2!!".to_vec()),
       digits: 6,
       hash:   OTPHash::Sha1,
       issuer: "MFKDF".to_string(),
@@ -308,7 +323,7 @@ mod tests {
   #[test]
   fn params_setup_pad_decryption() {
     let key = [0u8; 32];
-    let secret = b"my-secret-password".to_vec();
+    let secret = b"my-secret-password-1".to_vec();
     let options = HOTPOptions { secret: Some(secret), ..Default::default() };
 
     let factor = hotp(options).unwrap();
@@ -319,7 +334,7 @@ mod tests {
 
     let original_padded_secret = hotp_factor.options.secret.as_ref().unwrap();
 
-    let params = hotp_factor.params_setup(key);
+    let params = hotp_factor.params(key);
     let pad_b64 = params["pad"].as_str().unwrap();
     let pad = BASE64_STANDARD.decode(pad_b64).unwrap();
 
@@ -331,7 +346,7 @@ mod tests {
   #[test]
   fn params_setup_offset_calculation() {
     let key = [0u8; 32];
-    let secret = b"my-secret-password".to_vec();
+    let secret = b"my-secret-password-2".to_vec();
     let options = HOTPOptions { secret: Some(secret), ..Default::default() };
 
     let factor = hotp(options).unwrap();
@@ -340,7 +355,7 @@ mod tests {
       _ => panic!("Wrong factor type"),
     };
 
-    let params = hotp_factor.params_setup(key);
+    let params = hotp_factor.params(key);
     let offset = params["offset"].as_u64().unwrap() as u32;
 
     let padded_secret = hotp_factor.options.secret.as_ref().unwrap();
@@ -357,5 +372,36 @@ mod tests {
     ) as u32;
 
     assert_eq!(offset, expected_offset);
+  }
+
+  #[test]
+  fn empty_id() {
+    let options = HOTPOptions { id: Some("".to_string()), ..Default::default() };
+    let result = hotp(options);
+    assert!(matches!(result, Err(crate::error::MFKDF2Error::MissingFactorId)));
+  }
+
+  #[test]
+  fn invalid_digits_too_low() {
+    let options = HOTPOptions { digits: 5, ..Default::default() };
+    let result = hotp(options);
+    assert!(matches!(result, Err(crate::error::MFKDF2Error::InvalidHOTPDigits)));
+  }
+
+  #[test]
+  fn invalid_digits_too_high() {
+    let options = HOTPOptions { digits: 9, ..Default::default() };
+    let result = hotp(options);
+    assert!(matches!(result, Err(crate::error::MFKDF2Error::InvalidHOTPDigits)));
+  }
+
+  #[test]
+  fn invalid_secret_length() {
+    let options = HOTPOptions {
+      secret: Some(b"my-secret-is-super-secret-123456".to_vec()),
+      ..Default::default()
+    };
+    let result = hotp(options);
+    assert!(matches!(result, Err(crate::error::MFKDF2Error::InvalidSecretLength(_))));
   }
 }

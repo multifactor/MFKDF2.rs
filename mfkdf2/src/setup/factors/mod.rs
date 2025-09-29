@@ -19,8 +19,6 @@ pub use stack::stack;
 pub use totp::totp;
 pub use uuid::uuid;
 
-use crate::derive::FactorDerive;
-
 #[derive(Clone, Debug, Serialize, Deserialize, uniffi::Enum)]
 pub enum FactorType {
   Password(password::Password),
@@ -35,7 +33,21 @@ pub enum FactorType {
 }
 
 impl FactorType {
-  pub fn inner(&self) -> &dyn Factor {
+  pub fn kind(&self) -> String {
+    match self {
+      FactorType::Password(password) => password.kind(),
+      FactorType::HOTP(hotp) => hotp.kind(),
+      FactorType::Question(question) => question.kind(),
+      FactorType::UUID(uuid) => uuid.kind(),
+      FactorType::HmacSha1(hmacsha1) => hmacsha1.kind(),
+      FactorType::TOTP(totp) => totp.kind(),
+      FactorType::OOBA(ooba) => ooba.kind(),
+      FactorType::Passkey(passkey) => passkey.kind(),
+      FactorType::Stack(stack) => stack.kind(),
+    }
+  }
+
+  pub fn setup(&self) -> &dyn FactorSetup {
     match self {
       FactorType::Password(password) => password,
       FactorType::HOTP(hotp) => hotp,
@@ -49,7 +61,7 @@ impl FactorType {
     }
   }
 
-  pub fn inner_mut(&mut self) -> &mut dyn Factor {
+  pub fn setup_mut(&mut self) -> &mut dyn FactorSetup {
     match self {
       FactorType::Password(password) => password,
       FactorType::HOTP(hotp) => hotp,
@@ -65,32 +77,30 @@ impl FactorType {
 }
 
 impl FactorMetadata for FactorType {
-  fn kind(&self) -> String { self.inner().kind() }
+  fn kind(&self) -> String { self.kind() }
 }
 
 impl FactorSetup for FactorType {
-  fn bytes(&self) -> Vec<u8> { self.inner().bytes() }
+  fn bytes(&self) -> Vec<u8> { self.setup().bytes() }
 
-  fn params_setup(&self, key: [u8; 32]) -> Value { self.inner().params_setup(key) }
+  fn params(&self, key: [u8; 32]) -> Value { self.setup().params(key) }
 
-  fn output_setup(&self, key: [u8; 32]) -> Value { self.inner().output_setup(key) }
+  fn output(&self, key: [u8; 32]) -> Value { self.setup().output(key) }
 }
 
 pub trait FactorMetadata {
   fn kind(&self) -> String;
 }
 
-// TODO (@lonerapier): refactor trait system with more associated types and remove this marker trait
+// TODO (@lonerapier): refactor trait system with more associated types
 // TODO: add default + debug as well
-pub trait Factor: std::fmt::Debug + FactorMetadata + FactorSetup + FactorDerive {}
-
 pub trait FactorSetup {
   fn bytes(&self) -> Vec<u8>;
-  // TODO (@lonerapier): rename to params, output
-  fn params_setup(&self, key: [u8; 32]) -> Value;
-  fn output_setup(&self, key: [u8; 32]) -> Value;
+  fn params(&self, key: [u8; 32]) -> Value;
+  fn output(&self, key: [u8; 32]) -> Value;
 }
 
+// TODO (@lonerapier): move factor to its own module
 #[derive(Clone, Serialize, Deserialize, uniffi::Record)]
 pub struct MFKDF2Factor {
   pub id:          Option<String>,
@@ -109,7 +119,7 @@ impl MFKDF2Factor {
 impl std::fmt::Debug for MFKDF2Factor {
   fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
     f.debug_struct("MFKDF2Factor")
-      .field("kind", &self.factor_type.kind())
+      .field("kind", &self.kind())
       .field("id", &self.id)
       .field("data", &self.factor_type)
       .field("salt", &self.salt)

@@ -77,7 +77,7 @@ pub fn key(
       // TODO (autoparallel): It would be preferred to know the size of this array at compile
       // time.
       shares_bytes.push(plaintext);
-      outputs.insert(factor.id.clone(), material.factor_type.output_derive().to_string());
+      outputs.insert(factor.id.clone(), material.factor_type.derive().output().to_string());
     }
   }
 
@@ -127,15 +127,24 @@ pub fn key(
       &general_purpose::STANDARD.decode(&factor.salt)?,
       format!("mfkdf2:factor:params:{}", factor.id).as_bytes(),
     );
-    let params = material.factor_type.params_derive(params_key);
+    let params = material.factor_type.params(params_key);
     factor.params = serde_json::to_string(&params)?;
   }
 
+  let integrity_key = hkdf_sha256_with_info(&key, &salt_bytes, "mfkdf2:integrity".as_bytes());
   if verify {
+    let integrity_data = policy.extract();
+    let hmac = hmacsha256(&integrity_key, &integrity_data);
+    let hmac = general_purpose::STANDARD.encode(hmac);
+    if policy.hmac != hmac {
+      return Err(MFKDF2Error::PolicyIntegrityCheckFailed);
+    }
+  }
+  if !policy.hmac.is_empty() {
     let integrity_data = new_policy.extract();
-    let integrity_key = hkdf_sha256_with_info(&key, &salt_bytes, "mfkdf2:integrity".as_bytes());
     let digest = hmacsha256(&integrity_key, &integrity_data);
-    new_policy.hmac = general_purpose::STANDARD.encode(digest);
+    let hmac = general_purpose::STANDARD.encode(digest);
+    new_policy.hmac = hmac;
   }
 
   Ok(MFKDF2DerivedKey {
@@ -161,7 +170,10 @@ pub fn derive_key(
 
 #[cfg(test)]
 mod tests {
-  use std::collections::HashMap;
+  use std::{
+    collections::HashMap,
+    time::{SystemTime, UNIX_EPOCH},
+  };
 
   use serde_json::Value;
 
@@ -327,19 +339,16 @@ mod tests {
     derive_factors_map.insert("hotp".to_string(), derive_hotp_factor);
 
     // TOTP factor
-    let policy_totp_factor =
-      setup_derived_key.policy.factors.iter().find(|f| f.id == "totp").unwrap();
-    let totp_params: Value = serde_json::from_str(&policy_totp_factor.params).unwrap();
     let totp_padded_secret = totp.options.secret.as_ref().unwrap();
-    let time = totp_params["start"].as_u64().unwrap();
-    let counter = time / (totp.options.step * 1000);
+    let time = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_millis();
+    let counter = time as u64 / (totp.options.step * 1000);
     let totp_code = generate_hotp_code(
       &totp_padded_secret[..20],
       counter,
       &totp.options.hash,
       totp.options.digits,
     );
-    let mut derive_totp_factor = derive_totp(totp_code as u32, TOTPOptions::default()).unwrap();
+    let mut derive_totp_factor = derive_totp(totp_code as u32, None).unwrap();
     derive_totp_factor.id = Some("totp".to_string());
     derive_factors_map.insert("totp".to_string(), derive_totp_factor);
 
@@ -353,14 +362,12 @@ mod tests {
     derive_factors_map.insert("ooba".to_string(), derive_ooba_factor);
 
     let derived_key =
-      key(setup_derived_key.policy.clone(), derive_factors_map, false, false).unwrap();
+      key(setup_derived_key.policy.clone(), derive_factors_map, true, false).unwrap();
 
     // Assertions
     assert_eq!(derived_key.key, setup_derived_key.key);
     assert_eq!(derived_key.secret, setup_derived_key.secret);
   }
-
-  // TODO: add tests for integrity
 
   #[tokio::test]
   async fn key_derivation_threshold_2_of_3() {
