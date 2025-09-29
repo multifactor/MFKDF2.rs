@@ -53,13 +53,3 @@ impl FactorDerive for FactorType {
 
   fn output(&self) -> Value { self.derive().output() }
 }
-
-impl FactorDerive for FactorType {
-  fn include_params(&mut self, params: Value) -> MFKDF2Result<()> {
-    self.inner_mut().include_params(params)
-  }
-
-  fn params_derive(&self, key: [u8; 32]) -> Value { self.inner().params_derive(key) }
-
-  fn output_derive(&self) -> Value { self.inner().output_derive() }
-}
