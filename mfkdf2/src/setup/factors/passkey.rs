@@ -19,7 +19,7 @@ impl FactorMetadata for Passkey {
 impl FactorSetup for Passkey {
   fn bytes(&self) -> Vec<u8> { self.secret.clone() }
 
-  fn setup(&self, _key: [u8; 32]) -> Value { json!({}) }
+  fn params(&self, _key: [u8; 32]) -> Value { json!({}) }
 
   fn output(&self, _key: [u8; 32]) -> Value { json!({}) }
 }

@@ -211,7 +211,7 @@ mod tests {
     };
 
     let mock_key = [42u8; 32];
-    let setup_params = factor.factor_type.setup().setup(mock_key);
+    let setup_params = factor.factor_type.setup().params(mock_key);
 
     let now_millis = time.duration_since(SystemTime::UNIX_EPOCH).unwrap().as_millis() as u64;
     let counter = now_millis / (step * 1000);
@@ -234,7 +234,7 @@ mod tests {
     let setup_options = get_test_totp_options();
     let factor = setup_totp::totp(setup_options).unwrap();
     let mock_key = [42u8; 32];
-    let setup_params = factor.factor_type.setup().setup(mock_key);
+    let setup_params = factor.factor_type.setup().params(mock_key);
 
     let mut derive_options = get_test_totp_options();
     derive_options.secret = None;
@@ -260,7 +260,7 @@ mod tests {
 
     let factor = setup_totp::totp(setup_options).unwrap();
     let mock_key = [42u8; 32];
-    let setup_params = factor.factor_type.setup().setup(mock_key);
+    let setup_params = factor.factor_type.setup().params(mock_key);
 
     let future_time = start_time + Duration::from_secs(30 * 10); // 10 steps into the future, outside of window 5
     let mut derive_options = get_test_totp_options();

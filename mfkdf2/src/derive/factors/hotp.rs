@@ -126,7 +126,7 @@ mod tests {
 
     // Simulate the policy creation process
     let mock_key = [42u8; 32]; // Mock factor key
-    let setup_params = factor.factor_type.setup().setup(mock_key);
+    let setup_params = factor.factor_type.setup().params(mock_key);
 
     // Extract the expected HOTP code that should work
     let counter = setup_params["counter"].as_u64().unwrap();
@@ -167,7 +167,7 @@ mod tests {
 
     let factor = setup_hotp(hotp_options).unwrap();
 
-    let setup_params = factor.factor_type.setup().setup(mock_key);
+    let setup_params = factor.factor_type.setup().params(mock_key);
 
     // Create a derive instance and generate new params
     // NOTE: this is an incorrect code

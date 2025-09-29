@@ -60,7 +60,7 @@ mod tests {
       FactorType::Password(p) => {
         assert_eq!(p.password, "hello");
         assert_eq!(factor.factor_type.bytes(), "hello".as_bytes());
-        let params = p.params([0; 32]);
+        let params: Value = <Password as FactorSetup>::params(p, [0u8; 32]);
         // TODO: fix this
         // let output = p.output_derive();
         // let strength: Entropy = serde_json::from_value(output["strength"].clone()).unwrap();

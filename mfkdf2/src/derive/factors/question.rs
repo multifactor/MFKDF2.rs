@@ -95,7 +95,7 @@ mod tests {
   fn include_and_derive_params() {
     // 1. Setup a factor to get setup_params
     let setup_factor = mock_question_setup();
-    let setup_params = setup_factor.factor_type.setup().setup([0u8; 32]);
+    let setup_params = setup_factor.factor_type.setup().params([0u8; 32]);
 
     // 2. Create a derive factor
     let derive_factor_result = question("my answer");

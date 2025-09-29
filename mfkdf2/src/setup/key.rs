@@ -167,7 +167,7 @@ pub async fn key(
       format!("mfkdf2:factor:params:{}", &factor.id.clone().unwrap()).as_bytes(),
     );
 
-    let params = factor.factor_type.setup().setup(params_key);
+    let params = factor.factor_type.setup().params(params_key);
     // TODO (autoparallel): This should not be an unwrap.
     outputs.insert(factor.id.clone().unwrap(), factor.factor_type.output(key).to_string());
 

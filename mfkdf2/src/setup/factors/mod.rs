@@ -83,7 +83,7 @@ impl FactorMetadata for FactorType {
 impl FactorSetup for FactorType {
   fn bytes(&self) -> Vec<u8> { self.setup().bytes() }
 
-  fn setup(&self, key: [u8; 32]) -> Value { self.setup().setup(key) }
+  fn params(&self, key: [u8; 32]) -> Value { self.setup().params(key) }
 
   fn output(&self, key: [u8; 32]) -> Value { self.setup().output(key) }
 }
@@ -96,7 +96,7 @@ pub trait FactorMetadata {
 // TODO: add default + debug as well
 pub trait FactorSetup {
   fn bytes(&self) -> Vec<u8>;
-  fn setup(&self, key: [u8; 32]) -> Value;
+  fn params(&self, key: [u8; 32]) -> Value;
   fn output(&self, key: [u8; 32]) -> Value;
 }
 

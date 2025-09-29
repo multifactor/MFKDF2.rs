@@ -62,7 +62,7 @@ impl FactorMetadata for TOTP {
 impl FactorSetup for TOTP {
   fn bytes(&self) -> Vec<u8> { self.target.to_be_bytes().to_vec() }
 
-  fn setup(&self, key: [u8; 32]) -> Value {
+  fn params(&self, key: [u8; 32]) -> Value {
     let time =
       self.options.time.unwrap().duration_since(SystemTime::UNIX_EPOCH).unwrap().as_millis();
     let mut offsets = Vec::with_capacity((4 * self.options.window) as usize);
@@ -286,7 +286,7 @@ mod tests {
       _ => panic!("Factor type should be TOTP"),
     };
 
-    let params = totp_factor.setup(key);
+    let params = totp_factor.params(key);
     assert!(params.is_object());
 
     assert_eq!(params["start"], 1672531200000_u64);
