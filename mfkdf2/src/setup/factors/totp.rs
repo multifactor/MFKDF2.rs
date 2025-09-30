@@ -177,6 +177,9 @@ pub fn totp(options: TOTPOptions) -> MFKDF2Result<MFKDF2Factor> {
   })
 }
 
+#[uniffi::export]
+pub async fn setup_totp(options: TOTPOptions) -> MFKDF2Result<MFKDF2Factor> { totp(options) }
+
 #[cfg(test)]
 mod tests {
   use std::time::Duration;
