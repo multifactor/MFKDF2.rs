@@ -17,9 +17,9 @@ suite('mfkdf2 bindings', () => {
 
     console.log('Creating setup password factor...');
     const factor = await mfkdf.setup.factors.password('Tr0ubd4dour', { id: 'password_1' });
-    console.log('Setup factor created:', { id: factor.id, kind: factor.kind });
+    console.log('Setup factor created:', { id: factor.id, type: factor.type });
     factor.should.have.property('id');
-    factor.should.have.property('kind', 'password');
+    factor.should.have.property('type', 'password');
 
     console.log('Creating key with setup factors...');
     const derived = await mfkdf.setup.key([factor]);

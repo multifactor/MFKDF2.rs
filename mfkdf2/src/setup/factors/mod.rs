@@ -139,17 +139,21 @@ impl FactorSetup for FactorType {
 
 // Standalone exported functions for FFI
 #[uniffi::export]
-pub fn setup_factor_type_kind(factor_type: &FactorType) -> String { factor_type.kind() }
+pub fn factor_type_kind(factor_type: &FactorType) -> String { factor_type.kind() }
 
 #[uniffi::export]
-pub fn setup_factor_type_bytes(factor_type: &FactorType) -> Vec<u8> { factor_type.bytes() }
+pub fn factor_type_bytes(factor_type: &FactorType) -> Vec<u8> { factor_type.bytes() }
 
 #[uniffi::export]
-pub fn setup_factor_type_params(factor_type: &FactorType, key: Key) -> Value {
+pub fn setup_factor_type_params(factor_type: &FactorType, key: Option<Key>) -> Value {
+  // Use provided key or create a dummy zero-filled key
+  let key = key.unwrap_or_else(|| [0u8; 32].into());
   factor_type.params(key)
 }
 
 #[uniffi::export]
-pub fn setup_factor_type_output(factor_type: &FactorType, key: Key) -> Value {
+pub fn setup_factor_type_output(factor_type: &FactorType, key: Option<Key>) -> Value {
+  // Use provided key or create a dummy zero-filled key
+  let key = key.unwrap_or_else(|| [0u8; 32].into());
   factor_type.output(key)
 }

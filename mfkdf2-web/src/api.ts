@@ -11,11 +11,6 @@ export type {
   Mfkdf2Factor,
 } from './generated/web/mfkdf2.js';
 
-// Helper to create a dummy key for params/output calls during setup
-function dummyKey(): ArrayBuffer {
-  return new Uint8Array(32).buffer;
-}
-
 // Helper to convert ArrayBuffer to Buffer for Node.js compatibility
 function toBuffer(arrayBuffer: ArrayBuffer): Buffer {
   return Buffer.from(arrayBuffer);
@@ -31,23 +26,19 @@ function wrapFactor(factor: raw.Mfkdf2Factor): any {
     get type() {
       return getKind();
     },
-    // Add kind property that returns the factor kind (alternative API)
-    get kind() {
-      return getKind();
-    },
     // Add data property that returns bytes as Buffer
     get data() {
       return toBuffer(raw.factorTypeBytes(factor.factorType));
     },
-    // Add async params() method
-    async params() {
-      const result = raw.setupFactorTypeParams(factor.factorType, dummyKey());
+    // Add async params() method with optional 32-byte key
+    async params(key?: ArrayBuffer) {
+      const result = raw.setupFactorTypeParams(factor.factorType, key);
       // Parse JSON string returned by UniFFI (Value is serialized as string)
       return typeof result === 'string' ? JSON.parse(result) : result;
     },
-    // Add async output() method for completeness
-    async output() {
-      const result = raw.setupFactorTypeOutput(factor.factorType, dummyKey());
+    // Add async output() method with optional 32-byte key
+    async output(key?: ArrayBuffer) {
+      const result = raw.setupFactorTypeOutput(factor.factorType, key);
       // Parse JSON string returned by UniFFI (Value is serialized as string)
       return typeof result === 'string' ? JSON.parse(result) : result;
     }
