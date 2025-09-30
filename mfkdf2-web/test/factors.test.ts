@@ -16,7 +16,7 @@ suite('mfkdf2 bindings', () => {
     console.log('UniFFI initialized');
 
     console.log('Creating setup password factor...');
-    const factor = mfkdf.setup.factors.password('Tr0ubd4dour', { id: 'password_1' });
+    const factor = await mfkdf.setup.factors.password('Tr0ubd4dour', { id: 'password_1' });
     console.log('Setup factor created:', { id: factor.id, kind: factor.kind });
     factor.should.have.property('id');
     factor.should.have.property('kind', 'password');
