@@ -74,7 +74,7 @@ pub async fn mock_password_question_mfkdf2()
 pub async fn mock_uuid_mfkdf2() -> Result<MFKDF2DerivedKey, mfkdf2::error::MFKDF2Error> {
   let factors = vec![mfkdf2::setup::factors::uuid(mfkdf2::setup::factors::uuid::UUIDOptions {
     id:   None,
-    uuid: Some(uuid::Uuid::from_u128(123_456_789_012).to_string()),
+    uuid: Some(uuid::Uuid::from_u128(123_456_789_012)),
   })]
   .into_iter()
   .collect::<Result<Vec<_>, _>>()?;
@@ -175,7 +175,7 @@ pub fn create_setup_factor(name: &str) -> mfkdf2::setup::factors::MFKDF2Factor {
     .unwrap(),
     "uuid" => mfkdf2::setup::factors::uuid::uuid(mfkdf2::setup::factors::uuid::UUIDOptions {
       id:   Some("uuid_1".to_string()),
-      uuid: Some("f9bf78b9-54e7-4696-97dc-5e750de4c592".to_string()),
+      uuid: Some(uuid::Uuid::parse_str("f9bf78b9-54e7-4696-97dc-5e750de4c592").unwrap()),
     })
     .unwrap(),
     "ooba" => mfkdf2::setup::factors::ooba::ooba(mfkdf2::setup::factors::ooba::OobaOptions {
@@ -236,7 +236,10 @@ pub fn create_derive_factor(
       ("question_1".to_string(), mfkdf2::derive::factors::question("my secret answer").unwrap()),
     "uuid" => (
       "uuid_1".to_string(),
-      mfkdf2::derive::factors::uuid("f9bf78b9-54e7-4696-97dc-5e750de4c592".to_string()).unwrap(),
+      mfkdf2::derive::factors::uuid(
+        uuid::Uuid::parse_str("f9bf78b9-54e7-4696-97dc-5e750de4c592").unwrap(),
+      )
+      .unwrap(),
     ),
     "ooba" => {
       let factor_policy = policy.factors.iter().find(|f| f.id == "ooba_1").unwrap();

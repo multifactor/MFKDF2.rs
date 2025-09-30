@@ -181,7 +181,7 @@ mod tests {
       _ => panic!(),
     };
 
-    let derive_params = hmac.params([0u8; 32].into());
+    let derive_params = hmac.params([0u8; 32]);
 
     let challenge = hex::decode(derive_params.get("challenge").unwrap().as_str().unwrap()).unwrap();
 

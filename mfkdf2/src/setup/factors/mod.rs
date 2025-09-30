@@ -77,7 +77,7 @@ pub enum FactorType {
   Password(password::Password),
   HOTP(hotp::HOTP),
   Question(question::Question),
-  UUID(uuid::UUID),
+  UUID(uuid::UUIDFactor),
   HmacSha1(hmacsha1::HmacSha1),
   TOTP(totp::TOTP),
   OOBA(ooba::Ooba),

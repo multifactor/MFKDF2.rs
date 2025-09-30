@@ -95,7 +95,8 @@ export const mfkdf = {
         });
       },
       async uuid(options: { uuid?: string, id?: string } = {}) {
-        return raw.setupUuid({ id: options.id, uuid: options.uuid });
+        const factor = await raw.setupUuid({ id: options.id, uuid: options.uuid });
+        return wrapFactor(factor);
       }
     },
     async key(

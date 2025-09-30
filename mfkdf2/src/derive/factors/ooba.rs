@@ -145,7 +145,7 @@ mod tests {
     };
 
     ooba.include_params(setup_params).unwrap();
-    let derive_params = ooba.params([0u8; 32].into());
+    let derive_params = ooba.params([0u8; 32]);
 
     let code = derive_params["params"]["code"].as_str().unwrap();
 
@@ -181,7 +181,7 @@ mod tests {
     };
 
     ooba.include_params(setup_params).unwrap();
-    let derive_params = ooba.params([0u8; 32].into());
+    let derive_params = ooba.params([0u8; 32]);
 
     assert_eq!(derive_params["params"]["foo"], "bar");
   }
@@ -227,7 +227,7 @@ mod tests {
     ooba.include_params(setup_params).unwrap();
 
     // 6. Call params_derive
-    let derive_params = ooba.params([0u8; 32].into());
+    let derive_params = ooba.params([0u8; 32]);
 
     // 7. Get `next` and `params`
     let next_hex = derive_params["next"].as_str().unwrap();

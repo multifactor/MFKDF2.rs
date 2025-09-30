@@ -106,7 +106,7 @@ async fn key_derive_uuid() -> () {
 
   let factor = (
     "uuid".to_string(),
-    mfkdf2::derive::factors::uuid(uuid::Uuid::from_u128(123_456_789_012).to_string()).unwrap(),
+    mfkdf2::derive::factors::uuid(uuid::Uuid::from_u128(123_456_789_012)).unwrap(),
   );
 
   let factors = HashMap::from([factor]);

@@ -28,7 +28,7 @@ async fn mock_setup_stack()
   let stacked_factors_2 = vec![
     mfkdf2::setup::factors::uuid::uuid(mfkdf2::setup::factors::uuid::UUIDOptions {
       id:   Some("uuid_1".to_string()),
-      uuid: Some("f9bf78b9-54e7-4696-97dc-5e750de4c592".to_string()),
+      uuid: Some(uuid::Uuid::parse_str("f9bf78b9-54e7-4696-97dc-5e750de4c592").unwrap()),
     }),
     mfkdf2::setup::factors::hmacsha1(mfkdf2::setup::factors::hmacsha1::HmacSha1Options {
       id:     Some("hmacsha1_1".to_string()),
@@ -120,8 +120,10 @@ async fn stack_derive() {
       mfkdf2::derive::factors::stack(HashMap::from([
         (
           "uuid_1".to_string(),
-          mfkdf2::derive::factors::uuid("f9bf78b9-54e7-4696-97dc-5e750de4c592".to_string())
-            .unwrap(),
+          mfkdf2::derive::factors::uuid(
+            uuid::Uuid::parse_str("f9bf78b9-54e7-4696-97dc-5e750de4c592").unwrap(),
+          )
+          .unwrap(),
         ),
         (
           "hmacsha1_1".to_string(),
