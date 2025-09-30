@@ -4,6 +4,7 @@ use serde_json::{Value, json};
 pub use uuid::Uuid;
 
 use crate::{
+  definitions::key::Key,
   error::{MFKDF2Error, MFKDF2Result},
   setup::factors::{FactorMetadata, FactorSetup, FactorType, MFKDF2Factor},
 };
@@ -30,9 +31,9 @@ impl FactorMetadata for UUID {
 impl FactorSetup for UUID {
   fn bytes(&self) -> Vec<u8> { self.uuid.as_bytes().to_vec() }
 
-  fn params(&self, _key: [u8; 32]) -> Value { json!({}) }
+  fn params(&self, _key: Key) -> Value { json!({}) }
 
-  fn output(&self, _key: [u8; 32]) -> Value {
+  fn output(&self, _key: Key) -> Value {
     json!({
       "uuid": self.uuid.clone(),
     })

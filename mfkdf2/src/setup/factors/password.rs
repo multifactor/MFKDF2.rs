@@ -4,6 +4,7 @@ use serde_json::{Value, json};
 use zxcvbn::zxcvbn;
 
 use crate::{
+  definitions::key::Key,
   error::{MFKDF2Error, MFKDF2Result},
   setup::factors::{FactorMetadata, FactorSetup, FactorType, MFKDF2Factor},
 };
@@ -20,9 +21,9 @@ impl FactorMetadata for Password {
 impl FactorSetup for Password {
   fn bytes(&self) -> Vec<u8> { self.password.as_bytes().to_vec() }
 
-  fn params(&self, _key: [u8; 32]) -> Value { json!({}) }
+  fn params(&self, _key: Key) -> Value { json!({}) }
 
-  fn output(&self, _key: [u8; 32]) -> Value {
+  fn output(&self, _key: Key) -> Value {
     json!({
       "strength": zxcvbn(&self.password, &[]),
     })
@@ -110,7 +111,7 @@ mod tests {
       FactorType::Password(p) => {
         assert_eq!(p.password, "hello");
         assert_eq!(p.bytes(), "hello".as_bytes());
-        let params = p.params([0; 32]);
+        let params = p.params([0; 32].into());
         assert_eq!(params, json!({}));
       },
       _ => panic!("Wrong factor type"),

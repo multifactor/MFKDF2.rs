@@ -7,6 +7,7 @@ use serde_json::{Value, json};
 
 use crate::{
   crypto::encrypt,
+  definitions::key::Key,
   error::MFKDF2Result,
   setup::factors::{
     FactorMetadata, FactorSetup, FactorType, MFKDF2Factor,
@@ -62,7 +63,7 @@ impl FactorMetadata for TOTP {
 impl FactorSetup for TOTP {
   fn bytes(&self) -> Vec<u8> { self.target.to_be_bytes().to_vec() }
 
-  fn params(&self, key: [u8; 32]) -> Value {
+  fn params(&self, key: Key) -> Value {
     let time =
       self.options.time.unwrap().duration_since(SystemTime::UNIX_EPOCH).unwrap().as_millis();
     let mut offsets = Vec::with_capacity((4 * self.options.window) as usize);
@@ -84,7 +85,7 @@ impl FactorSetup for TOTP {
       offsets.extend_from_slice(&offset.to_be_bytes());
     }
 
-    let pad = encrypt(padded_secret, &key);
+    let pad = encrypt(padded_secret, &key.0);
 
     json!({
         "start": time,
@@ -101,7 +102,7 @@ impl FactorSetup for TOTP {
     })
   }
 
-  fn output(&self, _key: [u8; 32]) -> Value {
+  fn output(&self, _key: Key) -> Value {
     json!({
       "scheme": "otpauth",
       "type": "totp",
@@ -289,7 +290,7 @@ mod tests {
       _ => panic!("Factor type should be TOTP"),
     };
 
-    let params = totp_factor.params(key);
+    let params = totp_factor.params(key.into());
     assert!(params.is_object());
 
     assert_eq!(params["start"], 1672531200000_u64);
@@ -319,7 +320,7 @@ mod tests {
       _ => panic!("Factor type should be TOTP"),
     };
 
-    let output = totp_factor.output(key);
+    let output = totp_factor.output(key.into());
     assert!(output.is_object());
 
     assert_eq!(output["scheme"], "otpauth");

@@ -19,6 +19,59 @@ pub use stack::stack;
 pub use totp::totp;
 pub use uuid::uuid;
 
+use crate::definitions::key::Key;
+
+#[uniffi::export]
+pub trait FactorMetadata: Send + Sync {
+  fn kind(&self) -> String;
+}
+
+// TODO (@lonerapier): refactor trait system with more associated types
+// TODO: add default + debug as well
+#[uniffi::export]
+pub trait FactorSetup: Send + Sync {
+  fn bytes(&self) -> Vec<u8>;
+  fn params(&self, key: Key) -> Value;
+  fn output(&self, key: Key) -> Value;
+}
+
+uniffi::custom_type!(Value, String, {
+  remote,
+  lower: |v| serde_json::to_string(&v).expect("serialize Value"),
+  try_lift: |s: String| Ok(serde_json::from_str(&s)?),
+});
+
+// TODO (@lonerapier): move factor to its own module
+#[derive(Clone, Serialize, Deserialize, uniffi::Record)]
+pub struct MFKDF2Factor {
+  pub id:          Option<String>,
+  pub factor_type: FactorType,
+  // TODO (autoparallel): This is the factor specific salt.
+  pub salt:        Vec<u8>,
+  pub entropy:     Option<u32>,
+}
+
+// #[uniffi::export]
+impl MFKDF2Factor {
+  pub fn kind(&self) -> String { self.factor_type.kind() }
+
+  pub fn data(&self) -> Vec<u8> { self.factor_type.bytes() }
+}
+
+impl std::fmt::Debug for MFKDF2Factor {
+  fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    f.debug_struct("MFKDF2Factor")
+      .field("kind", &self.kind())
+      .field("id", &self.id)
+      .field("data", &self.factor_type)
+      .field("salt", &self.salt)
+      .field("params", &"<function>")
+      .field("entropy", &self.entropy)
+      .field("output", &"<future>")
+      .finish()
+  }
+}
+
 #[derive(Clone, Debug, Serialize, Deserialize, uniffi::Enum)]
 pub enum FactorType {
   Password(password::Password),
@@ -76,56 +129,27 @@ impl FactorType {
   }
 }
 
-impl FactorMetadata for FactorType {
-  fn kind(&self) -> String { self.kind() }
-}
-
 impl FactorSetup for FactorType {
   fn bytes(&self) -> Vec<u8> { self.setup().bytes() }
 
-  fn params(&self, key: [u8; 32]) -> Value { self.setup().params(key) }
+  fn params(&self, key: Key) -> Value { self.setup().params(key) }
 
-  fn output(&self, key: [u8; 32]) -> Value { self.setup().output(key) }
+  fn output(&self, key: Key) -> Value { self.setup().output(key) }
 }
 
-pub trait FactorMetadata {
-  fn kind(&self) -> String;
+// Standalone exported functions for FFI
+#[uniffi::export]
+pub fn setup_factor_type_kind(factor_type: &FactorType) -> String { factor_type.kind() }
+
+#[uniffi::export]
+pub fn setup_factor_type_bytes(factor_type: &FactorType) -> Vec<u8> { factor_type.bytes() }
+
+#[uniffi::export]
+pub fn setup_factor_type_params(factor_type: &FactorType, key: Key) -> Value {
+  factor_type.params(key)
 }
 
-// TODO (@lonerapier): refactor trait system with more associated types
-// TODO: add default + debug as well
-pub trait FactorSetup {
-  fn bytes(&self) -> Vec<u8>;
-  fn params(&self, key: [u8; 32]) -> Value;
-  fn output(&self, key: [u8; 32]) -> Value;
-}
-
-// TODO (@lonerapier): move factor to its own module
-#[derive(Clone, Serialize, Deserialize, uniffi::Record)]
-pub struct MFKDF2Factor {
-  pub id:          Option<String>,
-  pub factor_type: FactorType,
-  // TODO (autoparallel): This is the factor specific salt.
-  pub salt:        Vec<u8>,
-  pub entropy:     Option<u32>,
-}
-
-impl MFKDF2Factor {
-  pub fn kind(&self) -> String { self.factor_type.kind() }
-
-  pub fn data(&self) -> Vec<u8> { self.factor_type.bytes() }
-}
-
-impl std::fmt::Debug for MFKDF2Factor {
-  fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-    f.debug_struct("MFKDF2Factor")
-      .field("kind", &self.kind())
-      .field("id", &self.id)
-      .field("data", &self.factor_type)
-      .field("salt", &self.salt)
-      .field("params", &"<function>")
-      .field("entropy", &self.entropy)
-      .field("output", &"<future>")
-      .finish()
-  }
+#[uniffi::export]
+pub fn setup_factor_type_output(factor_type: &FactorType, key: Key) -> Value {
+  factor_type.output(key)
 }

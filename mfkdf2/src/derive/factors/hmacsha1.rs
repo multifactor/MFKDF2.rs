@@ -99,7 +99,7 @@ mod tests {
     let secret = setup_factor
       .factor_type
       .setup()
-      .output([0u8; 32])
+      .output([0u8; 32].into())
       .get("secret")
       .unwrap()
       .as_array()
@@ -117,7 +117,7 @@ mod tests {
   #[test]
   fn include_params_missing_pad() {
     let setup = mock_hmac_setup();
-    let mut setup_params = setup.factor_type.setup().params([0u8; 32]);
+    let mut setup_params = setup.factor_type.setup().params([0u8; 32].into());
     setup_params.as_object_mut().unwrap().remove("pad");
 
     let mut hmac = mock_hmac_derive(&setup, &setup_params);
@@ -128,7 +128,7 @@ mod tests {
   #[test]
   fn include_params_invalid_pad_type() {
     let setup = mock_hmac_setup();
-    let mut setup_params = setup.factor_type.setup().params([0u8; 32]);
+    let mut setup_params = setup.factor_type.setup().params([0u8; 32].into());
     setup_params["pad"] = json!("not-an-array");
 
     let mut hmac = mock_hmac_derive(&setup, &setup_params);
@@ -139,7 +139,7 @@ mod tests {
   #[test]
   fn include_params_invalid_pad_element_type() {
     let setup = mock_hmac_setup();
-    let mut setup_params = setup.factor_type.setup().params([0u8; 32]);
+    let mut setup_params = setup.factor_type.setup().params([0u8; 32].into());
     setup_params["pad"] = json!(["not-a-number"]);
 
     let mut hmac = mock_hmac_derive(&setup, &setup_params);
@@ -154,7 +154,7 @@ mod tests {
       FactorType::HmacSha1(h) => h,
       _ => panic!(),
     };
-    let setup_params = setup.factor_type.setup().params([0u8; 32]);
+    let setup_params = setup.factor_type.setup().params([0u8; 32].into());
     let mut hmac = mock_hmac_derive(&setup, &setup_params);
 
     let result = hmac.include_params(setup_params.clone());
@@ -171,7 +171,7 @@ mod tests {
   #[test]
   fn params_derive_produces_valid_pad() {
     let setup = mock_hmac_setup();
-    let setup_params = setup.factor_type.setup().params([0u8; 32]);
+    let setup_params = setup.factor_type.setup().params([0u8; 32].into());
 
     let mut hmac = mock_hmac_derive(&setup, &setup_params);
     hmac.include_params(setup_params).unwrap();
@@ -181,7 +181,7 @@ mod tests {
       _ => panic!(),
     };
 
-    let derive_params = hmac.params([0u8; 32]);
+    let derive_params = hmac.params([0u8; 32].into());
 
     let challenge = hex::decode(derive_params.get("challenge").unwrap().as_str().unwrap()).unwrap();
 
@@ -199,7 +199,7 @@ mod tests {
   #[test]
   fn output_derive_produces_correct_secret() {
     let setup = mock_hmac_setup();
-    let setup_params = setup.factor_type.setup().params([0u8; 32]);
+    let setup_params = setup.factor_type.setup().params([0u8; 32].into());
 
     let mut derive_hmac = mock_hmac_derive(&setup, &setup_params);
     derive_hmac.include_params(setup_params).unwrap();
