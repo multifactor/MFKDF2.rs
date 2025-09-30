@@ -8,6 +8,7 @@ use sha2::Sha256;
 
 use crate::{
   crypto::{encrypt, hkdf_sha256_with_info},
+  definitions::key::Key,
   error::{MFKDF2Error, MFKDF2Result},
   setup::factors::{FactorMetadata, FactorSetup, FactorType, MFKDF2Factor},
 };
@@ -80,7 +81,7 @@ impl FactorMetadata for Ooba {
 impl FactorSetup for Ooba {
   fn bytes(&self) -> Vec<u8> { self.target.clone() }
 
-  fn params(&self, _key: [u8; 32]) -> Value {
+  fn params(&self, _key: Key) -> Value {
     let code = generate_alphanumeric_characters(self.length.into()).to_uppercase();
 
     let prev_key = hkdf_sha256_with_info(code.as_bytes(), &[], &[]);
@@ -106,7 +107,7 @@ impl FactorSetup for Ooba {
     })
   }
 
-  fn output(&self, _key: [u8; 32]) -> Value { json!({}) }
+  fn output(&self, _key: Key) -> Value { json!({}) }
 }
 
 pub fn ooba(options: OobaOptions) -> MFKDF2Result<MFKDF2Factor> {
@@ -299,7 +300,7 @@ mod tests {
       _ => panic!("Factor type should be Ooba"),
     };
 
-    let params = ooba.params([0u8; 32]);
+    let params = ooba.params([0u8; 32].into());
     assert!(params.is_object());
 
     // check params.next is equal to params.params
@@ -317,7 +318,7 @@ mod tests {
   #[test]
   fn output() {
     let factor = mock_construction();
-    let output = factor.factor_type.output([0u8; 32]);
+    let output = factor.factor_type.output([0u8; 32].into());
     assert!(output.is_object());
   }
 }

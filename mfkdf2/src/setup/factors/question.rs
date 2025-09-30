@@ -4,6 +4,7 @@ use serde_json::{Value, json};
 use zxcvbn::zxcvbn;
 
 use crate::{
+  definitions::key::Key,
   error::{MFKDF2Error, MFKDF2Result},
   setup::factors::{FactorMetadata, FactorSetup, FactorType, MFKDF2Factor},
 };
@@ -23,13 +24,13 @@ impl FactorMetadata for Question {
 impl FactorSetup for Question {
   fn bytes(&self) -> Vec<u8> { self.answer.as_bytes().to_vec() }
 
-  fn params(&self, _key: [u8; 32]) -> Value {
+  fn params(&self, _key: Key) -> Value {
     json!({
       "question": self.options.question.clone().unwrap_or_default(),
     })
   }
 
-  fn output(&self, _key: [u8; 32]) -> Value {
+  fn output(&self, _key: Key) -> Value {
     json!({
       "strength": zxcvbn(&self.answer, &[]),
     })
@@ -152,7 +153,7 @@ mod tests {
       _ => panic!("Factor type should be Question"),
     };
 
-    let params = question_factor.params([0u8; 32]);
+    let params = question_factor.params([0u8; 32].into());
     assert!(params.is_object());
     assert_eq!(params["question"], "What is your favorite color?");
   }
@@ -160,7 +161,7 @@ mod tests {
   #[test]
   fn output() {
     let factor = mock_construction();
-    let output = factor.factor_type.output([0u8; 32]);
+    let output = factor.factor_type.output([0u8; 32].into());
     assert!(output.is_object());
     assert!(output["strength"].is_object());
     assert!(output["strength"]["score"].is_number());

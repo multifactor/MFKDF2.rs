@@ -154,7 +154,7 @@ pub async fn key(
 
     // HKDF stretch & AES-encrypt share
     let stretched = hkdf_sha256_with_info(
-      &factor.factor_type.bytes(),
+      &factor.data(),
       &factor.salt,
       format!("mfkdf2:factor:pad:{}", &factor.id.clone().unwrap()).as_bytes(),
     );
@@ -167,9 +167,9 @@ pub async fn key(
       format!("mfkdf2:factor:params:{}", &factor.id.clone().unwrap()).as_bytes(),
     );
 
-    let params = factor.factor_type.setup().params(params_key);
+    let params = factor.factor_type.setup().params(params_key.into());
     // TODO (autoparallel): This should not be an unwrap.
-    outputs.insert(factor.id.clone().unwrap(), factor.factor_type.output(key).to_string());
+    outputs.insert(factor.id.clone().unwrap(), factor.factor_type.output(key.into()).to_string());
 
     let secret_key = hkdf_sha256_with_info(
       &key,
@@ -179,7 +179,7 @@ pub async fn key(
     let factor_secret = encrypt(&stretched, &secret_key);
 
     // Record entropy statistics (in bits) for this factor.
-    theoretical_entropy.push(u32::try_from(factor.factor_type.bytes().len() * 8).unwrap());
+    theoretical_entropy.push(u32::try_from(factor.data().len() * 8).unwrap());
     // TODO (autoparallel): This should not be an unwrap, should entropy really be optional?
     real_entropy.push(factor.entropy.unwrap());
 

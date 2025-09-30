@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 
 use crate::{
-  definitions::mfkdf_derived_key::MFKDF2DerivedKey,
+  definitions::{key::Key, mfkdf_derived_key::MFKDF2DerivedKey},
   error::{MFKDF2Error, MFKDF2Result},
   setup::{
     factors::{FactorMetadata, FactorSetup, FactorType, MFKDF2Factor},
@@ -49,11 +49,11 @@ impl FactorMetadata for Stack {
 impl FactorSetup for Stack {
   fn bytes(&self) -> Vec<u8> { self.key.key.clone() }
 
-  fn params(&self, _key: [u8; 32]) -> Value {
+  fn params(&self, _key: Key) -> Value {
     serde_json::to_value(&self.key.policy).unwrap_or(json!({}))
   }
 
-  fn output(&self, _key: [u8; 32]) -> Value { serde_json::to_value(&self.key).unwrap_or(json!({})) }
+  fn output(&self, _key: Key) -> Value { serde_json::to_value(&self.key).unwrap_or(json!({})) }
 }
 
 pub async fn stack(
@@ -148,8 +148,8 @@ mod tests {
     let stack_factor = setup_stack(vec![factor], options).await.unwrap();
     let key = [0u8; 32];
 
-    let params = stack_factor.factor_type.setup().params(key);
-    let output = stack_factor.factor_type.output(key);
+    let params = stack_factor.factor_type.setup().params(key.into());
+    let output = stack_factor.factor_type.output(key.into());
 
     if let FactorType::Stack(stack) = stack_factor.factor_type {
       let expected_params = serde_json::to_value(&stack.key.policy).unwrap();

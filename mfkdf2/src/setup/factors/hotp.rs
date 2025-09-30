@@ -8,6 +8,7 @@ use sha2::{Sha256, Sha512};
 
 use crate::{
   crypto::encrypt,
+  definitions::key::Key,
   error::MFKDF2Result,
   setup::factors::{FactorMetadata, FactorSetup, FactorType, MFKDF2Factor},
 };
@@ -24,7 +25,7 @@ pub struct HOTPOptions {
   pub label:  String,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, uniffi::Enum, PartialEq, Eq)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq, uniffi::Enum)]
 pub enum OTPHash {
   #[serde(rename = "sha1")]
   Sha1,
@@ -63,7 +64,7 @@ impl FactorMetadata for HOTP {
 impl FactorSetup for HOTP {
   fn bytes(&self) -> Vec<u8> { self.target.to_be_bytes().to_vec() }
 
-  fn params(&self, key: [u8; 32]) -> Value {
+  fn params(&self, key: Key) -> Value {
     // Generate or use provided secret
     let padded_secret = if let Some(secret) = self.options.secret.clone() {
       secret
@@ -80,7 +81,7 @@ impl FactorSetup for HOTP {
     let offset =
       mod_positive(self.target as i64 - code as i64, 10_i64.pow(self.options.digits as u32)) as u32;
 
-    let pad = encrypt(&padded_secret, &key);
+    let pad = encrypt(&padded_secret, &key.0);
 
     json!({
       "hash": match self.options.hash {
@@ -95,7 +96,7 @@ impl FactorSetup for HOTP {
     })
   }
 
-  fn output(&self, _key: [u8; 32]) -> Value {
+  fn output(&self, _key: Key) -> Value {
     json!({
       "scheme": "otpauth",
       "type": "hotp",
@@ -227,10 +228,10 @@ mod tests {
     let factor = hotp(options).unwrap();
     assert_eq!(factor.kind(), "hotp");
     assert_eq!(factor.id, Some("test_hotp".to_string()));
-    assert_eq!(factor.factor_type.bytes().len(), 4); // u32 target as bytes
+    assert_eq!(factor.data().len(), 4); // u32 target as bytes
 
     // Test that params can be generated
-    let params = factor.factor_type.setup().params(key);
+    let params = factor.factor_type.setup().params(key.into());
     assert!(params["hash"].is_string());
     assert!(params["digits"].is_number());
     assert!(params["pad"].is_string());
@@ -246,10 +247,10 @@ mod tests {
 
     assert_eq!(factor.kind(), "hotp");
     assert_eq!(factor.id, Some("hotp".to_string()));
-    assert_eq!(factor.factor_type.bytes().len(), 4);
+    assert_eq!(factor.data().len(), 4);
     assert!(factor.entropy.is_some());
-    assert!(factor.factor_type.setup().params(key).is_object());
-    assert!(factor.factor_type.output(key).is_object());
+    assert!(factor.factor_type.setup().params(key.into()).is_object());
+    assert!(factor.factor_type.output(key.into()).is_object());
   }
 
   #[test]
@@ -334,7 +335,7 @@ mod tests {
 
     let original_padded_secret = hotp_factor.options.secret.as_ref().unwrap();
 
-    let params = hotp_factor.params(key);
+    let params = hotp_factor.params(key.into());
     let pad_b64 = params["pad"].as_str().unwrap();
     let pad = BASE64_STANDARD.decode(pad_b64).unwrap();
 
@@ -355,7 +356,7 @@ mod tests {
       _ => panic!("Wrong factor type"),
     };
 
-    let params = hotp_factor.params(key);
+    let params = hotp_factor.params(key.into());
     let offset = params["offset"].as_u64().unwrap() as u32;
 
     let padded_secret = hotp_factor.options.secret.as_ref().unwrap();
