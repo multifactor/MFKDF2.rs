@@ -160,7 +160,7 @@ pub fn ooba(options: OobaOptions) -> MFKDF2Result<MFKDF2Factor> {
 }
 
 #[uniffi::export]
-pub fn setup_ooba(options: OobaOptions) -> MFKDF2Result<MFKDF2Factor> { ooba(options) }
+pub async fn setup_ooba(options: OobaOptions) -> MFKDF2Result<MFKDF2Factor> { ooba(options) }
 
 #[cfg(test)]
 mod tests {

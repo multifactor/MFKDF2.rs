@@ -69,7 +69,7 @@ pub fn uuid(options: UUIDOptions) -> MFKDF2Result<MFKDF2Factor> {
 }
 
 #[uniffi::export]
-pub fn setup_uuid(options: UUIDOptions) -> MFKDF2Result<MFKDF2Factor> { uuid(options) }
+pub async fn setup_uuid(options: UUIDOptions) -> MFKDF2Result<MFKDF2Factor> { uuid(options) }
 
 #[cfg(test)]
 mod tests {

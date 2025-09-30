@@ -103,7 +103,7 @@ pub fn derive_hotp(code: u32) -> MFKDF2Result<MFKDF2Factor> { hotp(code) }
 #[cfg(test)]
 mod tests {
   use super::*;
-  use crate::setup::factors::hotp::setup_hotp;
+  use crate::setup::factors::hotp::hotp as setup_hotp;
 
   #[test]
   fn hotp_round_trip() {

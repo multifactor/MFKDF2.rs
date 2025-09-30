@@ -12,6 +12,7 @@ Please check here before filing new reports.
 | Affected Version(s) | Description                                                            | Status       | CVE / Advisory |
 | ------------------- | ---------------------------------------------------------------------- | ------------ | -------------- |
 | 0.0.1               | RSA Marvin Attack: potential key recovery through timing sidechannels. | 🔴 Unresolved | 2023-49092     |
+| 0.0.1               | use jsonwebtoken crate's published version                             | 🔴 Unresolved | NA             |
 
 Legend:
 - 🟢 Fixed

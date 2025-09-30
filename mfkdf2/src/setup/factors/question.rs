@@ -89,7 +89,10 @@ pub fn question(answer: impl Into<String>, options: QuestionOptions) -> MFKDF2Re
 }
 
 #[uniffi::export]
-pub fn setup_question(answer: String, options: QuestionOptions) -> MFKDF2Result<MFKDF2Factor> {
+pub async fn setup_question(
+  answer: String,
+  options: QuestionOptions,
+) -> MFKDF2Result<MFKDF2Factor> {
   question(answer, options)
 }
 

@@ -206,7 +206,7 @@ pub fn hotp(options: HOTPOptions) -> MFKDF2Result<MFKDF2Factor> {
 }
 
 #[uniffi::export]
-pub fn setup_hotp(options: HOTPOptions) -> MFKDF2Result<MFKDF2Factor> { hotp(options) }
+pub async fn setup_hotp(options: HOTPOptions) -> MFKDF2Result<MFKDF2Factor> { hotp(options) }
 
 #[cfg(test)]
 mod tests {

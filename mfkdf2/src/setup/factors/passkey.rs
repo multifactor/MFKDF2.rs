@@ -53,6 +53,6 @@ pub fn passkey(secret: Vec<u8>, options: PasskeyOptions) -> MFKDF2Result<MFKDF2F
 }
 
 #[uniffi::export]
-pub fn setup_passkey(secret: Vec<u8>, options: PasskeyOptions) -> MFKDF2Result<MFKDF2Factor> {
+pub async fn setup_passkey(secret: Vec<u8>, options: PasskeyOptions) -> MFKDF2Result<MFKDF2Factor> {
   crate::setup::factors::passkey::passkey(secret, options)
 }

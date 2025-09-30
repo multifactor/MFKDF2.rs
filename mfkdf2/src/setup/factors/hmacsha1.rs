@@ -106,7 +106,9 @@ pub fn hmacsha1(options: HmacSha1Options) -> MFKDF2Result<MFKDF2Factor> {
 }
 
 #[uniffi::export]
-pub fn setup_hmacsha1(options: HmacSha1Options) -> MFKDF2Result<MFKDF2Factor> { hmacsha1(options) }
+pub async fn setup_hmacsha1(options: HmacSha1Options) -> MFKDF2Result<MFKDF2Factor> {
+  hmacsha1(options)
+}
 
 #[cfg(test)]
 mod tests {
