@@ -113,20 +113,6 @@ impl FactorType {
       FactorType::Stack(stack) => stack,
     }
   }
-
-  pub fn setup_mut(&mut self) -> &mut dyn FactorSetup {
-    match self {
-      FactorType::Password(password) => password,
-      FactorType::HOTP(hotp) => hotp,
-      FactorType::Question(question) => question,
-      FactorType::UUID(uuid) => uuid,
-      FactorType::HmacSha1(hmacsha1) => hmacsha1,
-      FactorType::TOTP(totp) => totp,
-      FactorType::OOBA(ooba) => ooba,
-      FactorType::Passkey(passkey) => passkey,
-      FactorType::Stack(stack) => stack,
-    }
-  }
 }
 
 impl FactorSetup for FactorType {
@@ -147,6 +133,7 @@ pub fn factor_type_bytes(factor_type: &FactorType) -> Vec<u8> { factor_type.byte
 #[uniffi::export]
 pub fn setup_factor_type_params(factor_type: &FactorType, key: Option<Key>) -> Value {
   // Use provided key or create a dummy zero-filled key
+  // TODO (@lonerapier): remove dummy key usage
   let key = key.unwrap_or_else(|| [0u8; 32].into());
   factor_type.params(key)
 }

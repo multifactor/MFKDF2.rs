@@ -81,12 +81,12 @@ pub async fn key(
   }
 
   // Generate salt & secret if not provided
-  let salt: [u8; 32] = match options.salt {
-    Some(salt) => salt.try_into().unwrap(),
+  let salt: Vec<u8> = match options.salt {
+    Some(salt) => salt,
     None => {
       let mut salt = [0u8; 32];
       OsRng.fill_bytes(&mut salt);
-      salt
+      salt.to_vec()
     },
   };
 
@@ -198,7 +198,7 @@ pub async fn key(
     schema: "https://mfkdf.com/schema/v2.0.0/policy.json".to_string(),
     id: policy_id,
     threshold,
-    salt: general_purpose::STANDARD.encode(salt),
+    salt: general_purpose::STANDARD.encode(&salt),
     factors: policy_factors,
     hmac: "".to_string(),
     time,
