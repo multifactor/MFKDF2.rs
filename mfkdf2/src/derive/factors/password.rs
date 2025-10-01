@@ -2,6 +2,7 @@ use serde_json::{Value, json};
 use zxcvbn::zxcvbn;
 
 use crate::{
+  definitions::key::Key,
   derive::FactorDerive,
   error::{MFKDF2Error, MFKDF2Result},
   setup::factors::{FactorType, MFKDF2Factor, password::Password},
@@ -9,7 +10,7 @@ use crate::{
 impl FactorDerive for Password {
   fn include_params(&mut self, _params: Value) -> MFKDF2Result<()> { Ok(()) }
 
-  fn params(&self, _key: [u8; 32]) -> Value { json!({}) }
+  fn params(&self, _key: Key) -> Value { json!({}) }
 
   fn output(&self) -> Value { json!({"strength": zxcvbn(&self.password, &[])}) }
 }

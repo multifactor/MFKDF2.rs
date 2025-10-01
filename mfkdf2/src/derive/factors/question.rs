@@ -2,6 +2,7 @@ use serde_json::{Value, json};
 use zxcvbn::zxcvbn;
 
 use crate::{
+  definitions::key::Key,
   derive::FactorDerive,
   error::{MFKDF2Error, MFKDF2Result},
   setup::factors::{
@@ -16,7 +17,7 @@ impl FactorDerive for Question {
     Ok(())
   }
 
-  fn params(&self, _key: [u8; 32]) -> Value { serde_json::from_str(&self.params).unwrap() }
+  fn params(&self, _key: Key) -> Value { serde_json::from_str(&self.params).unwrap() }
 
   fn output(&self) -> Value { json!({"strength": zxcvbn(&self.answer, &[])}) }
 }
@@ -117,7 +118,7 @@ mod tests {
     assert_eq!(stored_params, setup_params);
 
     // 6. Call params_derive and check if it returns the same params
-    let derived_params = question_struct.params([0u8; 32]);
+    let derived_params = question_struct.params([0u8; 32].into());
     assert_eq!(derived_params, setup_params);
   }
 

@@ -1,6 +1,7 @@
 use serde_json::{Value, json};
 
 use crate::{
+  definitions::key::Key,
   derive::FactorDerive,
   error::{MFKDF2Error, MFKDF2Result},
   setup::factors::{FactorType, MFKDF2Factor, passkey::Passkey},
@@ -12,7 +13,7 @@ impl FactorDerive for Passkey {
     Ok(())
   }
 
-  fn params(&self, _key: [u8; 32]) -> Value { json!({}) }
+  fn params(&self, _key: Key) -> Value { json!({}) }
 
   fn output(&self) -> Value { json!({}) }
 }

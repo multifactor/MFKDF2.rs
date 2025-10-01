@@ -3,6 +3,7 @@ use serde_json::{Value, json};
 
 use crate::{
   crypto::{decrypt, encrypt},
+  definitions::key::Key,
   derive::FactorDerive,
   error::MFKDF2Result,
   setup::factors::{
@@ -34,7 +35,7 @@ impl FactorDerive for HmacSha1 {
     Ok(())
   }
 
-  fn params(&self, _key: [u8; 32]) -> Value {
+  fn params(&self, _key: Key) -> Value {
     let mut challenge = [0u8; 64];
     OsRng.fill_bytes(&mut challenge);
 
@@ -181,7 +182,7 @@ mod tests {
       _ => panic!(),
     };
 
-    let derive_params = hmac.params([0u8; 32]);
+    let derive_params = hmac.params([0u8; 32].into());
 
     let challenge = hex::decode(derive_params.get("challenge").unwrap().as_str().unwrap()).unwrap();
 

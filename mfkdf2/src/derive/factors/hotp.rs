@@ -3,6 +3,7 @@ use serde_json::{Value, json};
 
 use crate::{
   crypto::decrypt,
+  definitions::key::Key,
   derive::FactorDerive,
   error::{MFKDF2Error, MFKDF2Result},
   setup::factors::{
@@ -38,12 +39,12 @@ impl FactorDerive for HOTP {
     Ok(())
   }
 
-  fn params(&self, key: [u8; 32]) -> Value {
+  fn params(&self, key: Key) -> Value {
     // Decrypt the secret using the factor key
     let params: Value = serde_json::from_str(&self.params).unwrap();
     let pad_b64 = params["pad"].as_str().unwrap();
     let pad = base64::prelude::BASE64_STANDARD.decode(pad_b64).unwrap();
-    let padded_secret = decrypt(pad, &key);
+    let padded_secret = decrypt(pad, &key.0);
 
     // Generate HOTP code with incremented counter
     let counter = params["counter"].as_u64().unwrap() + 1;
@@ -174,7 +175,7 @@ mod tests {
     let mut derive_factor = derive_hotp(123456).unwrap();
     derive_factor.factor_type.include_params(setup_params.clone()).unwrap();
 
-    let derive_params = derive_factor.factor_type.params(mock_key);
+    let derive_params = derive_factor.factor_type.params(mock_key.into());
 
     // Counter should be incremented
     let original_counter = setup_params["counter"].as_u64().unwrap();

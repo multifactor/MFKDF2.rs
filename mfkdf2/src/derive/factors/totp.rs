@@ -5,6 +5,7 @@ use serde_json::{Value, json};
 
 use crate::{
   crypto::decrypt,
+  definitions::key::Key,
   derive::FactorDerive,
   error::{MFKDF2Error, MFKDF2Result},
   setup::factors::{
@@ -83,12 +84,12 @@ impl FactorDerive for TOTP {
     Ok(())
   }
 
-  fn params(&self, key: [u8; 32]) -> Value {
+  fn params(&self, key: Key) -> Value {
     let params: Value = serde_json::from_str(&self.params).unwrap();
 
     let pad = params["pad"].as_str().unwrap();
     let pad = base64::prelude::BASE64_STANDARD.decode(pad).unwrap();
-    let padded_secret = decrypt(pad.clone(), &key);
+    let padded_secret = decrypt(pad.clone(), &key.0);
 
     let time =
       self.options.time.unwrap().duration_since(SystemTime::UNIX_EPOCH).unwrap().as_millis();
@@ -241,7 +242,7 @@ mod tests {
     let mut derive_factor = derive_totp(123456, Some(derive_options)).unwrap();
     derive_factor.factor_type.include_params(setup_params.clone()).unwrap();
 
-    let derive_params = derive_factor.factor_type.params(mock_key);
+    let derive_params = derive_factor.factor_type.params(mock_key.into());
 
     let original_start = setup_params["start"].as_u64().unwrap();
     let new_start = derive_params["start"].as_u64().unwrap();

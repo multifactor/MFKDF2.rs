@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use serde_json::{Value, json};
 
 use crate::{
-  definitions::mfkdf_derived_key::MFKDF2DerivedKey,
+  definitions::{key::Key, mfkdf_derived_key::MFKDF2DerivedKey},
   derive::FactorDerive,
   error::{MFKDF2Error, MFKDF2Result},
   policy::Policy,
@@ -20,7 +20,7 @@ impl FactorDerive for Stack {
     Ok(())
   }
 
-  fn params(&self, _key: [u8; 32]) -> Value {
+  fn params(&self, _key: Key) -> Value {
     serde_json::to_value(&self.key.policy).unwrap_or(json!({}))
   }
 
