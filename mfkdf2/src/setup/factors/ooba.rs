@@ -13,6 +13,7 @@ use crate::{
   setup::factors::{FactorMetadata, FactorSetup, FactorType, MFKDF2Factor},
 };
 
+#[inline]
 pub fn generate_alphanumeric_characters(length: u32) -> String {
   (0..length)
     .map(|_| {
@@ -27,13 +28,15 @@ pub struct OobaPublicKey(pub RsaPublicKey);
 #[derive(Clone, Debug, Serialize, Deserialize, uniffi::Record)]
 pub struct OobaOptions {
   pub id:     Option<String>,
-  pub length: u8,
+  pub length: Option<u8>,
   pub key:    Option<String>, // TODO (sambhav): move to uniffi custom types
   pub params: Option<String>,
 }
 
 impl Default for OobaOptions {
-  fn default() -> Self { Self { id: Some("ooba".to_string()), length: 6, key: None, params: None } }
+  fn default() -> Self {
+    Self { id: Some("ooba".to_string()), length: Some(6), key: None, params: None }
+  }
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, uniffi::Record)]
@@ -117,7 +120,7 @@ pub fn ooba(options: OobaOptions) -> MFKDF2Result<MFKDF2Factor> {
   {
     return Err(crate::error::MFKDF2Error::MissingFactorId);
   }
-  let length = options.length;
+  let length = options.length.unwrap_or(6);
   if length == 0 || length > 32 {
     return Err(MFKDF2Error::InvalidOobaLength);
   }
@@ -180,7 +183,7 @@ mod tests {
   fn mock_construction() -> MFKDF2Factor {
     let options = OobaOptions {
       id:     Some("test".to_string()),
-      length: 8,
+      length: Some(8),
       key:    Some(TEST_JWK.to_string()),
       params: Some(r#"{"foo":"bar"}"#.to_string()),
     };
@@ -195,7 +198,7 @@ mod tests {
   fn construction() {
     let options = OobaOptions {
       id:     Some("test".to_string()),
-      length: 8,
+      length: Some(8),
       key:    Some(TEST_JWK.to_string()),
       params: Some(r#"{"foo":"bar"}"#.to_string()),
     };
@@ -220,7 +223,7 @@ mod tests {
   fn empty_id() {
     let options = OobaOptions {
       id:     Some("".to_string()),
-      length: 6,
+      length: Some(6),
       key:    Some(TEST_JWK.to_string()),
       params: None,
     };
@@ -232,7 +235,7 @@ mod tests {
   fn zero_length() {
     let options = OobaOptions {
       id:     Some("test".to_string()),
-      length: 0,
+      length: Some(0),
       key:    Some(TEST_JWK.to_string()),
       params: None,
     };
@@ -244,7 +247,7 @@ mod tests {
   fn large_length() {
     let options = OobaOptions {
       id:     Some("test".to_string()),
-      length: 33,
+      length: Some(33),
       key:    Some(TEST_JWK.to_string()),
       params: None,
     };
@@ -255,7 +258,7 @@ mod tests {
   #[test]
   fn missing_key() {
     let options =
-      OobaOptions { id: Some("test".to_string()), length: 6, key: None, params: None };
+      OobaOptions { id: Some("test".to_string()), length: Some(6), key: None, params: None };
     let result = ooba(options);
     assert!(matches!(result, Err(MFKDF2Error::MissingOobaKey)));
   }
@@ -264,7 +267,7 @@ mod tests {
   fn invalid_key_format() {
     let options = OobaOptions {
       id:     Some("test".to_string()),
-      length: 6,
+      length: Some(6),
       key:    Some("not-a-jwk".to_string()),
       params: None,
     };
@@ -283,7 +286,7 @@ mod tests {
 
     let options = OobaOptions {
       id:     Some("test".to_string()),
-      length: 6,
+      length: Some(6),
       key:    Some(TEST_EC_JWK.to_string()),
       params: None,
     };

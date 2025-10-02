@@ -208,7 +208,7 @@ mod tests {
   fn generate_ooba_setup_factor(id: &str) -> MFKDF2Factor {
     let options = OobaOptions {
       id:     Some(id.to_string()),
-      length: 8,
+      length: Some(8),
       key:    Some(TEST_JWK.to_string()),
       params: Some(r#"{"foo":"bar"}"#.to_string()),
     };

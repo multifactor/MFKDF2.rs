@@ -117,7 +117,7 @@ mod tests {
   fn mock_ooba_setup() -> MFKDF2Factor {
     let options = crate::setup::factors::ooba::OobaOptions {
       id:     Some("test".to_string()),
-      length: 8,
+      length: Some(8),
       key:    Some(TEST_JWK.to_string()),
       params: Some(r#"{"foo":"bar"}"#.to_string()),
     };
@@ -212,7 +212,7 @@ mod tests {
     // 5. Create mock ooba setup
     let options = crate::setup::factors::ooba::OobaOptions {
       id:     Some("test".to_string()),
-      length: 8,
+      length: Some(8),
       key:    Some(jwk),
       params: Some(r#"{"foo":"bar"}"#.to_string()),
     };

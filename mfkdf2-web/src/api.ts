@@ -16,6 +16,15 @@ function toBuffer(arrayBuffer: ArrayBuffer): Buffer {
   return Buffer.from(arrayBuffer);
 }
 
+// Helper to convert Buffer/Uint8Array to ArrayBuffer for UniFFI
+function toArrayBuffer(input: ArrayBuffer | Buffer | Uint8Array | undefined): ArrayBuffer | undefined {
+  if (input === undefined) return undefined;
+  if (input instanceof ArrayBuffer) return input;
+  // Buffer and Uint8Array have .buffer property, but may be a view with offset
+  const view = input as Uint8Array;
+  return view.buffer.slice(view.byteOffset, view.byteOffset + view.byteLength) as ArrayBuffer;
+}
+
 // Wrap factor to add ergonomic API
 function wrapFactor(factor: raw.Mfkdf2Factor): any {
   const getKind = () => raw.factorTypeKind(factor.factorType);
@@ -65,7 +74,7 @@ function wrapPolicy(policy: any): any {
 }
 
 // Wrap derived key to add $id to policy
-function wrapDerivedKey(key: any): any {
+function wrapDerivedKey(key: raw.Mfkdf2DerivedKey): any {
   return {
     ...key,
     policy: wrapPolicy(key.policy),
@@ -80,33 +89,92 @@ export const mfkdf = {
   setup: {
     factors: {
       // Setup factors are async in reference implementation
+      // Default values match reference implementation's defaults.js
       async password(password: string, options: { id?: string } = {}) {
-        const factor = await raw.setupPassword(password, { id: options.id });
+        const factor = await raw.setupPassword(password, {
+          id: options.id
+        });
         return wrapFactor(factor);
       },
-      async hotp(options: { secret?: ArrayBuffer, id?: string } = {}) {
-        return raw.setupHotp({
+      async hotp(options: { secret?: ArrayBuffer | Buffer, id?: string, digits?: number, hash?: raw.OtpHash, issuer?: string, label?: string } = {}) {
+        const factor = await raw.setupHotp({
           id: options.id,
-          secret: options.secret,
-          digits: 6,
-          hash: raw.OtpHash.Sha1,
-          issuer: '',
-          label: ''
+          secret: toArrayBuffer(options.secret),
+          digits: options.digits ?? 6,
+          hash: options.hash ?? raw.OtpHash.Sha1,
+          issuer: options.issuer ?? 'MFKDF',
+          label: options.label ?? 'mfkdf.com'
         });
+        return wrapFactor(factor);
+      },
+      async totp(options: { secret?: ArrayBuffer | Buffer, id?: string, digits?: number, hash?: raw.OtpHash, issuer?: string, label?: string, window?: bigint, step?: bigint, time?: bigint, oracle?: number[] } = {}) {
+        const factor = await raw.setupTotp({
+          id: options.id,
+          secret: toArrayBuffer(options.secret),
+          digits: options.digits ?? 6,
+          hash: options.hash ?? raw.OtpHash.Sha1,
+          issuer: options.issuer ?? 'MFKDF',
+          label: options.label ?? 'mfkdf.com',
+          time: options.time ?? BigInt(Date.now()), // BUG: uniffi doesn't support optional integers
+          window: options.window ?? 87600n,
+          step: options.step ?? 30n,
+          oracle: options.oracle
+        });
+        return wrapFactor(factor);
       },
       async uuid(options: { uuid?: string, id?: string } = {}) {
-        const factor = await raw.setupUuid({ id: options.id, uuid: options.uuid });
+        const factor = await raw.setupUuid({
+          id: options.id,
+          uuid: options.uuid
+        });
+        return wrapFactor(factor);
+      },
+      async hmacsha1(options: { secret?: ArrayBuffer | Buffer, id?: string } = {}) {
+        const factor = await raw.setupHmacsha1({
+          id: options.id,
+          secret: toArrayBuffer(options.secret)
+        });
+        return wrapFactor(factor);
+      },
+      async question(answer: string, options: { question?: string, id?: string } = {}) {
+        const factor = await raw.setupQuestion(answer, {
+          id: options.id,
+          question: options.question
+        });
+        return wrapFactor(factor);
+      },
+      async ooba(options: { key: string, id?: string, length?: number, params?: string } = { key: '' }) {
+        const factor = await raw.setupOoba({
+          id: options.id ?? 'ooba',
+          key: options.key,
+          length: options.length ?? 6,
+          params: options.params
+        });
+        return wrapFactor(factor);
+      },
+      async passkey(secret: ArrayBuffer | Buffer, options: { id?: string } = {}) {
+        const factor = await raw.setupPasskey(toArrayBuffer(secret) || new Uint8Array(32).buffer, {
+          id: options.id,
+        });
+        return wrapFactor(factor);
+      },
+      async stack(factors: raw.Mfkdf2Factor[], options: { id?: string, threshold?: number, salt?: ArrayBuffer | Buffer | Uint8Array } = {}) {
+        const factor = await raw.setupStack(factors, {
+          id: options.id,
+          threshold: options.threshold,
+          salt: toArrayBuffer(options.salt)
+        });
         return wrapFactor(factor);
       }
     },
     async key(
-      factors: any[],
-      options: { id?: string; threshold?: number; salt?: ArrayBuffer } = {}
+      factors: raw.Mfkdf2Factor[],
+      options: { id?: string; threshold?: number; salt?: ArrayBuffer | Buffer | Uint8Array } = {}
     ) {
       const key = await raw.key(factors, {
         id: options.id,
         threshold: options.threshold,
-        salt: options.salt,
+        salt: toArrayBuffer(options.salt),
         stack: undefined,
         integrity: undefined,
         time: undefined,
@@ -128,7 +196,7 @@ export const mfkdf = {
         return raw.deriveUuid(uuid);
       }
     },
-    async key(policy: any, factors: Record<string, any> | Map<string, any>) {
+    async key(policy: raw.Policy, factors: Record<string, any> | Map<string, any>) {
       // Unwrap policy proxy if needed
       const rawPolicy = policy.id ? policy : policy;
 

@@ -180,7 +180,7 @@ pub fn create_setup_factor(name: &str) -> mfkdf2::setup::factors::MFKDF2Factor {
     .unwrap(),
     "ooba" => mfkdf2::setup::factors::ooba::ooba(mfkdf2::setup::factors::ooba::OobaOptions {
       id:     Some("ooba_1".to_string()),
-      length: 8,
+      length: Some(8),
       key:    Some(TEST_JWK.to_string()),
       params: Some(r#"{"foo":"bar"}"#.to_string()),
     })

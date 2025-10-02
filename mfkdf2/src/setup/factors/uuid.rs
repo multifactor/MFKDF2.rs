@@ -54,8 +54,6 @@ pub fn uuid(options: UUIDOptions) -> MFKDF2Result<MFKDF2Factor> {
     return Err(crate::error::MFKDF2Error::MissingFactorId);
   }
 
-  println!("options: {:?}", options);
-
   let uuid = options.uuid.unwrap_or(Uuid::new_v4());
 
   let mut salt = [0u8; 32];
