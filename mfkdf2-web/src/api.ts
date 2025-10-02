@@ -22,6 +22,15 @@ function toArrayBuffer(input: ArrayBuffer | Buffer | Uint8Array | undefined): Ar
   return view.buffer.slice(view.byteOffset, view.byteOffset + view.byteLength) as ArrayBuffer;
 }
 
+// Helper to convert Buffer/Uint8Array to ArrayBuffer for UniFFI
+function toArrayBuffer(input: ArrayBuffer | Buffer | Uint8Array | undefined): ArrayBuffer | undefined {
+  if (input === undefined) return undefined;
+  if (input instanceof ArrayBuffer) return input;
+  // Buffer and Uint8Array have .buffer property, but may be a view with offset
+  const view = input as Uint8Array;
+  return view.buffer.slice(view.byteOffset, view.byteOffset + view.byteLength) as ArrayBuffer;
+}
+
 // Wrap factor to add ergonomic API
 function wrapFactor(factor: raw.Mfkdf2Factor): any {
   const getKind = () => raw.factorTypeKind(factor.factorType);
