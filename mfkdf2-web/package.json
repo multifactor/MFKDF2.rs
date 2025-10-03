@@ -34,6 +34,7 @@
     "dist/"
   ],
   "dependencies": {
+    "speakeasy": "^2.0.0",
     "uniffi-bindgen-react-native": "^0.29.3-1"
   },
   "devDependencies": {

@@ -29,7 +29,7 @@ suite('mfkdf2 bindings', () => {
     derived.should.have.property('key');
 
     console.log('Creating derive password factor...');
-    const deriveFactor = mfkdf.derive.factors.password('Tr0ubd4dour');
+    const deriveFactor = await mfkdf.derive.factors.password('Tr0ubd4dour');
     const factors = new Map([[factor.id, deriveFactor]]);
     console.log('Derive factors prepared with keys:', Array.from(factors.keys()));
     factors.should.be.an('Map');

@@ -56,21 +56,14 @@ function wrapFactor(factor: raw.Mfkdf2Factor): any {
 
 // Wrap policy to add $id property for JSON schema compatibility
 function wrapPolicy(policy: any): any {
-  if (!policy) return policy;
-  return new Proxy(policy, {
-    get(target, prop) {
-      if (prop === '$id') return target.id;
-      return target[prop];
-    },
-    set(target, prop, value) {
-      if (prop === '$id') {
-        target.id = value;
-        return true;
-      }
-      target[prop] = value;
-      return true;
-    }
-  });
+  const wrapped = {
+    ...policy,
+    $id: policy.id,
+    $schema: policy.schema
+  };
+  delete wrapped.id;
+  delete wrapped.schema;
+  return wrapped;
 }
 
 // Wrap derived key to add $id to policy
@@ -79,11 +72,25 @@ function wrapDerivedKey(key: raw.Mfkdf2DerivedKey): any {
     ...key,
     policy: wrapPolicy(key.policy),
     // Add entropyBits alias for compatibility
+    get key() {
+      return toBuffer(key.key);
+    },
+    get secret() {
+      return toBuffer(key.secret);
+    },
+    get shares() {
+      return key.shares.map(share => toBuffer(share));
+    },
+    // TODO (@lonerapier): check what other fields need to be casted
     get entropyBits() {
       return key.entropy;
+    },
+    get outputs() {
+      return Object.fromEntries(Array.from(key.outputs.entries()).map(([key, value]) => [key, JSON.parse(value)]));
     }
-  };
-}
+
+  }
+};
 
 export const mfkdf = {
   setup: {
@@ -169,48 +176,64 @@ export const mfkdf = {
     },
     async key(
       factors: raw.Mfkdf2Factor[],
-      options: { id?: string; threshold?: number; salt?: ArrayBuffer | Buffer | Uint8Array } = {}
+      options: { id?: string; threshold?: number; salt?: ArrayBuffer | Buffer | Uint8Array, stack?: boolean, integrity?: boolean, time?: number, memory?: number } = {}
     ) {
       const key = await raw.key(factors, {
         id: options.id,
         threshold: options.threshold,
         salt: toArrayBuffer(options.salt),
-        stack: undefined,
-        integrity: undefined,
-        time: undefined,
-        memory: undefined
+        stack: options.stack,
+        integrity: options.integrity,
+        time: options.time,
+        memory: options.memory
       });
       return wrapDerivedKey(key);
     }
   },
-
   derive: {
     factors: {
-      password(password: string) {
-        return raw.derivePassword(password);
+      async password(password: string) {
+        return wrapFactor(await raw.derivePassword(password));
       },
-      hotp(code: number) {
-        return raw.deriveHotp(code);
+      async hotp(code: number) {
+        return wrapFactor(await raw.deriveHotp(code));
       },
-      uuid(uuid: string) {
-        return raw.deriveUuid(uuid);
+      async uuid(uuid: string) {
+        return wrapFactor(await raw.deriveUuid(uuid));
+      },
+      async hmacsha1(response: ArrayBuffer) {
+        return wrapFactor(await raw.deriveHmacsha1(response));
+      },
+      async question(answer: string) {
+        return wrapFactor(await raw.deriveQuestion(answer));
+      },
+      async ooba(code: string) {
+        return wrapFactor(await raw.deriveOoba(code));
+      },
+      async passkey(secret: ArrayBuffer | Buffer) {
+        return wrapFactor(await raw.derivePasskey(toArrayBuffer(secret) || new Uint8Array(32).buffer)); // TODO (@lonerapier): fix
+      },
+      async stack(factors: Record<string, any> | Map<string, any>) {
+        // Convert object to Map if needed
+        const factorMap = factors instanceof Map
+          ? factors
+          : new Map(Object.entries(factors));
+        return wrapFactor(await raw.deriveStack(factorMap));
+      },
+      async totp(code: number, options?: raw.TotpOptions) {
+        return wrapFactor(await raw.deriveTotp(code, options));
       }
     },
-    async key(policy: raw.Policy, factors: Record<string, any> | Map<string, any>) {
-      // Unwrap policy proxy if needed
-      const rawPolicy = policy.id ? policy : policy;
-
+    async key(policy: raw.Policy, factors: Record<string, any> | Map<string, any>, verify?: boolean, stack?: boolean) {
       // Convert object to Map if needed
       const factorMap = factors instanceof Map
         ? factors
         : new Map(Object.entries(factors));
 
-      // Use derive with default verify=true
-      const key = raw.derive(rawPolicy, factorMap, true);
+      const key = await raw.deriveKey(policy, factorMap, verify, stack);
       return wrapDerivedKey(key);
     }
   },
-
   secrets: {
     share(secret: ArrayBuffer, threshold: number, shares: number): ArrayBuffer[] {
       // Placeholder - implement if needed in Rust

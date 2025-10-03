@@ -32,4 +32,4 @@ pub fn passkey(secret: Vec<u8>) -> MFKDF2Result<MFKDF2Factor> {
 }
 
 #[uniffi::export]
-pub fn derive_passkey(secret: Vec<u8>) -> MFKDF2Result<MFKDF2Factor> { passkey(secret) }
+pub async fn derive_passkey(secret: Vec<u8>) -> MFKDF2Result<MFKDF2Factor> { passkey(secret) }

@@ -98,7 +98,7 @@ pub fn key(
 
   let sharks = Sharks(policy.threshold);
   let secret = sharks
-    .recover(&shares_vec.clone().into_iter().filter_map(|opt| opt).collect::<Vec<Share>>())
+    .recover(&shares_vec.clone().into_iter().flatten().collect::<Vec<Share>>())
     .map_err(|_| MFKDF2Error::ShareRecoveryError)?;
   let secret_arr: [u8; 32] = secret[..32].try_into().map_err(|_| MFKDF2Error::TryFromVecError)?;
   let salt_bytes = general_purpose::STANDARD.decode(&policy.salt)?;
