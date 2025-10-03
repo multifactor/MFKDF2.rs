@@ -48,3 +48,10 @@ impl Policy {
     set.len() == list.len()
   }
 }
+
+// TODO (@lonerapier): investigate why direct impl export doesn't work
+#[uniffi::export(name = "policy_ids")]
+pub fn ids(policy: &Policy) -> Vec<String> { policy.ids() }
+
+#[uniffi::export(name = "policy_validate")]
+pub fn validate(policy: &Policy) -> bool { policy.validate() }

@@ -3,6 +3,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 
 use crate::{
+  definitions::key::Key,
   error::{MFKDF2Error, MFKDF2Result},
   setup::factors::{FactorMetadata, FactorSetup, FactorType, MFKDF2Factor},
 };
@@ -19,9 +20,9 @@ impl FactorMetadata for Passkey {
 impl FactorSetup for Passkey {
   fn bytes(&self) -> Vec<u8> { self.secret.clone() }
 
-  fn params(&self, _key: [u8; 32]) -> Value { json!({}) }
+  fn params(&self, _key: Key) -> Value { json!({}) }
 
-  fn output(&self, _key: [u8; 32]) -> Value { json!({}) }
+  fn output(&self, _key: Key) -> Value { json!({}) }
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, uniffi::Record)]
@@ -53,6 +54,6 @@ pub fn passkey(secret: Vec<u8>, options: PasskeyOptions) -> MFKDF2Result<MFKDF2F
 }
 
 #[uniffi::export]
-pub fn setup_passkey(secret: Vec<u8>, options: PasskeyOptions) -> MFKDF2Result<MFKDF2Factor> {
+pub async fn setup_passkey(secret: Vec<u8>, options: PasskeyOptions) -> MFKDF2Result<MFKDF2Factor> {
   crate::setup::factors::passkey::passkey(secret, options)
 }

@@ -1,4 +1,4 @@
-use std::time::SystemTime;
+use std::time::{SystemTime, UNIX_EPOCH};
 
 use base64::Engine;
 use rand::{Rng, RngCore, rngs::OsRng};
@@ -7,6 +7,7 @@ use serde_json::{Value, json};
 
 use crate::{
   crypto::encrypt,
+  definitions::key::Key,
   error::MFKDF2Result,
   setup::factors::{
     FactorMetadata, FactorSetup, FactorType, MFKDF2Factor,
@@ -22,7 +23,7 @@ pub struct TOTPOptions {
   pub hash:   OTPHash,
   pub issuer: String,
   pub label:  String,
-  pub time:   Option<SystemTime>,
+  pub time:   Option<u64>, // Unix epoch time in milliseconds
   pub window: u64,
   pub step:   u64,
   pub oracle: Option<Vec<u32>>,
@@ -30,6 +31,8 @@ pub struct TOTPOptions {
 
 impl Default for TOTPOptions {
   fn default() -> Self {
+    let now_ms = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_millis() as u64;
+
     Self {
       id:     Some("totp".to_string()),
       secret: None,
@@ -37,7 +40,7 @@ impl Default for TOTPOptions {
       hash:   OTPHash::Sha1,
       issuer: "MFKDF".to_string(),
       label:  "mfkdf.com".to_string(),
-      time:   Some(SystemTime::now()),
+      time:   Some(now_ms),
       window: 87600,
       step:   30,
       oracle: None,
@@ -62,9 +65,8 @@ impl FactorMetadata for TOTP {
 impl FactorSetup for TOTP {
   fn bytes(&self) -> Vec<u8> { self.target.to_be_bytes().to_vec() }
 
-  fn params(&self, key: [u8; 32]) -> Value {
-    let time =
-      self.options.time.unwrap().duration_since(SystemTime::UNIX_EPOCH).unwrap().as_millis();
+  fn params(&self, key: Key) -> Value {
+    let time = self.options.time.unwrap() as u128;
     let mut offsets = Vec::with_capacity((4 * self.options.window) as usize);
     let padded_secret = self.options.secret.as_ref().unwrap();
 
@@ -84,7 +86,7 @@ impl FactorSetup for TOTP {
       offsets.extend_from_slice(&offset.to_be_bytes());
     }
 
-    let pad = encrypt(padded_secret, &key);
+    let pad = encrypt(padded_secret, &key.0);
 
     json!({
         "start": time,
@@ -101,7 +103,7 @@ impl FactorSetup for TOTP {
     })
   }
 
-  fn output(&self, _key: [u8; 32]) -> Value {
+  fn output(&self, _key: Key) -> Value {
     json!({
       "scheme": "otpauth",
       "type": "totp",
@@ -153,7 +155,8 @@ pub fn totp(options: TOTPOptions) -> MFKDF2Result<MFKDF2Factor> {
   options.secret = Some(padded_secret);
 
   if options.time.is_none() {
-    options.time = Some(SystemTime::now());
+    let now_ms = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_millis() as u64;
+    options.time = Some(now_ms);
   }
 
   // Generate random target
@@ -177,10 +180,11 @@ pub fn totp(options: TOTPOptions) -> MFKDF2Result<MFKDF2Factor> {
   })
 }
 
+#[uniffi::export]
+pub async fn setup_totp(options: TOTPOptions) -> MFKDF2Result<MFKDF2Factor> { totp(options) }
+
 #[cfg(test)]
 mod tests {
-  use std::time::Duration;
-
   use super::*;
   use crate::{crypto::decrypt, error::MFKDF2Error};
 
@@ -189,8 +193,7 @@ mod tests {
       id: Some("test".to_string()),
       digits: 8,
       secret: Some(b"my-super-secret-1234".to_vec()), // 31 bytes
-      time: Some(SystemTime::UNIX_EPOCH + Duration::from_secs(1672531200)), /* 2023-01-01
-                                                       * 00:00:00 UTC */
+      time: Some(1672531200000),                      // 2023-01-01 00:00:00 UTC in milliseconds
       ..Default::default()
     };
 
@@ -286,7 +289,7 @@ mod tests {
       _ => panic!("Factor type should be TOTP"),
     };
 
-    let params = totp_factor.params(key);
+    let params = totp_factor.params(key.into());
     assert!(params.is_object());
 
     assert_eq!(params["start"], 1672531200000_u64);
@@ -316,7 +319,7 @@ mod tests {
       _ => panic!("Factor type should be TOTP"),
     };
 
-    let output = totp_factor.output(key);
+    let output = totp_factor.output(key.into());
     assert!(output.is_object());
 
     assert_eq!(output["scheme"], "otpauth");

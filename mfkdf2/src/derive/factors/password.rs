@@ -2,6 +2,7 @@ use serde_json::{Value, json};
 use zxcvbn::zxcvbn;
 
 use crate::{
+  definitions::key::Key,
   derive::FactorDerive,
   error::{MFKDF2Error, MFKDF2Result},
   setup::factors::{FactorType, MFKDF2Factor, password::Password},
@@ -9,7 +10,7 @@ use crate::{
 impl FactorDerive for Password {
   fn include_params(&mut self, _params: Value) -> MFKDF2Result<()> { Ok(()) }
 
-  fn params(&self, _key: [u8; 32]) -> Value { json!({}) }
+  fn params(&self, _key: Key) -> Value { json!({}) }
 
   fn output(&self) -> Value { json!({"strength": zxcvbn(&self.password, &[])}) }
 }
@@ -34,7 +35,7 @@ pub fn password(password: impl Into<String>) -> MFKDF2Result<MFKDF2Factor> {
 }
 
 #[uniffi::export]
-pub fn derive_password(password: String) -> MFKDF2Result<MFKDF2Factor> {
+pub async fn derive_password(password: String) -> MFKDF2Result<MFKDF2Factor> {
   crate::derive::factors::password::password(password)
 }
 
@@ -59,8 +60,8 @@ mod tests {
     match &factor.factor_type {
       FactorType::Password(p) => {
         assert_eq!(p.password, "hello");
-        assert_eq!(factor.factor_type.bytes(), "hello".as_bytes());
-        let params: Value = <Password as FactorSetup>::params(p, [0u8; 32]);
+        assert_eq!(factor.data(), "hello".as_bytes());
+        let params: Value = <Password as FactorSetup>::params(p, [0u8; 32].into());
         // TODO: fix this
         // let output = p.output_derive();
         // let strength: Entropy = serde_json::from_value(output["strength"].clone()).unwrap();

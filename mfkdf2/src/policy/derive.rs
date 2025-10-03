@@ -2,7 +2,7 @@ use std::collections::{HashMap, HashSet};
 
 use crate::{
   definitions::mfkdf_derived_key::MFKDF2DerivedKey,
-  derive::{factors::stack::stack as create_stack_factor, key::derive_key},
+  derive::factors::stack::stack as create_stack_factor,
   error::{MFKDF2Error, MFKDF2Result},
   policy::{Policy, evaluate::evaluate_internal},
   setup::factors::MFKDF2Factor,
@@ -34,7 +34,7 @@ fn expand(
   Ok(parsed_factors)
 }
 
-#[uniffi::export]
+#[uniffi::export(name = "policy_derive")]
 pub fn derive(
   policy: Policy,
   factors: HashMap<String, MFKDF2Factor>,
@@ -51,5 +51,5 @@ pub fn derive(
 
   let expanded_factors = expand(&policy, &factors, &factor_set)?;
 
-  derive_key(policy, expanded_factors, verify.unwrap_or(true), false)
+  crate::derive::key::key(policy, expanded_factors, verify.unwrap_or(true), false)
 }

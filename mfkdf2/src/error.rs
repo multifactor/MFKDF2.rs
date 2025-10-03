@@ -31,6 +31,9 @@ pub enum MFKDF2Error {
   #[error("share recovery failed!")]
   ShareRecoveryError,
 
+  #[error("invalid key length")]
+  InvalidKeyLength,
+
   #[error("invalid secret length for factor {0}")]
   InvalidSecretLength(String),
 

@@ -4,6 +4,7 @@ use serde_json::{Value, json};
 
 use crate::{
   crypto::encrypt,
+  definitions::key::Key,
   error::MFKDF2Result,
   setup::factors::{FactorMetadata, FactorSetup, FactorType, MFKDF2Factor},
 };
@@ -20,22 +21,6 @@ impl Default for HmacSha1Options {
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct HmacSha1Response(pub [u8; 20]);
-
-uniffi::custom_type!(HmacSha1Response, Vec<u8>, {
-  lower: |r| r.0.to_vec(),
-  try_lift: |v: Vec<u8>| {
-    if v.len() == 20 {
-      let mut arr = [0u8; 20];
-      arr.copy_from_slice(&v);
-      Ok(HmacSha1Response(arr))
-    } else {
-      Err(uniffi::deps::anyhow::anyhow!(
-        "Expected Vec<u8> of length 20, got {}",
-        v.len()
-      ))
-    }
-  }
-});
 
 impl From<[u8; 20]> for HmacSha1Response {
   fn from(value: [u8; 20]) -> Self { HmacSha1Response(value) }
@@ -55,7 +40,7 @@ impl FactorMetadata for HmacSha1 {
 impl FactorSetup for HmacSha1 {
   fn bytes(&self) -> Vec<u8> { self.padded_secret[..20].to_vec() }
 
-  fn params(&self, _key: [u8; 32]) -> Value {
+  fn params(&self, _key: Key) -> Value {
     let mut challenge = [0u8; 64];
     OsRng.fill_bytes(&mut challenge);
 
@@ -70,7 +55,7 @@ impl FactorSetup for HmacSha1 {
     })
   }
 
-  fn output(&self, _key: [u8; 32]) -> Value {
+  fn output(&self, _key: Key) -> Value {
     json!({
       "secret": self.padded_secret[..20],
     })
@@ -106,7 +91,9 @@ pub fn hmacsha1(options: HmacSha1Options) -> MFKDF2Result<MFKDF2Factor> {
 }
 
 #[uniffi::export]
-pub fn setup_hmacsha1(options: HmacSha1Options) -> MFKDF2Result<MFKDF2Factor> { hmacsha1(options) }
+pub async fn setup_hmacsha1(options: HmacSha1Options) -> MFKDF2Result<MFKDF2Factor> {
+  hmacsha1(options)
+}
 
 #[cfg(test)]
 mod tests {
@@ -128,11 +115,11 @@ mod tests {
     let factor = mock_construction();
 
     assert_eq!(factor.kind(), "hmacsha1");
-    assert_eq!(factor.id.unwrap(), "test");
-    assert_eq!(factor.factor_type.bytes(), SECRET.to_vec());
+    assert_eq!(factor.id, Some("test".to_string()));
+    assert_eq!(factor.data(), SECRET.to_vec());
 
     // Get the challenge and pad from params
-    let params = factor.factor_type.setup().params([0u8; 32]);
+    let params = factor.factor_type.setup().params([0u8; 32].into());
     let challenge = hex::decode(params["challenge"].as_str().unwrap()).unwrap();
     let pad = hex::decode(params["pad"].as_str().unwrap()).unwrap();
 
@@ -156,17 +143,17 @@ mod tests {
   fn random_secret() {
     let factor = hmacsha1(HmacSha1Options { id: None, secret: None }).unwrap();
     assert_eq!(factor.kind(), "hmacsha1");
-    assert_eq!(factor.id.unwrap(), "hmacsha1");
-    assert_eq!(factor.factor_type.bytes().len(), 20); // Secret should be 20 bytes
-    assert!(factor.factor_type.setup().params([0u8; 32]).is_object());
-    assert!(factor.factor_type.output([0u8; 32]).is_object());
+    assert_eq!(factor.id, Some("hmacsha1".to_string()));
+    assert_eq!(factor.data().len(), 20); // Secret should be 20 bytes
+    assert!(factor.factor_type.setup().params([0u8; 32].into()).is_object());
+    assert!(factor.factor_type.output([0u8; 32].into()).is_object());
     assert_eq!(factor.entropy, Some(160)); // 20 bytes * 8 bits = 160 bits
   }
 
   #[test]
   fn output_setup() {
     let factor = mock_construction();
-    let output = factor.factor_type.output([0u8; 32]);
+    let output = factor.factor_type.output([0u8; 32].into());
     let secret = output["secret"]
       .as_array()
       .unwrap()
@@ -174,7 +161,7 @@ mod tests {
       .map(|v| v.as_u64().unwrap() as u8)
       .collect::<Vec<u8>>();
 
-    assert_eq!(secret, factor.factor_type.bytes());
+    assert_eq!(secret, factor.data());
   }
 
   #[test]
