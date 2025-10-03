@@ -240,7 +240,6 @@ export const mfkdf = {
       return wrapDerivedKey(key);
     }
   },
-
   derive: {
     factors: {
       async password(password: string) {
@@ -291,7 +290,6 @@ export const mfkdf = {
       return wrapDerivedKey(key);
     }
   },
-
   secrets: {
     share(secret: ArrayBuffer, threshold: number, shares: number): ArrayBuffer[] {
       // Placeholder - implement if needed in Rust
