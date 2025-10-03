@@ -1514,8 +1514,7 @@ dependencies = [
 [[package]]
 name = "sharks"
 version = "0.5.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "902b1e955f8a2e429fb1bad49f83fb952e6195d3c360ac547ff00fb826388753"
+source = "git+https://github.com/multifactor/gf256sss#4722e3f07b5b278e689969eb955299be03554bc1"
 dependencies = [
  "hashbrown 0.9.1",
  "rand",
