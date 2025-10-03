@@ -30,3 +30,6 @@ pub fn passkey(secret: Vec<u8>) -> MFKDF2Result<MFKDF2Factor> {
     entropy:     None,
   })
 }
+
+#[uniffi::export]
+pub fn derive_passkey(secret: Vec<u8>) -> MFKDF2Result<MFKDF2Factor> { passkey(secret) }

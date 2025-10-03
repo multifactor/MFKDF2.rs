@@ -45,7 +45,7 @@ pub fn question(answer: impl Into<String>) -> MFKDF2Result<MFKDF2Factor> {
 }
 
 #[uniffi::export]
-pub fn derive_question(answer: String) -> MFKDF2Result<MFKDF2Factor> { question(answer) }
+pub async fn derive_question(answer: String) -> MFKDF2Result<MFKDF2Factor> { question(answer) }
 
 #[cfg(test)]
 mod tests {

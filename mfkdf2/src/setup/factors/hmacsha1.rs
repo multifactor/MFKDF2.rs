@@ -22,22 +22,6 @@ impl Default for HmacSha1Options {
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct HmacSha1Response(pub [u8; 20]);
 
-uniffi::custom_type!(HmacSha1Response, Vec<u8>, {
-  lower: |r| r.0.to_vec(),
-  try_lift: |v: Vec<u8>| {
-    if v.len() == 20 {
-      let mut arr = [0u8; 20];
-      arr.copy_from_slice(&v);
-      Ok(HmacSha1Response(arr))
-    } else {
-      Err(uniffi::deps::anyhow::anyhow!(
-        "Expected Vec<u8> of length 20, got {}",
-        v.len()
-      ))
-    }
-  }
-});
-
 impl From<[u8; 20]> for HmacSha1Response {
   fn from(value: [u8; 20]) -> Self { HmacSha1Response(value) }
 }

@@ -35,12 +35,6 @@ pub trait FactorSetup: Send + Sync {
   fn output(&self, key: Key) -> Value;
 }
 
-uniffi::custom_type!(Value, String, {
-  remote,
-  lower: |v| serde_json::to_string(&v).expect("serialize Value"),
-  try_lift: |s: String| Ok(serde_json::from_str(&s)?),
-});
-
 // TODO (@lonerapier): move factor to its own module
 #[derive(Clone, Serialize, Deserialize, uniffi::Record)]
 pub struct MFKDF2Factor {
@@ -99,7 +93,9 @@ impl FactorType {
       FactorType::Stack(stack) => stack.kind(),
     }
   }
+}
 
+impl FactorType {
   pub fn setup(&self) -> &dyn FactorSetup {
     match self {
       FactorType::Password(password) => password,

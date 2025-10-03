@@ -35,7 +35,7 @@ pub fn password(password: impl Into<String>) -> MFKDF2Result<MFKDF2Factor> {
 }
 
 #[uniffi::export]
-pub fn derive_password(password: String) -> MFKDF2Result<MFKDF2Factor> {
+pub async fn derive_password(password: String) -> MFKDF2Result<MFKDF2Factor> {
   crate::derive::factors::password::password(password)
 }
 

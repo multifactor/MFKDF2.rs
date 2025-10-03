@@ -99,12 +99,12 @@ pub fn hotp(code: u32) -> MFKDF2Result<MFKDF2Factor> {
 }
 
 #[uniffi::export]
-pub fn derive_hotp(code: u32) -> MFKDF2Result<MFKDF2Factor> { hotp(code) }
+pub async fn derive_hotp(code: u32) -> MFKDF2Result<MFKDF2Factor> { hotp(code) }
 
 #[cfg(test)]
 mod tests {
   use super::*;
-  use crate::setup::factors::hotp::hotp as setup_hotp;
+  use crate::{derive::factors::hotp as derive_hotp, setup::factors::hotp as setup_hotp};
 
   #[test]
   fn hotp_round_trip() {

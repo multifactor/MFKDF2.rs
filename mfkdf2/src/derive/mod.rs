@@ -56,3 +56,18 @@ impl FactorDerive for FactorType {
 
   fn output(&self) -> Value { self.derive().output() }
 }
+
+// #[uniffi::export]
+// pub fn derive_factor_include_params(
+//   factor: std::sync::Arc<std::sync::Mutex<FactorType>>,
+//   params: Value,
+// ) -> MFKDF2Result<()> {
+//   let mut factor_mut = factor.lock().unwrap();
+//   factor_mut.include_params(params)
+// }
+
+#[uniffi::export]
+pub fn derive_factor_params(factor: &FactorType, key: Key) -> Value { factor.params(key) }
+
+#[uniffi::export]
+pub fn derive_factor_output(factor: &FactorType) -> Value { factor.output() }

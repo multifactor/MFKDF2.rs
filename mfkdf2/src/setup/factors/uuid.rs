@@ -24,12 +24,6 @@ pub struct UUIDFactor {
   pub uuid: Uuid,
 }
 
-uniffi::custom_type!(Uuid, String, {
-  remote,
-  lower: |v| v.to_string(),
-  try_lift: |s: String| Uuid::parse_str(&s).map_err(uniffi::deps::anyhow::Error::msg),
-});
-
 impl FactorMetadata for UUIDFactor {
   fn kind(&self) -> String { "uuid".to_string() }
 }

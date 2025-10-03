@@ -7,7 +7,7 @@ use crate::{
   },
 };
 
-#[uniffi::export]
+#[uniffi::export(name = "policy_setup")]
 pub async fn setup(factor: MFKDF2Factor, options: MFKDF2Options) -> MFKDF2Result<MFKDF2DerivedKey> {
   let derived_key = setup_key(vec![factor], options).await?;
 

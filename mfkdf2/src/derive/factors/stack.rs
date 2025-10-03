@@ -40,13 +40,18 @@ pub fn stack(factors: HashMap<String, MFKDF2Factor>) -> MFKDF2Result<MFKDF2Facto
   })
 }
 
+#[uniffi::export]
+pub async fn derive_stack(factors: HashMap<String, MFKDF2Factor>) -> MFKDF2Result<MFKDF2Factor> {
+  stack(factors)
+}
+
 #[cfg(test)]
 mod tests {
   use std::collections::HashMap;
 
   use super::*;
   use crate::{
-    derive::factors::password::derive_password,
+    derive::factors::password::password,
     setup::{
       factors::{
         password::{PasswordOptions, password as setup_password},
@@ -78,8 +83,8 @@ mod tests {
   async fn derive_stack_round_trip() {
     let setup_derived_key = setup_test_stack().await;
 
-    let derive_factor1 = derive_password("password123".to_string()).unwrap();
-    let derive_factor2 = derive_password("password456".to_string()).unwrap();
+    let derive_factor1 = password("password123".to_string()).unwrap();
+    let derive_factor2 = password("password456".to_string()).unwrap();
 
     let mut derive_factors = HashMap::new();
     derive_factors.insert("pwd1".to_string(), derive_factor1);
@@ -112,8 +117,7 @@ mod tests {
   #[tokio::test]
   async fn derive_stack_invalid_params() {
     let mut derive_stack_factor =
-      stack(HashMap::from([("pwd1".to_string(), derive_password("p".to_string()).unwrap())]))
-        .unwrap();
+      stack(HashMap::from([("pwd1".to_string(), password("p".to_string()).unwrap())])).unwrap();
 
     let invalid_params = json!("not a policy");
     let result = derive_stack_factor.factor_type.include_params(invalid_params);

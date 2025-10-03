@@ -97,7 +97,7 @@ pub fn ooba(code: String) -> MFKDF2Result<MFKDF2Factor> {
 }
 
 #[uniffi::export]
-pub fn derive_ooba(code: String) -> MFKDF2Result<MFKDF2Factor> { ooba(code) }
+pub async fn derive_ooba(code: String) -> MFKDF2Result<MFKDF2Factor> { ooba(code) }
 
 #[cfg(test)]
 mod tests {
