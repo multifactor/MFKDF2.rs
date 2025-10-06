@@ -265,8 +265,12 @@ export const mfkdf = {
           : new Map(Object.entries(factors));
         return wrapDeriveFactor(await raw.deriveStack(factorMap));
       },
-      async totp(code: number, options?: raw.TotpOptions) {
-        return wrapDeriveFactor(await raw.deriveTotp(code, options));
+      async totp(code: number, options?: { time?: bigint, oracle?: number[] }) {
+        const factor = await raw.deriveTotp(code, {
+          time: options?.time,
+          oracle: options?.oracle
+        });
+        return wrapDeriveFactor(factor);
       }
     },
     async key(policy: any, factors: Record<string, any> | Map<string, any>, verify?: boolean, stack?: boolean) {
