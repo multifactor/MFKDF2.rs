@@ -25,7 +25,7 @@ suite('mfkdf2 bindings', () => {
     const derived = await mfkdf.setup.key([factor]);
     console.log('Key created. Policy ID:', derived.policy.id);
     derived.should.have.property('policy');
-    derived.policy.should.have.property('id');
+    derived.policy.should.have.property('$id');
     derived.should.have.property('key');
 
     console.log('Creating derive password factor...');

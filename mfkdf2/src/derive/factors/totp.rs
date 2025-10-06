@@ -19,22 +19,15 @@ use crate::{
   },
 };
 
-#[derive(Clone, Debug, Serialize, Deserialize, uniffi::Record)]
+#[derive(Clone, Debug, Serialize, Deserialize, uniffi::Record, Default)]
 pub struct TOTPDeriveOptions {
   pub time:   Option<u64>,
   pub oracle: Option<Vec<u32>>,
 }
 
-impl Default for TOTPDeriveOptions {
-  fn default() -> Self { Self { time: None, oracle: None } }
-}
-
 impl From<TOTPDeriveOptions> for TOTPOptions {
   fn from(options: TOTPDeriveOptions) -> Self {
-    let mut totp_options = TOTPOptions::default();
-    totp_options.time = options.time;
-    totp_options.oracle = options.oracle;
-    totp_options
+    TOTPOptions { time: options.time, oracle: options.oracle, ..Default::default() }
   }
 }
 
@@ -188,7 +181,6 @@ pub async fn derive_totp(
   code: u32,
   options: Option<TOTPDeriveOptions>,
 ) -> MFKDF2Result<MFKDF2Factor> {
-  log::debug!("derive_totp options: {:?}", options);
   totp(code, options)
 }
 
