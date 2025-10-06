@@ -82,13 +82,14 @@ function wrapPolicy(policy: any): any {
     $id: policy.id,
     $schema: policy.schema
   };
+  delete wrapped.id;
+  delete wrapped.schema;
+
   for (const factor of wrapped.factors) {
     factor.type = factor.type ?? factor.kind;
     delete factor.kind;
     factor.params = JSON.parse(factor.params);
   }
-  delete wrapped.id;
-  delete wrapped.schema;
 
   for (const factor of wrapped.factors) {
     factor.type = factor.type ?? factor.kind;

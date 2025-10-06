@@ -45,22 +45,26 @@ suite('factors/uuid', () => {
       uuid1: await mfkdf.derive.factors.uuid('9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6d'),
       uuid2: await mfkdf.derive.factors.uuid('1b9d6bcd-bbfd-4b2d-9b5d-ab8dfbbd4bed')
     });
+    JSON.stringify(setupPolicy).should.equal(JSON.stringify(derive1.policy));
 
     const derive2 = await mfkdf.derive.key(setup.policy, {
       uuid2: await mfkdf.derive.factors.uuid('1b9d6bcd-bbfd-4b2d-9b5d-ab8dfbbd4bed'),
       uuid3: await mfkdf.derive.factors.uuid('6ec0bd7f-11c0-43da-975e-2a8ad9ebae0b')
     });
+    JSON.stringify(setupPolicy).should.equal(JSON.stringify(derive2.policy));
 
     const derive3 = await mfkdf.derive.key(setup.policy, {
       uuid1: await mfkdf.derive.factors.uuid('9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6d'),
       uuid3: await mfkdf.derive.factors.uuid('6ec0bd7f-11c0-43da-975e-2a8ad9ebae0b')
     });
+    JSON.stringify(setupPolicy).should.equal(JSON.stringify(derive3.policy));
 
     const derive4 = await mfkdf.derive.key(setup.policy, {
       uuid1: await mfkdf.derive.factors.uuid('9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6d'),
       uuid2: await mfkdf.derive.factors.uuid('1b9d6bcd-bbfd-4b2d-9b5d-ab8dfbbd4bed'),
       uuid3: await mfkdf.derive.factors.uuid('6ec0bd7f-11c0-43da-975e-2a8ad9ebae0b')
     });
+    JSON.stringify(setupPolicy).should.equal(JSON.stringify(derive4.policy));
 
     setup.key.toString('hex').should.equal(derive1.key.toString('hex'));
     setup.key.toString('hex').should.equal(derive2.key.toString('hex'));
