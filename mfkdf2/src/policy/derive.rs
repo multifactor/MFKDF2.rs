@@ -35,7 +35,7 @@ fn expand(
 }
 
 #[uniffi::export(name = "policy_derive")]
-pub fn derive(
+pub async fn derive(
   policy: Policy,
   factors: HashMap<String, MFKDF2Factor>,
   verify: Option<bool>,

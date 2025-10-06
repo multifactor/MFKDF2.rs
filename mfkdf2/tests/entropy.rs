@@ -1,4 +1,7 @@
-use mfkdf2::setup::{factors::password::PasswordOptions, key::MFKDF2Options};
+use mfkdf2::{
+  policy::setup::PolicySetupOptions,
+  setup::{factors::password::PasswordOptions, key::MFKDF2Options},
+};
 
 fn floor_log2(x: f64) -> i64 { x.log2().floor() as i64 }
 
@@ -121,7 +124,7 @@ async fn entropy_policy_combinators() -> Result<(), mfkdf2::error::MFKDF2Error> 
       .await?,
     )
     .await?,
-    MFKDF2Options::default(),
+    PolicySetupOptions::default(),
   )
   .await?;
 

@@ -100,6 +100,8 @@ suite('derive/key', () => {
       ],
       { threshold: 2 }
     )
+    // Deep clone the policy as policy.$id and policy.$schema are deleted during unwrapping
+    const setupPolicy = JSON.parse(JSON.stringify(setup.policy));
 
     const derive1 = await mfkdf.derive.key(setup.policy, {
       password1: await mfkdf.derive.factors.password('password1'),
@@ -127,10 +129,10 @@ suite('derive/key', () => {
     setup.key.toString('hex').should.equal(derive3.key.toString('hex'))
     setup.key.toString('hex').should.equal(derive4.key.toString('hex'))
 
-    JSON.stringify(setup.policy).should.equal(JSON.stringify(derive1.policy))
-    JSON.stringify(setup.policy).should.equal(JSON.stringify(derive2.policy))
-    JSON.stringify(setup.policy).should.equal(JSON.stringify(derive3.policy))
-    JSON.stringify(setup.policy).should.equal(JSON.stringify(derive4.policy))
+    JSON.stringify(setupPolicy).should.equal(JSON.stringify(derive1.policy))
+    JSON.stringify(setupPolicy).should.equal(JSON.stringify(derive2.policy))
+    JSON.stringify(setupPolicy).should.equal(JSON.stringify(derive3.policy))
+    JSON.stringify(setupPolicy).should.equal(JSON.stringify(derive4.policy))
   })
 
   test('incorrect', async () => {

@@ -303,6 +303,44 @@ export const mfkdf = {
       }
       return validShares[0];
     }
+  },
+  policy: {
+    async validate(policy: any) {
+      return raw.policyValidate(unwrapPolicy(policy));
+    },
+    async setup(factor: raw.Mfkdf2Factor, options?: { id?: string, threshold?: number, salt?: ArrayBuffer | Buffer | Uint8Array, integrity?: boolean }) {
+      return wrapDerivedKey(await raw.policySetup(factor, {
+        id: options?.id,
+        threshold: options?.threshold,
+        salt: toArrayBuffer(options?.salt),
+        integrity: options?.integrity
+      }));
+    },
+    async derive(policy: any, factors: Record<string, any> | Map<string, any>, verify?: boolean) {
+      const factorMap = factors instanceof Map
+        ? factors
+        : new Map(Object.entries(factors));
+
+      return wrapDerivedKey(await raw.policyDerive(unwrapPolicy(policy), factorMap, verify));
+    },
+    async evaluate(policy: any, factorIds: string[]) {
+      return await raw.policyEvaluate(unwrapPolicy(policy), factorIds);
+    },
+    async atLeast(n: number, factors: raw.Mfkdf2Factor[]) {
+      return wrapSetupFactor(await raw.policyAtLeast(n, factors));
+    },
+    async all(factors: raw.Mfkdf2Factor[]) {
+      return wrapSetupFactor(await raw.policyAll(factors));
+    },
+    async any(factors: raw.Mfkdf2Factor[]) {
+      return wrapSetupFactor(await raw.policyAny(factors));
+    },
+    async or(factor1: raw.Mfkdf2Factor, factor2: raw.Mfkdf2Factor) {
+      return wrapSetupFactor(await raw.policyOr(factor1, factor2));
+    },
+    async and(factor1: raw.Mfkdf2Factor, factor2: raw.Mfkdf2Factor) {
+      return wrapSetupFactor(await raw.policyAnd(factor1, factor2));
+    }
   }
 };
 

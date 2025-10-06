@@ -20,13 +20,15 @@ suite('factors/question', () => {
         question: 'What is the name of your first pet?'
       })
     ]);
+    // Deep clone the policy as policy.$id and policy.$schema are deleted during unwrapping
+    const setupPolicy = JSON.parse(JSON.stringify(setup.policy));
 
     const derive = await mfkdf.derive.key(setup.policy, {
       question: await mfkdf.derive.factors.question('-f_i%d#o ? ') // Changed: await the derive factor
     });
 
     setup.key.toString('hex').should.equal(derive.key.toString('hex'));
-    JSON.stringify(setup.policy).should.equal(JSON.stringify(derive.policy));
+    JSON.stringify(setupPolicy).should.equal(JSON.stringify(derive.policy));
   });
 
   test('invalid', async () => {
