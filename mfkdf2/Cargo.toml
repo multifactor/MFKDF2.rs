@@ -69,6 +69,8 @@ uniffi = { version = "0.29", features = [
 ] }
 # TODO (@lonerapier): this version of rsa is vulnerable to marvin sidechannel attack. More info at https://github.com/RustCrypto/RSA/blob/master/README.md#%EF%B8%8Fsecurity-warning
 rsa = "0.9.8"
+log = "0.4.28"
+console_log = "1.0"
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 getrandom = { version = "0.2", features = ["js"] }
