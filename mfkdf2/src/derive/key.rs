@@ -52,7 +52,7 @@ pub fn key(
       // TODO (@lonerapier): unpadding of bytes is needed
       let plaintext = decrypt(pad, &stretched);
 
-      if !factor.hint.is_empty() {
+      if let Some(ref factor_hint) = factor.hint {
         let buffer = hkdf_sha256_with_info(
           &stretched,
           &material.salt,
@@ -66,13 +66,13 @@ pub fn key(
         let hint = binary_string
           .chars()
           .rev()
-          .take(factor.hint.len())
+          .take(factor_hint.len())
           .collect::<Vec<_>>()
           .into_iter()
           .rev()
           .collect::<String>();
 
-        if hint != factor.hint {
+        if hint != *factor_hint {
           return Err(MFKDF2Error::HintMismatch(factor.id.clone()));
         }
       }
@@ -158,7 +158,6 @@ pub fn key(
     new_policy.hmac = hmac;
   }
 
-  println!("policy.factors.len(): {}", policy.factors.len());
   let original_shares = sharks
     .recover_shares(
       shares_vec.iter().map(|s| s.as_ref()).collect::<Vec<Option<&Share>>>(),

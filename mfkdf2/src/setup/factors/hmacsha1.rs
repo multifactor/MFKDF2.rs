@@ -69,12 +69,18 @@ pub fn hmacsha1(options: HmacSha1Options) -> MFKDF2Result<MFKDF2Factor> {
   {
     return Err(crate::error::MFKDF2Error::MissingFactorId);
   }
+  let id = options.id.clone().unwrap_or("hmacsha1".to_string());
 
-  let secret = options.secret.unwrap_or_else(|| {
+  let secret = if let Some(secret) = options.secret {
+    secret
+  } else {
     let mut secret = [0u8; 20];
     OsRng.fill_bytes(&mut secret);
     secret.to_vec()
-  });
+  };
+  if secret.len() != 20 {
+    return Err(crate::error::MFKDF2Error::InvalidSecretLength(id));
+  }
   let mut secret_pad = [0u8; 12];
   OsRng.fill_bytes(&mut secret_pad);
   let padded_secret = secret.iter().chain(secret_pad.iter()).cloned().collect();
@@ -83,7 +89,7 @@ pub fn hmacsha1(options: HmacSha1Options) -> MFKDF2Result<MFKDF2Factor> {
   OsRng.fill_bytes(&mut salt);
 
   Ok(MFKDF2Factor {
-    id:          Some(options.id.unwrap_or("hmacsha1".to_string())),
+    id:          Some(id),
     salt:        salt.to_vec(),
     factor_type: FactorType::HmacSha1(HmacSha1 { padded_secret, response: None, params: None }),
     entropy:     Some(160),
@@ -148,6 +154,12 @@ mod tests {
     assert!(factor.factor_type.setup().params([0u8; 32].into()).is_object());
     assert!(factor.factor_type.output([0u8; 32].into()).is_object());
     assert_eq!(factor.entropy, Some(160)); // 20 bytes * 8 bits = 160 bits
+  }
+
+  #[test]
+  fn invalid_secret() {
+    let result = hmacsha1(HmacSha1Options { id: None, secret: Some(vec![0u8; 19]) });
+    assert!(matches!(result, Err(crate::error::MFKDF2Error::InvalidSecretLength(_))));
   }
 
   #[test]

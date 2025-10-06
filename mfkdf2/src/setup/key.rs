@@ -26,8 +26,9 @@ pub struct PolicyFactor {
   pub pad:    String,
   pub salt:   String,
   pub secret: String,
+  // TODO (@lonerapier): convert it into a factor based enum
   pub params: String,
-  pub hint:   String,
+  pub hint:   Option<String>,
 }
 
 #[derive(Clone, Serialize, Deserialize, uniffi::Record)]
@@ -190,7 +191,7 @@ pub async fn key(
       salt:   general_purpose::STANDARD.encode(factor.salt.clone()),
       secret: general_purpose::STANDARD.encode(factor_secret),
       params: serde_json::to_string(&params).unwrap(),
-      hint:   "".to_string(),
+      hint:   None,
     });
   }
 

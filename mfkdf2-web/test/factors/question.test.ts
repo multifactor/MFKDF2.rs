@@ -47,7 +47,7 @@ suite('factors/question', () => {
     setup.key.toString('hex').should.not.equal(derive.key.toString('hex'));
   });
 
-  suite('errors', async () => {
+  suite('errors', () => {
     test('derive', async () => {
       // invalid
       // (async () => {
