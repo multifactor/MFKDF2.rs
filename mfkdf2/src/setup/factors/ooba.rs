@@ -159,7 +159,7 @@ pub fn ooba(options: OobaOptions) -> MFKDF2Result<MFKDF2Factor> {
       jwk: options.key.unwrap(),
       params,
     }),
-    entropy:     Some((length as f64 * 36f64.log2()).round() as u32),
+    entropy:     Some((length as f64 * 36f64.log2()).round()),
   })
 }
 

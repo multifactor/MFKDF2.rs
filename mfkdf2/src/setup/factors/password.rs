@@ -60,7 +60,7 @@ pub fn password(
     id:          Some(options.id.unwrap_or("password".to_string())),
     factor_type: FactorType::Password(Password { password }),
     salt:        salt.to_vec(),
-    entropy:     Some(strength.guesses().ilog2()),
+    entropy:     Some(strength.guesses().ilog2() as f64),
   })
 }
 
@@ -84,11 +84,11 @@ mod tests {
   #[test]
   fn password_strength() {
     let factor = password("password", PasswordOptions { id: None }).unwrap();
-    assert_eq!(factor.entropy, Some(1));
+    assert_eq!(factor.entropy, Some(1.0));
 
     let factor =
       password("98p23uijafjj--ah77yhfraklhjaza!?a3", PasswordOptions { id: None }).unwrap();
-    assert_eq!(factor.entropy, Some(63));
+    assert_eq!(factor.entropy, Some(63.0));
   }
 
   #[test]

@@ -68,7 +68,7 @@ pub fn question(answer: impl Into<String>, options: QuestionOptions) -> MFKDF2Re
 
   let answer = answer.to_lowercase().replace(|c: char| !c.is_alphanumeric(), "").trim().to_string();
   let strength = zxcvbn(&answer, &[]);
-  let entropy = strength.guesses().ilog2();
+  let entropy = strength.guesses().ilog2() as f64;
 
   let mut salt = [0u8; 32];
   OsRng.fill_bytes(&mut salt);
@@ -85,7 +85,7 @@ pub fn question(answer: impl Into<String>, options: QuestionOptions) -> MFKDF2Re
       answer,
     }),
     salt: salt.to_vec(),
-    entropy: Some(entropy),
+    entropy: Some(entropy as f64),
   })
 }
 
@@ -176,7 +176,7 @@ mod tests {
       question: Some("What is the capital of France?".to_string()),
     })
     .unwrap();
-    assert_eq!(factor.entropy, Some(9));
+    assert_eq!(factor.entropy, Some(9.0));
   }
 
   #[test]

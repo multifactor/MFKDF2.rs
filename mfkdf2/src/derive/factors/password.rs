@@ -21,7 +21,7 @@ pub fn password(password: impl Into<String>) -> MFKDF2Result<MFKDF2Factor> {
     return Err(MFKDF2Error::PasswordEmpty);
   }
   let strength = zxcvbn(&password, &[]);
-  let strength = strength.guesses().ilog2();
+  let strength = strength.guesses().ilog2() as f64;
 
   Ok(MFKDF2Factor {
     factor_type: FactorType::Password(Password { password }),
@@ -29,7 +29,7 @@ pub fn password(password: impl Into<String>) -> MFKDF2Result<MFKDF2Factor> {
     // appears in other factors and it's because of the refactoring done. The factors have a
     // "state" assiociated to them basically (in that they are "setup" or not).
     salt:        [0u8; 32].to_vec(),
-    entropy:     Some(strength),
+    entropy:     Some(strength as f64),
     id:          None,
   })
 }

@@ -42,7 +42,7 @@ pub struct MFKDF2Factor {
   pub factor_type: FactorType,
   // TODO (autoparallel): This is the factor specific salt.
   pub salt:        Vec<u8>,
-  pub entropy:     Option<u32>,
+  pub entropy:     Option<f64>,
 }
 
 // #[uniffi::export]

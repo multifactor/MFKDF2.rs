@@ -168,7 +168,7 @@ pub fn totp(options: TOTPOptions) -> MFKDF2Result<MFKDF2Factor> {
   let mut salt = [0u8; 32];
   OsRng.fill_bytes(&mut salt);
 
-  let entropy = Some((options.digits as f64 * 10.0_f64.log2()) as u32);
+  let entropy = Some(options.digits as f64 * 10.0_f64.log2());
 
   Ok(MFKDF2Factor {
     id: Some(id),

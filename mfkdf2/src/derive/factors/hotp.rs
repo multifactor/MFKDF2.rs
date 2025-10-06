@@ -94,7 +94,7 @@ pub fn hotp(code: u32) -> MFKDF2Result<MFKDF2Factor> {
     }),
     // TODO (autoparallel): This is confusing, should probably put an Option here.
     salt:        [0u8; 32].to_vec(),
-    entropy:     Some((6_f64 * 10.0_f64.log2()) as u32),
+    entropy:     Some(6_f64 * 10.0_f64.log2()),
   })
 }
 

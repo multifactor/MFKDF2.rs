@@ -24,7 +24,7 @@ pub fn uuid(uuid: Uuid) -> MFKDF2Result<MFKDF2Factor> {
   Ok(MFKDF2Factor {
     id:          None,
     factor_type: FactorType::UUID(UUIDFactor { uuid }),
-    entropy:     Some(0),
+    entropy:     Some(0.0),
     salt:        [0u8; 32].to_vec(),
   })
 }

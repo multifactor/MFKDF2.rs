@@ -5,12 +5,13 @@ chai.use(chaiAsPromised);
 chai.should();
 
 import { suite, test } from 'mocha';
-import mfkdf, { uniffiInitAsync } from '../../src/api';
+import mfkdf, { initRustLogging, LogLevel, uniffiInitAsync } from '../../src/api';
 
 suite('entropy', () => {
   // Initialize UniFFI once before all tests
   before(async () => {
     await uniffiInitAsync();
+    await initRustLogging(LogLevel.Debug);
   });
 
   test('3-of-3', async () => {
@@ -75,8 +76,7 @@ suite('entropy', () => {
       await mfkdf.setup.factors.hotp()
     ], { threshold: 2 });
 
-    // TOTP/HOTP with 6 digits: log2(10^6) ≈ 19.93, so 2 factors ≈ 39.86, but actual is ~38
-    Math.floor(setup.entropyBits.real).should.be.within(38, 40);
+    Math.floor(setup.entropyBits.real).should.equal(39);
   });
 
   test('totp/hotp-8', async () => {
@@ -85,8 +85,7 @@ suite('entropy', () => {
       await mfkdf.setup.factors.hotp({ digits: 8 })
     ], { threshold: 2 });
 
-    // TOTP/HOTP with 8 digits: log2(10^8) ≈ 26.58, so 2 factors ≈ 53.15, but actual is ~52
-    Math.floor(setup.entropyBits.real).should.be.within(52, 54);
+    Math.floor(setup.entropyBits.real).should.equal(53);
   });
 });
 

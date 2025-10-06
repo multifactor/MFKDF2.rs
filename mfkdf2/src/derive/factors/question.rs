@@ -40,7 +40,7 @@ pub fn question(answer: impl Into<String>) -> MFKDF2Result<MFKDF2Factor> {
       answer:  answer.clone(),
     }),
     salt:        [0u8; 32].to_vec(),
-    entropy:     Some(strength.guesses().ilog2()),
+    entropy:     Some(strength.guesses().ilog2() as f64),
   })
 }
 

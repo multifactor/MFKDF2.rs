@@ -85,7 +85,7 @@ pub async fn stack(
     id,
     factor_type: FactorType::Stack(Stack { factors: factor_map, key: key.clone() }),
     salt: salt.to_vec(),
-    entropy: Some(key.entropy.real),
+    entropy: Some(key.entropy.real as f64),
   })
 }
 

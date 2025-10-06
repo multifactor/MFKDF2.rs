@@ -144,7 +144,7 @@ pub async fn key(
   let mut ids = HashSet::new();
   let mut outputs = HashMap::new();
   let mut theoretical_entropy: Vec<u32> = Vec::new();
-  let mut real_entropy: Vec<u32> = Vec::new();
+  let mut real_entropy: Vec<f64> = Vec::new();
 
   for (factor, share) in factors.iter().zip(shares.clone()) {
     // Factor id uniqueness
@@ -217,15 +217,15 @@ pub async fn key(
 
   // Calculate entropy
   theoretical_entropy.sort_unstable();
-  real_entropy.sort_unstable();
+  real_entropy.sort_unstable_by(f64::total_cmp);
 
   let required = threshold as usize;
 
   let theoretical_sum: u32 = theoretical_entropy.iter().take(required).copied().sum();
-  let real_sum: u32 = real_entropy.iter().take(required).copied().sum();
+  let real_sum: f64 = real_entropy.iter().take(required).copied().sum();
 
   let entropy_theoretical = theoretical_sum.min(256);
-  let entropy_real = real_sum.min(256);
+  let entropy_real = real_sum.min(256.0) as u32;
 
   Ok(MFKDF2DerivedKey {
     policy,

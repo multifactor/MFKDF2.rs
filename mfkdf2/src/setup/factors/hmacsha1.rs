@@ -92,7 +92,7 @@ pub fn hmacsha1(options: HmacSha1Options) -> MFKDF2Result<MFKDF2Factor> {
     id:          Some(id),
     salt:        salt.to_vec(),
     factor_type: FactorType::HmacSha1(HmacSha1 { padded_secret, response: None, params: None }),
-    entropy:     Some(160),
+    entropy:     Some(160.0),
   })
 }
 
@@ -153,7 +153,7 @@ mod tests {
     assert_eq!(factor.data().len(), 20); // Secret should be 20 bytes
     assert!(factor.factor_type.setup().params([0u8; 32].into()).is_object());
     assert!(factor.factor_type.output([0u8; 32].into()).is_object());
-    assert_eq!(factor.entropy, Some(160)); // 20 bytes * 8 bits = 160 bits
+    assert_eq!(factor.entropy, Some(160.0)); // 20 bytes * 8 bits = 160 bits
   }
 
   #[test]

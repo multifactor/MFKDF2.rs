@@ -66,7 +66,7 @@ pub fn hmacsha1(response: HmacSha1Response) -> MFKDF2Result<MFKDF2Factor> {
       padded_secret: [0u8; 32].to_vec(),
     }),
     salt:        [0u8; 32].to_vec(),
-    entropy:     Some(160),
+    entropy:     Some(160.0),
   })
 }
 

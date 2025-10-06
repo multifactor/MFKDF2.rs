@@ -189,7 +189,7 @@ pub fn hotp(options: HOTPOptions) -> MFKDF2Result<MFKDF2Factor> {
   let mut salt = [0u8; 32];
   OsRng.fill_bytes(&mut salt);
 
-  let entropy = Some((options.digits as f64 * 10.0_f64.log2()).floor() as u32);
+  let entropy = Some(options.digits as f64 * 10.0_f64.log2());
 
   // TODO (autoparallel): Code should possibly be an option, though this follows the same pattern as
   // the password factor which stores the actual password in the struct.

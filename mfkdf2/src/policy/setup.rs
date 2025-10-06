@@ -9,15 +9,13 @@ use crate::{
   },
 };
 
-#[derive(Clone, Debug, Serialize, Deserialize, uniffi::Record)]
-#[derive(Default)]
+#[derive(Clone, Debug, Serialize, Deserialize, uniffi::Record, Default)]
 pub struct PolicySetupOptions {
   pub id:        Option<String>,
   pub threshold: Option<u8>,
   pub integrity: Option<bool>,
   pub salt:      Option<Vec<u8>>,
 }
-
 
 impl From<PolicySetupOptions> for MFKDF2Options {
   fn from(value: PolicySetupOptions) -> Self {

@@ -147,7 +147,7 @@ async fn entropy_totp_hotp_6_digits() -> Result<(), mfkdf2::error::MFKDF2Error> 
   .await?;
 
   // Expected: floor(log2(10 ** 6) * 2)
-  let expected_real = (10f64.powi(6)).log2().floor() as i64 * 2;
+  let expected_real = ((10f64.powi(6)).log2() * 2.0).floor();
   assert_eq!(setup.entropy.real, expected_real as u32);
 
   Ok(())
@@ -171,7 +171,7 @@ async fn entropy_totp_hotp_8_digits() -> Result<(), mfkdf2::error::MFKDF2Error> 
   .await?;
 
   // Expected: floor(log2(10 ** 8) * 2)
-  let expected_real = (10f64.powi(8)).log2().floor() as i64 * 2;
+  let expected_real = ((10f64.powi(8)).log2() * 2.0).floor();
   assert_eq!(setup.entropy.real, expected_real as u32);
 
   Ok(())
