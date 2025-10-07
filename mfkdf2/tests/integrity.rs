@@ -8,11 +8,7 @@ use mfkdf2::{definitions::mfkdf_derived_key::MFKDF2DerivedKey, policy::Policy};
 
 use crate::common::{create_derive_factor, create_setup_factor};
 
-async fn make_policy(
-  setup_factor_names: &[&str],
-  threshold: u8,
-  integrity: bool,
-) -> MFKDF2DerivedKey {
+fn make_policy(setup_factor_names: &[&str], threshold: u8, integrity: bool) -> MFKDF2DerivedKey {
   // build setup factors
   let setup_factors: Vec<_> = setup_factor_names.iter().copied().map(create_setup_factor).collect();
 
@@ -24,7 +20,7 @@ async fn make_policy(
     ..Default::default()
   };
 
-  mfkdf2::setup::key(setup_factors, options).await.unwrap()
+  mfkdf2::setup::key(setup_factors, options).unwrap()
 }
 
 fn derive_once(
@@ -40,10 +36,10 @@ fn derive_once(
   mfkdf2::derive::key(policy.clone(), derive_map, verify_integrity, false).unwrap()
 }
 
-#[tokio::test]
-async fn integrity_disabled_allows_tamper() {
+#[test]
+fn integrity_disabled_allows_tamper() {
   // 4-of-4, integrity disabled; mix of factors to exercise the harness
-  let setup_derived_key = make_policy(&["password", "hotp", "totp", "uuid"], 4, false).await;
+  let setup_derived_key = make_policy(&["password", "hotp", "totp", "uuid"], 4, false);
 
   let mut policy = setup_derived_key.policy.clone();
 
@@ -70,10 +66,10 @@ async fn integrity_disabled_allows_tamper() {
   let _ = mfkdf2::derive::key(derived.policy, HashMap::new(), false, false); // empty map just ensures type compiles; not used
 }
 
-#[tokio::test]
-async fn integrity_enabled_clean_liveness() {
+#[test]
+fn integrity_enabled_clean_liveness() {
   // integrity enabled; clean policy should derive and remain stable across runs
-  let setup_derived_key = make_policy(&["password", "hotp", "totp", "uuid"], 4, true).await;
+  let setup_derived_key = make_policy(&["password", "hotp", "totp", "uuid"], 4, true);
 
   let policy = setup_derived_key.policy;
 
@@ -84,9 +80,9 @@ async fn integrity_enabled_clean_liveness() {
   assert_eq!(d1.secret, d2.secret);
 }
 
-#[tokio::test]
-async fn integrity_enabled_rejects_policy_id_tamper() {
-  let setup_derived_key = make_policy(&["password", "uuid"], 2, true).await;
+#[test]
+fn integrity_enabled_rejects_policy_id_tamper() {
+  let setup_derived_key = make_policy(&["password", "uuid"], 2, true);
 
   let mut policy = setup_derived_key.policy;
 
@@ -99,9 +95,9 @@ async fn integrity_enabled_rejects_policy_id_tamper() {
   assert!(res.is_err(), "expected integrity verification to fail after policy.id tamper");
 }
 
-#[tokio::test]
-async fn integrity_enabled_rejects_threshold_tamper() {
-  let setup_derived_key = make_policy(&["password", "question"], 2, true).await;
+#[test]
+fn integrity_enabled_rejects_threshold_tamper() {
+  let setup_derived_key = make_policy(&["password", "question"], 2, true);
 
   let mut policy = setup_derived_key.policy;
 
@@ -115,9 +111,9 @@ async fn integrity_enabled_rejects_threshold_tamper() {
   assert!(res.is_err(), "expected integrity verification to fail after threshold tamper");
 }
 
-#[tokio::test]
-async fn integrity_enabled_rejects_salt_tamper() {
-  let setup_derived_key = make_policy(&["password", "totp"], 2, true).await;
+#[test]
+fn integrity_enabled_rejects_salt_tamper() {
+  let setup_derived_key = make_policy(&["password", "totp"], 2, true);
 
   let mut policy = setup_derived_key.policy;
 
@@ -131,9 +127,9 @@ async fn integrity_enabled_rejects_salt_tamper() {
   assert!(res.is_err(), "expected integrity verification to fail after salt tamper");
 }
 
-#[tokio::test]
-async fn integrity_enabled_rejects_factor_id_tamper() {
-  let setup_derived_key = make_policy(&["password", "uuid"], 2, true).await;
+#[test]
+fn integrity_enabled_rejects_factor_id_tamper() {
+  let setup_derived_key = make_policy(&["password", "uuid"], 2, true);
 
   let mut policy = setup_derived_key.policy;
 
@@ -158,10 +154,10 @@ async fn integrity_enabled_rejects_factor_id_tamper() {
   assert!(res.is_err(), "expected integrity verification to fail after factor id tamper");
 }
 
-#[tokio::test]
-async fn integrity_enabled_rejects_derived_policy_tamper() {
+#[test]
+fn integrity_enabled_rejects_derived_policy_tamper() {
   // Start clean with integrity=true
-  let setup_derived_key = make_policy(&["password", "hotp", "totp", "uuid"], 4, true).await;
+  let setup_derived_key = make_policy(&["password", "hotp", "totp", "uuid"], 4, true);
 
   let policy = setup_derived_key.policy;
 

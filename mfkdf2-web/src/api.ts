@@ -225,7 +225,7 @@ export const mfkdf = {
       factors: raw.Mfkdf2Factor[],
       options: { id?: string; threshold?: number; salt?: ArrayBuffer | Buffer | Uint8Array, stack?: boolean, integrity?: boolean, time?: number, memory?: number } = {}
     ) {
-      const key = await raw.key(factors, {
+      const key = await raw.setupKey(factors, {
         id: options.id,
         threshold: options.threshold,
         salt: toArrayBuffer(options.salt),

@@ -1,7 +1,9 @@
 use serde_json::Value;
 use uuid::Uuid;
 
-use crate::{definitions::key::Key, setup::factors::hmacsha1::HmacSha1Response};
+use crate::{
+  definitions::key::Key, error::MFKDF2Error, setup::factors::hmacsha1::HmacSha1Response,
+};
 
 uniffi::custom_type!(HmacSha1Response, Vec<u8>, {
   lower: |r| r.0.to_vec(),
@@ -19,11 +21,10 @@ uniffi::custom_type!(HmacSha1Response, Vec<u8>, {
   }
 });
 
-// TODO (@lonerapier): check if mfkdf2error can be converted to anyhow error
 uniffi::custom_type!(Uuid, String, {
   remote,
   lower: |v| v.to_string(),
-  try_lift: |s: String| Uuid::parse_str(&s).map_err(uniffi::deps::anyhow::Error::msg),
+  try_lift: |s: String| Uuid::parse_str(&s).map_err(|_| MFKDF2Error::InvalidUuid).map_err(Into::into),
 });
 
 uniffi::custom_type!(Value, String, {

@@ -3,7 +3,12 @@ use std::collections::HashSet;
 use super::Policy;
 
 #[uniffi::export(name = "policy_evaluate")]
-pub async fn evaluate(policy: &Policy, factor_ids: Vec<String>) -> bool {
+pub async fn policy_evaluate(policy: &Policy, factor_ids: Vec<String>) -> bool {
+  evaluate(policy, factor_ids)
+}
+
+#[uniffi::export]
+pub fn evaluate(policy: &Policy, factor_ids: Vec<String>) -> bool {
   let factor_set: HashSet<String> = factor_ids.into_iter().collect();
   evaluate_internal(policy, &factor_set)
 }

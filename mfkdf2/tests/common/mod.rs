@@ -19,7 +19,7 @@ pub const TEST_JWK: &str = r#"{
     "e": "AQAB"
   }"#;
 
-pub async fn mock_mfkdf2_password() -> Result<MFKDF2DerivedKey, mfkdf2::error::MFKDF2Error> {
+pub fn mock_mfkdf2_password() -> Result<MFKDF2DerivedKey, mfkdf2::error::MFKDF2Error> {
   let factors = vec![mfkdf2::setup::factors::password(
     "Tr0ubd4dour",
     mfkdf2::setup::factors::password::PasswordOptions { id: Some("password_1".to_string()) },
@@ -28,11 +28,11 @@ pub async fn mock_mfkdf2_password() -> Result<MFKDF2DerivedKey, mfkdf2::error::M
   .collect::<Result<Vec<_>, _>>()?;
 
   let options = mfkdf2::setup::key::MFKDF2Options::default();
-  let key = mfkdf2::setup::key(factors, options).await?;
+  let key = mfkdf2::setup::key(factors, options)?;
   Ok(key)
 }
 
-pub async fn mock_threshold_mfkdf2() -> Result<MFKDF2DerivedKey, mfkdf2::error::MFKDF2Error> {
+pub fn mock_threshold_mfkdf2() -> Result<MFKDF2DerivedKey, mfkdf2::error::MFKDF2Error> {
   let factors = vec![
     mfkdf2::setup::factors::password(
       "Tr0ubd4dour",
@@ -47,11 +47,11 @@ pub async fn mock_threshold_mfkdf2() -> Result<MFKDF2DerivedKey, mfkdf2::error::
   .collect::<Result<Vec<_>, _>>()?;
 
   let options = mfkdf2::setup::key::MFKDF2Options { threshold: Some(1), ..Default::default() };
-  let key = mfkdf2::setup::key(factors, options).await?;
+  let key = mfkdf2::setup::key(factors, options)?;
   Ok(key)
 }
 
-pub async fn mock_password_question_mfkdf2()
+pub fn mock_password_question_mfkdf2()
 -> Result<mfkdf2::definitions::mfkdf_derived_key::MFKDF2DerivedKey, mfkdf2::error::MFKDF2Error> {
   let factors = vec![
     mfkdf2::setup::factors::password(
@@ -67,11 +67,11 @@ pub async fn mock_password_question_mfkdf2()
   .collect::<Result<Vec<_>, _>>()?;
 
   let options = mfkdf2::setup::key::MFKDF2Options::default();
-  let key = mfkdf2::setup::key(factors, options).await?;
+  let key = mfkdf2::setup::key(factors, options)?;
   Ok(key)
 }
 
-pub async fn mock_uuid_mfkdf2() -> Result<MFKDF2DerivedKey, mfkdf2::error::MFKDF2Error> {
+pub fn mock_uuid_mfkdf2() -> Result<MFKDF2DerivedKey, mfkdf2::error::MFKDF2Error> {
   let factors = vec![mfkdf2::setup::factors::uuid(mfkdf2::setup::factors::uuid::UUIDOptions {
     id:   None,
     uuid: Some(uuid::Uuid::from_u128(123_456_789_012)),
@@ -79,11 +79,11 @@ pub async fn mock_uuid_mfkdf2() -> Result<MFKDF2DerivedKey, mfkdf2::error::MFKDF
   .into_iter()
   .collect::<Result<Vec<_>, _>>()?;
   let options = mfkdf2::setup::key::MFKDF2Options::default();
-  let key = mfkdf2::setup::key(factors, options).await?;
+  let key = mfkdf2::setup::key(factors, options)?;
   Ok(key)
 }
 
-pub async fn mock_hmacsha1_mfkdf2() -> Result<MFKDF2DerivedKey, mfkdf2::error::MFKDF2Error> {
+pub fn mock_hmacsha1_mfkdf2() -> Result<MFKDF2DerivedKey, mfkdf2::error::MFKDF2Error> {
   let factors =
     vec![mfkdf2::setup::factors::hmacsha1(mfkdf2::setup::factors::hmacsha1::HmacSha1Options {
       id:     Some("hmacsha1_1".to_string()),
@@ -93,11 +93,11 @@ pub async fn mock_hmacsha1_mfkdf2() -> Result<MFKDF2DerivedKey, mfkdf2::error::M
     .collect::<Result<Vec<_>, _>>()?;
 
   let options = mfkdf2::setup::key::MFKDF2Options::default();
-  let key = mfkdf2::setup::key(factors, options).await?;
+  let key = mfkdf2::setup::key(factors, options)?;
   Ok(key)
 }
 
-pub async fn mock_hotp_mfkdf2() -> Result<MFKDF2DerivedKey, mfkdf2::error::MFKDF2Error> {
+pub fn mock_hotp_mfkdf2() -> Result<MFKDF2DerivedKey, mfkdf2::error::MFKDF2Error> {
   let factors = vec![mfkdf2::setup::factors::hotp(mfkdf2::setup::factors::hotp::HOTPOptions {
     id:     Some("hotp_1".to_string()),
     secret: Some(HOTP_SECRET.to_vec()),
@@ -110,11 +110,11 @@ pub async fn mock_hotp_mfkdf2() -> Result<MFKDF2DerivedKey, mfkdf2::error::MFKDF
   .collect::<Result<Vec<_>, _>>()?;
 
   let options = mfkdf2::setup::key::MFKDF2Options::default();
-  let key = mfkdf2::setup::key(factors, options).await?;
+  let key = mfkdf2::setup::key(factors, options)?;
   Ok(key)
 }
 
-pub async fn mock_mixed_factors_mfkdf2() -> Result<MFKDF2DerivedKey, mfkdf2::error::MFKDF2Error> {
+pub fn mock_mixed_factors_mfkdf2() -> Result<MFKDF2DerivedKey, mfkdf2::error::MFKDF2Error> {
   let factors = vec![
     mfkdf2::setup::factors::password(
       "Tr0ubd4dour",
@@ -133,7 +133,7 @@ pub async fn mock_mixed_factors_mfkdf2() -> Result<MFKDF2DerivedKey, mfkdf2::err
   .collect::<Result<Vec<_>, _>>()?;
 
   let options = mfkdf2::setup::key::MFKDF2Options::default();
-  let key = mfkdf2::setup::key(factors, options).await?;
+  let key = mfkdf2::setup::key(factors, options)?;
   Ok(key)
 }
 

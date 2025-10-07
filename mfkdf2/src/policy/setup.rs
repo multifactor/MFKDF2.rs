@@ -29,16 +29,20 @@ impl From<PolicySetupOptions> for MFKDF2Options {
   }
 }
 
-#[uniffi::export(name = "policy_setup")]
-pub async fn setup(
-  factor: MFKDF2Factor,
-  options: PolicySetupOptions,
-) -> MFKDF2Result<MFKDF2DerivedKey> {
-  let derived_key = setup_key(vec![factor], options.into()).await?;
+pub fn setup(factor: MFKDF2Factor, options: PolicySetupOptions) -> MFKDF2Result<MFKDF2DerivedKey> {
+  let derived_key = setup_key(vec![factor], options.into())?;
 
   if !derived_key.policy.validate() {
     return Err(MFKDF2Error::DuplicateFactorId);
   }
 
   Ok(derived_key)
+}
+
+#[uniffi::export]
+pub async fn policy_setup(
+  factor: MFKDF2Factor,
+  options: PolicySetupOptions,
+) -> MFKDF2Result<MFKDF2DerivedKey> {
+  setup(factor, options)
 }

@@ -9,7 +9,7 @@ use crate::{
 pub async fn at_least(n: u8, factors: Vec<MFKDF2Factor>) -> MFKDF2Result<MFKDF2Factor> {
   let id = Uuid::new_v4().to_string();
   let options = StackOptions { id: Some(id), threshold: Some(n), salt: None };
-  crate::setup::factors::stack(factors, options).await
+  crate::setup::factors::stack(factors, options)
 }
 
 #[uniffi::export(name = "policy_or")]

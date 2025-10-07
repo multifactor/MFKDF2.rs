@@ -55,13 +55,13 @@ mod tests {
     setup::{
       factors::{
         password::{PasswordOptions, password as setup_password},
-        stack::{StackOptions, setup_stack},
+        stack::{StackOptions, stack as setup_stack},
       },
       key::MFKDF2Options,
     },
   };
 
-  async fn setup_test_stack() -> MFKDF2DerivedKey {
+  fn setup_test_stack() -> MFKDF2DerivedKey {
     let factor1 =
       setup_password("password123", PasswordOptions { id: Some("pwd1".to_string()) }).unwrap();
     let factor2 =
@@ -71,17 +71,16 @@ mod tests {
     let options =
       StackOptions { id: Some("my-stack".to_string()), threshold: Some(2), salt: None };
 
-    let stack_factor = setup_stack(factors, options).await.unwrap();
+    let stack_factor = setup_stack(factors, options).unwrap();
     // let params = stack_factor.factor_type.params_setup([0; 32]);
 
     crate::setup::key(vec![stack_factor], MFKDF2Options::default())
-      .await
       .expect("derived key should be created")
   }
 
-  #[tokio::test]
-  async fn derive_stack_round_trip() {
-    let setup_derived_key = setup_test_stack().await;
+  #[test]
+  fn derive_stack_round_trip() {
+    let setup_derived_key = setup_test_stack();
 
     let derive_factor1 = password("password123".to_string()).unwrap();
     let derive_factor2 = password("password456".to_string()).unwrap();
@@ -114,8 +113,8 @@ mod tests {
     ));
   }
 
-  #[tokio::test]
-  async fn derive_stack_invalid_params() {
+  #[test]
+  fn derive_stack_invalid_params() {
     let mut derive_stack_factor =
       stack(HashMap::from([("pwd1".to_string(), password("p".to_string()).unwrap())])).unwrap();
 

@@ -28,7 +28,6 @@ pub struct Policy {
 }
 
 impl Policy {
-  // validate
   pub fn ids(&self) -> Vec<String> {
     let mut list: Vec<String> = Vec::new();
     for factor in &self.factors {
@@ -48,10 +47,6 @@ impl Policy {
     set.len() == list.len()
   }
 }
-
-// TODO (@lonerapier): investigate why direct impl export doesn't work
-#[uniffi::export(name = "policy_ids")]
-pub fn ids(policy: &Policy) -> Vec<String> { policy.ids() }
 
 #[uniffi::export(name = "policy_validate")]
 pub fn validate(policy: &Policy) -> bool { policy.validate() }

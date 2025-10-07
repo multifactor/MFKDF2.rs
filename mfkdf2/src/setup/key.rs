@@ -67,11 +67,7 @@ pub struct MFKDF2Entropy {
   pub theoretical: u32,
 }
 
-#[uniffi::export]
-pub async fn key(
-  factors: Vec<MFKDF2Factor>,
-  options: MFKDF2Options,
-) -> MFKDF2Result<MFKDF2DerivedKey> {
+pub fn key(factors: Vec<MFKDF2Factor>, options: MFKDF2Options) -> MFKDF2Result<MFKDF2DerivedKey> {
   // Sets the threshold to be the number of factors (n of n) if not provided.
   let threshold = options.threshold.unwrap_or(factors.len() as u8);
 
@@ -237,6 +233,14 @@ pub async fn key(
   })
 }
 
+#[uniffi::export]
+pub async fn setup_key(
+  factors: Vec<MFKDF2Factor>,
+  options: MFKDF2Options,
+) -> MFKDF2Result<MFKDF2DerivedKey> {
+  key(factors, options)
+}
+
 #[cfg(test)]
 mod tests {
   use rstest::rstest;
@@ -329,10 +333,10 @@ mod tests {
   ])]
   #[case::question_only(vec![question("my secret answer", QuestionOptions::default()).unwrap()])]
   #[case::uuid_only(vec![uuid(UUIDOptions::default()).unwrap()])]
-  #[tokio::test]
-  async fn key_construction(#[case] factors: Vec<MFKDF2Factor>) {
+  #[test]
+  fn key_construction(#[case] factors: Vec<MFKDF2Factor>) {
     let options = MFKDF2Options::default();
-    let derived_key = key(factors.clone(), options.clone()).await.unwrap();
+    let derived_key = key(factors.clone(), options.clone()).unwrap();
 
     let salt = general_purpose::STANDARD.decode(derived_key.policy.salt.clone()).unwrap();
     let mut kek = [0u8; 32];
@@ -397,12 +401,12 @@ mod tests {
   #[case(3, 3)]
   #[case(5, 2)]
   #[case(5, 5)]
-  #[tokio::test]
-  async fn key_construction_with_threshold(#[case] num_factors: usize, #[case] threshold: u8) {
+  #[test]
+  fn key_construction_with_threshold(#[case] num_factors: usize, #[case] threshold: u8) {
     let factors = generate_factors(num_factors);
     let options = MFKDF2Options { threshold: Some(threshold), ..Default::default() };
 
-    let derived_key = key(factors.clone(), options.clone()).await.unwrap();
+    let derived_key = key(factors.clone(), options.clone()).unwrap();
 
     assert_eq!(derived_key.policy.threshold, threshold);
 
@@ -445,14 +449,11 @@ mod tests {
   #[case(3, 0)]
   #[case(3, 4)]
   #[case(0, 0)]
-  #[tokio::test]
-  async fn key_construction_with_invalid_threshold(
-    #[case] num_factors: usize,
-    #[case] threshold: u8,
-  ) {
+  #[test]
+  fn key_construction_with_invalid_threshold(#[case] num_factors: usize, #[case] threshold: u8) {
     let factors = generate_factors(num_factors);
     let options = MFKDF2Options { threshold: Some(threshold), ..Default::default() };
-    let derived_key_result = key(factors.clone(), options.clone()).await;
+    let derived_key_result = key(factors.clone(), options.clone());
 
     assert!(matches!(derived_key_result, Err(MFKDF2Error::InvalidThreshold)));
   }
