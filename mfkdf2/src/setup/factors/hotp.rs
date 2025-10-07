@@ -35,6 +35,16 @@ pub enum OTPHash {
   Sha512,
 }
 
+impl std::fmt::Display for OTPHash {
+  fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    write!(f, "{}", match self {
+      OTPHash::Sha1 => "sha1",
+      OTPHash::Sha256 => "sha256",
+      OTPHash::Sha512 => "sha512",
+    })
+  }
+}
+
 impl Default for HOTPOptions {
   fn default() -> Self {
     Self {
@@ -84,11 +94,7 @@ impl FactorSetup for HOTP {
     let pad = encrypt(&padded_secret, &key.0);
 
     json!({
-      "hash": match self.options.hash {
-        OTPHash::Sha1 => "sha1",
-        OTPHash::Sha256 => "sha256",
-        OTPHash::Sha512 => "sha512"
-      },
+      "hash": self.options.hash.to_string(),
       "digits": self.options.digits,
       "pad": base64::prelude::BASE64_STANDARD.encode(&pad),
       "counter": 1,
@@ -103,11 +109,7 @@ impl FactorSetup for HOTP {
       "label": self.options.label,
       "secret": base64::prelude::BASE64_STANDARD.encode(&self.options.secret.clone().unwrap()[..20]),
       "issuer": self.options.issuer,
-      "algorithm": match self.options.hash {
-        OTPHash::Sha1 => "sha1",
-        OTPHash::Sha256 => "sha256",
-        OTPHash::Sha512 => "sha512"
-      },
+      "algorithm": self.options.hash.to_string(),
       "digits": self.options.digits,
       "counter": 1,
       // TODO (sambhav): either generate uri yourself or use an external lib

@@ -6,11 +6,11 @@ use sharks::{Share, Sharks};
 
 use crate::{
   crypto::{decrypt, hkdf_sha256_with_info, hmacsha256},
-  definitions::mfkdf_derived_key::MFKDF2DerivedKey,
+  definitions::{entropy::MFKDF2Entropy, mfkdf_derived_key::MFKDF2DerivedKey},
   derive::FactorDerive,
   error::{MFKDF2Error, MFKDF2Result},
   policy::Policy,
-  setup::{factors::MFKDF2Factor, key::MFKDF2Entropy},
+  setup::factors::MFKDF2Factor,
 };
 
 pub fn key(

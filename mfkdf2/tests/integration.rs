@@ -2,7 +2,6 @@ mod common;
 
 use std::collections::HashMap;
 
-use mfkdf2::setup::factors::hotp::OTPHash;
 use rstest::rstest;
 
 use crate::common::*;
@@ -32,7 +31,7 @@ fn key_derive() -> Result<(), mfkdf2::error::MFKDF2Error> {
 
 #[test]
 #[should_panic]
-fn key_derive_fail() -> () {
+fn key_derive_fail() {
   let key = mock_mfkdf2_password().unwrap();
   println!("Setup key: {}", key);
 
@@ -48,10 +47,10 @@ fn key_derive_fail() -> () {
 }
 
 #[test]
-fn key_setup_threshold() -> () { mock_threshold_mfkdf2().unwrap(); }
+fn key_setup_threshold() { mock_threshold_mfkdf2().unwrap(); }
 
 #[test]
-fn key_derive_threshold() -> () {
+fn key_derive_threshold() {
   let key = mock_threshold_mfkdf2().unwrap();
   println!("Setup key: {}", key);
 
@@ -76,13 +75,13 @@ fn key_derive_threshold() -> () {
 }
 
 #[test]
-fn key_setup_password_question() -> () {
+fn key_setup_password_question() {
   let key = mock_password_question_mfkdf2().unwrap();
   println!("Setup key: {}", key);
 }
 
 #[test]
-fn key_derive_password_question() -> () {
+fn key_derive_password_question() {
   let key = mock_password_question_mfkdf2().unwrap();
   println!("Setup key: {}", key);
 
@@ -100,7 +99,7 @@ fn key_derive_password_question() -> () {
 }
 
 #[test]
-fn key_derive_uuid() -> () {
+fn key_derive_uuid() {
   let key = mock_uuid_mfkdf2().unwrap();
   println!("Setup key: {}", key);
 
@@ -199,12 +198,7 @@ fn key_derive_hotp() -> Result<(), mfkdf2::error::MFKDF2Error> {
   let params: serde_json::Value = serde_json::from_str(&hotp_factor.params).unwrap();
   let counter = params["counter"].as_u64().unwrap();
   let digits = params["digits"].as_u64().unwrap() as u8;
-  let hash = match params["hash"].as_str().unwrap() {
-    "sha1" => OTPHash::Sha1,
-    "sha256" => OTPHash::Sha256,
-    "sha512" => OTPHash::Sha512,
-    _ => panic!("unknown hash algrorithm"),
-  };
+  let hash = serde_json::from_value(params["hash"].clone()).unwrap();
 
   // Generate the HOTP code that the user would need to provide
   // This simulates what would come from an authenticator app
@@ -252,12 +246,7 @@ fn key_derive_mixed_password_hotp() -> Result<(), mfkdf2::error::MFKDF2Error> {
   let params: serde_json::Value = serde_json::from_str(&hotp_factor.params).unwrap();
   let counter = params["counter"].as_u64().unwrap();
   let digits = params["digits"].as_u64().unwrap() as u8;
-  let hash = match params["hash"].as_str().unwrap() {
-    "sha1" => OTPHash::Sha1,
-    "sha256" => OTPHash::Sha256,
-    "sha512" => OTPHash::Sha512,
-    _ => panic!("unknown hash algrorithm"),
-  };
+  let hash = serde_json::from_value(params["hash"].clone()).unwrap();
 
   // Generate the correct HOTP code using SHA256 (different from previous test)
   let generated_code =

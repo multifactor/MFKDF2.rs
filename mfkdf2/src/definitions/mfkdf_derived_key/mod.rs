@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use base64::engine::general_purpose;
 use serde::{Deserialize, Serialize};
 
-use crate::{policy::Policy, setup::key::MFKDF2Entropy};
+use crate::{definitions::entropy::MFKDF2Entropy, policy::Policy};
 
 #[derive(Clone, Debug, Default, Serialize, Deserialize, Eq, PartialEq, uniffi::Record)]
 pub struct MFKDF2DerivedKey {

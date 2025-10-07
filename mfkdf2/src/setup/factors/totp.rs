@@ -93,11 +93,7 @@ impl FactorSetup for TOTP {
 
     json!({
         "start": time,
-        "hash": match self.options.hash {
-            OTPHash::Sha1 => "sha1",
-            OTPHash::Sha256 => "sha256",
-            OTPHash::Sha512 => "sha512",
-        },
+        "hash": self.options.hash.to_string(),
         "digits": self.options.digits,
         "step": self.options.step,
         "window": self.options.window,
@@ -113,11 +109,7 @@ impl FactorSetup for TOTP {
       "label": self.options.label,
       "secret": base64::prelude::BASE64_STANDARD.encode(&self.options.secret.clone().unwrap()[..20]),
       "issuer": self.options.issuer,
-      "algorithm": match self.options.hash {
-        OTPHash::Sha1 => "sha1",
-        OTPHash::Sha256 => "sha256",
-        OTPHash::Sha512 => "sha512"
-      },
+      "algorithm": self.options.hash.to_string(),
       "digits": self.options.digits,
       "period": self.options.step,
       // TODO (sambhav): either generate uri yourself or use an external lib

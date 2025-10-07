@@ -542,8 +542,8 @@ async fn errors_invalid_factors() {
 
   // Not enough factors to satisfy the policy
   policy::derive::derive(
-    setup.policy.clone().into(),
-    HashMap::from([("id1".to_string(), derive::factors::password("password").unwrap())]).into(),
+    setup.policy.clone(),
+    HashMap::from([("id1".to_string(), derive::factors::password("password").unwrap())]),
     None,
   )
   .unwrap();

@@ -61,12 +61,6 @@ impl Default for MFKDF2Options {
   }
 }
 
-#[derive(Clone, Debug, Default, Serialize, Deserialize, Eq, PartialEq, uniffi::Record)]
-pub struct MFKDF2Entropy {
-  pub real:        u32,
-  pub theoretical: u32,
-}
-
 pub fn key(factors: Vec<MFKDF2Factor>, options: MFKDF2Options) -> MFKDF2Result<MFKDF2DerivedKey> {
   // Sets the threshold to be the number of factors (n of n) if not provided.
   let threshold = options.threshold.unwrap_or(factors.len() as u8);
@@ -229,7 +223,10 @@ pub fn key(factors: Vec<MFKDF2Factor>, options: MFKDF2Options) -> MFKDF2Result<M
     secret: secret.to_vec(),
     shares,
     outputs,
-    entropy: MFKDF2Entropy { real: entropy_real, theoretical: entropy_theoretical },
+    entropy: crate::definitions::entropy::MFKDF2Entropy {
+      real:        entropy_real,
+      theoretical: entropy_theoretical,
+    },
   })
 }
 

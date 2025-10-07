@@ -48,13 +48,8 @@ impl FactorDerive for HOTP {
 
     // Generate HOTP code with incremented counter
     let counter = params["counter"].as_u64().unwrap() + 1;
-    let hash = params["hash"].as_str().unwrap();
-    let hash = match hash {
-      "sha1" => OTPHash::Sha1,
-      "sha256" => OTPHash::Sha256,
-      "sha512" => OTPHash::Sha512,
-      _ => panic!("Unsupported hash algorithm"),
-    };
+    let hash: OTPHash =
+      serde_json::from_value(params["hash"].clone()).expect("Failed to parse hash");
     let generated_code =
       generate_hotp_code(&padded_secret[..20], counter, &hash, self.options.digits);
 
@@ -65,19 +60,13 @@ impl FactorDerive for HOTP {
     ) as u32;
 
     json!({
-      "hash": match hash {
-        OTPHash::Sha1 => "sha1",
-        OTPHash::Sha256 => "sha256",
-        OTPHash::Sha512 => "sha512",
-      },
+      "hash": hash.to_string(),
       "digits": self.options.digits,
       "pad": pad_b64,
       "counter": counter,
       "offset": new_offset
     })
   }
-
-  fn output(&self) -> Value { json!({}) }
 }
 
 pub fn hotp(code: u32) -> MFKDF2Result<MFKDF2Factor> {

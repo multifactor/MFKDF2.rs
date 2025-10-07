@@ -6,14 +6,12 @@ use serde_json::Value;
 
 use crate::{definitions::key::Key, error::MFKDF2Result, setup::factors::FactorType};
 
-// #[uniffi::export]
+#[allow(unused_variables)]
 pub trait FactorDerive: Send + Sync {
-  // TODO (@lonerapier): uniffi doesn't support mutable reference to self in a trait, so only option
-  // is to use interior mutability pattern
   fn include_params(&mut self, params: Value) -> MFKDF2Result<()>;
   // TODO (@lonerapier): wrap the return value in result here too
-  fn params(&self, key: Key) -> Value;
-  fn output(&self) -> Value;
+  fn params(&self, key: Key) -> Value { serde_json::json!({}) }
+  fn output(&self) -> Value { serde_json::json!({}) }
 }
 
 impl FactorType {
@@ -56,15 +54,6 @@ impl FactorDerive for FactorType {
 
   fn output(&self) -> Value { self.derive().output() }
 }
-
-// #[uniffi::export]
-// pub fn derive_factor_include_params(
-//   factor: std::sync::Arc<std::sync::Mutex<FactorType>>,
-//   params: Value,
-// ) -> MFKDF2Result<()> {
-//   let mut factor_mut = factor.lock().unwrap();
-//   factor_mut.include_params(params)
-// }
 
 #[uniffi::export]
 pub fn derive_factor_params(factor: &FactorType, key: Key) -> Value { factor.params(key) }

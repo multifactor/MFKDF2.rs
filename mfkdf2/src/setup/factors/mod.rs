@@ -29,10 +29,11 @@ pub trait FactorMetadata: Send + Sync {
 // TODO (@lonerapier): refactor trait system with more associated types
 // TODO: add default + debug as well
 #[uniffi::export]
+#[allow(unused_variables)]
 pub trait FactorSetup: Send + Sync {
   fn bytes(&self) -> Vec<u8>;
-  fn params(&self, key: Key) -> Value;
-  fn output(&self, key: Key) -> Value;
+  fn params(&self, key: Key) -> Value { serde_json::json!({}) }
+  fn output(&self, key: Key) -> Value { serde_json::json!({}) }
 }
 
 // TODO (@lonerapier): move factor to its own module
@@ -45,7 +46,6 @@ pub struct MFKDF2Factor {
   pub entropy:     Option<f64>,
 }
 
-// #[uniffi::export]
 impl MFKDF2Factor {
   pub fn kind(&self) -> String { self.factor_type.kind() }
 
@@ -128,7 +128,6 @@ pub fn factor_type_bytes(factor_type: &FactorType) -> Vec<u8> { factor_type.byte
 
 #[uniffi::export]
 pub fn setup_factor_type_params(factor_type: &FactorType, key: Option<Key>) -> Value {
-  // Use provided key or create a dummy zero-filled key
   // TODO (@lonerapier): remove dummy key usage
   let key = key.unwrap_or_else(|| [0u8; 32].into());
   factor_type.params(key)
@@ -136,7 +135,6 @@ pub fn setup_factor_type_params(factor_type: &FactorType, key: Option<Key>) -> V
 
 #[uniffi::export]
 pub fn setup_factor_type_output(factor_type: &FactorType, key: Option<Key>) -> Value {
-  // Use provided key or create a dummy zero-filled key
   let key = key.unwrap_or_else(|| [0u8; 32].into());
   factor_type.output(key)
 }

@@ -106,13 +106,7 @@ impl FactorDerive for TOTP {
     let window = params["window"].as_u64().unwrap();
     let step = params["step"].as_u64().unwrap();
     let digits = params["digits"].as_u64().unwrap();
-    let hash = params["hash"].as_str().unwrap();
-    let hash = match hash {
-      "sha1" => OTPHash::Sha1,
-      "sha256" => OTPHash::Sha256,
-      "sha512" => OTPHash::Sha512,
-      _ => panic!("Unsupported hash algorithm"),
-    };
+    let hash: OTPHash = serde_json::from_value(params["hash"].clone()).unwrap();
 
     let time = self.options.time.unwrap() as u128;
     let mut new_offsets = Vec::with_capacity((4 * window) as usize);
@@ -138,11 +132,7 @@ impl FactorDerive for TOTP {
 
     json!({
       "start": time,
-      "hash": match hash {
-          OTPHash::Sha1 => "sha1",
-          OTPHash::Sha256 => "sha256",
-          OTPHash::Sha512 => "sha512",
-      },
+      "hash": hash.to_string(),
       "digits": digits,
       "step": step,
       "window": window,
@@ -150,8 +140,6 @@ impl FactorDerive for TOTP {
       "offsets": base64::prelude::BASE64_STANDARD.encode(&new_offsets),
     })
   }
-
-  fn output(&self) -> Value { json!({}) }
 }
 
 pub fn totp(code: u32, options: Option<TOTPDeriveOptions>) -> MFKDF2Result<MFKDF2Factor> {

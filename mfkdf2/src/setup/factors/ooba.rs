@@ -109,8 +109,6 @@ impl FactorSetup for Ooba {
         "pad": general_purpose::STANDARD.encode(pad),
     })
   }
-
-  fn output(&self, _key: Key) -> Value { json!({}) }
 }
 
 pub fn ooba(options: OobaOptions) -> MFKDF2Result<MFKDF2Factor> {

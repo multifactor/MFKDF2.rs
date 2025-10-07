@@ -74,8 +74,6 @@ impl FactorDerive for Ooba {
         "pad": general_purpose::STANDARD.encode(pad),
     })
   }
-
-  fn output(&self) -> Value { json!({}) }
 }
 
 pub fn ooba(code: String) -> MFKDF2Result<MFKDF2Factor> {

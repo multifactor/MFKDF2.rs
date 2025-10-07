@@ -2,7 +2,6 @@ use serde_json::json;
 use uuid::Uuid;
 
 use crate::{
-  definitions::key::Key,
   derive::FactorDerive,
   error::MFKDF2Result,
   setup::factors::{FactorType, MFKDF2Factor, uuid::UUIDFactor},
@@ -10,8 +9,6 @@ use crate::{
 
 impl FactorDerive for UUIDFactor {
   fn include_params(&mut self, _params: serde_json::Value) -> MFKDF2Result<()> { Ok(()) }
-
-  fn params(&self, _key: Key) -> serde_json::Value { json!({}) }
 
   fn output(&self) -> serde_json::Value {
     json!({
