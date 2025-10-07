@@ -9,11 +9,13 @@ use web_time::{SystemTime, UNIX_EPOCH};
 
 use crate::{
   crypto::decrypt,
-  definitions::key::Key,
+  definitions::{
+    factor::{FactorType, MFKDF2Factor},
+    key::Key,
+  },
   derive::FactorDerive,
   error::{MFKDF2Error, MFKDF2Result},
   setup::factors::{
-    FactorType, MFKDF2Factor,
     hotp::{OTPHash, generate_hotp_code, mod_positive},
     totp::{TOTP, TOTPOptions},
   },

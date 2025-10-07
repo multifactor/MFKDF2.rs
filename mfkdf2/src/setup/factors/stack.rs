@@ -5,10 +5,14 @@ use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 
 use crate::{
-  definitions::{key::Key, mfkdf_derived_key::MFKDF2DerivedKey},
+  definitions::{
+    factor::{FactorMetadata, FactorType, MFKDF2Factor},
+    key::Key,
+    mfkdf_derived_key::MFKDF2DerivedKey,
+  },
   error::{MFKDF2Error, MFKDF2Result},
   setup::{
-    factors::{FactorMetadata, FactorSetup, FactorType, MFKDF2Factor},
+    FactorSetup,
     key::{self, MFKDF2Options},
   },
 };

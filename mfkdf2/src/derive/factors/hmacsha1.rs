@@ -3,13 +3,13 @@ use serde_json::{Value, json};
 
 use crate::{
   crypto::{decrypt, encrypt},
-  definitions::key::Key,
+  definitions::{
+    factor::{FactorType, MFKDF2Factor},
+    key::Key,
+  },
   derive::FactorDerive,
   error::MFKDF2Result,
-  setup::factors::{
-    FactorType, MFKDF2Factor,
-    hmacsha1::{HmacSha1, HmacSha1Response},
-  },
+  setup::factors::hmacsha1::{HmacSha1, HmacSha1Response},
 };
 
 impl FactorDerive for HmacSha1 {
@@ -82,11 +82,9 @@ mod tests {
   use super::*;
   use crate::{
     crypto::decrypt,
+    definitions::factor::FactorType,
     error::MFKDF2Error,
-    setup::factors::{
-      FactorType,
-      hmacsha1::{HmacSha1, HmacSha1Options},
-    },
+    setup::factors::hmacsha1::{HmacSha1, HmacSha1Options},
   };
 
   fn mock_hmac_setup() -> MFKDF2Factor {

@@ -3,11 +3,15 @@ use std::collections::HashMap;
 use serde_json::{Value, json};
 
 use crate::{
-  definitions::{key::Key, mfkdf_derived_key::MFKDF2DerivedKey},
+  definitions::{
+    factor::{FactorType, MFKDF2Factor},
+    key::Key,
+    mfkdf_derived_key::MFKDF2DerivedKey,
+  },
   derive::FactorDerive,
   error::{MFKDF2Error, MFKDF2Result},
   policy::Policy,
-  setup::factors::{FactorType, MFKDF2Factor, stack::Stack},
+  setup::factors::stack::Stack,
 };
 
 impl FactorDerive for Stack {

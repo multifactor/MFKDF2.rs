@@ -6,13 +6,13 @@ use sha2::Sha256;
 
 use crate::{
   crypto::{decrypt, encrypt, hkdf_sha256_with_info},
-  definitions::key::Key,
+  definitions::{
+    factor::{FactorType, MFKDF2Factor},
+    key::Key,
+  },
   derive::FactorDerive,
   error::{MFKDF2Error, MFKDF2Result},
-  setup::factors::{
-    FactorType, MFKDF2Factor,
-    ooba::{Ooba, OobaPublicKey, generate_alphanumeric_characters},
-  },
+  setup::factors::ooba::{Ooba, OobaPublicKey, generate_alphanumeric_characters},
 };
 
 impl FactorDerive for Ooba {

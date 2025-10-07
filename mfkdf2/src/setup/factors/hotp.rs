@@ -8,9 +8,12 @@ use sha2::{Sha256, Sha512};
 
 use crate::{
   crypto::encrypt,
-  definitions::key::Key,
+  definitions::{
+    factor::{FactorMetadata, FactorType, MFKDF2Factor},
+    key::Key,
+  },
   error::MFKDF2Result,
-  setup::factors::{FactorMetadata, FactorSetup, FactorType, MFKDF2Factor},
+  setup::FactorSetup,
 };
 
 #[derive(Clone, Debug, Serialize, Deserialize, uniffi::Record)]

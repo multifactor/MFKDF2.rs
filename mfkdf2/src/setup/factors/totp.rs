@@ -10,11 +10,14 @@ use web_time::{SystemTime, UNIX_EPOCH};
 
 use crate::{
   crypto::encrypt,
-  definitions::key::Key,
+  definitions::{
+    factor::{FactorMetadata, FactorType, MFKDF2Factor},
+    key::Key,
+  },
   error::MFKDF2Result,
-  setup::factors::{
-    FactorMetadata, FactorSetup, FactorType, MFKDF2Factor,
-    hotp::{OTPHash, generate_hotp_code},
+  setup::{
+    FactorSetup,
+    factors::hotp::{OTPHash, generate_hotp_code},
   },
 };
 

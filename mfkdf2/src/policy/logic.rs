@@ -1,8 +1,7 @@
 use uuid::Uuid;
 
 use crate::{
-  error::MFKDF2Result,
-  setup::factors::{MFKDF2Factor, stack::StackOptions},
+  definitions::factor::MFKDF2Factor, error::MFKDF2Result, setup::factors::stack::StackOptions,
 };
 
 #[uniffi::export(name = "policy_at_least")]

@@ -3,13 +3,13 @@ use serde_json::{Value, json};
 
 use crate::{
   crypto::decrypt,
-  definitions::key::Key,
+  definitions::{
+    factor::{FactorType, MFKDF2Factor},
+    key::Key,
+  },
   derive::FactorDerive,
   error::{MFKDF2Error, MFKDF2Result},
-  setup::factors::{
-    FactorType, MFKDF2Factor,
-    hotp::{HOTP, HOTPOptions, OTPHash, generate_hotp_code, mod_positive},
-  },
+  setup::factors::hotp::{HOTP, HOTPOptions, OTPHash, generate_hotp_code, mod_positive},
 };
 
 impl FactorDerive for HOTP {

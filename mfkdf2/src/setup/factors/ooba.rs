@@ -8,9 +8,12 @@ use sha2::Sha256;
 
 use crate::{
   crypto::{encrypt, hkdf_sha256_with_info},
-  definitions::key::Key,
+  definitions::{
+    factor::{FactorMetadata, FactorType, MFKDF2Factor},
+    key::Key,
+  },
   error::{MFKDF2Error, MFKDF2Result},
-  setup::factors::{FactorMetadata, FactorSetup, FactorType, MFKDF2Factor},
+  setup::FactorSetup,
 };
 
 #[inline]

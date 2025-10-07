@@ -11,10 +11,10 @@ use uuid::Uuid;
 
 use crate::{
   crypto::{encrypt, hkdf_sha256_with_info, hmacsha256},
-  definitions::mfkdf_derived_key::MFKDF2DerivedKey,
+  definitions::{factor::MFKDF2Factor, mfkdf_derived_key::MFKDF2DerivedKey},
   error::{MFKDF2Error, MFKDF2Result},
   policy::Policy,
-  setup::factors::{FactorSetup, MFKDF2Factor},
+  setup::FactorSetup,
 };
 
 // TODO (autoparallel): We probably can just use the MFKDF2Factor struct directly here.

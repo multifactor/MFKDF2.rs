@@ -4,10 +4,13 @@ pub mod key;
 pub use key::key;
 use serde_json::Value;
 
-use crate::{definitions::key::Key, error::MFKDF2Result, setup::factors::FactorType};
+use crate::{
+  definitions::{factor::FactorType, key::Key},
+  error::MFKDF2Result,
+};
 
 #[allow(unused_variables)]
-pub trait FactorDerive: Send + Sync {
+pub trait FactorDerive: Send + Sync + std::fmt::Debug {
   fn include_params(&mut self, params: Value) -> MFKDF2Result<()>;
   // TODO (@lonerapier): wrap the return value in result here too
   fn params(&self, key: Key) -> Value { serde_json::json!({}) }

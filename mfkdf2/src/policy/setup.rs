@@ -1,12 +1,9 @@
 use serde::{Deserialize, Serialize};
 
 use crate::{
-  definitions::mfkdf_derived_key::MFKDF2DerivedKey,
+  definitions::{factor::MFKDF2Factor, mfkdf_derived_key::MFKDF2DerivedKey},
   error::{MFKDF2Error, MFKDF2Result},
-  setup::{
-    factors::MFKDF2Factor,
-    key::{MFKDF2Options, key as setup_key},
-  },
+  setup::key::{MFKDF2Options, key as setup_key},
 };
 
 #[derive(Clone, Debug, Serialize, Deserialize, uniffi::Record, Default)]

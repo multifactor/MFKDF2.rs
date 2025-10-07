@@ -1,9 +1,10 @@
 use serde_json::Value;
 
 use crate::{
+  definitions::factor::{FactorType, MFKDF2Factor},
   derive::FactorDerive,
   error::{MFKDF2Error, MFKDF2Result},
-  setup::factors::{FactorType, MFKDF2Factor, passkey::Passkey},
+  setup::factors::passkey::Passkey,
 };
 
 impl FactorDerive for Passkey {

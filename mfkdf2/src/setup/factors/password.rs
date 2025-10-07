@@ -4,9 +4,12 @@ use serde_json::{Value, json};
 use zxcvbn::zxcvbn;
 
 use crate::{
-  definitions::key::Key,
+  definitions::{
+    factor::{FactorMetadata, FactorType, MFKDF2Factor},
+    key::Key,
+  },
   error::{MFKDF2Error, MFKDF2Result},
-  setup::factors::{FactorMetadata, FactorSetup, FactorType, MFKDF2Factor},
+  setup::FactorSetup,
 };
 
 #[derive(Clone, Debug, Serialize, Deserialize, uniffi::Record)]
@@ -77,7 +80,7 @@ mod tests {
   use serde_json::json;
 
   use super::*;
-  use crate::{error::MFKDF2Error, setup::factors::FactorSetup};
+  use crate::{error::MFKDF2Error, setup::FactorSetup};
 
   #[test]
   fn password_strength() {

@@ -137,7 +137,7 @@ pub fn mock_mixed_factors_mfkdf2() -> Result<MFKDF2DerivedKey, mfkdf2::error::MF
   Ok(key)
 }
 
-pub fn create_setup_factor(name: &str) -> mfkdf2::setup::factors::MFKDF2Factor {
+pub fn create_setup_factor(name: &str) -> mfkdf2::definitions::factor::MFKDF2Factor {
   match name {
     "password" => mfkdf2::setup::factors::password(
       "Tr0ubd4dour",
@@ -196,7 +196,7 @@ pub fn create_setup_factor(name: &str) -> mfkdf2::setup::factors::MFKDF2Factor {
 pub fn create_derive_factor(
   name: &str,
   policy: &mfkdf2::policy::Policy,
-) -> (String, mfkdf2::setup::factors::MFKDF2Factor) {
+) -> (String, mfkdf2::definitions::factor::MFKDF2Factor) {
   match name {
     "password" =>
       ("password_1".to_string(), mfkdf2::derive::factors::password("Tr0ubd4dour").unwrap()),

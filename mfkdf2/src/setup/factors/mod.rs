@@ -1,5 +1,3 @@
-use serde::{Deserialize, Serialize};
-use serde_json::Value;
 pub mod hmacsha1;
 pub mod hotp;
 pub mod ooba;
@@ -15,85 +13,18 @@ pub use hotp::hotp;
 pub use passkey::passkey;
 pub use password::password;
 pub use question::question;
+use serde_json::Value;
 pub use stack::stack;
 pub use totp::totp;
 pub use uuid::uuid;
 
-use crate::definitions::key::Key;
-
-#[uniffi::export]
-pub trait FactorMetadata: Send + Sync {
-  fn kind(&self) -> String;
-}
-
-// TODO (@lonerapier): refactor trait system with more associated types
-// TODO: add default + debug as well
-#[uniffi::export]
-#[allow(unused_variables)]
-pub trait FactorSetup: Send + Sync {
-  fn bytes(&self) -> Vec<u8>;
-  fn params(&self, key: Key) -> Value { serde_json::json!({}) }
-  fn output(&self, key: Key) -> Value { serde_json::json!({}) }
-}
-
-// TODO (@lonerapier): move factor to its own module
-#[derive(Clone, Serialize, Deserialize, uniffi::Record)]
-pub struct MFKDF2Factor {
-  pub id:          Option<String>,
-  pub factor_type: FactorType,
-  // TODO (autoparallel): This is the factor specific salt.
-  pub salt:        Vec<u8>,
-  pub entropy:     Option<f64>,
-}
-
-impl MFKDF2Factor {
-  pub fn kind(&self) -> String { self.factor_type.kind() }
-
-  pub fn data(&self) -> Vec<u8> { self.factor_type.bytes() }
-}
-
-impl std::fmt::Debug for MFKDF2Factor {
-  fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-    f.debug_struct("MFKDF2Factor")
-      .field("kind", &self.kind())
-      .field("id", &self.id)
-      .field("data", &self.factor_type)
-      .field("salt", &self.salt)
-      .field("params", &"<function>")
-      .field("entropy", &self.entropy)
-      .field("output", &"<future>")
-      .finish()
-  }
-}
-
-#[derive(Clone, Debug, Serialize, Deserialize, uniffi::Enum)]
-pub enum FactorType {
-  Password(password::Password),
-  HOTP(hotp::HOTP),
-  Question(question::Question),
-  UUID(uuid::UUIDFactor),
-  HmacSha1(hmacsha1::HmacSha1),
-  TOTP(totp::TOTP),
-  OOBA(ooba::Ooba),
-  Passkey(passkey::Passkey),
-  Stack(stack::Stack),
-}
-
-impl FactorType {
-  pub fn kind(&self) -> String {
-    match self {
-      FactorType::Password(password) => password.kind(),
-      FactorType::HOTP(hotp) => hotp.kind(),
-      FactorType::Question(question) => question.kind(),
-      FactorType::UUID(uuid) => uuid.kind(),
-      FactorType::HmacSha1(hmacsha1) => hmacsha1.kind(),
-      FactorType::TOTP(totp) => totp.kind(),
-      FactorType::OOBA(ooba) => ooba.kind(),
-      FactorType::Passkey(passkey) => passkey.kind(),
-      FactorType::Stack(stack) => stack.kind(),
-    }
-  }
-}
+use crate::{
+  definitions::{
+    factor::{FactorMetadata, FactorType},
+    key::Key,
+  },
+  setup::FactorSetup,
+};
 
 impl FactorType {
   pub fn setup(&self) -> &dyn FactorSetup {

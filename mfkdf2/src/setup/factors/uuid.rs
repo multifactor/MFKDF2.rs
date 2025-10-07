@@ -4,9 +4,12 @@ use serde_json::{Value, json};
 pub use uuid::Uuid;
 
 use crate::{
-  definitions::key::Key,
+  definitions::{
+    factor::{FactorMetadata, FactorType, MFKDF2Factor},
+    key::Key,
+  },
   error::MFKDF2Result,
-  setup::factors::{FactorMetadata, FactorSetup, FactorType, MFKDF2Factor},
+  setup::FactorSetup,
 };
 
 #[derive(Clone, Debug, Serialize, Deserialize, uniffi::Record)]

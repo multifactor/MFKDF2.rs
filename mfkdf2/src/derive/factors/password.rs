@@ -2,9 +2,10 @@ use serde_json::{Value, json};
 use zxcvbn::zxcvbn;
 
 use crate::{
+  definitions::factor::{FactorType, MFKDF2Factor},
   derive::FactorDerive,
   error::{MFKDF2Error, MFKDF2Result},
-  setup::factors::{FactorType, MFKDF2Factor, password::Password},
+  setup::factors::password::Password,
 };
 
 impl FactorDerive for Password {
@@ -40,7 +41,7 @@ pub async fn derive_password(password: String) -> MFKDF2Result<MFKDF2Factor> {
 #[cfg(test)]
 mod tests {
   use super::*;
-  use crate::{error::MFKDF2Error, setup::factors::FactorSetup};
+  use crate::{error::MFKDF2Error, setup::FactorSetup};
 
   #[test]
   fn test_password_empty() {

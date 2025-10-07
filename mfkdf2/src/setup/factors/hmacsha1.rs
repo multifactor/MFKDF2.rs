@@ -4,9 +4,9 @@ use serde_json::{Value, json};
 
 use crate::{
   crypto::encrypt,
-  definitions::key::Key,
+  definitions::{factor::MFKDF2Factor, key::Key},
   error::MFKDF2Result,
-  setup::factors::{FactorMetadata, FactorSetup, FactorType, MFKDF2Factor},
+  setup::factors::{FactorMetadata, FactorSetup, FactorType},
 };
 
 #[derive(Clone, Debug, Serialize, Deserialize, uniffi::Record)]

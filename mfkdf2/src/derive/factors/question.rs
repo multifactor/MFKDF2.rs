@@ -2,13 +2,13 @@ use serde_json::{Value, json};
 use zxcvbn::zxcvbn;
 
 use crate::{
-  definitions::key::Key,
+  definitions::{
+    factor::{FactorType, MFKDF2Factor},
+    key::Key,
+  },
   derive::FactorDerive,
   error::{MFKDF2Error, MFKDF2Result},
-  setup::factors::{
-    FactorType, MFKDF2Factor,
-    question::{Question, QuestionOptions},
-  },
+  setup::factors::question::{Question, QuestionOptions},
 };
 
 impl FactorDerive for Question {
