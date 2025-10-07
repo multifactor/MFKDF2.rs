@@ -9,7 +9,8 @@ use crate::{
   setup::factors::{FactorMetadata, FactorSetup, FactorType},
 };
 
-#[derive(Clone, Debug, Serialize, Deserialize, uniffi::Record)]
+#[cfg_attr(feature = "bindings", derive(uniffi::Record))]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct HmacSha1Options {
   pub id:     Option<String>,
   pub secret: Option<Vec<u8>>,
@@ -26,7 +27,8 @@ impl From<[u8; 20]> for HmacSha1Response {
   fn from(value: [u8; 20]) -> Self { HmacSha1Response(value) }
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, uniffi::Record)]
+#[cfg_attr(feature = "bindings", derive(uniffi::Record))]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct HmacSha1 {
   pub response:      Option<HmacSha1Response>,
   pub params:        Option<String>,
@@ -96,7 +98,7 @@ pub fn hmacsha1(options: HmacSha1Options) -> MFKDF2Result<MFKDF2Factor> {
   })
 }
 
-#[uniffi::export]
+#[cfg_attr(feature = "bindings", uniffi::export)]
 pub async fn setup_hmacsha1(options: HmacSha1Options) -> MFKDF2Result<MFKDF2Factor> {
   hmacsha1(options)
 }

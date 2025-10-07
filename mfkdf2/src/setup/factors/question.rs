@@ -12,7 +12,8 @@ use crate::{
   setup::FactorSetup,
 };
 
-#[derive(Clone, Debug, Serialize, Deserialize, uniffi::Record)]
+#[cfg_attr(feature = "bindings", derive(uniffi::Record))]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Question {
   // TODO (sambhav): does this option need to be added here?
   pub options: QuestionOptions,
@@ -40,7 +41,8 @@ impl FactorSetup for Question {
   }
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, uniffi::Record)]
+#[cfg_attr(feature = "bindings", derive(uniffi::Record))]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct QuestionOptions {
   pub id:       Option<String>,
   pub question: Option<String>,
@@ -92,7 +94,7 @@ pub fn question(answer: impl Into<String>, options: QuestionOptions) -> MFKDF2Re
   })
 }
 
-#[uniffi::export]
+#[cfg_attr(feature = "bindings", uniffi::export)]
 pub async fn setup_question(
   answer: String,
   options: QuestionOptions,

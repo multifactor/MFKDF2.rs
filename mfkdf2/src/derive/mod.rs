@@ -58,8 +58,8 @@ impl FactorDerive for FactorType {
   fn output(&self) -> Value { self.derive().output() }
 }
 
-#[uniffi::export]
+#[cfg_attr(feature = "bindings", uniffi::export)]
 pub fn derive_factor_params(factor: &FactorType, key: Key) -> Value { factor.params(key) }
 
-#[uniffi::export]
+#[cfg_attr(feature = "bindings", uniffi::export)]
 pub fn derive_factor_output(factor: &FactorType) -> Value { factor.output() }

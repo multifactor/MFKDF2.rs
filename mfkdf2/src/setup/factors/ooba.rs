@@ -28,7 +28,8 @@ pub fn generate_alphanumeric_characters(length: u32) -> String {
 
 pub struct OobaPublicKey(pub RsaPublicKey);
 
-#[derive(Clone, Debug, Serialize, Deserialize, uniffi::Record)]
+#[cfg_attr(feature = "bindings", derive(uniffi::Record))]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct OobaOptions {
   pub id:     Option<String>,
   pub length: Option<u8>,
@@ -42,7 +43,8 @@ impl Default for OobaOptions {
   }
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, uniffi::Record)]
+#[cfg_attr(feature = "bindings", derive(uniffi::Record))]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Ooba {
   pub target: Vec<u8>,
   pub length: u8,
@@ -164,7 +166,7 @@ pub fn ooba(options: OobaOptions) -> MFKDF2Result<MFKDF2Factor> {
   })
 }
 
-#[uniffi::export]
+#[cfg_attr(feature = "bindings", uniffi::export)]
 pub async fn setup_ooba(options: OobaOptions) -> MFKDF2Result<MFKDF2Factor> { ooba(options) }
 
 #[cfg(test)]

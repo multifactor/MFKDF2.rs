@@ -16,7 +16,8 @@ use crate::{
   setup::FactorSetup,
 };
 
-#[derive(Clone, Debug, Serialize, Deserialize, uniffi::Record)]
+#[cfg_attr(feature = "bindings", derive(uniffi::Record))]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct HOTPOptions {
   pub id:     Option<String>,
   // TODO (@lonerapier): use trait based type update for secret
@@ -28,7 +29,8 @@ pub struct HOTPOptions {
   pub label:  String,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq, uniffi::Enum)]
+#[cfg_attr(feature = "bindings", derive(uniffi::Enum))]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
 pub enum OTPHash {
   #[serde(rename = "sha1")]
   Sha1,
@@ -61,7 +63,8 @@ impl Default for HOTPOptions {
   }
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, uniffi::Record)]
+#[cfg_attr(feature = "bindings", derive(uniffi::Record))]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct HOTP {
   // TODO (sambhav): is it safe to add options in the factor struct here?
   pub options: HOTPOptions,
@@ -211,7 +214,7 @@ pub fn hotp(options: HOTPOptions) -> MFKDF2Result<MFKDF2Factor> {
   })
 }
 
-#[uniffi::export]
+#[cfg_attr(feature = "bindings", uniffi::export)]
 pub async fn setup_hotp(options: HOTPOptions) -> MFKDF2Result<MFKDF2Factor> { hotp(options) }
 
 #[cfg(test)]

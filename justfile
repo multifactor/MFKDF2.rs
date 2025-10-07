@@ -171,6 +171,11 @@ _ci-summary-failure:
     @printf "{{error}}{{bold}}Some checks failed. See output above for details.{{reset}}\n"
     @exit 1
 
+# build the workspace with bindings enabled
+build-bindings:
+    @just header "Building workspace with bindings enabled"
+    cargo build --workspace --all-targets --all-features
+
 # Generate the TypeScript bindings
 gen-ts-bindings:
     @just header "Generating TypeScript bindings"
@@ -178,6 +183,7 @@ gen-ts-bindings:
     @echo "Updating index.web.ts implementation"
     @cp mfkdf2-web/src/index.ts mfkdf2-web/src/index.web.ts
 
+# verify the TypeScript bindings
 verify-bindings:
     @just header "Verifying bindings"
     @if [ ! -d "mfkdf2-web/src/generated" ] || [ -z "$(ls -A mfkdf2-web/src/generated)" ]; then \
@@ -194,6 +200,7 @@ verify-bindings:
     fi
     @printf "{{success}}✓ TypeScript bindings verified{{reset}}\n"
 
+# test the TypeScript bindings
 test-bindings:
     @just header "Testing TypeScript bindings"
     @just verify-bindings  # verify bindings is generated

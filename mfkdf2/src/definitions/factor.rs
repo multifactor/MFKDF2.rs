@@ -5,13 +5,14 @@ use crate::setup::{
   factors::{hmacsha1, hotp, ooba, passkey, password, question, stack, totp, uuid},
 };
 
-#[uniffi::export]
+#[cfg_attr(feature = "bindings", uniffi::export)]
 pub trait FactorMetadata: Send + Sync + std::fmt::Debug {
   fn kind(&self) -> String;
 }
 
 // TODO (@lonerapier): move factor to its own module
-#[derive(Clone, Serialize, Deserialize, uniffi::Record)]
+#[cfg_attr(feature = "bindings", derive(uniffi::Record))]
+#[derive(Clone, Serialize, Deserialize)]
 pub struct MFKDF2Factor {
   pub id:          Option<String>,
   pub factor_type: FactorType,
@@ -39,7 +40,8 @@ impl std::fmt::Debug for MFKDF2Factor {
   }
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, uniffi::Enum)]
+#[cfg_attr(feature = "bindings", derive(uniffi::Enum))]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub enum FactorType {
   Password(password::Password),
   HOTP(hotp::HOTP),

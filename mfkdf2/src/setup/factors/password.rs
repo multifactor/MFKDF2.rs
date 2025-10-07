@@ -12,7 +12,8 @@ use crate::{
   setup::FactorSetup,
 };
 
-#[derive(Clone, Debug, Serialize, Deserialize, uniffi::Record)]
+#[cfg_attr(feature = "bindings", derive(uniffi::Record))]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Password {
   pub password: String,
 }
@@ -31,7 +32,8 @@ impl FactorSetup for Password {
   }
 }
 
-#[derive(Clone, Debug, Default, Serialize, Deserialize, uniffi::Record)]
+#[cfg_attr(feature = "bindings", derive(uniffi::Record))]
+#[derive(Clone, Debug, Default, Serialize, Deserialize)]
 pub struct PasswordOptions {
   pub id: Option<String>,
 }
@@ -65,7 +67,7 @@ pub fn password(
   })
 }
 
-#[uniffi::export]
+#[cfg_attr(feature = "bindings", uniffi::export)]
 pub async fn setup_password(
   password: String,
   options: PasswordOptions,

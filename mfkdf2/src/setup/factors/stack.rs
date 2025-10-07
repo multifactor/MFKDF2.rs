@@ -17,7 +17,8 @@ use crate::{
   },
 };
 
-#[derive(Clone, Debug, Default, Serialize, Deserialize, uniffi::Record)]
+#[cfg_attr(feature = "bindings", derive(uniffi::Record))]
+#[derive(Clone, Debug, Default, Serialize, Deserialize)]
 pub struct StackOptions {
   pub id:        Option<String>,
   pub threshold: Option<u8>,
@@ -40,7 +41,8 @@ impl From<StackOptions> for MFKDF2Options {
   }
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, uniffi::Record)]
+#[cfg_attr(feature = "bindings", derive(uniffi::Record))]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Stack {
   pub factors: HashMap<String, MFKDF2Factor>,
   pub key:     MFKDF2DerivedKey,
@@ -90,7 +92,7 @@ pub fn stack(factors: Vec<MFKDF2Factor>, options: StackOptions) -> MFKDF2Result<
   })
 }
 
-#[uniffi::export]
+#[cfg_attr(feature = "bindings", uniffi::export)]
 pub async fn setup_stack(
   factors: Vec<MFKDF2Factor>,
   options: StackOptions,

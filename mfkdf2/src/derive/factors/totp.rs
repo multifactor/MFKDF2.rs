@@ -21,7 +21,8 @@ use crate::{
   },
 };
 
-#[derive(Clone, Debug, Serialize, Deserialize, uniffi::Record, Default)]
+#[cfg_attr(feature = "bindings", derive(uniffi::Record))]
+#[derive(Clone, Debug, Default, Serialize, Deserialize)]
 pub struct TOTPDeriveOptions {
   pub time:   Option<u64>,
   pub oracle: Option<Vec<u32>>,
@@ -166,7 +167,7 @@ pub fn totp(code: u32, options: Option<TOTPDeriveOptions>) -> MFKDF2Result<MFKDF
   })
 }
 
-#[uniffi::export]
+#[cfg_attr(feature = "bindings", uniffi::export)]
 pub async fn derive_totp(
   code: u32,
   options: Option<TOTPDeriveOptions>,

@@ -8,7 +8,7 @@ use crate::definitions::key::Key;
 
 // TODO (@lonerapier): refactor trait system with more associated types
 // TODO: add default + debug as well
-#[uniffi::export]
+#[cfg_attr(feature = "bindings", uniffi::export)]
 #[allow(unused_variables)]
 pub trait FactorSetup: Send + Sync + std::fmt::Debug {
   fn bytes(&self) -> Vec<u8>;

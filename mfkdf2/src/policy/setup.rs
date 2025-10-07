@@ -6,7 +6,8 @@ use crate::{
   setup::key::{MFKDF2Options, key as setup_key},
 };
 
-#[derive(Clone, Debug, Serialize, Deserialize, uniffi::Record, Default)]
+#[cfg_attr(feature = "bindings", derive(uniffi::Record))]
+#[derive(Clone, Debug, Default, Serialize, Deserialize)]
 pub struct PolicySetupOptions {
   pub id:        Option<String>,
   pub threshold: Option<u8>,
@@ -36,7 +37,7 @@ pub fn setup(factor: MFKDF2Factor, options: PolicySetupOptions) -> MFKDF2Result<
   Ok(derived_key)
 }
 
-#[uniffi::export]
+#[cfg_attr(feature = "bindings", uniffi::export)]
 pub async fn policy_setup(
   factor: MFKDF2Factor,
   options: PolicySetupOptions,

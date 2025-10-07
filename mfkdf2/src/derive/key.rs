@@ -176,7 +176,7 @@ pub fn key(
   })
 }
 
-#[uniffi::export(default(verify = true, stack = false))]
+#[cfg_attr(feature = "bindings", uniffi::export(default(verify = true, stack = false)))]
 pub async fn derive_key(
   policy: Policy,
   factors: HashMap<String, MFKDF2Factor>,

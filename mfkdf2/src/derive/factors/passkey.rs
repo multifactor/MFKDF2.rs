@@ -27,5 +27,5 @@ pub fn passkey(secret: Vec<u8>) -> MFKDF2Result<MFKDF2Factor> {
   })
 }
 
-#[uniffi::export]
+#[cfg_attr(feature = "bindings", uniffi::export)]
 pub async fn derive_passkey(secret: Vec<u8>) -> MFKDF2Result<MFKDF2Factor> { passkey(secret) }
