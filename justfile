@@ -205,3 +205,11 @@ test-bindings:
     @just header "Testing TypeScript bindings"
     @just verify-bindings  # verify bindings is generated
     cd mfkdf2-web && npm test
+
+# test the TypeScript bindings with HTML and JUnit reports
+test-bindings-report:
+    @just header "Testing TypeScript bindings (with reports)"
+    @just verify-bindings  # verify bindings is generated
+    cd mfkdf2-web && npm run test:report
+    @printf "{{success}}HTML report:{{reset}} %s\n" "mfkdf2-web/test-results/mochawesome/index.html"
+    @printf "{{success}}JUnit report:{{reset}} %s\n" "mfkdf2-web/test-results/junit/junit.xml"
