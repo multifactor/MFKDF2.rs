@@ -16,6 +16,8 @@ use crate::{
 };
 
 impl FactorDerive for Ooba {
+  type Output = Value;
+
   fn include_params(&mut self, params: Value) -> MFKDF2Result<()> {
     let pad_b64 =
       params["pad"].as_str().ok_or(MFKDF2Error::MissingDeriveParams("pad".to_string()))?;

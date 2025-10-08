@@ -40,6 +40,8 @@ impl FactorMetadata for HmacSha1 {
 }
 
 impl FactorSetup for HmacSha1 {
+  type Output = Value;
+
   fn bytes(&self) -> Vec<u8> { self.padded_secret[..20].to_vec() }
 
   fn params(&self, _key: Key) -> MFKDF2Result<Value> {
@@ -57,7 +59,7 @@ impl FactorSetup for HmacSha1 {
     }))
   }
 
-  fn output(&self, _key: Key) -> Value {
+  fn output(&self, _key: Key) -> Self::Output {
     json!({
       "secret": self.padded_secret[..20],
     })

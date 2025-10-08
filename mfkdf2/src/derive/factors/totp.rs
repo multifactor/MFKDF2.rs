@@ -35,6 +35,8 @@ impl From<TOTPDeriveOptions> for TOTPOptions {
 }
 
 impl FactorDerive for TOTP {
+  type Output = Value;
+
   fn include_params(&mut self, params: Value) -> MFKDF2Result<()> {
     self.params = serde_json::to_string(&params)
       .map_err(|e| MFKDF2Error::InvalidDeriveParams(format!("invalid params: {}", e)))?;

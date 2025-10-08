@@ -26,6 +26,8 @@ impl FactorMetadata for Question {
 }
 
 impl FactorSetup for Question {
+  type Output = Value;
+
   fn bytes(&self) -> Vec<u8> { self.answer.as_bytes().to_vec() }
 
   fn params(&self, _key: Key) -> MFKDF2Result<Value> {
@@ -34,7 +36,7 @@ impl FactorSetup for Question {
     }))
   }
 
-  fn output(&self, _key: Key) -> Value {
+  fn output(&self, _key: Key) -> Self::Output {
     json!({
       "strength": zxcvbn(&self.answer, &[]),
     })

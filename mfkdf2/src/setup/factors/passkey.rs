@@ -17,6 +17,8 @@ impl FactorMetadata for Passkey {
 }
 
 impl FactorSetup for Passkey {
+  type Output = serde_json::Value;
+
   fn bytes(&self) -> Vec<u8> { self.secret.clone() }
 }
 

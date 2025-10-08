@@ -11,13 +11,15 @@ use crate::{
 
 #[allow(unused_variables)]
 pub trait FactorDerive: Send + Sync + std::fmt::Debug {
+  type Output: serde::Serialize + serde::de::DeserializeOwned + std::fmt::Debug + Default;
+
   fn include_params(&mut self, params: Value) -> MFKDF2Result<()>;
   fn params(&self, key: Key) -> MFKDF2Result<Value> { Ok(serde_json::json!({})) }
-  fn output(&self) -> Value { serde_json::json!({}) }
+  fn output(&self) -> Self::Output { Self::Output::default() }
 }
 
 impl FactorType {
-  fn derive(&self) -> &dyn FactorDerive {
+  fn derive(&self) -> &dyn FactorDerive<Output = Value> {
     match self {
       FactorType::Password(password) => password,
       FactorType::HOTP(hotp) => hotp,
@@ -31,7 +33,7 @@ impl FactorType {
     }
   }
 
-  fn derive_mut(&mut self) -> &mut dyn FactorDerive {
+  fn derive_mut(&mut self) -> &mut dyn FactorDerive<Output = Value> {
     match self {
       FactorType::Password(password) => password,
       FactorType::HOTP(hotp) => hotp,
@@ -47,6 +49,8 @@ impl FactorType {
 }
 
 impl FactorDerive for FactorType {
+  type Output = Value;
+
   // TODO: add associated types for params
   fn include_params(&mut self, params: Value) -> MFKDF2Result<()> {
     self.derive_mut().include_params(params)
@@ -54,7 +58,7 @@ impl FactorDerive for FactorType {
 
   fn params(&self, key: Key) -> MFKDF2Result<Value> { self.derive().params(key) }
 
-  fn output(&self) -> Value { self.derive().output() }
+  fn output(&self) -> Self::Output { self.derive().output() }
 }
 
 #[cfg_attr(feature = "bindings", uniffi::export)]

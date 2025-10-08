@@ -1,4 +1,4 @@
-use serde_json::Value;
+use serde_json::{Value, json};
 
 use crate::{
   definitions::factor::{FactorType, MFKDF2Factor},
@@ -8,10 +8,14 @@ use crate::{
 };
 
 impl FactorDerive for Passkey {
+  type Output = Value;
+
   fn include_params(&mut self, _params: Value) -> MFKDF2Result<()> {
     // Passkey factor has no parameters from setup
     Ok(())
   }
+
+  fn output(&self) -> Self::Output { json!({}) }
 }
 
 pub fn passkey(secret: Vec<u8>) -> MFKDF2Result<MFKDF2Factor> {

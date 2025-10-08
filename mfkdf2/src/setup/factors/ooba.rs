@@ -87,6 +87,8 @@ impl FactorMetadata for Ooba {
 }
 
 impl FactorSetup for Ooba {
+  type Output = Value;
+
   fn bytes(&self) -> Vec<u8> { self.target.clone() }
 
   fn params(&self, _key: Key) -> MFKDF2Result<Value> {

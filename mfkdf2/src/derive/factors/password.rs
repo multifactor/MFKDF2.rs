@@ -9,9 +9,11 @@ use crate::{
 };
 
 impl FactorDerive for Password {
+  type Output = Value;
+
   fn include_params(&mut self, _params: Value) -> MFKDF2Result<()> { Ok(()) }
 
-  fn output(&self) -> Value { json!({"strength": zxcvbn(&self.password, &[])}) }
+  fn output(&self) -> Self::Output { json!({"strength": zxcvbn(&self.password, &[])}) }
 }
 
 pub fn password(password: impl Into<String>) -> MFKDF2Result<MFKDF2Factor> {

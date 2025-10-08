@@ -12,6 +12,8 @@ use crate::{
 };
 
 impl FactorDerive for Question {
+  type Output = Value;
+
   fn include_params(&mut self, params: Value) -> MFKDF2Result<()> {
     self.params = serde_json::to_string(&params).unwrap();
     Ok(())
@@ -22,7 +24,7 @@ impl FactorDerive for Question {
       .map_err(|_| MFKDF2Error::InvalidDeriveParams("params".to_string()))
   }
 
-  fn output(&self) -> Value { json!({"strength": zxcvbn(&self.answer, &[])}) }
+  fn output(&self) -> Self::Output { json!({"strength": zxcvbn(&self.answer, &[])}) }
 }
 
 pub fn question(answer: impl Into<String>) -> MFKDF2Result<MFKDF2Factor> {

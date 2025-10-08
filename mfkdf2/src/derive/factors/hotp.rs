@@ -13,6 +13,8 @@ use crate::{
 };
 
 impl FactorDerive for HOTP {
+  type Output = Value;
+
   fn include_params(&mut self, params: Value) -> MFKDF2Result<()> {
     // Store the policy parameters for derive phase
     self.params = serde_json::to_string(&params).unwrap();

@@ -13,6 +13,8 @@ use crate::{
 };
 
 impl FactorDerive for HmacSha1 {
+  type Output = Value;
+
   fn include_params(&mut self, params: Value) -> MFKDF2Result<()> {
     self.params = Some(serde_json::to_string(&params).unwrap());
 
@@ -50,7 +52,7 @@ impl FactorDerive for HmacSha1 {
     }))
   }
 
-  fn output(&self) -> Value {
+  fn output(&self) -> Self::Output {
     json!({
       "secret": self.padded_secret[..20],
     })

@@ -71,6 +71,8 @@ impl FactorMetadata for TOTP {
 }
 
 impl FactorSetup for TOTP {
+  type Output = Value;
+
   fn bytes(&self) -> Vec<u8> { self.target.to_be_bytes().to_vec() }
 
   fn params(&self, key: Key) -> MFKDF2Result<Value> {
@@ -109,7 +111,7 @@ impl FactorSetup for TOTP {
     }))
   }
 
-  fn output(&self, _key: Key) -> Value {
+  fn output(&self, _key: Key) -> Self::Output {
     json!({
       "scheme": "otpauth",
       "type": "totp",

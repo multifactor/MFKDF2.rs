@@ -34,9 +34,11 @@ impl FactorMetadata for UUIDFactor {
 }
 
 impl FactorSetup for UUIDFactor {
+  type Output = Value;
+
   fn bytes(&self) -> Vec<u8> { self.uuid.as_bytes().to_vec() }
 
-  fn output(&self, _key: Key) -> Value {
+  fn output(&self, _key: Key) -> Self::Output {
     json!({
       "uuid": self.uuid.clone(),
     })
