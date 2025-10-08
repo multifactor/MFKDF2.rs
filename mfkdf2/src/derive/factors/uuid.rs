@@ -67,7 +67,7 @@ mod tests {
     assert!(result.is_ok());
 
     // Test params_derive (returns empty)
-    let params = factor.factor_type.params([0; 32].into());
+    let params = factor.factor_type.params([0; 32].into()).unwrap();
     assert_eq!(params, json!({}));
   }
 }

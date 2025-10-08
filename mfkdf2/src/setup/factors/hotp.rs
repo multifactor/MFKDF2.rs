@@ -80,7 +80,7 @@ impl FactorMetadata for HOTP {
 impl FactorSetup for HOTP {
   fn bytes(&self) -> Vec<u8> { self.target.to_be_bytes().to_vec() }
 
-  fn params(&self, key: Key) -> Value {
+  fn params(&self, key: Key) -> MFKDF2Result<Value> {
     // Generate or use provided secret
     let padded_secret = if let Some(secret) = self.options.secret.clone() {
       secret
@@ -99,13 +99,13 @@ impl FactorSetup for HOTP {
 
     let pad = encrypt(&padded_secret, &key.0);
 
-    json!({
+    Ok(json!({
       "hash": self.options.hash.to_string(),
       "digits": self.options.digits,
       "pad": base64::prelude::BASE64_STANDARD.encode(&pad),
       "counter": 1,
       "offset": offset
-    })
+    }))
   }
 
   fn output(&self, _key: Key) -> Value {
@@ -239,7 +239,9 @@ mod tests {
     assert_eq!(factor.data().len(), 4); // u32 target as bytes
 
     // Test that params can be generated
-    let params = factor.factor_type.setup().params(key.into());
+    let params = factor.factor_type.setup().params(key.into()).unwrap();
+    assert!(params.is_object());
+
     assert!(params["hash"].is_string());
     assert!(params["digits"].is_number());
     assert!(params["pad"].is_string());
@@ -257,8 +259,11 @@ mod tests {
     assert_eq!(factor.id, Some("hotp".to_string()));
     assert_eq!(factor.data().len(), 4);
     assert!(factor.entropy.is_some());
-    assert!(factor.factor_type.setup().params(key.into()).is_object());
-    assert!(factor.factor_type.output(key.into()).is_object());
+    let params = factor.factor_type.setup().params(key.into()).unwrap();
+    assert!(params.is_object());
+
+    let output = factor.factor_type.output(key.into());
+    assert!(output.is_object());
   }
 
   #[test]
@@ -343,7 +348,9 @@ mod tests {
 
     let original_padded_secret = hotp_factor.options.secret.as_ref().unwrap();
 
-    let params = hotp_factor.params(key.into());
+    let params = hotp_factor.params(key.into()).unwrap();
+    assert!(params.is_object());
+
     let pad_b64 = params["pad"].as_str().unwrap();
     let pad = BASE64_STANDARD.decode(pad_b64).unwrap();
 
@@ -364,7 +371,9 @@ mod tests {
       _ => panic!("Wrong factor type"),
     };
 
-    let params = hotp_factor.params(key.into());
+    let params = hotp_factor.params(key.into()).unwrap();
+    assert!(params.is_object());
+
     let offset = params["offset"].as_u64().unwrap() as u32;
 
     let padded_secret = hotp_factor.options.secret.as_ref().unwrap();

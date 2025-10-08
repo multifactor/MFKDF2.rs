@@ -24,6 +24,9 @@ pub enum MFKDF2Error {
   #[error(transparent)]
   DecodeError(#[from] base64::DecodeError),
 
+  #[error(transparent)]
+  RsaError(#[from] rsa::errors::Error),
+
   // TODO (autoparallel): This error variant should probably not even exist.
   #[error("failed to convert vector to array!")]
   TryFromVecError,
@@ -69,6 +72,12 @@ pub enum MFKDF2Error {
 
   #[error("invalid passkey secret length")]
   InvalidPasskeySecretLength,
+
+  #[error("missing setup params: {0}")]
+  MissingSetupParams(String),
+
+  #[error("missing output params: {0}")]
+  InvalidSetupParams(String),
 
   #[error("missing derive params: {0}")]
   MissingDeriveParams(String),

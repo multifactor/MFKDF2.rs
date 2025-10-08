@@ -23,6 +23,7 @@ use crate::{
     factor::{FactorMetadata, FactorType},
     key::Key,
   },
+  error::MFKDF2Result,
   setup::FactorSetup,
 };
 
@@ -45,7 +46,7 @@ impl FactorType {
 impl FactorSetup for FactorType {
   fn bytes(&self) -> Vec<u8> { self.setup().bytes() }
 
-  fn params(&self, key: Key) -> Value { self.setup().params(key) }
+  fn params(&self, key: Key) -> MFKDF2Result<Value> { self.setup().params(key) }
 
   fn output(&self, key: Key) -> Value { self.setup().output(key) }
 }
@@ -58,7 +59,7 @@ pub fn factor_type_kind(factor_type: &FactorType) -> String { factor_type.kind()
 pub fn factor_type_bytes(factor_type: &FactorType) -> Vec<u8> { factor_type.bytes() }
 
 #[cfg_attr(feature = "bindings", uniffi::export)]
-pub fn setup_factor_type_params(factor_type: &FactorType, key: Option<Key>) -> Value {
+pub fn setup_factor_type_params(factor_type: &FactorType, key: Option<Key>) -> MFKDF2Result<Value> {
   // TODO (@lonerapier): remove dummy key usage
   let key = key.unwrap_or_else(|| [0u8; 32].into());
   factor_type.params(key)

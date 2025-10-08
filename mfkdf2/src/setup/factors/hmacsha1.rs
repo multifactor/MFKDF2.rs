@@ -42,7 +42,7 @@ impl FactorMetadata for HmacSha1 {
 impl FactorSetup for HmacSha1 {
   fn bytes(&self) -> Vec<u8> { self.padded_secret[..20].to_vec() }
 
-  fn params(&self, _key: Key) -> Value {
+  fn params(&self, _key: Key) -> MFKDF2Result<Value> {
     let mut challenge = [0u8; 64];
     OsRng.fill_bytes(&mut challenge);
 
@@ -51,10 +51,10 @@ impl FactorSetup for HmacSha1 {
     padded_key[..response.len()].copy_from_slice(&response);
     let pad = encrypt(&self.padded_secret, &padded_key);
 
-    json!({
+    Ok(json!({
       "challenge": hex::encode(challenge),
       "pad": hex::encode(pad),
-    })
+    }))
   }
 
   fn output(&self, _key: Key) -> Value {
@@ -127,7 +127,9 @@ mod tests {
     assert_eq!(factor.data(), SECRET.to_vec());
 
     // Get the challenge and pad from params
-    let params = factor.factor_type.setup().params([0u8; 32].into());
+    let params = factor.factor_type.setup().params([0u8; 32].into()).unwrap();
+    assert!(params.is_object());
+
     let challenge = hex::decode(params["challenge"].as_str().unwrap()).unwrap();
     let pad = hex::decode(params["pad"].as_str().unwrap()).unwrap();
 
@@ -137,10 +139,8 @@ mod tests {
     // Verify the pad is correct (ENC(secret, key))
     let mut padded_secret = [0u8; 32];
     padded_secret[..SECRET.len()].copy_from_slice(&SECRET);
-
     let mut padded_key = [0u8; 32];
     padded_key[..expected_response.len()].copy_from_slice(&expected_response);
-
     let expected_pad = encrypt(&padded_secret, &padded_key);
 
     // verify partial pad (multiple of 16) is correct
@@ -153,7 +153,7 @@ mod tests {
     assert_eq!(factor.kind(), "hmacsha1");
     assert_eq!(factor.id, Some("hmacsha1".to_string()));
     assert_eq!(factor.data().len(), 20); // Secret should be 20 bytes
-    assert!(factor.factor_type.setup().params([0u8; 32].into()).is_object());
+    assert!(factor.factor_type.setup().params([0u8; 32].into()).unwrap().is_object());
     assert!(factor.factor_type.output([0u8; 32].into()).is_object());
     assert_eq!(factor.entropy, Some(160.0)); // 20 bytes * 8 bits = 160 bits
   }
@@ -168,6 +168,8 @@ mod tests {
   fn output_setup() {
     let factor = mock_construction();
     let output = factor.factor_type.output([0u8; 32].into());
+    assert!(output.is_object());
+
     let secret = output["secret"]
       .as_array()
       .unwrap()

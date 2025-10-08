@@ -24,8 +24,9 @@ impl FactorDerive for Stack {
     Ok(())
   }
 
-  fn params(&self, _key: Key) -> Value {
-    serde_json::to_value(&self.key.policy).unwrap_or(json!({}))
+  fn params(&self, _key: Key) -> MFKDF2Result<Value> {
+    serde_json::to_value(&self.key.policy)
+      .map_err(|_| MFKDF2Error::InvalidDeriveParams("policy".to_string()))
   }
 
   fn output(&self) -> Value { serde_json::to_value(&self.key).unwrap_or(json!({})) }

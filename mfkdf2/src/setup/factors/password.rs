@@ -114,7 +114,7 @@ mod tests {
       FactorType::Password(p) => {
         assert_eq!(p.password, "hello");
         assert_eq!(p.bytes(), "hello".as_bytes());
-        let params = p.params([0; 32].into());
+        let params = p.params([0; 32].into()).unwrap();
         assert_eq!(params, json!({}));
       },
       _ => panic!("Wrong factor type"),

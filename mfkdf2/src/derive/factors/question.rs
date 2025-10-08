@@ -17,7 +17,10 @@ impl FactorDerive for Question {
     Ok(())
   }
 
-  fn params(&self, _key: Key) -> Value { serde_json::from_str(&self.params).unwrap() }
+  fn params(&self, _key: Key) -> MFKDF2Result<Value> {
+    serde_json::from_str(&self.params)
+      .map_err(|_| MFKDF2Error::InvalidDeriveParams("params".to_string()))
+  }
 
   fn output(&self) -> Value { json!({"strength": zxcvbn(&self.answer, &[])}) }
 }
@@ -96,7 +99,7 @@ mod tests {
   fn include_and_derive_params() {
     // 1. Setup a factor to get setup_params
     let setup_factor = mock_question_setup();
-    let setup_params = setup_factor.factor_type.setup().params([0u8; 32].into());
+    let setup_params = setup_factor.factor_type.setup().params([0u8; 32].into()).unwrap();
 
     // 2. Create a derive factor
     let derive_factor_result = question("my answer");
@@ -118,7 +121,7 @@ mod tests {
     assert_eq!(stored_params, setup_params);
 
     // 6. Call params_derive and check if it returns the same params
-    let derived_params = question_struct.params([0u8; 32].into());
+    let derived_params = question_struct.params([0u8; 32].into()).unwrap();
     assert_eq!(derived_params, setup_params);
   }
 

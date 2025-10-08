@@ -28,10 +28,10 @@ impl FactorMetadata for Question {
 impl FactorSetup for Question {
   fn bytes(&self) -> Vec<u8> { self.answer.as_bytes().to_vec() }
 
-  fn params(&self, _key: Key) -> Value {
-    json!({
-      "question": self.options.question.clone().unwrap_or_default(),
-    })
+  fn params(&self, _key: Key) -> MFKDF2Result<Value> {
+    Ok(json!({
+      "question": self.options.question.clone().ok_or(MFKDF2Error::MissingSetupParams("question".to_string()))?,
+    }))
   }
 
   fn output(&self, _key: Key) -> Value {
@@ -159,6 +159,8 @@ mod tests {
     };
 
     let params = question_factor.params([0u8; 32].into());
+    assert!(params.is_ok());
+    let params = params.unwrap();
     assert!(params.is_object());
     assert_eq!(params["question"], "What is your favorite color?");
   }

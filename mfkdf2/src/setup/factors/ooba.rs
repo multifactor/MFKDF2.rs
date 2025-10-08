@@ -89,30 +89,26 @@ impl FactorMetadata for Ooba {
 impl FactorSetup for Ooba {
   fn bytes(&self) -> Vec<u8> { self.target.clone() }
 
-  fn params(&self, _key: Key) -> Value {
+  fn params(&self, _key: Key) -> MFKDF2Result<Value> {
     let code = generate_alphanumeric_characters(self.length.into()).to_uppercase();
 
     let prev_key = hkdf_sha256_with_info(code.as_bytes(), &[], &[]);
     let pad = encrypt(&self.target, &prev_key);
 
-    let mut params = match serde_json::from_str(&self.params) {
-      Ok(params) => params,
-      Err(_) => json!({}),
-    };
+    let mut params: Value = serde_json::from_str(&self.params)?;
     params["code"] = json!(code);
 
-    let plaintext = serde_json::to_vec(&params).expect("Should serialize params to bytes");
-    let key = OobaPublicKey::try_from(self.jwk.as_str()).expect("JWK should be valid");
-    let ciphertext =
-      key.0.encrypt(&mut OsRng, Oaep::new::<Sha256>(), &plaintext).expect("Should encrypt params");
+    let plaintext = serde_json::to_vec(&params)?;
+    let key = OobaPublicKey::try_from(self.jwk.as_str())?;
+    let ciphertext = key.0.encrypt(&mut OsRng, Oaep::new::<Sha256>(), &plaintext)?;
 
-    json!({
+    Ok(json!({
         "length": self.length,
         "key": self.jwk,
         "params": params,
         "next": hex::encode(ciphertext),
         "pad": general_purpose::STANDARD.encode(pad),
-    })
+    }))
   }
 }
 
@@ -306,7 +302,7 @@ mod tests {
       _ => panic!("Factor type should be Ooba"),
     };
 
-    let params = ooba.params([0u8; 32].into());
+    let params = ooba.params([0u8; 32].into()).unwrap();
     assert!(params.is_object());
 
     // check params.next is equal to params.params

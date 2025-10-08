@@ -12,8 +12,7 @@ use crate::{
 #[allow(unused_variables)]
 pub trait FactorDerive: Send + Sync + std::fmt::Debug {
   fn include_params(&mut self, params: Value) -> MFKDF2Result<()>;
-  // TODO (@lonerapier): wrap the return value in result here too
-  fn params(&self, key: Key) -> Value { serde_json::json!({}) }
+  fn params(&self, key: Key) -> MFKDF2Result<Value> { Ok(serde_json::json!({})) }
   fn output(&self) -> Value { serde_json::json!({}) }
 }
 
@@ -53,13 +52,15 @@ impl FactorDerive for FactorType {
     self.derive_mut().include_params(params)
   }
 
-  fn params(&self, key: Key) -> Value { self.derive().params(key) }
+  fn params(&self, key: Key) -> MFKDF2Result<Value> { self.derive().params(key) }
 
   fn output(&self) -> Value { self.derive().output() }
 }
 
 #[cfg_attr(feature = "bindings", uniffi::export)]
-pub fn derive_factor_params(factor: &FactorType, key: Key) -> Value { factor.params(key) }
+pub fn derive_factor_params(factor: &FactorType, key: Key) -> MFKDF2Result<Value> {
+  factor.params(key)
+}
 
 #[cfg_attr(feature = "bindings", uniffi::export)]
 pub fn derive_factor_output(factor: &FactorType) -> Value { factor.output() }

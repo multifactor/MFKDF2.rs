@@ -160,7 +160,7 @@ pub fn key(factors: Vec<MFKDF2Factor>, options: MFKDF2Options) -> MFKDF2Result<M
       format!("mfkdf2:factor:params:{}", &factor.id.clone().unwrap()).as_bytes(),
     );
 
-    let params = factor.factor_type.setup().params(params_key.into());
+    let params = factor.factor_type.setup().params(params_key.into())?;
     // TODO (autoparallel): This should not be an unwrap.
     outputs.insert(factor.id.clone().unwrap(), factor.factor_type.output(key.into()).to_string());
 

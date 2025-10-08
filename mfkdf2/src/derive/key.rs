@@ -139,7 +139,7 @@ pub fn key(
       &general_purpose::STANDARD.decode(&factor.salt)?,
       format!("mfkdf2:factor:params:{}", factor.id).as_bytes(),
     );
-    let params = material.factor_type.params(params_key.into());
+    let params = material.factor_type.params(params_key.into())?;
     factor.params = serde_json::to_string(&params)?;
   }
 

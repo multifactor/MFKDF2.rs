@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use rand::{RngCore, rngs::OsRng};
 use serde::{Deserialize, Serialize};
-use serde_json::{Value, json};
+use serde_json::Value;
 
 use crate::{
   definitions::{
@@ -55,11 +55,9 @@ impl FactorMetadata for Stack {
 impl FactorSetup for Stack {
   fn bytes(&self) -> Vec<u8> { self.key.key.clone() }
 
-  fn params(&self, _key: Key) -> Value {
-    serde_json::to_value(&self.key.policy).unwrap_or(json!({}))
-  }
+  fn params(&self, _key: Key) -> MFKDF2Result<Value> { Ok(serde_json::to_value(&self.key.policy)?) }
 
-  fn output(&self, _key: Key) -> Value { serde_json::to_value(&self.key).unwrap_or(json!({})) }
+  fn output(&self, _key: Key) -> Value { serde_json::to_value(&self.key).unwrap() }
 }
 
 pub fn stack(factors: Vec<MFKDF2Factor>, options: StackOptions) -> MFKDF2Result<MFKDF2Factor> {
@@ -151,7 +149,7 @@ mod tests {
     let stack_factor = stack(vec![factor], options).unwrap();
     let key = [0u8; 32];
 
-    let params = stack_factor.factor_type.setup().params(key.into());
+    let params = stack_factor.factor_type.setup().params(key.into()).unwrap();
     let output = stack_factor.factor_type.output(key.into());
 
     if let FactorType::Stack(stack) = stack_factor.factor_type {
