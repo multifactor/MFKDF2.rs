@@ -2,7 +2,7 @@ use rand::{RngCore, rngs::OsRng};
 use serde::{Deserialize, Serialize};
 
 use crate::{
-  definitions::factor::{FactorMetadata, FactorType, MFKDF2Factor},
+  definitions::{FactorMetadata, FactorType, MFKDF2Factor},
   error::{MFKDF2Error, MFKDF2Result},
   setup::FactorSetup,
 };

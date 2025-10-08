@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 
 use crate::{
-  definitions::{factor::MFKDF2Factor, mfkdf_derived_key::MFKDF2DerivedKey},
+  definitions::{MFKDF2DerivedKey, MFKDF2Factor},
   error::{MFKDF2Error, MFKDF2Result},
   setup::key::{MFKDF2Options, key as setup_key},
 };

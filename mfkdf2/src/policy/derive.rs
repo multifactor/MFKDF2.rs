@@ -1,7 +1,7 @@
 use std::collections::{HashMap, HashSet};
 
 use crate::{
-  definitions::{factor::MFKDF2Factor, mfkdf_derived_key::MFKDF2DerivedKey},
+  definitions::{MFKDF2DerivedKey, MFKDF2Factor},
   derive::factors::stack::stack as create_stack_factor,
   error::{MFKDF2Error, MFKDF2Result},
   policy::{Policy, evaluate::evaluate_internal},

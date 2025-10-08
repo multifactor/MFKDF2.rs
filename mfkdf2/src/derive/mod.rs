@@ -5,7 +5,7 @@ pub use key::key;
 use serde_json::Value;
 
 use crate::{
-  definitions::{factor::FactorType, key::Key},
+  definitions::{FactorType, Key},
   error::MFKDF2Result,
 };
 

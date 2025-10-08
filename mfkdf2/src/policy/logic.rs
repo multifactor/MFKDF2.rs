@@ -1,8 +1,6 @@
 use uuid::Uuid;
 
-use crate::{
-  definitions::factor::MFKDF2Factor, error::MFKDF2Result, setup::factors::stack::StackOptions,
-};
+use crate::{definitions::MFKDF2Factor, error::MFKDF2Result, setup::factors::stack::StackOptions};
 
 #[cfg_attr(feature = "bindings", uniffi::export(name = "policy_at_least"))]
 pub async fn at_least(n: u8, factors: Vec<MFKDF2Factor>) -> MFKDF2Result<MFKDF2Factor> {

@@ -4,7 +4,7 @@ pub mod key;
 pub use key::key;
 use serde::{Serialize, de::DeserializeOwned};
 
-use crate::{definitions::key::Key, error::MFKDF2Result};
+use crate::{definitions::Key, error::MFKDF2Result};
 
 #[allow(unused_variables)]
 pub trait FactorSetup: Send + Sync + std::fmt::Debug {

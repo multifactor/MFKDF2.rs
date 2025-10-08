@@ -4,10 +4,7 @@ use serde_json::{Value, json};
 pub use uuid::Uuid;
 
 use crate::{
-  definitions::{
-    factor::{FactorMetadata, FactorType, MFKDF2Factor},
-    key::Key,
-  },
+  definitions::{FactorMetadata, FactorType, Key, MFKDF2Factor},
   error::MFKDF2Result,
   setup::FactorSetup,
 };

@@ -3,10 +3,7 @@ use serde_json::{Value, json};
 
 use crate::{
   crypto::{decrypt, encrypt},
-  definitions::{
-    factor::{FactorType, MFKDF2Factor},
-    key::Key,
-  },
+  definitions::{FactorType, Key, MFKDF2Factor},
   derive::FactorDerive,
   error::MFKDF2Result,
   setup::factors::hmacsha1::{HmacSha1, HmacSha1Response},
@@ -85,7 +82,7 @@ mod tests {
   use super::*;
   use crate::{
     crypto::decrypt,
-    definitions::factor::FactorType,
+    definitions::FactorType,
     error::MFKDF2Error,
     setup::factors::hmacsha1::{HmacSha1, HmacSha1Options},
   };

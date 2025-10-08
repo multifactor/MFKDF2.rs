@@ -11,7 +11,7 @@ use uuid::Uuid;
 
 use crate::{
   crypto::{encrypt, hkdf_sha256_with_info, hmacsha256},
-  definitions::{factor::MFKDF2Factor, mfkdf_derived_key::MFKDF2DerivedKey},
+  definitions::{MFKDF2DerivedKey, MFKDF2Factor},
   error::{MFKDF2Error, MFKDF2Result},
   policy::Policy,
   setup::FactorSetup,
@@ -225,7 +225,7 @@ pub fn key(factors: Vec<MFKDF2Factor>, options: MFKDF2Options) -> MFKDF2Result<M
     secret: secret.to_vec(),
     shares,
     outputs,
-    entropy: crate::definitions::entropy::MFKDF2Entropy {
+    entropy: crate::definitions::MFKDF2Entropy {
       real:        entropy_real,
       theoretical: entropy_theoretical,
     },

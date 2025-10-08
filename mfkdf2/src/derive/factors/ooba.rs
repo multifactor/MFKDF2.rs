@@ -6,10 +6,7 @@ use sha2::Sha256;
 
 use crate::{
   crypto::{decrypt, encrypt, hkdf_sha256_with_info},
-  definitions::{
-    factor::{FactorType, MFKDF2Factor},
-    key::Key,
-  },
+  definitions::{FactorType, Key, MFKDF2Factor},
   derive::FactorDerive,
   error::{MFKDF2Error, MFKDF2Result},
   setup::factors::ooba::{Ooba, OobaPublicKey, generate_alphanumeric_characters},

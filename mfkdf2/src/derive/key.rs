@@ -6,9 +6,7 @@ use sharks::{Share, Sharks};
 
 use crate::{
   crypto::{decrypt, hkdf_sha256_with_info, hmacsha256},
-  definitions::{
-    entropy::MFKDF2Entropy, factor::MFKDF2Factor, mfkdf_derived_key::MFKDF2DerivedKey,
-  },
+  definitions::{MFKDF2DerivedKey, MFKDF2Entropy, MFKDF2Factor},
   derive::FactorDerive,
   error::{MFKDF2Error, MFKDF2Result},
   policy::Policy,
@@ -197,7 +195,7 @@ mod tests {
 
   use super::*;
   use crate::{
-    definitions::factor::FactorType,
+    definitions::FactorType,
     derive::factors::{
       hmacsha1::hmacsha1 as derive_hmacsha1, hotp::hotp as derive_hotp, ooba::ooba as derive_ooba,
       password::password as derive_password, totp::totp as derive_totp,

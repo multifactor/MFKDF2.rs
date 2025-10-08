@@ -9,10 +9,7 @@ use web_time::{SystemTime, UNIX_EPOCH};
 
 use crate::{
   crypto::decrypt,
-  definitions::{
-    factor::{FactorType, MFKDF2Factor},
-    key::Key,
-  },
+  definitions::{FactorType, Key, MFKDF2Factor},
   derive::FactorDerive,
   error::{MFKDF2Error, MFKDF2Result},
   setup::factors::{

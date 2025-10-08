@@ -1,7 +1,7 @@
 use serde_json::{Value, json};
 
 use crate::{
-  definitions::factor::{FactorType, MFKDF2Factor},
+  definitions::{FactorType, MFKDF2Factor},
   derive::FactorDerive,
   error::{MFKDF2Error, MFKDF2Result},
   setup::factors::passkey::Passkey,

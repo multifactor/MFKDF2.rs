@@ -2,7 +2,7 @@ use serde_json::json;
 use uuid::Uuid;
 
 use crate::{
-  definitions::factor::{FactorType, MFKDF2Factor},
+  definitions::{FactorType, MFKDF2Factor},
   derive::FactorDerive,
   error::MFKDF2Result,
   setup::factors::uuid::UUIDFactor,

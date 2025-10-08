@@ -19,7 +19,7 @@ cipher = { version = "0.4", default-features = false, features = [
 ] }
 ecb = { version = "0.1", default-features = false }
 hkdf = { version = "0.12", default-features = false }
-sharks = { git = "https://github.com/multifactor/gf256sss", default-features = false }
+sharks = { git = "https://github.com/multifactor/gf256sss", version = "0.5.0", default-features = false }
 
 # Randomness
 # TODO (autoparallel): This can be made `no-std` if we need to.

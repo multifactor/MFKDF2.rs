@@ -7,8 +7,7 @@ const HMACSHA1_SECRET: [u8; 20] = [
   0x11, 0x12, 0x13, 0x14,
 ];
 
-fn mock_setup_stack()
--> Result<mfkdf2::definitions::mfkdf_derived_key::MFKDF2DerivedKey, mfkdf2::error::MFKDF2Error> {
+fn mock_setup_stack() -> Result<mfkdf2::definitions::MFKDF2DerivedKey, mfkdf2::error::MFKDF2Error> {
   let stacked_factors = vec![
     mfkdf2::setup::factors::password(
       "Tr0ubd4dour",

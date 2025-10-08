@@ -4,7 +4,7 @@ use serde_json::{Value, json};
 
 use crate::{
   crypto::encrypt,
-  definitions::{factor::MFKDF2Factor, key::Key},
+  definitions::{Key, MFKDF2Factor},
   error::MFKDF2Result,
   setup::factors::{FactorMetadata, FactorSetup, FactorType},
 };
