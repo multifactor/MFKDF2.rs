@@ -24,6 +24,7 @@ impl FactorMetadata for Password {
 
 impl FactorSetup for Password {
   type Output = Value;
+  type Params = Value;
 
   fn bytes(&self) -> Vec<u8> { self.password.as_bytes().to_vec() }
 

@@ -27,10 +27,11 @@ impl FactorMetadata for Question {
 
 impl FactorSetup for Question {
   type Output = Value;
+  type Params = Value;
 
   fn bytes(&self) -> Vec<u8> { self.answer.as_bytes().to_vec() }
 
-  fn params(&self, _key: Key) -> MFKDF2Result<Value> {
+  fn params(&self, _key: Key) -> MFKDF2Result<Self::Params> {
     Ok(json!({
       "question": self.options.question.clone().ok_or(MFKDF2Error::MissingSetupParams("question".to_string()))?,
     }))

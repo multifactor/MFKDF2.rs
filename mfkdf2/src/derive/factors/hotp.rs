@@ -14,8 +14,9 @@ use crate::{
 
 impl FactorDerive for HOTP {
   type Output = Value;
+  type Params = Value;
 
-  fn include_params(&mut self, params: Value) -> MFKDF2Result<()> {
+  fn include_params(&mut self, params: Self::Params) -> MFKDF2Result<()> {
     // Store the policy parameters for derive phase
     self.params = serde_json::to_string(&params).unwrap();
 
@@ -41,7 +42,7 @@ impl FactorDerive for HOTP {
     Ok(())
   }
 
-  fn params(&self, key: Key) -> MFKDF2Result<Value> {
+  fn params(&self, key: Key) -> MFKDF2Result<Self::Params> {
     // Decrypt the secret using the factor key
     let params: Value = serde_json::from_str(&self.params)?;
     let pad_b64 =

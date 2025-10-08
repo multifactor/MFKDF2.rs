@@ -72,10 +72,11 @@ impl FactorMetadata for TOTP {
 
 impl FactorSetup for TOTP {
   type Output = Value;
+  type Params = Value;
 
   fn bytes(&self) -> Vec<u8> { self.target.to_be_bytes().to_vec() }
 
-  fn params(&self, key: Key) -> MFKDF2Result<Value> {
+  fn params(&self, key: Key) -> MFKDF2Result<Self::Params> {
     let time =
       self.options.time.ok_or(MFKDF2Error::MissingSetupParams("time".to_string()))? as u128;
     let mut offsets = Vec::with_capacity((4 * self.options.window) as usize);

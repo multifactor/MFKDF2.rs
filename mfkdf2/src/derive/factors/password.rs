@@ -10,8 +10,9 @@ use crate::{
 
 impl FactorDerive for Password {
   type Output = Value;
+  type Params = Value;
 
-  fn include_params(&mut self, _params: Value) -> MFKDF2Result<()> { Ok(()) }
+  fn include_params(&mut self, _params: Self::Params) -> MFKDF2Result<()> { Ok(()) }
 
   fn output(&self) -> Self::Output { json!({"strength": zxcvbn(&self.password, &[])}) }
 }

@@ -9,8 +9,9 @@ use crate::{
 
 impl FactorDerive for Passkey {
   type Output = Value;
+  type Params = Value;
 
-  fn include_params(&mut self, _params: Value) -> MFKDF2Result<()> {
+  fn include_params(&mut self, _params: Self::Params) -> MFKDF2Result<()> {
     // Passkey factor has no parameters from setup
     Ok(())
   }

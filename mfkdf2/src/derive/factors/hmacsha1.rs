@@ -14,8 +14,9 @@ use crate::{
 
 impl FactorDerive for HmacSha1 {
   type Output = Value;
+  type Params = Value;
 
-  fn include_params(&mut self, params: Value) -> MFKDF2Result<()> {
+  fn include_params(&mut self, params: Self::Params) -> MFKDF2Result<()> {
     self.params = Some(serde_json::to_string(&params).unwrap());
 
     let response = self.response.as_ref().unwrap();

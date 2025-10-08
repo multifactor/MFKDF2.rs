@@ -28,7 +28,7 @@ use crate::{
 };
 
 impl FactorType {
-  pub fn setup(&self) -> &dyn FactorSetup<Output = Value> {
+  pub fn setup(&self) -> &dyn FactorSetup<Params = Value, Output = Value> {
     match self {
       FactorType::Password(password) => password,
       FactorType::HOTP(hotp) => hotp,
@@ -45,10 +45,11 @@ impl FactorType {
 
 impl FactorSetup for FactorType {
   type Output = Value;
+  type Params = Value;
 
   fn bytes(&self) -> Vec<u8> { self.setup().bytes() }
 
-  fn params(&self, key: Key) -> MFKDF2Result<Value> { self.setup().params(key) }
+  fn params(&self, key: Key) -> MFKDF2Result<Self::Params> { self.setup().params(key) }
 
   fn output(&self, key: Key) -> Self::Output { self.setup().output(key) }
 }

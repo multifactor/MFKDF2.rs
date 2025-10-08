@@ -13,13 +13,14 @@ use crate::{
 
 impl FactorDerive for Question {
   type Output = Value;
+  type Params = Value;
 
-  fn include_params(&mut self, params: Value) -> MFKDF2Result<()> {
+  fn include_params(&mut self, params: Self::Params) -> MFKDF2Result<()> {
     self.params = serde_json::to_string(&params).unwrap();
     Ok(())
   }
 
-  fn params(&self, _key: Key) -> MFKDF2Result<Value> {
+  fn params(&self, _key: Key) -> MFKDF2Result<Self::Params> {
     serde_json::from_str(&self.params)
       .map_err(|_| MFKDF2Error::InvalidDeriveParams("params".to_string()))
   }

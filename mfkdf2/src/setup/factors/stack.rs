@@ -54,10 +54,13 @@ impl FactorMetadata for Stack {
 
 impl FactorSetup for Stack {
   type Output = Value;
+  type Params = Value;
 
   fn bytes(&self) -> Vec<u8> { self.key.key.clone() }
 
-  fn params(&self, _key: Key) -> MFKDF2Result<Value> { Ok(serde_json::to_value(&self.key.policy)?) }
+  fn params(&self, _key: Key) -> MFKDF2Result<Self::Params> {
+    Ok(serde_json::to_value(&self.key.policy)?)
+  }
 
   fn output(&self, _key: Key) -> Self::Output { serde_json::to_value(&self.key).unwrap() }
 }

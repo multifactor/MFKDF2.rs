@@ -16,8 +16,9 @@ use crate::{
 
 impl FactorDerive for Stack {
   type Output = Value;
+  type Params = Value;
 
-  fn include_params(&mut self, params: Value) -> MFKDF2Result<()> {
+  fn include_params(&mut self, params: Self::Params) -> MFKDF2Result<()> {
     // Stack factors don't need to include params during derivation
     // The key derivation is handled by the derive_key function
     let policy: Policy = serde_json::from_value(params)
@@ -26,7 +27,7 @@ impl FactorDerive for Stack {
     Ok(())
   }
 
-  fn params(&self, _key: Key) -> MFKDF2Result<Value> {
+  fn params(&self, _key: Key) -> MFKDF2Result<Self::Params> {
     serde_json::to_value(&self.key.policy)
       .map_err(|_| MFKDF2Error::InvalidDeriveParams("policy".to_string()))
   }

@@ -35,6 +35,7 @@ impl FactorMetadata for UUIDFactor {
 
 impl FactorSetup for UUIDFactor {
   type Output = Value;
+  type Params = Value;
 
   fn bytes(&self) -> Vec<u8> { self.uuid.as_bytes().to_vec() }
 

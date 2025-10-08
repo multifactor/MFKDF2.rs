@@ -79,10 +79,11 @@ impl FactorMetadata for HOTP {
 
 impl FactorSetup for HOTP {
   type Output = Value;
+  type Params = Value;
 
   fn bytes(&self) -> Vec<u8> { self.target.to_be_bytes().to_vec() }
 
-  fn params(&self, key: Key) -> MFKDF2Result<Value> {
+  fn params(&self, key: Key) -> MFKDF2Result<Self::Params> {
     // Generate or use provided secret
     let padded_secret = if let Some(secret) = self.options.secret.clone() {
       secret

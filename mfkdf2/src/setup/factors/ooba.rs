@@ -88,10 +88,11 @@ impl FactorMetadata for Ooba {
 
 impl FactorSetup for Ooba {
   type Output = Value;
+  type Params = Value;
 
   fn bytes(&self) -> Vec<u8> { self.target.clone() }
 
-  fn params(&self, _key: Key) -> MFKDF2Result<Value> {
+  fn params(&self, _key: Key) -> MFKDF2Result<Self::Params> {
     let code = generate_alphanumeric_characters(self.length.into()).to_uppercase();
 
     let prev_key = hkdf_sha256_with_info(code.as_bytes(), &[], &[]);
@@ -112,6 +113,8 @@ impl FactorSetup for Ooba {
         "pad": general_purpose::STANDARD.encode(pad),
     }))
   }
+
+  fn output(&self, _key: Key) -> Self::Output { json!({}) }
 }
 
 pub fn ooba(options: OobaOptions) -> MFKDF2Result<MFKDF2Factor> {

@@ -17,8 +17,9 @@ use crate::{
 
 impl FactorDerive for Ooba {
   type Output = Value;
+  type Params = Value;
 
-  fn include_params(&mut self, params: Value) -> MFKDF2Result<()> {
+  fn include_params(&mut self, params: Self::Params) -> MFKDF2Result<()> {
     let pad_b64 =
       params["pad"].as_str().ok_or(MFKDF2Error::MissingDeriveParams("pad".to_string()))?;
     let pad = general_purpose::STANDARD
@@ -49,7 +50,7 @@ impl FactorDerive for Ooba {
     Ok(())
   }
 
-  fn params(&self, _key: Key) -> MFKDF2Result<Value> {
+  fn params(&self, _key: Key) -> MFKDF2Result<Self::Params> {
     let code = generate_alphanumeric_characters(self.length.into()).to_uppercase();
 
     let next_key = hkdf_sha256_with_info(code.as_bytes(), &[], &[]);

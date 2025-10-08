@@ -41,6 +41,7 @@ impl FactorMetadata for HmacSha1 {
 
 impl FactorSetup for HmacSha1 {
   type Output = Value;
+  type Params = Value;
 
   fn bytes(&self) -> Vec<u8> { self.padded_secret[..20].to_vec() }
 

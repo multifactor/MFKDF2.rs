@@ -10,8 +10,9 @@ use crate::{
 
 impl FactorDerive for UUIDFactor {
   type Output = serde_json::Value;
+  type Params = serde_json::Value;
 
-  fn include_params(&mut self, _params: serde_json::Value) -> MFKDF2Result<()> { Ok(()) }
+  fn include_params(&mut self, _params: Self::Params) -> MFKDF2Result<()> { Ok(()) }
 
   fn output(&self) -> Self::Output {
     json!({
