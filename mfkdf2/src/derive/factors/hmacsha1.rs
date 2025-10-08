@@ -32,7 +32,7 @@ impl FactorDerive for HmacSha1 {
     )
     .map_err(|e| crate::error::MFKDF2Error::InvalidDeriveParams(e.to_string()))?;
 
-    let padded_secret = decrypt(pad.clone(), &padded_key);
+    let padded_secret = decrypt(pad, &padded_key);
     self.padded_secret = padded_secret;
 
     Ok(())

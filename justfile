@@ -171,11 +171,20 @@ _ci-summary-failure:
     @printf "{{error}}{{bold}}Some checks failed. See output above for details.{{reset}}\n"
     @exit 1
 
+# ensure wasm-bindgen-cli is installed
+ensure-wasm-bindgen-cli:
+    @if ! command -v wasm-bindgen > /dev/null || ! wasm-bindgen --version | grep -q "0.2.101"; then \
+        printf "{{info}}Installing wasm-bindgen-cli 0.2.101...{{reset}}\n" && \
+        cargo install wasm-bindgen-cli --version 0.2.101; \
+    else \
+        printf "{{success}}✓ wasm-bindgen-cli 0.2.101 already installed{{reset}}\n"; \
+    fi
+
 # build the workspace with bindings enabled
 build-bindings:
     @just header "Building workspace with bindings enabled"
     cargo build --workspace --all-targets --all-features
-    cargo install -f wasm-bindgen-cli # Install wasm-bindgen-cli for ubrn
+    @just ensure-wasm-bindgen-cli # ensure wasm-bindgen-cli is installed
 
 # Generate the TypeScript bindings
 gen-ts-bindings:

@@ -10,7 +10,6 @@ pub trait FactorMetadata: Send + Sync + std::fmt::Debug {
   fn kind(&self) -> String;
 }
 
-// TODO (@lonerapier): move factor to its own module
 #[cfg_attr(feature = "bindings", derive(uniffi::Record))]
 #[derive(Clone, Serialize, Deserialize)]
 pub struct MFKDF2Factor {

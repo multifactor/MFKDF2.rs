@@ -12,4 +12,3 @@ rust_modules/
 # test report artifacts
 test-results/
 test-dist/
-mocha-reporters.json
