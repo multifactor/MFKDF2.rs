@@ -15,6 +15,7 @@
     "ubrn:clean": "rm -rfv cpp/ android/CMakeLists.txt android/src/main/java android/*.cpp ios/ src/Native* src/*.web.ts* src/generated/",
     "typecheck": "tsc",
     "test": "npx tsx node_modules/mocha/bin/mocha",
+    "test:report": "npx tsx node_modules/mocha/bin/mocha --reporter mocha-multi-reporters --reporter-options configFile=mocha-reporters.json",
     "test:watch": "npx tsx node_modules/mocha/bin/mocha --watch",
     "build": "npm run build:esm && npm run build:cjs",
     "build:esm": "tsc -p tsconfig.esm.json",
@@ -34,7 +35,6 @@
     "dist/"
   ],
   "dependencies": {
-    "speakeasy": "^2.0.0",
     "uniffi-bindgen-react-native": "^0.29.3-1"
   },
   "devDependencies": {
@@ -46,7 +46,11 @@
     "chai": "^4.3.0",
     "chai-as-promised": "^7.1.1",
     "mocha": "^10.0.0",
+    "mocha-junit-reporter": "^2.2.1",
+    "mocha-multi-reporters": "^1.5.1",
+    "mochawesome": "^7.1.3",
     "prettier": "^3.6.2",
+    "speakeasy": "^2.0.0",
     "ts-node": "^10.9.0",
     "tsconfig-paths": "^4.2.0",
     "tsx": "^4.19.0",

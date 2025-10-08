@@ -12,7 +12,8 @@ use serde_json as json;
 
 use crate::setup::key::PolicyFactor;
 
-#[derive(Clone, Debug, Default, Serialize, Deserialize, Eq, PartialEq, uniffi::Record)]
+#[cfg_attr(feature = "bindings", derive(uniffi::Record))]
+#[derive(Clone, Debug, Default, Serialize, Deserialize, Eq, PartialEq)]
 pub struct Policy {
   #[serde(rename = "$schema")]
   pub schema:    String,
@@ -28,7 +29,6 @@ pub struct Policy {
 }
 
 impl Policy {
-  // validate
   pub fn ids(&self) -> Vec<String> {
     let mut list: Vec<String> = Vec::new();
     for factor in &self.factors {
@@ -49,9 +49,5 @@ impl Policy {
   }
 }
 
-// TODO (@lonerapier): investigate why direct impl export doesn't work
-#[uniffi::export(name = "policy_ids")]
-pub fn ids(policy: &Policy) -> Vec<String> { policy.ids() }
-
-#[uniffi::export(name = "policy_validate")]
+#[cfg_attr(feature = "bindings", uniffi::export(name = "policy_validate"))]
 pub fn validate(policy: &Policy) -> bool { policy.validate() }

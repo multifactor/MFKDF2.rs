@@ -1,5 +1,3 @@
-use serde::{Deserialize, Serialize};
-use serde_json::Value;
 pub mod hmacsha1;
 pub mod hotp;
 pub mod ooba;
@@ -15,88 +13,19 @@ pub use hotp::hotp;
 pub use passkey::passkey;
 pub use password::password;
 pub use question::question;
+use serde_json::Value;
 pub use stack::stack;
 pub use totp::totp;
 pub use uuid::uuid;
 
-use crate::definitions::key::Key;
-
-#[uniffi::export]
-pub trait FactorMetadata: Send + Sync {
-  fn kind(&self) -> String;
-}
-
-// TODO (@lonerapier): refactor trait system with more associated types
-// TODO: add default + debug as well
-#[uniffi::export]
-pub trait FactorSetup: Send + Sync {
-  fn bytes(&self) -> Vec<u8>;
-  fn params(&self, key: Key) -> Value;
-  fn output(&self, key: Key) -> Value;
-}
-
-// TODO (@lonerapier): move factor to its own module
-#[derive(Clone, Serialize, Deserialize, uniffi::Record)]
-pub struct MFKDF2Factor {
-  pub id:          Option<String>,
-  pub factor_type: FactorType,
-  // TODO (autoparallel): This is the factor specific salt.
-  pub salt:        Vec<u8>,
-  pub entropy:     Option<f64>,
-}
-
-// #[uniffi::export]
-impl MFKDF2Factor {
-  pub fn kind(&self) -> String { self.factor_type.kind() }
-
-  pub fn data(&self) -> Vec<u8> { self.factor_type.bytes() }
-}
-
-impl std::fmt::Debug for MFKDF2Factor {
-  fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-    f.debug_struct("MFKDF2Factor")
-      .field("kind", &self.kind())
-      .field("id", &self.id)
-      .field("data", &self.factor_type)
-      .field("salt", &self.salt)
-      .field("params", &"<function>")
-      .field("entropy", &self.entropy)
-      .field("output", &"<future>")
-      .finish()
-  }
-}
-
-#[derive(Clone, Debug, Serialize, Deserialize, uniffi::Enum)]
-pub enum FactorType {
-  Password(password::Password),
-  HOTP(hotp::HOTP),
-  Question(question::Question),
-  UUID(uuid::UUIDFactor),
-  HmacSha1(hmacsha1::HmacSha1),
-  TOTP(totp::TOTP),
-  OOBA(ooba::Ooba),
-  Passkey(passkey::Passkey),
-  Stack(stack::Stack),
-}
+use crate::{
+  definitions::{FactorMetadata, FactorType, Key},
+  error::MFKDF2Result,
+  setup::FactorSetup,
+};
 
 impl FactorType {
-  pub fn kind(&self) -> String {
-    match self {
-      FactorType::Password(password) => password.kind(),
-      FactorType::HOTP(hotp) => hotp.kind(),
-      FactorType::Question(question) => question.kind(),
-      FactorType::UUID(uuid) => uuid.kind(),
-      FactorType::HmacSha1(hmacsha1) => hmacsha1.kind(),
-      FactorType::TOTP(totp) => totp.kind(),
-      FactorType::OOBA(ooba) => ooba.kind(),
-      FactorType::Passkey(passkey) => passkey.kind(),
-      FactorType::Stack(stack) => stack.kind(),
-    }
-  }
-}
-
-impl FactorType {
-  pub fn setup(&self) -> &dyn FactorSetup {
+  pub fn setup(&self) -> &dyn FactorSetup<Params = Value, Output = Value> {
     match self {
       FactorType::Password(password) => password,
       FactorType::HOTP(hotp) => hotp,
@@ -112,31 +41,32 @@ impl FactorType {
 }
 
 impl FactorSetup for FactorType {
+  type Output = Value;
+  type Params = Value;
+
   fn bytes(&self) -> Vec<u8> { self.setup().bytes() }
 
-  fn params(&self, key: Key) -> Value { self.setup().params(key) }
+  fn params(&self, key: Key) -> MFKDF2Result<Self::Params> { self.setup().params(key) }
 
-  fn output(&self, key: Key) -> Value { self.setup().output(key) }
+  fn output(&self, key: Key) -> Self::Output { self.setup().output(key) }
 }
 
 // Standalone exported functions for FFI
-#[uniffi::export]
+#[cfg_attr(feature = "bindings", uniffi::export)]
 pub fn factor_type_kind(factor_type: &FactorType) -> String { factor_type.kind() }
 
-#[uniffi::export]
+#[cfg_attr(feature = "bindings", uniffi::export)]
 pub fn factor_type_bytes(factor_type: &FactorType) -> Vec<u8> { factor_type.bytes() }
 
-#[uniffi::export]
-pub fn setup_factor_type_params(factor_type: &FactorType, key: Option<Key>) -> Value {
-  // Use provided key or create a dummy zero-filled key
+#[cfg_attr(feature = "bindings", uniffi::export)]
+pub fn setup_factor_type_params(factor_type: &FactorType, key: Option<Key>) -> MFKDF2Result<Value> {
   // TODO (@lonerapier): remove dummy key usage
   let key = key.unwrap_or_else(|| [0u8; 32].into());
   factor_type.params(key)
 }
 
-#[uniffi::export]
+#[cfg_attr(feature = "bindings", uniffi::export)]
 pub fn setup_factor_type_output(factor_type: &FactorType, key: Option<Key>) -> Value {
-  // Use provided key or create a dummy zero-filled key
   let key = key.unwrap_or_else(|| [0u8; 32].into());
   factor_type.output(key)
 }

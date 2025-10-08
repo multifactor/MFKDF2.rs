@@ -3,17 +3,17 @@ use serde_json::{Value, json};
 
 use crate::{
   crypto::decrypt,
-  definitions::key::Key,
+  definitions::{FactorType, Key, MFKDF2Factor},
   derive::FactorDerive,
   error::{MFKDF2Error, MFKDF2Result},
-  setup::factors::{
-    FactorType, MFKDF2Factor,
-    hotp::{HOTP, HOTPOptions, OTPHash, generate_hotp_code, mod_positive},
-  },
+  setup::factors::hotp::{HOTP, HOTPOptions, OTPHash, generate_hotp_code, mod_positive},
 };
 
 impl FactorDerive for HOTP {
-  fn include_params(&mut self, params: Value) -> MFKDF2Result<()> {
+  type Output = Value;
+  type Params = Value;
+
+  fn include_params(&mut self, params: Self::Params) -> MFKDF2Result<()> {
     // Store the policy parameters for derive phase
     self.params = serde_json::to_string(&params).unwrap();
 
@@ -39,22 +39,19 @@ impl FactorDerive for HOTP {
     Ok(())
   }
 
-  fn params(&self, key: Key) -> Value {
+  fn params(&self, key: Key) -> MFKDF2Result<Self::Params> {
     // Decrypt the secret using the factor key
-    let params: Value = serde_json::from_str(&self.params).unwrap();
-    let pad_b64 = params["pad"].as_str().unwrap();
-    let pad = base64::prelude::BASE64_STANDARD.decode(pad_b64).unwrap();
+    let params: Value = serde_json::from_str(&self.params)?;
+    let pad_b64 =
+      params["pad"].as_str().ok_or(MFKDF2Error::MissingDeriveParams("pad".to_string()))?;
+    let pad = base64::prelude::BASE64_STANDARD.decode(pad_b64)?;
     let padded_secret = decrypt(pad, &key.0);
 
     // Generate HOTP code with incremented counter
-    let counter = params["counter"].as_u64().unwrap() + 1;
-    let hash = params["hash"].as_str().unwrap();
-    let hash = match hash {
-      "sha1" => OTPHash::Sha1,
-      "sha256" => OTPHash::Sha256,
-      "sha512" => OTPHash::Sha512,
-      _ => panic!("Unsupported hash algorithm"),
-    };
+    let counter =
+      params["counter"].as_u64().ok_or(MFKDF2Error::MissingDeriveParams("counter".to_string()))?
+        + 1;
+    let hash: OTPHash = serde_json::from_value(params["hash"].clone())?;
     let generated_code =
       generate_hotp_code(&padded_secret[..20], counter, &hash, self.options.digits);
 
@@ -64,20 +61,14 @@ impl FactorDerive for HOTP {
       10_i64.pow(self.options.digits as u32),
     ) as u32;
 
-    json!({
-      "hash": match hash {
-        OTPHash::Sha1 => "sha1",
-        OTPHash::Sha256 => "sha256",
-        OTPHash::Sha512 => "sha512",
-      },
+    Ok(json!({
+      "hash": hash.to_string(),
       "digits": self.options.digits,
       "pad": pad_b64,
       "counter": counter,
       "offset": new_offset
-    })
+    }))
   }
-
-  fn output(&self) -> Value { json!({}) }
 }
 
 pub fn hotp(code: u32) -> MFKDF2Result<MFKDF2Factor> {
@@ -88,7 +79,7 @@ pub fn hotp(code: u32) -> MFKDF2Result<MFKDF2Factor> {
     factor_type: FactorType::HOTP(HOTP {
       options: HOTPOptions::default(),
       // TODO (autoparallel): This is confusing, should probably put an Option here.
-      params: serde_json::to_string(&Value::Null).unwrap(),
+      params: serde_json::to_string(&Value::Null)?,
       code,
       target: 0,
     }),
@@ -98,7 +89,7 @@ pub fn hotp(code: u32) -> MFKDF2Result<MFKDF2Factor> {
   })
 }
 
-#[uniffi::export]
+#[cfg_attr(feature = "bindings", uniffi::export)]
 pub async fn derive_hotp(code: u32) -> MFKDF2Result<MFKDF2Factor> { hotp(code) }
 
 #[cfg(test)]
@@ -127,7 +118,7 @@ mod tests {
 
     // Simulate the policy creation process
     let mock_key = [42u8; 32]; // Mock factor key
-    let setup_params = factor.factor_type.setup().params(mock_key.into());
+    let setup_params = factor.factor_type.setup().params(mock_key.into()).unwrap();
 
     // Extract the expected HOTP code that should work
     let counter = setup_params["counter"].as_u64().unwrap();
@@ -168,14 +159,14 @@ mod tests {
 
     let factor = setup_hotp(hotp_options).unwrap();
 
-    let setup_params = factor.factor_type.setup().params(mock_key.into());
+    let setup_params = factor.factor_type.setup().params(mock_key.into()).unwrap();
 
     // Create a derive instance and generate new params
     // NOTE: this is an incorrect code
     let mut derive_factor = derive_hotp(123456).unwrap();
     derive_factor.factor_type.include_params(setup_params.clone()).unwrap();
 
-    let derive_params = derive_factor.factor_type.params(mock_key.into());
+    let derive_params = derive_factor.factor_type.params(mock_key.into()).unwrap();
 
     // Counter should be incremented
     let original_counter = setup_params["counter"].as_u64().unwrap();

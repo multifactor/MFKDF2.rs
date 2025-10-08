@@ -3,17 +3,17 @@ use serde_json::{Value, json};
 
 use crate::{
   crypto::{decrypt, encrypt},
-  definitions::key::Key,
+  definitions::{FactorType, Key, MFKDF2Factor},
   derive::FactorDerive,
   error::MFKDF2Result,
-  setup::factors::{
-    FactorType, MFKDF2Factor,
-    hmacsha1::{HmacSha1, HmacSha1Response},
-  },
+  setup::factors::hmacsha1::{HmacSha1, HmacSha1Response},
 };
 
 impl FactorDerive for HmacSha1 {
-  fn include_params(&mut self, params: Value) -> MFKDF2Result<()> {
+  type Output = Value;
+  type Params = Value;
+
+  fn include_params(&mut self, params: Self::Params) -> MFKDF2Result<()> {
     self.params = Some(serde_json::to_string(&params).unwrap());
 
     let response = self.response.as_ref().unwrap();
@@ -29,13 +29,13 @@ impl FactorDerive for HmacSha1 {
     )
     .map_err(|e| crate::error::MFKDF2Error::InvalidDeriveParams(e.to_string()))?;
 
-    let padded_secret = decrypt(pad.clone(), &padded_key);
+    let padded_secret = decrypt(pad, &padded_key);
     self.padded_secret = padded_secret;
 
     Ok(())
   }
 
-  fn params(&self, _key: Key) -> Value {
+  fn params(&self, _key: Key) -> MFKDF2Result<Value> {
     let mut challenge = [0u8; 64];
     OsRng.fill_bytes(&mut challenge);
 
@@ -44,13 +44,13 @@ impl FactorDerive for HmacSha1 {
     padded_key[..response.len()].copy_from_slice(&response);
     let pad = encrypt(&self.padded_secret, &padded_key);
 
-    json!({
+    Ok(json!({
       "challenge": hex::encode(challenge),
       "pad": hex::encode(pad),
-    })
+    }))
   }
 
-  fn output(&self) -> Value {
+  fn output(&self) -> Self::Output {
     json!({
       "secret": self.padded_secret[..20],
     })
@@ -70,7 +70,7 @@ pub fn hmacsha1(response: HmacSha1Response) -> MFKDF2Result<MFKDF2Factor> {
   })
 }
 
-#[uniffi::export]
+#[cfg_attr(feature = "bindings", uniffi::export)]
 pub async fn derive_hmacsha1(response: HmacSha1Response) -> MFKDF2Result<MFKDF2Factor> {
   crate::derive::factors::hmacsha1(response)
 }
@@ -82,11 +82,9 @@ mod tests {
   use super::*;
   use crate::{
     crypto::decrypt,
+    definitions::FactorType,
     error::MFKDF2Error,
-    setup::factors::{
-      FactorType,
-      hmacsha1::{HmacSha1, HmacSha1Options},
-    },
+    setup::factors::hmacsha1::{HmacSha1, HmacSha1Options},
   };
 
   fn mock_hmac_setup() -> MFKDF2Factor {
@@ -117,7 +115,7 @@ mod tests {
   #[test]
   fn include_params_missing_pad() {
     let setup = mock_hmac_setup();
-    let mut setup_params = setup.factor_type.setup().params([0u8; 32].into());
+    let mut setup_params = setup.factor_type.setup().params([0u8; 32].into()).unwrap();
     setup_params.as_object_mut().unwrap().remove("pad");
 
     let mut hmac = mock_hmac_derive(&setup, &setup_params);
@@ -128,7 +126,7 @@ mod tests {
   #[test]
   fn include_params_invalid_pad_type() {
     let setup = mock_hmac_setup();
-    let mut setup_params = setup.factor_type.setup().params([0u8; 32].into());
+    let mut setup_params = setup.factor_type.setup().params([0u8; 32].into()).unwrap();
     setup_params["pad"] = json!("not-an-array");
 
     let mut hmac = mock_hmac_derive(&setup, &setup_params);
@@ -139,7 +137,7 @@ mod tests {
   #[test]
   fn include_params_invalid_pad_element_type() {
     let setup = mock_hmac_setup();
-    let mut setup_params = setup.factor_type.setup().params([0u8; 32].into());
+    let mut setup_params = setup.factor_type.setup().params([0u8; 32].into()).unwrap();
     setup_params["pad"] = json!(["not-a-number"]);
 
     let mut hmac = mock_hmac_derive(&setup, &setup_params);
@@ -154,7 +152,7 @@ mod tests {
       FactorType::HmacSha1(h) => h,
       _ => panic!(),
     };
-    let setup_params = setup.factor_type.setup().params([0u8; 32].into());
+    let setup_params = setup.factor_type.setup().params([0u8; 32].into()).unwrap();
     let mut hmac = mock_hmac_derive(&setup, &setup_params);
 
     let result = hmac.include_params(setup_params.clone());
@@ -171,7 +169,7 @@ mod tests {
   #[test]
   fn params_derive_produces_valid_pad() {
     let setup = mock_hmac_setup();
-    let setup_params = setup.factor_type.setup().params([0u8; 32].into());
+    let setup_params = setup.factor_type.setup().params([0u8; 32].into()).unwrap();
 
     let mut hmac = mock_hmac_derive(&setup, &setup_params);
     hmac.include_params(setup_params).unwrap();
@@ -181,7 +179,7 @@ mod tests {
       _ => panic!(),
     };
 
-    let derive_params = hmac.params([0u8; 32].into());
+    let derive_params = hmac.params([0u8; 32].into()).unwrap();
 
     let challenge = hex::decode(derive_params.get("challenge").unwrap().as_str().unwrap()).unwrap();
 
@@ -199,7 +197,7 @@ mod tests {
   #[test]
   fn output_derive_produces_correct_secret() {
     let setup = mock_hmac_setup();
-    let setup_params = setup.factor_type.setup().params([0u8; 32].into());
+    let setup_params = setup.factor_type.setup().params([0u8; 32].into()).unwrap();
 
     let mut derive_hmac = mock_hmac_derive(&setup, &setup_params);
     derive_hmac.include_params(setup_params).unwrap();

@@ -4,12 +4,13 @@ use serde_json::{Value, json};
 use zxcvbn::zxcvbn;
 
 use crate::{
-  definitions::key::Key,
+  definitions::{FactorMetadata, FactorType, Key, MFKDF2Factor},
   error::{MFKDF2Error, MFKDF2Result},
-  setup::factors::{FactorMetadata, FactorSetup, FactorType, MFKDF2Factor},
+  setup::FactorSetup,
 };
 
-#[derive(Clone, Debug, Serialize, Deserialize, uniffi::Record)]
+#[cfg_attr(feature = "bindings", derive(uniffi::Record))]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Password {
   pub password: String,
 }
@@ -19,18 +20,20 @@ impl FactorMetadata for Password {
 }
 
 impl FactorSetup for Password {
+  type Output = Value;
+  type Params = Value;
+
   fn bytes(&self) -> Vec<u8> { self.password.as_bytes().to_vec() }
 
-  fn params(&self, _key: Key) -> Value { json!({}) }
-
-  fn output(&self, _key: Key) -> Value {
+  fn output(&self, _key: Key) -> Self::Output {
     json!({
       "strength": zxcvbn(&self.password, &[]),
     })
   }
 }
 
-#[derive(Clone, Debug, Default, Serialize, Deserialize, uniffi::Record)]
+#[cfg_attr(feature = "bindings", derive(uniffi::Record))]
+#[derive(Clone, Debug, Default, Serialize, Deserialize)]
 pub struct PasswordOptions {
   pub id: Option<String>,
 }
@@ -64,7 +67,7 @@ pub fn password(
   })
 }
 
-#[uniffi::export]
+#[cfg_attr(feature = "bindings", uniffi::export)]
 pub async fn setup_password(
   password: String,
   options: PasswordOptions,
@@ -79,7 +82,7 @@ mod tests {
   use serde_json::json;
 
   use super::*;
-  use crate::{error::MFKDF2Error, setup::factors::FactorSetup};
+  use crate::{error::MFKDF2Error, setup::FactorSetup};
 
   #[test]
   fn password_strength() {
@@ -111,7 +114,7 @@ mod tests {
       FactorType::Password(p) => {
         assert_eq!(p.password, "hello");
         assert_eq!(p.bytes(), "hello".as_bytes());
-        let params = p.params([0; 32].into());
+        let params = p.params([0; 32].into()).unwrap();
         assert_eq!(params, json!({}));
       },
       _ => panic!("Wrong factor type"),

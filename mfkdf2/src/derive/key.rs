@@ -6,11 +6,10 @@ use sharks::{Share, Sharks};
 
 use crate::{
   crypto::{decrypt, hkdf_sha256_with_info, hmacsha256},
-  definitions::mfkdf_derived_key::MFKDF2DerivedKey,
+  definitions::{MFKDF2DerivedKey, MFKDF2Entropy, MFKDF2Factor},
   derive::FactorDerive,
   error::{MFKDF2Error, MFKDF2Result},
   policy::Policy,
-  setup::{factors::MFKDF2Factor, key::MFKDF2Entropy},
 };
 
 pub fn key(
@@ -138,7 +137,7 @@ pub fn key(
       &general_purpose::STANDARD.decode(&factor.salt)?,
       format!("mfkdf2:factor:params:{}", factor.id).as_bytes(),
     );
-    let params = material.factor_type.params(params_key.into());
+    let params = material.factor_type.params(params_key.into())?;
     factor.params = serde_json::to_string(&params)?;
   }
 
@@ -175,7 +174,7 @@ pub fn key(
   })
 }
 
-#[uniffi::export(default(verify = true, stack = false))]
+#[cfg_attr(feature = "bindings", uniffi::export(default(verify = true, stack = false)))]
 pub async fn derive_key(
   policy: Policy,
   factors: HashMap<String, MFKDF2Factor>,
@@ -196,6 +195,7 @@ mod tests {
 
   use super::*;
   use crate::{
+    definitions::FactorType,
     derive::factors::{
       hmacsha1::hmacsha1 as derive_hmacsha1, hotp::hotp as derive_hotp, ooba::ooba as derive_ooba,
       password::password as derive_password, totp::totp as derive_totp,
@@ -203,7 +203,6 @@ mod tests {
     setup::{
       self,
       factors::{
-        FactorType,
         hmacsha1::{HmacSha1Options, hmacsha1 as setup_hmacsha1},
         hotp::{HOTPOptions, generate_hotp_code, hotp as setup_hotp},
         ooba::{OobaOptions, ooba as setup_ooba},
@@ -239,14 +238,14 @@ mod tests {
     0x11, 0x12, 0x13, 0x14,
   ];
 
-  #[tokio::test]
-  async fn key_derivation_round_trip_password_only() {
+  #[test]
+  fn key_derivation_round_trip_password_only() {
     // Setup phase
     let mut setup_factor = setup_password("password123", PasswordOptions::default()).unwrap();
     setup_factor.id = Some("pwd".to_string());
     let setup_factors = vec![setup_factor.clone()];
     let setup_derived_key =
-      setup::key::key(setup_factors, setup::key::MFKDF2Options::default()).await.unwrap();
+      setup::key::key(setup_factors, setup::key::MFKDF2Options::default()).unwrap();
 
     // Derivation phase
     let mut derive_factors_map = HashMap::new();
@@ -265,8 +264,8 @@ mod tests {
     assert_eq!(derived_key.key, derived_key2.key);
   }
 
-  #[tokio::test]
-  async fn key_derivation_round_trip_password_and_hmac() {
+  #[test]
+  fn key_derivation_round_trip_password_and_hmac() {
     // Setup phase
     let mut setup_password_factor =
       setup_password("password123", PasswordOptions::default()).unwrap();
@@ -281,7 +280,7 @@ mod tests {
 
     let setup_factors = vec![setup_password_factor.clone(), setup_hmac_factor.clone()];
     let setup_derived_key =
-      setup::key::key(setup_factors, setup::key::MFKDF2Options::default()).await.unwrap();
+      setup::key::key(setup_factors, setup::key::MFKDF2Options::default()).unwrap();
 
     // Derivation phase
     let mut derive_factors_map = HashMap::new();
@@ -315,8 +314,8 @@ mod tests {
     assert_eq!(derived_key.secret, setup_derived_key.secret);
   }
 
-  #[tokio::test]
-  async fn key_derivation_round_trip_hotp_totp_ooba() {
+  #[test]
+  fn key_derivation_round_trip_hotp_totp_ooba() {
     // Setup phase
     let mut setup_hotp_factor = setup_hotp(HOTPOptions::default()).unwrap();
     setup_hotp_factor.id = Some("hotp".to_string());
@@ -338,7 +337,7 @@ mod tests {
     let setup_factors =
       vec![setup_hotp_factor.clone(), setup_totp_factor.clone(), setup_ooba_factor.clone()];
     let setup_derived_key =
-      setup::key::key(setup_factors, setup::key::MFKDF2Options::default()).await.unwrap();
+      setup::key::key(setup_factors, setup::key::MFKDF2Options::default()).unwrap();
 
     // Derivation phase
     let mut derive_factors_map = HashMap::new();
@@ -390,8 +389,8 @@ mod tests {
     assert_eq!(derived_key.secret, setup_derived_key.secret);
   }
 
-  #[tokio::test]
-  async fn key_derivation_threshold_2_of_3() {
+  #[test]
+  fn key_derivation_threshold_2_of_3() {
     // Setup phase
     let mut setup_password_factor =
       setup_password("password123", PasswordOptions::default()).unwrap();
@@ -410,7 +409,7 @@ mod tests {
     let setup_factors =
       vec![setup_password_factor.clone(), setup_hotp_factor.clone(), setup_totp_factor.clone()];
     let options = setup::key::MFKDF2Options { threshold: Some(2), ..Default::default() };
-    let setup_derived_key = setup::key::key(setup_factors, options).await.unwrap();
+    let setup_derived_key = setup::key::key(setup_factors, options).unwrap();
 
     // Derivation phase
     let mut derive_factors_map = HashMap::new();
@@ -445,8 +444,8 @@ mod tests {
     assert_eq!(derived_key.secret, setup_derived_key.secret);
   }
 
-  #[tokio::test]
-  async fn key_derivation_threshold_3_of_5() {
+  #[test]
+  fn key_derivation_threshold_3_of_5() {
     // Setup phase
     let mut setup_password_factor =
       setup_password("password123", PasswordOptions::default()).unwrap();
@@ -484,7 +483,7 @@ mod tests {
       setup_ooba_factor.clone(),
     ];
     let options = setup::key::MFKDF2Options { threshold: Some(3), ..Default::default() };
-    let setup_derived_key = setup::key::key(setup_factors, options).await.unwrap();
+    let setup_derived_key = setup::key::key(setup_factors, options).unwrap();
 
     // Derivation phase
     let mut derive_factors_map = HashMap::new();
@@ -530,8 +529,8 @@ mod tests {
     assert_eq!(derived_key.secret, setup_derived_key.secret);
   }
 
-  #[tokio::test]
-  async fn key_derivation_shares() {
+  #[test]
+  fn key_derivation_shares() {
     // Setup phase
     let setup_factors = vec![
       setup_password("password123", PasswordOptions { id: Some("pwd1".to_string()) }).unwrap(),
@@ -540,7 +539,6 @@ mod tests {
     ];
     let setup_derived_key =
       setup::key::key(setup_factors, MFKDF2Options { threshold: Some(2), ..Default::default() })
-        .await
         .unwrap();
 
     // Derivation phase

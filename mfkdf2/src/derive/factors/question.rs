@@ -2,24 +2,27 @@ use serde_json::{Value, json};
 use zxcvbn::zxcvbn;
 
 use crate::{
-  definitions::key::Key,
+  definitions::{FactorType, Key, MFKDF2Factor},
   derive::FactorDerive,
   error::{MFKDF2Error, MFKDF2Result},
-  setup::factors::{
-    FactorType, MFKDF2Factor,
-    question::{Question, QuestionOptions},
-  },
+  setup::factors::question::{Question, QuestionOptions},
 };
 
 impl FactorDerive for Question {
-  fn include_params(&mut self, params: Value) -> MFKDF2Result<()> {
+  type Output = Value;
+  type Params = Value;
+
+  fn include_params(&mut self, params: Self::Params) -> MFKDF2Result<()> {
     self.params = serde_json::to_string(&params).unwrap();
     Ok(())
   }
 
-  fn params(&self, _key: Key) -> Value { serde_json::from_str(&self.params).unwrap() }
+  fn params(&self, _key: Key) -> MFKDF2Result<Self::Params> {
+    serde_json::from_str(&self.params)
+      .map_err(|_| MFKDF2Error::InvalidDeriveParams("params".to_string()))
+  }
 
-  fn output(&self) -> Value { json!({"strength": zxcvbn(&self.answer, &[])}) }
+  fn output(&self) -> Self::Output { json!({"strength": zxcvbn(&self.answer, &[])}) }
 }
 
 pub fn question(answer: impl Into<String>) -> MFKDF2Result<MFKDF2Factor> {
@@ -44,7 +47,7 @@ pub fn question(answer: impl Into<String>) -> MFKDF2Result<MFKDF2Factor> {
   })
 }
 
-#[uniffi::export]
+#[cfg_attr(feature = "bindings", uniffi::export)]
 pub async fn derive_question(answer: String) -> MFKDF2Result<MFKDF2Factor> { question(answer) }
 
 #[cfg(test)]
@@ -96,7 +99,7 @@ mod tests {
   fn include_and_derive_params() {
     // 1. Setup a factor to get setup_params
     let setup_factor = mock_question_setup();
-    let setup_params = setup_factor.factor_type.setup().params([0u8; 32].into());
+    let setup_params = setup_factor.factor_type.setup().params([0u8; 32].into()).unwrap();
 
     // 2. Create a derive factor
     let derive_factor_result = question("my answer");
@@ -118,7 +121,7 @@ mod tests {
     assert_eq!(stored_params, setup_params);
 
     // 6. Call params_derive and check if it returns the same params
-    let derived_params = question_struct.params([0u8; 32].into());
+    let derived_params = question_struct.params([0u8; 32].into()).unwrap();
     assert_eq!(derived_params, setup_params);
   }
 

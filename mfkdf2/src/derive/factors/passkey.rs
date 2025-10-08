@@ -1,21 +1,22 @@
 use serde_json::{Value, json};
 
 use crate::{
-  definitions::key::Key,
+  definitions::{FactorType, MFKDF2Factor},
   derive::FactorDerive,
   error::{MFKDF2Error, MFKDF2Result},
-  setup::factors::{FactorType, MFKDF2Factor, passkey::Passkey},
+  setup::factors::passkey::Passkey,
 };
 
 impl FactorDerive for Passkey {
-  fn include_params(&mut self, _params: Value) -> MFKDF2Result<()> {
+  type Output = Value;
+  type Params = Value;
+
+  fn include_params(&mut self, _params: Self::Params) -> MFKDF2Result<()> {
     // Passkey factor has no parameters from setup
     Ok(())
   }
 
-  fn params(&self, _key: Key) -> Value { json!({}) }
-
-  fn output(&self) -> Value { json!({}) }
+  fn output(&self) -> Self::Output { json!({}) }
 }
 
 pub fn passkey(secret: Vec<u8>) -> MFKDF2Result<MFKDF2Factor> {
@@ -31,5 +32,5 @@ pub fn passkey(secret: Vec<u8>) -> MFKDF2Result<MFKDF2Factor> {
   })
 }
 
-#[uniffi::export]
+#[cfg_attr(feature = "bindings", uniffi::export)]
 pub async fn derive_passkey(secret: Vec<u8>) -> MFKDF2Result<MFKDF2Factor> { passkey(secret) }

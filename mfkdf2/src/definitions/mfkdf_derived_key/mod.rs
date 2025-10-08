@@ -3,9 +3,10 @@ use std::collections::HashMap;
 use base64::engine::general_purpose;
 use serde::{Deserialize, Serialize};
 
-use crate::{policy::Policy, setup::key::MFKDF2Entropy};
+use crate::{definitions::entropy::MFKDF2Entropy, policy::Policy};
 
-#[derive(Clone, Debug, Default, Serialize, Deserialize, Eq, PartialEq, uniffi::Record)]
+#[cfg_attr(feature = "bindings", derive(uniffi::Record))]
+#[derive(Clone, Debug, Default, Serialize, Deserialize, Eq, PartialEq)]
 pub struct MFKDF2DerivedKey {
   pub policy:  Policy,
   // TODO (@lonerapier): move to uniffi custom type

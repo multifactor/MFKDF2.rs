@@ -13,11 +13,6 @@ export type {
   Mfkdf2Factor,
 } from './generated/web/mfkdf2.js';
 
-// Helper to convert ArrayBuffer to Buffer for Node.js compatibility
-function toBuffer(arrayBuffer: ArrayBuffer): Buffer {
-  return Buffer.from(arrayBuffer);
-}
-
 // Helper to convert Buffer/Uint8Array to ArrayBuffer for UniFFI
 function toArrayBuffer(input: ArrayBuffer | Buffer | Uint8Array | undefined): ArrayBuffer | undefined {
   if (input === undefined) return undefined;
@@ -39,7 +34,7 @@ function wrapFactor(factor: raw.Mfkdf2Factor): any {
     },
     // Add data property that returns bytes as Buffer
     get data() {
-      return toBuffer(raw.factorTypeBytes(factor.factorType));
+      return Buffer.from(raw.factorTypeBytes(factor.factorType));
     },
   };
 }
@@ -118,15 +113,14 @@ function wrapDerivedKey(key: raw.Mfkdf2DerivedKey): any {
     policy: wrapPolicy(key.policy),
     // Add entropyBits alias for compatibility
     get key() {
-      return toBuffer(key.key);
+      return Buffer.from(key.key);
     },
     get secret() {
-      return toBuffer(key.secret);
+      return Buffer.from(key.secret);
     },
     get shares() {
-      return key.shares.map(share => toBuffer(share));
+      return key.shares.map(share => Buffer.from(share));
     },
-    // TODO (@lonerapier): check what other fields need to be casted
     get entropyBits() {
       return key.entropy;
     },
@@ -225,7 +219,7 @@ export const mfkdf = {
       factors: raw.Mfkdf2Factor[],
       options: { id?: string; threshold?: number; salt?: ArrayBuffer | Buffer | Uint8Array, stack?: boolean, integrity?: boolean, time?: number, memory?: number } = {}
     ) {
-      const key = await raw.key(factors, {
+      const key = await raw.setupKey(factors, {
         id: options.id,
         threshold: options.threshold,
         salt: toArrayBuffer(options.salt),

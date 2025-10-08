@@ -1,7 +1,7 @@
 #![allow(deprecated)]
 #![allow(dead_code)]
 
-use mfkdf2::definitions::mfkdf_derived_key::MFKDF2DerivedKey;
+use mfkdf2::definitions::MFKDF2DerivedKey;
 
 pub const HMACSHA1_SECRET: [u8; 20] = [
   0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f, 0x10,
@@ -19,7 +19,7 @@ pub const TEST_JWK: &str = r#"{
     "e": "AQAB"
   }"#;
 
-pub async fn mock_mfkdf2_password() -> Result<MFKDF2DerivedKey, mfkdf2::error::MFKDF2Error> {
+pub fn mock_mfkdf2_password() -> Result<MFKDF2DerivedKey, mfkdf2::error::MFKDF2Error> {
   let factors = vec![mfkdf2::setup::factors::password(
     "Tr0ubd4dour",
     mfkdf2::setup::factors::password::PasswordOptions { id: Some("password_1".to_string()) },
@@ -28,11 +28,11 @@ pub async fn mock_mfkdf2_password() -> Result<MFKDF2DerivedKey, mfkdf2::error::M
   .collect::<Result<Vec<_>, _>>()?;
 
   let options = mfkdf2::setup::key::MFKDF2Options::default();
-  let key = mfkdf2::setup::key(factors, options).await?;
+  let key = mfkdf2::setup::key(factors, options)?;
   Ok(key)
 }
 
-pub async fn mock_threshold_mfkdf2() -> Result<MFKDF2DerivedKey, mfkdf2::error::MFKDF2Error> {
+pub fn mock_threshold_mfkdf2() -> Result<MFKDF2DerivedKey, mfkdf2::error::MFKDF2Error> {
   let factors = vec![
     mfkdf2::setup::factors::password(
       "Tr0ubd4dour",
@@ -47,12 +47,12 @@ pub async fn mock_threshold_mfkdf2() -> Result<MFKDF2DerivedKey, mfkdf2::error::
   .collect::<Result<Vec<_>, _>>()?;
 
   let options = mfkdf2::setup::key::MFKDF2Options { threshold: Some(1), ..Default::default() };
-  let key = mfkdf2::setup::key(factors, options).await?;
+  let key = mfkdf2::setup::key(factors, options)?;
   Ok(key)
 }
 
-pub async fn mock_password_question_mfkdf2()
--> Result<mfkdf2::definitions::mfkdf_derived_key::MFKDF2DerivedKey, mfkdf2::error::MFKDF2Error> {
+pub fn mock_password_question_mfkdf2()
+-> Result<mfkdf2::definitions::MFKDF2DerivedKey, mfkdf2::error::MFKDF2Error> {
   let factors = vec![
     mfkdf2::setup::factors::password(
       "Tr0ubd4dour",
@@ -67,11 +67,11 @@ pub async fn mock_password_question_mfkdf2()
   .collect::<Result<Vec<_>, _>>()?;
 
   let options = mfkdf2::setup::key::MFKDF2Options::default();
-  let key = mfkdf2::setup::key(factors, options).await?;
+  let key = mfkdf2::setup::key(factors, options)?;
   Ok(key)
 }
 
-pub async fn mock_uuid_mfkdf2() -> Result<MFKDF2DerivedKey, mfkdf2::error::MFKDF2Error> {
+pub fn mock_uuid_mfkdf2() -> Result<MFKDF2DerivedKey, mfkdf2::error::MFKDF2Error> {
   let factors = vec![mfkdf2::setup::factors::uuid(mfkdf2::setup::factors::uuid::UUIDOptions {
     id:   None,
     uuid: Some(uuid::Uuid::from_u128(123_456_789_012)),
@@ -79,11 +79,11 @@ pub async fn mock_uuid_mfkdf2() -> Result<MFKDF2DerivedKey, mfkdf2::error::MFKDF
   .into_iter()
   .collect::<Result<Vec<_>, _>>()?;
   let options = mfkdf2::setup::key::MFKDF2Options::default();
-  let key = mfkdf2::setup::key(factors, options).await?;
+  let key = mfkdf2::setup::key(factors, options)?;
   Ok(key)
 }
 
-pub async fn mock_hmacsha1_mfkdf2() -> Result<MFKDF2DerivedKey, mfkdf2::error::MFKDF2Error> {
+pub fn mock_hmacsha1_mfkdf2() -> Result<MFKDF2DerivedKey, mfkdf2::error::MFKDF2Error> {
   let factors =
     vec![mfkdf2::setup::factors::hmacsha1(mfkdf2::setup::factors::hmacsha1::HmacSha1Options {
       id:     Some("hmacsha1_1".to_string()),
@@ -93,11 +93,11 @@ pub async fn mock_hmacsha1_mfkdf2() -> Result<MFKDF2DerivedKey, mfkdf2::error::M
     .collect::<Result<Vec<_>, _>>()?;
 
   let options = mfkdf2::setup::key::MFKDF2Options::default();
-  let key = mfkdf2::setup::key(factors, options).await?;
+  let key = mfkdf2::setup::key(factors, options)?;
   Ok(key)
 }
 
-pub async fn mock_hotp_mfkdf2() -> Result<MFKDF2DerivedKey, mfkdf2::error::MFKDF2Error> {
+pub fn mock_hotp_mfkdf2() -> Result<MFKDF2DerivedKey, mfkdf2::error::MFKDF2Error> {
   let factors = vec![mfkdf2::setup::factors::hotp(mfkdf2::setup::factors::hotp::HOTPOptions {
     id:     Some("hotp_1".to_string()),
     secret: Some(HOTP_SECRET.to_vec()),
@@ -110,11 +110,11 @@ pub async fn mock_hotp_mfkdf2() -> Result<MFKDF2DerivedKey, mfkdf2::error::MFKDF
   .collect::<Result<Vec<_>, _>>()?;
 
   let options = mfkdf2::setup::key::MFKDF2Options::default();
-  let key = mfkdf2::setup::key(factors, options).await?;
+  let key = mfkdf2::setup::key(factors, options)?;
   Ok(key)
 }
 
-pub async fn mock_mixed_factors_mfkdf2() -> Result<MFKDF2DerivedKey, mfkdf2::error::MFKDF2Error> {
+pub fn mock_mixed_factors_mfkdf2() -> Result<MFKDF2DerivedKey, mfkdf2::error::MFKDF2Error> {
   let factors = vec![
     mfkdf2::setup::factors::password(
       "Tr0ubd4dour",
@@ -133,11 +133,11 @@ pub async fn mock_mixed_factors_mfkdf2() -> Result<MFKDF2DerivedKey, mfkdf2::err
   .collect::<Result<Vec<_>, _>>()?;
 
   let options = mfkdf2::setup::key::MFKDF2Options::default();
-  let key = mfkdf2::setup::key(factors, options).await?;
+  let key = mfkdf2::setup::key(factors, options)?;
   Ok(key)
 }
 
-pub fn create_setup_factor(name: &str) -> mfkdf2::setup::factors::MFKDF2Factor {
+pub fn create_setup_factor(name: &str) -> mfkdf2::definitions::MFKDF2Factor {
   match name {
     "password" => mfkdf2::setup::factors::password(
       "Tr0ubd4dour",
@@ -196,7 +196,7 @@ pub fn create_setup_factor(name: &str) -> mfkdf2::setup::factors::MFKDF2Factor {
 pub fn create_derive_factor(
   name: &str,
   policy: &mfkdf2::policy::Policy,
-) -> (String, mfkdf2::setup::factors::MFKDF2Factor) {
+) -> (String, mfkdf2::definitions::MFKDF2Factor) {
   match name {
     "password" =>
       ("password_1".to_string(), mfkdf2::derive::factors::password("Tr0ubd4dour").unwrap()),

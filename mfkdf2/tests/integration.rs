@@ -2,20 +2,19 @@ mod common;
 
 use std::collections::HashMap;
 
-use mfkdf2::setup::factors::hotp::OTPHash;
 use rstest::rstest;
 
 use crate::common::*;
 
-#[tokio::test]
-async fn key_setup() -> Result<(), mfkdf2::error::MFKDF2Error> {
-  mock_mfkdf2_password().await?;
+#[test]
+fn key_setup() -> Result<(), mfkdf2::error::MFKDF2Error> {
+  mock_mfkdf2_password()?;
   Ok(())
 }
 
-#[tokio::test]
-async fn key_derive() -> Result<(), mfkdf2::error::MFKDF2Error> {
-  let key = mock_mfkdf2_password().await?;
+#[test]
+fn key_derive() -> Result<(), mfkdf2::error::MFKDF2Error> {
+  let key = mock_mfkdf2_password()?;
   println!("Setup key: {}", key);
 
   let factor = ("password_1".to_string(), mfkdf2::derive::factors::password("Tr0ubd4dour")?);
@@ -30,10 +29,10 @@ async fn key_derive() -> Result<(), mfkdf2::error::MFKDF2Error> {
   Ok(())
 }
 
-#[tokio::test]
+#[test]
 #[should_panic]
-async fn key_derive_fail() -> () {
-  let key = mock_mfkdf2_password().await.unwrap();
+fn key_derive_fail() {
+  let key = mock_mfkdf2_password().unwrap();
   println!("Setup key: {}", key);
 
   let factor =
@@ -47,12 +46,12 @@ async fn key_derive_fail() -> () {
   assert_eq!(derived_key.key, key.key);
 }
 
-#[tokio::test]
-async fn key_setup_threshold() -> () { mock_threshold_mfkdf2().await.unwrap(); }
+#[test]
+fn key_setup_threshold() { mock_threshold_mfkdf2().unwrap(); }
 
-#[tokio::test]
-async fn key_derive_threshold() -> () {
-  let key = mock_threshold_mfkdf2().await.unwrap();
+#[test]
+fn key_derive_threshold() {
+  let key = mock_threshold_mfkdf2().unwrap();
   println!("Setup key: {}", key);
 
   let factor =
@@ -75,15 +74,15 @@ async fn key_derive_threshold() -> () {
   assert_eq!(derived_key.key, key.key);
 }
 
-#[tokio::test]
-async fn key_setup_password_question() -> () {
-  let key = mock_password_question_mfkdf2().await.unwrap();
+#[test]
+fn key_setup_password_question() {
+  let key = mock_password_question_mfkdf2().unwrap();
   println!("Setup key: {}", key);
 }
 
-#[tokio::test]
-async fn key_derive_password_question() -> () {
-  let key = mock_password_question_mfkdf2().await.unwrap();
+#[test]
+fn key_derive_password_question() {
+  let key = mock_password_question_mfkdf2().unwrap();
   println!("Setup key: {}", key);
 
   let factor_password =
@@ -99,9 +98,9 @@ async fn key_derive_password_question() -> () {
   assert_eq!(derived_key.key, key.key);
 }
 
-#[tokio::test]
-async fn key_derive_uuid() -> () {
-  let key = mock_uuid_mfkdf2().await.unwrap();
+#[test]
+fn key_derive_uuid() {
+  let key = mock_uuid_mfkdf2().unwrap();
   println!("Setup key: {}", key);
 
   let factor = (
@@ -116,9 +115,9 @@ async fn key_derive_uuid() -> () {
   assert_eq!(derived_key.key, key.key);
 }
 
-#[tokio::test]
-async fn key_derive_hmacsha1() -> Result<(), mfkdf2::error::MFKDF2Error> {
-  let key = mock_hmacsha1_mfkdf2().await?;
+#[test]
+fn key_derive_hmacsha1() -> Result<(), mfkdf2::error::MFKDF2Error> {
+  let key = mock_hmacsha1_mfkdf2().unwrap();
   println!("Setup key: {}", key);
 
   let challenge = hex::decode(
@@ -144,9 +143,9 @@ async fn key_derive_hmacsha1() -> Result<(), mfkdf2::error::MFKDF2Error> {
   Ok(())
 }
 
-#[tokio::test]
-async fn policy_json_schema_compliance() {
-  let key = mock_mfkdf2_password().await.unwrap();
+#[test]
+fn policy_json_schema_compliance() {
+  let key = mock_mfkdf2_password().unwrap();
 
   // Serialize the policy to JSON
   let policy_json = serde_json::to_string_pretty(&key.policy).unwrap();
@@ -182,16 +181,16 @@ async fn policy_json_schema_compliance() {
   println!("✅ Policy JSON schema compliance test passed!");
 }
 
-#[tokio::test]
-async fn key_setup_hotp() -> Result<(), mfkdf2::error::MFKDF2Error> {
-  let key = mock_hotp_mfkdf2().await?;
+#[test]
+fn key_setup_hotp() -> Result<(), mfkdf2::error::MFKDF2Error> {
+  let key = mock_hotp_mfkdf2().unwrap();
   println!("Setup key: {}", key);
   Ok(())
 }
 
-#[tokio::test]
-async fn key_derive_hotp() -> Result<(), mfkdf2::error::MFKDF2Error> {
-  let key = mock_hotp_mfkdf2().await?;
+#[test]
+fn key_derive_hotp() -> Result<(), mfkdf2::error::MFKDF2Error> {
+  let key = mock_hotp_mfkdf2().unwrap();
   println!("Setup key: {}", key);
 
   // Extract HOTP parameters from the policy
@@ -199,12 +198,7 @@ async fn key_derive_hotp() -> Result<(), mfkdf2::error::MFKDF2Error> {
   let params: serde_json::Value = serde_json::from_str(&hotp_factor.params).unwrap();
   let counter = params["counter"].as_u64().unwrap();
   let digits = params["digits"].as_u64().unwrap() as u8;
-  let hash = match params["hash"].as_str().unwrap() {
-    "sha1" => OTPHash::Sha1,
-    "sha256" => OTPHash::Sha256,
-    "sha512" => OTPHash::Sha512,
-    _ => panic!("unknown hash algrorithm"),
-  };
+  let hash = serde_json::from_value(params["hash"].clone()).unwrap();
 
   // Generate the HOTP code that the user would need to provide
   // This simulates what would come from an authenticator app
@@ -224,10 +218,10 @@ async fn key_derive_hotp() -> Result<(), mfkdf2::error::MFKDF2Error> {
   Ok(())
 }
 
-#[tokio::test]
+#[test]
 #[should_panic]
-async fn key_derive_hotp_wrong_code() {
-  let key = mock_hotp_mfkdf2().await.unwrap();
+fn key_derive_hotp_wrong_code() {
+  let key = mock_hotp_mfkdf2().unwrap();
   println!("Setup key: {}", key);
 
   // Use a wrong HOTP code
@@ -242,9 +236,9 @@ async fn key_derive_hotp_wrong_code() {
   assert_eq!(derived_key.key, key.key);
 }
 
-#[tokio::test]
-async fn key_derive_mixed_password_hotp() -> Result<(), mfkdf2::error::MFKDF2Error> {
-  let key = mock_mixed_factors_mfkdf2().await?;
+#[test]
+fn key_derive_mixed_password_hotp() -> Result<(), mfkdf2::error::MFKDF2Error> {
+  let key = mock_mixed_factors_mfkdf2().unwrap();
   println!("Setup key: {}", key);
 
   // Extract HOTP parameters
@@ -252,12 +246,7 @@ async fn key_derive_mixed_password_hotp() -> Result<(), mfkdf2::error::MFKDF2Err
   let params: serde_json::Value = serde_json::from_str(&hotp_factor.params).unwrap();
   let counter = params["counter"].as_u64().unwrap();
   let digits = params["digits"].as_u64().unwrap() as u8;
-  let hash = match params["hash"].as_str().unwrap() {
-    "sha1" => OTPHash::Sha1,
-    "sha256" => OTPHash::Sha256,
-    "sha512" => OTPHash::Sha512,
-    _ => panic!("unknown hash algrorithm"),
-  };
+  let hash = serde_json::from_value(params["hash"].clone()).unwrap();
 
   // Generate the correct HOTP code using SHA256 (different from previous test)
   let generated_code =
@@ -285,8 +274,8 @@ async fn key_derive_mixed_password_hotp() -> Result<(), mfkdf2::error::MFKDF2Err
 #[case(vec!["question", "uuid"], 2, vec![vec!["question", "uuid"]], 1)]
 #[case(vec!["ooba", "passkey", "password"], 2, vec![vec!["ooba", "passkey"], vec!["password", "passkey"]], 1)]
 #[case(vec!["password", "hotp"], 2, vec![vec!["password", "hotp"]], 3)]
-#[tokio::test]
-async fn key_derivation_combinations(
+#[test]
+fn key_derivation_combinations(
   #[case] setup_factor_names: Vec<&str>,
   #[case] threshold: u8,
   #[case] derive_combinations: Vec<Vec<&str>>,
@@ -297,7 +286,7 @@ async fn key_derivation_combinations(
 
   let options =
     mfkdf2::setup::key::MFKDF2Options { threshold: Some(threshold), ..Default::default() };
-  let setup_key = mfkdf2::setup::key(setup_factors, options).await?;
+  let setup_key = mfkdf2::setup::key(setup_factors, options)?;
 
   // 2. Loop through derivation combinations
   for combo in derive_combinations {

@@ -1,3 +1,4 @@
+#[cfg(feature = "bindings")]
 uniffi::setup_scaffolding!();
 
 pub mod crypto;
@@ -10,7 +11,8 @@ pub mod setup;
 
 type LogLevel = log::Level;
 
-#[uniffi::remote(Enum)]
+#[cfg(feature = "bindings")]
+#[cfg_attr(feature = "bindings", uniffi::remote(Enum))]
 enum LogLevel {
   Trace,
   Debug,
@@ -19,13 +21,19 @@ enum LogLevel {
   Error,
 }
 
-#[uniffi::export]
+#[cfg_attr(feature = "bindings", uniffi::export)]
 pub async fn init_rust_logging(level: Option<LogLevel>) {
   // Determine log level from parameter or environment variable
-  let log_level = if let Some(level) = level {
-    level
+  #[cfg(feature = "bindings")]
+  let log_level: log::Level = if let Some(level) = level {
+    match level {
+      LogLevel::Trace => log::Level::Trace,
+      LogLevel::Debug => log::Level::Debug,
+      LogLevel::Info => log::Level::Info,
+      LogLevel::Warn => log::Level::Warn,
+      LogLevel::Error => log::Level::Error,
+    }
   } else {
-    // Fall back to environment variable or default
     let env_level = std::env::var("RUST_LOG").unwrap_or_else(|_| "info".to_string());
     match env_level.to_lowercase().as_str() {
       "trace" => log::Level::Trace,
@@ -33,10 +41,27 @@ pub async fn init_rust_logging(level: Option<LogLevel>) {
       "info" => log::Level::Info,
       "warn" => log::Level::Warn,
       "error" => log::Level::Error,
-      _ => log::Level::Info, // default to info if invalid
+      _ => log::Level::Info,
     }
   };
 
-  // no-op if already initialized
+  #[cfg(not(feature = "bindings"))]
+  let log_level = if let Some(level) = level {
+    level
+  } else {
+    let env_level = std::env::var("RUST_LOG").unwrap_or_else(|_| "info".to_string());
+    match env_level.to_lowercase().as_str() {
+      "trace" => log::Level::Trace,
+      "debug" => log::Level::Debug,
+      "info" => log::Level::Info,
+      "warn" => log::Level::Warn,
+      "error" => log::Level::Error,
+      _ => log::Level::Info,
+    }
+  };
+
+  #[cfg(target_arch = "wasm32")]
   let _ = console_log::init_with_level(log_level);
+
+  log::set_max_level(log_level.to_level_filter());
 }

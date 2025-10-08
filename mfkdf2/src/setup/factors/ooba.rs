@@ -8,9 +8,9 @@ use sha2::Sha256;
 
 use crate::{
   crypto::{encrypt, hkdf_sha256_with_info},
-  definitions::key::Key,
+  definitions::{FactorMetadata, FactorType, Key, MFKDF2Factor},
   error::{MFKDF2Error, MFKDF2Result},
-  setup::factors::{FactorMetadata, FactorSetup, FactorType, MFKDF2Factor},
+  setup::FactorSetup,
 };
 
 #[inline]
@@ -25,7 +25,8 @@ pub fn generate_alphanumeric_characters(length: u32) -> String {
 
 pub struct OobaPublicKey(pub RsaPublicKey);
 
-#[derive(Clone, Debug, Serialize, Deserialize, uniffi::Record)]
+#[cfg_attr(feature = "bindings", derive(uniffi::Record))]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct OobaOptions {
   pub id:     Option<String>,
   pub length: Option<u8>,
@@ -39,7 +40,8 @@ impl Default for OobaOptions {
   }
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, uniffi::Record)]
+#[cfg_attr(feature = "bindings", derive(uniffi::Record))]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Ooba {
   pub target: Vec<u8>,
   pub length: u8,
@@ -82,35 +84,34 @@ impl FactorMetadata for Ooba {
 }
 
 impl FactorSetup for Ooba {
+  type Output = Value;
+  type Params = Value;
+
   fn bytes(&self) -> Vec<u8> { self.target.clone() }
 
-  fn params(&self, _key: Key) -> Value {
+  fn params(&self, _key: Key) -> MFKDF2Result<Self::Params> {
     let code = generate_alphanumeric_characters(self.length.into()).to_uppercase();
 
     let prev_key = hkdf_sha256_with_info(code.as_bytes(), &[], &[]);
     let pad = encrypt(&self.target, &prev_key);
 
-    let mut params = match serde_json::from_str(&self.params) {
-      Ok(params) => params,
-      Err(_) => json!({}),
-    };
+    let mut params: Value = serde_json::from_str(&self.params)?;
     params["code"] = json!(code);
 
-    let plaintext = serde_json::to_vec(&params).expect("Should serialize params to bytes");
-    let key = OobaPublicKey::try_from(self.jwk.as_str()).expect("JWK should be valid");
-    let ciphertext =
-      key.0.encrypt(&mut OsRng, Oaep::new::<Sha256>(), &plaintext).expect("Should encrypt params");
+    let plaintext = serde_json::to_vec(&params)?;
+    let key = OobaPublicKey::try_from(self.jwk.as_str())?;
+    let ciphertext = key.0.encrypt(&mut OsRng, Oaep::new::<Sha256>(), &plaintext)?;
 
-    json!({
+    Ok(json!({
         "length": self.length,
         "key": self.jwk,
         "params": params,
         "next": hex::encode(ciphertext),
         "pad": general_purpose::STANDARD.encode(pad),
-    })
+    }))
   }
 
-  fn output(&self, _key: Key) -> Value { json!({}) }
+  fn output(&self, _key: Key) -> Self::Output { json!({}) }
 }
 
 pub fn ooba(options: OobaOptions) -> MFKDF2Result<MFKDF2Factor> {
@@ -163,7 +164,7 @@ pub fn ooba(options: OobaOptions) -> MFKDF2Result<MFKDF2Factor> {
   })
 }
 
-#[uniffi::export]
+#[cfg_attr(feature = "bindings", uniffi::export)]
 pub async fn setup_ooba(options: OobaOptions) -> MFKDF2Result<MFKDF2Factor> { ooba(options) }
 
 #[cfg(test)]
@@ -303,7 +304,7 @@ mod tests {
       _ => panic!("Factor type should be Ooba"),
     };
 
-    let params = ooba.params([0u8; 32].into());
+    let params = ooba.params([0u8; 32].into()).unwrap();
     assert!(params.is_object());
 
     // check params.next is equal to params.params

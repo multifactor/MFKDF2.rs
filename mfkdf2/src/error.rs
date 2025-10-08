@@ -3,8 +3,8 @@ pub type MFKDF2Result<T> = Result<T, MFKDF2Error>;
 // TODO (autoparallel): It may be worth making this have inner errors, e.g., for factors and other
 // things. That is usually not my style, but it may be nicer for the caller as long as destructuring
 // the error is not too painful.
-#[derive(thiserror::Error, Debug, uniffi::Error)]
-#[uniffi(flat_error)]
+#[cfg_attr(feature = "bindings", derive(uniffi::Error), uniffi(flat_error))]
+#[derive(thiserror::Error, Debug)]
 pub enum MFKDF2Error {
   #[error("password cannot be empty!")]
   PasswordEmpty,
@@ -23,6 +23,9 @@ pub enum MFKDF2Error {
 
   #[error(transparent)]
   DecodeError(#[from] base64::DecodeError),
+
+  #[error(transparent)]
+  RsaError(#[from] rsa::errors::Error),
 
   // TODO (autoparallel): This error variant should probably not even exist.
   #[error("failed to convert vector to array!")]
@@ -69,6 +72,12 @@ pub enum MFKDF2Error {
 
   #[error("invalid passkey secret length")]
   InvalidPasskeySecretLength,
+
+  #[error("missing setup params: {0}")]
+  MissingSetupParams(String),
+
+  #[error("missing output params: {0}")]
+  InvalidSetupParams(String),
 
   #[error("missing derive params: {0}")]
   MissingDeriveParams(String),

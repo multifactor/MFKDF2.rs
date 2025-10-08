@@ -1,8 +1,11 @@
 use serde_json::Value;
 use uuid::Uuid;
 
-use crate::{definitions::key::Key, setup::factors::hmacsha1::HmacSha1Response};
+use crate::{
+  definitions::key::Key, error::MFKDF2Error, setup::factors::hmacsha1::HmacSha1Response,
+};
 
+#[cfg(feature = "bindings")]
 uniffi::custom_type!(HmacSha1Response, Vec<u8>, {
   lower: |r| r.0.to_vec(),
   try_lift: |v: Vec<u8>| {
@@ -19,13 +22,14 @@ uniffi::custom_type!(HmacSha1Response, Vec<u8>, {
   }
 });
 
-// TODO (@lonerapier): check if mfkdf2error can be converted to anyhow error
+#[cfg(feature = "bindings")]
 uniffi::custom_type!(Uuid, String, {
   remote,
   lower: |v| v.to_string(),
-  try_lift: |s: String| Uuid::parse_str(&s).map_err(uniffi::deps::anyhow::Error::msg),
+  try_lift: |s: String| Uuid::parse_str(&s).map_err(|_| MFKDF2Error::InvalidUuid).map_err(Into::into),
 });
 
+#[cfg(feature = "bindings")]
 uniffi::custom_type!(Value, String, {
   remote,
   lower: |v| serde_json::to_string(&v).expect("serialize Value"),
@@ -33,4 +37,5 @@ uniffi::custom_type!(Value, String, {
 });
 
 // Uniffi custom type for Key
+#[cfg(feature = "bindings")]
 uniffi::custom_type!(Key, Vec<u8>);

@@ -4,12 +4,13 @@ use serde_json::{Value, json};
 pub use uuid::Uuid;
 
 use crate::{
-  definitions::key::Key,
+  definitions::{FactorMetadata, FactorType, Key, MFKDF2Factor},
   error::MFKDF2Result,
-  setup::factors::{FactorMetadata, FactorSetup, FactorType, MFKDF2Factor},
+  setup::FactorSetup,
 };
 
-#[derive(Clone, Debug, Serialize, Deserialize, uniffi::Record)]
+#[cfg_attr(feature = "bindings", derive(uniffi::Record))]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct UUIDOptions {
   pub id:   Option<String>,
   pub uuid: Option<Uuid>,
@@ -19,7 +20,8 @@ impl Default for UUIDOptions {
   fn default() -> Self { Self { id: Some("uuid".to_string()), uuid: None } }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, uniffi::Record)]
+#[cfg_attr(feature = "bindings", derive(uniffi::Record))]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct UUIDFactor {
   pub uuid: Uuid,
 }
@@ -29,11 +31,12 @@ impl FactorMetadata for UUIDFactor {
 }
 
 impl FactorSetup for UUIDFactor {
+  type Output = Value;
+  type Params = Value;
+
   fn bytes(&self) -> Vec<u8> { self.uuid.as_bytes().to_vec() }
 
-  fn params(&self, _key: Key) -> Value { json!({}) }
-
-  fn output(&self, _key: Key) -> Value {
+  fn output(&self, _key: Key) -> Self::Output {
     json!({
       "uuid": self.uuid.clone(),
     })
@@ -61,7 +64,7 @@ pub fn uuid(options: UUIDOptions) -> MFKDF2Result<MFKDF2Factor> {
   })
 }
 
-#[uniffi::export]
+#[cfg_attr(feature = "bindings", uniffi::export)]
 pub async fn setup_uuid(options: UUIDOptions) -> MFKDF2Result<MFKDF2Factor> { uuid(options) }
 
 #[cfg(test)]

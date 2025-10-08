@@ -2,17 +2,19 @@ use serde_json::{Value, json};
 use zxcvbn::zxcvbn;
 
 use crate::{
-  definitions::key::Key,
+  definitions::{FactorType, MFKDF2Factor},
   derive::FactorDerive,
   error::{MFKDF2Error, MFKDF2Result},
-  setup::factors::{FactorType, MFKDF2Factor, password::Password},
+  setup::factors::password::Password,
 };
+
 impl FactorDerive for Password {
-  fn include_params(&mut self, _params: Value) -> MFKDF2Result<()> { Ok(()) }
+  type Output = Value;
+  type Params = Value;
 
-  fn params(&self, _key: Key) -> Value { json!({}) }
+  fn include_params(&mut self, _params: Self::Params) -> MFKDF2Result<()> { Ok(()) }
 
-  fn output(&self) -> Value { json!({"strength": zxcvbn(&self.password, &[])}) }
+  fn output(&self) -> Self::Output { json!({"strength": zxcvbn(&self.password, &[])}) }
 }
 
 pub fn password(password: impl Into<String>) -> MFKDF2Result<MFKDF2Factor> {
@@ -34,17 +36,15 @@ pub fn password(password: impl Into<String>) -> MFKDF2Result<MFKDF2Factor> {
   })
 }
 
-#[uniffi::export]
+#[cfg_attr(feature = "bindings", uniffi::export)]
 pub async fn derive_password(password: String) -> MFKDF2Result<MFKDF2Factor> {
   crate::derive::factors::password::password(password)
 }
 
 #[cfg(test)]
 mod tests {
-  // use zxcvbn::Entropy;
-
   use super::*;
-  use crate::{error::MFKDF2Error, setup::factors::FactorSetup};
+  use crate::{error::MFKDF2Error, setup::FactorSetup};
 
   #[test]
   fn test_password_empty() {
@@ -61,7 +61,7 @@ mod tests {
       FactorType::Password(p) => {
         assert_eq!(p.password, "hello");
         assert_eq!(factor.data(), "hello".as_bytes());
-        let params: Value = <Password as FactorSetup>::params(p, [0u8; 32].into());
+        let params: Value = <Password as FactorSetup>::params(p, [0u8; 32].into()).unwrap();
         // TODO: fix this
         // let output = p.output_derive();
         // let strength: Entropy = serde_json::from_value(output["strength"].clone()).unwrap();

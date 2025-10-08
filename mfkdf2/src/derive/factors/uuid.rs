@@ -2,18 +2,19 @@ use serde_json::json;
 use uuid::Uuid;
 
 use crate::{
-  definitions::key::Key,
+  definitions::{FactorType, MFKDF2Factor},
   derive::FactorDerive,
   error::MFKDF2Result,
-  setup::factors::{FactorType, MFKDF2Factor, uuid::UUIDFactor},
+  setup::factors::uuid::UUIDFactor,
 };
 
 impl FactorDerive for UUIDFactor {
-  fn include_params(&mut self, _params: serde_json::Value) -> MFKDF2Result<()> { Ok(()) }
+  type Output = serde_json::Value;
+  type Params = serde_json::Value;
 
-  fn params(&self, _key: Key) -> serde_json::Value { json!({}) }
+  fn include_params(&mut self, _params: Self::Params) -> MFKDF2Result<()> { Ok(()) }
 
-  fn output(&self) -> serde_json::Value {
+  fn output(&self) -> Self::Output {
     json!({
       "uuid": self.uuid.clone(),
     })
@@ -29,7 +30,7 @@ pub fn uuid(uuid: Uuid) -> MFKDF2Result<MFKDF2Factor> {
   })
 }
 
-#[uniffi::export]
+#[cfg_attr(feature = "bindings", uniffi::export)]
 pub async fn derive_uuid(uuid: Uuid) -> MFKDF2Result<MFKDF2Factor> {
   crate::derive::factors::uuid(uuid)
 }
@@ -69,7 +70,7 @@ mod tests {
     assert!(result.is_ok());
 
     // Test params_derive (returns empty)
-    let params = factor.factor_type.params([0; 32].into());
+    let params = factor.factor_type.params([0; 32].into()).unwrap();
     assert_eq!(params, json!({}));
   }
 }
