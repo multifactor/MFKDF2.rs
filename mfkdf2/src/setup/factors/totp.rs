@@ -14,14 +14,15 @@ use crate::{
     factor::{FactorMetadata, FactorType, MFKDF2Factor},
     key::Key,
   },
-  error::MFKDF2Result,
+  error::{MFKDF2Error, MFKDF2Result},
   setup::{
     FactorSetup,
     factors::hotp::{OTPHash, generate_hotp_code},
   },
 };
 
-#[derive(Clone, Debug, Serialize, Deserialize, uniffi::Record)]
+#[cfg_attr(feature = "bindings", derive(uniffi::Record))]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct TOTPOptions {
   pub id:     Option<String>,
   pub secret: Option<Vec<u8>>,
@@ -54,7 +55,8 @@ impl Default for TOTPOptions {
   }
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, uniffi::Record)]
+#[cfg_attr(feature = "bindings", derive(uniffi::Record))]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct TOTP {
   pub options: TOTPOptions,
   pub params:  String,
@@ -69,12 +71,17 @@ impl FactorMetadata for TOTP {
 }
 
 impl FactorSetup for TOTP {
+  type Output = Value;
+  type Params = Value;
+
   fn bytes(&self) -> Vec<u8> { self.target.to_be_bytes().to_vec() }
 
-  fn params(&self, key: Key) -> Value {
-    let time = self.options.time.unwrap() as u128;
+  fn params(&self, key: Key) -> MFKDF2Result<Self::Params> {
+    let time =
+      self.options.time.ok_or(MFKDF2Error::MissingSetupParams("time".to_string()))? as u128;
     let mut offsets = Vec::with_capacity((4 * self.options.window) as usize);
-    let padded_secret = self.options.secret.as_ref().unwrap();
+    let padded_secret =
+      self.options.secret.as_ref().ok_or(MFKDF2Error::MissingSetupParams("secret".to_string()))?;
 
     for i in 0..self.options.window {
       // Calculate the time-step 'T' as per RFC 6238, Section 4.2.
@@ -94,7 +101,7 @@ impl FactorSetup for TOTP {
 
     let pad = encrypt(padded_secret, &key.0);
 
-    json!({
+    Ok(json!({
         "start": time,
         "hash": self.options.hash.to_string(),
         "digits": self.options.digits,
@@ -102,10 +109,10 @@ impl FactorSetup for TOTP {
         "window": self.options.window,
         "pad": base64::prelude::BASE64_STANDARD.encode(&pad),
         "offsets": base64::prelude::BASE64_STANDARD.encode(&offsets),
-    })
+    }))
   }
 
-  fn output(&self, _key: Key) -> Value {
+  fn output(&self, _key: Key) -> Self::Output {
     json!({
       "scheme": "otpauth",
       "type": "totp",
@@ -178,7 +185,7 @@ pub fn totp(options: TOTPOptions) -> MFKDF2Result<MFKDF2Factor> {
   })
 }
 
-#[uniffi::export]
+#[cfg_attr(feature = "bindings", uniffi::export)]
 pub async fn setup_totp(options: TOTPOptions) -> MFKDF2Result<MFKDF2Factor> { totp(options) }
 
 #[cfg(test)]
@@ -288,6 +295,8 @@ mod tests {
     };
 
     let params = totp_factor.params(key.into());
+    assert!(params.is_ok());
+    let params = params.unwrap();
     assert!(params.is_object());
 
     assert_eq!(params["start"], 1672531200000_u64);

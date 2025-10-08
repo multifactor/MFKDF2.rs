@@ -16,7 +16,8 @@ use crate::{
   setup::FactorSetup,
 };
 
-#[derive(Clone, Debug, Serialize, Deserialize, uniffi::Record)]
+#[cfg_attr(feature = "bindings", derive(uniffi::Record))]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct HOTPOptions {
   pub id:     Option<String>,
   // TODO (@lonerapier): use trait based type update for secret
@@ -28,7 +29,8 @@ pub struct HOTPOptions {
   pub label:  String,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq, uniffi::Enum)]
+#[cfg_attr(feature = "bindings", derive(uniffi::Enum))]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
 pub enum OTPHash {
   #[serde(rename = "sha1")]
   Sha1,
@@ -61,7 +63,8 @@ impl Default for HOTPOptions {
   }
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, uniffi::Record)]
+#[cfg_attr(feature = "bindings", derive(uniffi::Record))]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct HOTP {
   // TODO (sambhav): is it safe to add options in the factor struct here?
   pub options: HOTPOptions,
@@ -75,9 +78,12 @@ impl FactorMetadata for HOTP {
 }
 
 impl FactorSetup for HOTP {
+  type Output = Value;
+  type Params = Value;
+
   fn bytes(&self) -> Vec<u8> { self.target.to_be_bytes().to_vec() }
 
-  fn params(&self, key: Key) -> Value {
+  fn params(&self, key: Key) -> MFKDF2Result<Self::Params> {
     // Generate or use provided secret
     let padded_secret = if let Some(secret) = self.options.secret.clone() {
       secret
@@ -96,16 +102,16 @@ impl FactorSetup for HOTP {
 
     let pad = encrypt(&padded_secret, &key.0);
 
-    json!({
+    Ok(json!({
       "hash": self.options.hash.to_string(),
       "digits": self.options.digits,
       "pad": base64::prelude::BASE64_STANDARD.encode(&pad),
       "counter": 1,
       "offset": offset
-    })
+    }))
   }
 
-  fn output(&self, _key: Key) -> Value {
+  fn output(&self, _key: Key) -> Self::Output {
     json!({
       "scheme": "otpauth",
       "type": "hotp",
@@ -211,7 +217,7 @@ pub fn hotp(options: HOTPOptions) -> MFKDF2Result<MFKDF2Factor> {
   })
 }
 
-#[uniffi::export]
+#[cfg_attr(feature = "bindings", uniffi::export)]
 pub async fn setup_hotp(options: HOTPOptions) -> MFKDF2Result<MFKDF2Factor> { hotp(options) }
 
 #[cfg(test)]
@@ -236,7 +242,9 @@ mod tests {
     assert_eq!(factor.data().len(), 4); // u32 target as bytes
 
     // Test that params can be generated
-    let params = factor.factor_type.setup().params(key.into());
+    let params = factor.factor_type.setup().params(key.into()).unwrap();
+    assert!(params.is_object());
+
     assert!(params["hash"].is_string());
     assert!(params["digits"].is_number());
     assert!(params["pad"].is_string());
@@ -254,8 +262,11 @@ mod tests {
     assert_eq!(factor.id, Some("hotp".to_string()));
     assert_eq!(factor.data().len(), 4);
     assert!(factor.entropy.is_some());
-    assert!(factor.factor_type.setup().params(key.into()).is_object());
-    assert!(factor.factor_type.output(key.into()).is_object());
+    let params = factor.factor_type.setup().params(key.into()).unwrap();
+    assert!(params.is_object());
+
+    let output = factor.factor_type.output(key.into());
+    assert!(output.is_object());
   }
 
   #[test]
@@ -340,7 +351,9 @@ mod tests {
 
     let original_padded_secret = hotp_factor.options.secret.as_ref().unwrap();
 
-    let params = hotp_factor.params(key.into());
+    let params = hotp_factor.params(key.into()).unwrap();
+    assert!(params.is_object());
+
     let pad_b64 = params["pad"].as_str().unwrap();
     let pad = BASE64_STANDARD.decode(pad_b64).unwrap();
 
@@ -361,7 +374,9 @@ mod tests {
       _ => panic!("Wrong factor type"),
     };
 
-    let params = hotp_factor.params(key.into());
+    let params = hotp_factor.params(key.into()).unwrap();
+    assert!(params.is_object());
+
     let offset = params["offset"].as_u64().unwrap() as u32;
 
     let padded_secret = hotp_factor.options.secret.as_ref().unwrap();

@@ -6,7 +6,8 @@ use crate::{
   error::{MFKDF2Error, MFKDF2Result},
   setup::FactorSetup,
 };
-#[derive(Clone, Debug, Serialize, Deserialize, uniffi::Record)]
+#[cfg_attr(feature = "bindings", derive(uniffi::Record))]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Passkey {
   pub secret: Vec<u8>,
 }
@@ -16,10 +17,14 @@ impl FactorMetadata for Passkey {
 }
 
 impl FactorSetup for Passkey {
+  type Output = serde_json::Value;
+  type Params = serde_json::Value;
+
   fn bytes(&self) -> Vec<u8> { self.secret.clone() }
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, uniffi::Record)]
+#[cfg_attr(feature = "bindings", derive(uniffi::Record))]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct PasskeyOptions {
   pub id: Option<String>,
 }
@@ -47,7 +52,7 @@ pub fn passkey(secret: Vec<u8>, options: PasskeyOptions) -> MFKDF2Result<MFKDF2F
   })
 }
 
-#[uniffi::export]
+#[cfg_attr(feature = "bindings", uniffi::export)]
 pub async fn setup_passkey(secret: Vec<u8>, options: PasskeyOptions) -> MFKDF2Result<MFKDF2Factor> {
   passkey(secret, options)
 }

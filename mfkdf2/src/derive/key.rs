@@ -139,7 +139,7 @@ pub fn key(
       &general_purpose::STANDARD.decode(&factor.salt)?,
       format!("mfkdf2:factor:params:{}", factor.id).as_bytes(),
     );
-    let params = material.factor_type.params(params_key.into());
+    let params = material.factor_type.params(params_key.into())?;
     factor.params = serde_json::to_string(&params)?;
   }
 
@@ -176,7 +176,7 @@ pub fn key(
   })
 }
 
-#[uniffi::export(default(verify = true, stack = false))]
+#[cfg_attr(feature = "bindings", uniffi::export(default(verify = true, stack = false)))]
 pub async fn derive_key(
   policy: Policy,
   factors: HashMap<String, MFKDF2Factor>,

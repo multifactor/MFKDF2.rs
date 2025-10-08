@@ -11,14 +11,18 @@ use crate::{
 
 #[allow(unused_variables)]
 pub trait FactorDerive: Send + Sync + std::fmt::Debug {
-  fn include_params(&mut self, params: Value) -> MFKDF2Result<()>;
-  // TODO (@lonerapier): wrap the return value in result here too
-  fn params(&self, key: Key) -> Value { serde_json::json!({}) }
-  fn output(&self) -> Value { serde_json::json!({}) }
+  type Params: serde::Serialize + serde::de::DeserializeOwned + std::fmt::Debug + Default;
+  type Output: serde::Serialize + serde::de::DeserializeOwned + std::fmt::Debug + Default;
+
+  fn include_params(&mut self, params: Self::Params) -> MFKDF2Result<()>;
+  fn params(&self, key: Key) -> MFKDF2Result<Self::Params> {
+    Ok(serde_json::from_value(serde_json::json!({}))?)
+  }
+  fn output(&self) -> Self::Output { Self::Output::default() }
 }
 
 impl FactorType {
-  fn derive(&self) -> &dyn FactorDerive {
+  fn derive(&self) -> &dyn FactorDerive<Params = Value, Output = Value> {
     match self {
       FactorType::Password(password) => password,
       FactorType::HOTP(hotp) => hotp,
@@ -32,7 +36,7 @@ impl FactorType {
     }
   }
 
-  fn derive_mut(&mut self) -> &mut dyn FactorDerive {
+  fn derive_mut(&mut self) -> &mut dyn FactorDerive<Params = Value, Output = Value> {
     match self {
       FactorType::Password(password) => password,
       FactorType::HOTP(hotp) => hotp,
@@ -48,18 +52,22 @@ impl FactorType {
 }
 
 impl FactorDerive for FactorType {
-  // TODO: add associated types for params
-  fn include_params(&mut self, params: Value) -> MFKDF2Result<()> {
+  type Output = Value;
+  type Params = Value;
+
+  fn include_params(&mut self, params: Self::Params) -> MFKDF2Result<()> {
     self.derive_mut().include_params(params)
   }
 
-  fn params(&self, key: Key) -> Value { self.derive().params(key) }
+  fn params(&self, key: Key) -> MFKDF2Result<Self::Params> { self.derive().params(key) }
 
-  fn output(&self) -> Value { self.derive().output() }
+  fn output(&self) -> Self::Output { self.derive().output() }
 }
 
-#[uniffi::export]
-pub fn derive_factor_params(factor: &FactorType, key: Key) -> Value { factor.params(key) }
+#[cfg_attr(feature = "bindings", uniffi::export)]
+pub fn derive_factor_params(factor: &FactorType, key: Key) -> MFKDF2Result<Value> {
+  factor.params(key)
+}
 
-#[uniffi::export]
+#[cfg_attr(feature = "bindings", uniffi::export)]
 pub fn derive_factor_output(factor: &FactorType) -> Value { factor.output() }

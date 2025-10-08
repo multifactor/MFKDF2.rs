@@ -1,0 +1,18 @@
+{
+  "reporterEnabled": "mochawesome, mocha-junit-reporter",
+  "mochawesomeReporterOptions": {
+    "reportDir": "test-results/mochawesome",
+    "reportFilename": "index",
+    "quiet": true,
+    "overwrite": true,
+    "html": true,
+    "json": false,
+    "charts": true
+  },
+  "mochaJunitReporterReporterOptions": {
+    "mochaFile": "test-results/junit/junit.xml",
+    "useFullSuiteTitle": true,
+    "suiteTitleSeparatedBy": " / ",
+    "attachments": false
+  }
+}

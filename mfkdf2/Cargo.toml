@@ -7,8 +7,9 @@ version = "0.1.0"
 crate-type = ["cdylib", "lib"]
 
 [[bin]]
-name = "uniffi-bindgen"
-path = "uniffi-bindgen.rs"
+name              = "uniffi-bindgen"
+path              = "uniffi-bindgen.rs"
+required-features = ["bindings"]
 
 [dependencies]
 # Cryptography
@@ -62,7 +63,7 @@ jsonwebtoken = { version = "10.0.0", default-features = false, features = [
 ] }
 # Uniffi
 # TODO (autoparallel): I'm not sure if we can put these features into a different crate or something.
-uniffi = { version = "0.29", features = [
+uniffi = { version = "0.29", optional = true, features = [
   "build",
   "cli",
   "wasm-unstable-single-threaded",
@@ -71,12 +72,17 @@ uniffi = { version = "0.29", features = [
 rsa = { version = "0.9.8", default-features = false }
 
 # Logging
-console_log = { version = "1.0", default-features = false }
-log         = { version = "0.4.28", default-features = false }
+log = { version = "0.4.28", default-features = false }
+
+[features]
+default = []
+# Enable UniFFI bindings (FFI exports, scaffolding, bin, etc.)
+bindings = ["dep:uniffi"]
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
-getrandom = { version = "0.2", default-features = false, features = ["js"] }
-web-time  = { version = "1.1", default-features = false }
+console_log = { version = "1.0", default-features = false }
+getrandom   = { version = "0.2", default-features = false, features = ["js"] }
+web-time    = { version = "1.1", default-features = false }
 
 [dev-dependencies]
 # itertools = "0.14"

@@ -23,11 +23,12 @@ use crate::{
     factor::{FactorMetadata, FactorType},
     key::Key,
   },
+  error::MFKDF2Result,
   setup::FactorSetup,
 };
 
 impl FactorType {
-  pub fn setup(&self) -> &dyn FactorSetup {
+  pub fn setup(&self) -> &dyn FactorSetup<Params = Value, Output = Value> {
     match self {
       FactorType::Password(password) => password,
       FactorType::HOTP(hotp) => hotp,
@@ -43,28 +44,31 @@ impl FactorType {
 }
 
 impl FactorSetup for FactorType {
+  type Output = Value;
+  type Params = Value;
+
   fn bytes(&self) -> Vec<u8> { self.setup().bytes() }
 
-  fn params(&self, key: Key) -> Value { self.setup().params(key) }
+  fn params(&self, key: Key) -> MFKDF2Result<Self::Params> { self.setup().params(key) }
 
-  fn output(&self, key: Key) -> Value { self.setup().output(key) }
+  fn output(&self, key: Key) -> Self::Output { self.setup().output(key) }
 }
 
 // Standalone exported functions for FFI
-#[uniffi::export]
+#[cfg_attr(feature = "bindings", uniffi::export)]
 pub fn factor_type_kind(factor_type: &FactorType) -> String { factor_type.kind() }
 
-#[uniffi::export]
+#[cfg_attr(feature = "bindings", uniffi::export)]
 pub fn factor_type_bytes(factor_type: &FactorType) -> Vec<u8> { factor_type.bytes() }
 
-#[uniffi::export]
-pub fn setup_factor_type_params(factor_type: &FactorType, key: Option<Key>) -> Value {
+#[cfg_attr(feature = "bindings", uniffi::export)]
+pub fn setup_factor_type_params(factor_type: &FactorType, key: Option<Key>) -> MFKDF2Result<Value> {
   // TODO (@lonerapier): remove dummy key usage
   let key = key.unwrap_or_else(|| [0u8; 32].into());
   factor_type.params(key)
 }
 
-#[uniffi::export]
+#[cfg_attr(feature = "bindings", uniffi::export)]
 pub fn setup_factor_type_output(factor_type: &FactorType, key: Option<Key>) -> Value {
   let key = key.unwrap_or_else(|| [0u8; 32].into());
   factor_type.output(key)

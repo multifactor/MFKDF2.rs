@@ -4,5 +4,6 @@ rust:
 
 web:
   ts: src/generated/web
+  features: ["bindings"]
 bindings:
   ts: src/generated/rn

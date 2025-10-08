@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use rand::{RngCore, rngs::OsRng};
 use serde::{Deserialize, Serialize};
-use serde_json::{Value, json};
+use serde_json::Value;
 
 use crate::{
   definitions::{
@@ -17,7 +17,8 @@ use crate::{
   },
 };
 
-#[derive(Clone, Debug, Default, Serialize, Deserialize, uniffi::Record)]
+#[cfg_attr(feature = "bindings", derive(uniffi::Record))]
+#[derive(Clone, Debug, Default, Serialize, Deserialize)]
 pub struct StackOptions {
   pub id:        Option<String>,
   pub threshold: Option<u8>,
@@ -40,7 +41,8 @@ impl From<StackOptions> for MFKDF2Options {
   }
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, uniffi::Record)]
+#[cfg_attr(feature = "bindings", derive(uniffi::Record))]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Stack {
   pub factors: HashMap<String, MFKDF2Factor>,
   pub key:     MFKDF2DerivedKey,
@@ -51,13 +53,16 @@ impl FactorMetadata for Stack {
 }
 
 impl FactorSetup for Stack {
+  type Output = Value;
+  type Params = Value;
+
   fn bytes(&self) -> Vec<u8> { self.key.key.clone() }
 
-  fn params(&self, _key: Key) -> Value {
-    serde_json::to_value(&self.key.policy).unwrap_or(json!({}))
+  fn params(&self, _key: Key) -> MFKDF2Result<Self::Params> {
+    Ok(serde_json::to_value(&self.key.policy)?)
   }
 
-  fn output(&self, _key: Key) -> Value { serde_json::to_value(&self.key).unwrap_or(json!({})) }
+  fn output(&self, _key: Key) -> Self::Output { serde_json::to_value(&self.key).unwrap() }
 }
 
 pub fn stack(factors: Vec<MFKDF2Factor>, options: StackOptions) -> MFKDF2Result<MFKDF2Factor> {
@@ -90,7 +95,7 @@ pub fn stack(factors: Vec<MFKDF2Factor>, options: StackOptions) -> MFKDF2Result<
   })
 }
 
-#[uniffi::export]
+#[cfg_attr(feature = "bindings", uniffi::export)]
 pub async fn setup_stack(
   factors: Vec<MFKDF2Factor>,
   options: StackOptions,
@@ -149,7 +154,7 @@ mod tests {
     let stack_factor = stack(vec![factor], options).unwrap();
     let key = [0u8; 32];
 
-    let params = stack_factor.factor_type.setup().params(key.into());
+    let params = stack_factor.factor_type.setup().params(key.into()).unwrap();
     let output = stack_factor.factor_type.output(key.into());
 
     if let FactorType::Stack(stack) = stack_factor.factor_type {

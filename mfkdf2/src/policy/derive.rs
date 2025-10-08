@@ -52,7 +52,7 @@ pub fn derive(
   crate::derive::key::key(policy, expanded_factors, verify.unwrap_or(true), false)
 }
 
-#[uniffi::export]
+#[cfg_attr(feature = "bindings", uniffi::export)]
 pub async fn policy_derive(
   policy: Policy,
   factors: HashMap<String, MFKDF2Factor>,

@@ -21,7 +21,8 @@ use crate::{
   },
 };
 
-#[derive(Clone, Debug, Serialize, Deserialize, uniffi::Record, Default)]
+#[cfg_attr(feature = "bindings", derive(uniffi::Record))]
+#[derive(Clone, Debug, Default, Serialize, Deserialize)]
 pub struct TOTPDeriveOptions {
   pub time:   Option<u64>,
   pub oracle: Option<Vec<u32>>,
@@ -34,7 +35,10 @@ impl From<TOTPDeriveOptions> for TOTPOptions {
 }
 
 impl FactorDerive for TOTP {
-  fn include_params(&mut self, params: Value) -> MFKDF2Result<()> {
+  type Output = Value;
+  type Params = Value;
+
+  fn include_params(&mut self, params: Self::Params) -> MFKDF2Result<()> {
     self.params = serde_json::to_string(&params)
       .map_err(|e| MFKDF2Error::InvalidDeriveParams(format!("invalid params: {}", e)))?;
 
@@ -98,19 +102,23 @@ impl FactorDerive for TOTP {
   }
 
   /// Note: `self.options` is only used for [`TOTPDeriveOptions`].
-  fn params(&self, key: Key) -> Value {
-    let params: Value = serde_json::from_str(&self.params).unwrap();
+  fn params(&self, key: Key) -> MFKDF2Result<Self::Params> {
+    let params: Value = serde_json::from_str(&self.params)?;
 
-    let pad = params["pad"].as_str().unwrap();
-    let pad = base64::prelude::BASE64_STANDARD.decode(pad).unwrap();
+    let pad = params["pad"].as_str().ok_or(MFKDF2Error::MissingDeriveParams("pad".to_string()))?;
+    let pad = base64::prelude::BASE64_STANDARD.decode(pad)?;
     let padded_secret = decrypt(pad.clone(), &key.0);
 
-    let window = params["window"].as_u64().unwrap();
-    let step = params["step"].as_u64().unwrap();
-    let digits = params["digits"].as_u64().unwrap();
-    let hash: OTPHash = serde_json::from_value(params["hash"].clone()).unwrap();
+    let window =
+      params["window"].as_u64().ok_or(MFKDF2Error::MissingDeriveParams("window".to_string()))?;
+    let step =
+      params["step"].as_u64().ok_or(MFKDF2Error::MissingDeriveParams("step".to_string()))?;
+    let digits =
+      params["digits"].as_u64().ok_or(MFKDF2Error::MissingDeriveParams("digits".to_string()))?;
+    let hash: OTPHash = serde_json::from_value(params["hash"].clone())?;
 
-    let time = self.options.time.unwrap() as u128;
+    let time =
+      self.options.time.ok_or(MFKDF2Error::MissingDeriveParams("time".to_string()))? as u128;
     let mut new_offsets = Vec::with_capacity((4 * window) as usize);
 
     for i in 0..window {
@@ -132,7 +140,7 @@ impl FactorDerive for TOTP {
       new_offsets.extend_from_slice(&offset.to_be_bytes());
     }
 
-    json!({
+    Ok(json!({
       "start": time,
       "hash": hash.to_string(),
       "digits": digits,
@@ -140,7 +148,7 @@ impl FactorDerive for TOTP {
       "window": window,
       "pad": base64::prelude::BASE64_STANDARD.encode(&pad),
       "offsets": base64::prelude::BASE64_STANDARD.encode(&new_offsets),
-    })
+    }))
   }
 }
 
@@ -166,7 +174,7 @@ pub fn totp(code: u32, options: Option<TOTPDeriveOptions>) -> MFKDF2Result<MFKDF
   })
 }
 
-#[uniffi::export]
+#[cfg_attr(feature = "bindings", uniffi::export)]
 pub async fn derive_totp(
   code: u32,
   options: Option<TOTPDeriveOptions>,
@@ -234,7 +242,7 @@ mod tests {
     };
 
     let mock_key = [42u8; 32];
-    let setup_params = factor.factor_type.setup().params(mock_key.into());
+    let setup_params = factor.factor_type.setup().params(mock_key.into()).unwrap();
 
     let now_millis = time;
     let counter = now_millis / (step * 1000);
@@ -255,13 +263,13 @@ mod tests {
     let setup_options = get_test_totp_options();
     let factor = setup_totp::totp(setup_options).unwrap();
     let mock_key = [42u8; 32];
-    let setup_params = factor.factor_type.setup().params(mock_key.into());
+    let setup_params = factor.factor_type.setup().params(mock_key.into()).unwrap();
 
     let derive_options = get_test_derive_totp_options(None);
     let mut derive_factor = totp(123456, Some(derive_options)).unwrap();
     derive_factor.factor_type.include_params(setup_params.clone()).unwrap();
 
-    let derive_params = derive_factor.factor_type.params(mock_key.into());
+    let derive_params = derive_factor.factor_type.params(mock_key.into()).unwrap();
 
     let original_start = setup_params["start"].as_u64().unwrap();
     let new_start = derive_params["start"].as_u64().unwrap();
@@ -280,7 +288,7 @@ mod tests {
 
     let factor = setup_totp::totp(setup_options).unwrap();
     let mock_key = [42u8; 32];
-    let setup_params = factor.factor_type.setup().params(mock_key.into());
+    let setup_params = factor.factor_type.setup().params(mock_key.into()).unwrap();
 
     let future_time_ms = start_time_ms + (30 * 10 * 1000); // 10 steps into the future, outside of window 5
     let derive_options = get_test_derive_totp_options(Some(future_time_ms));

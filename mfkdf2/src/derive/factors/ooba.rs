@@ -16,7 +16,10 @@ use crate::{
 };
 
 impl FactorDerive for Ooba {
-  fn include_params(&mut self, params: Value) -> MFKDF2Result<()> {
+  type Output = Value;
+  type Params = Value;
+
+  fn include_params(&mut self, params: Self::Params) -> MFKDF2Result<()> {
     let pad_b64 =
       params["pad"].as_str().ok_or(MFKDF2Error::MissingDeriveParams("pad".to_string()))?;
     let pad = general_purpose::STANDARD
@@ -47,32 +50,26 @@ impl FactorDerive for Ooba {
     Ok(())
   }
 
-  fn params(&self, _key: Key) -> Value {
+  fn params(&self, _key: Key) -> MFKDF2Result<Self::Params> {
     let code = generate_alphanumeric_characters(self.length.into()).to_uppercase();
 
     let next_key = hkdf_sha256_with_info(code.as_bytes(), &[], &[]);
     let pad = encrypt(&self.target, &next_key);
 
-    let mut params: Value = match serde_json::from_str(&self.params) {
-      Ok(p) => p,
-      Err(_) => json!({}),
-    };
+    let mut params: Value = serde_json::from_str(&self.params)?;
     params["code"] = serde_json::Value::String(code);
 
-    let plaintext = serde_json::to_vec(&params).expect("Should serialize params to bytes");
-    let public_key = OobaPublicKey::try_from(self.jwk.as_ref()).expect("JWK should be valid");
-    let ciphertext = public_key
-      .0
-      .encrypt(&mut OsRng, Oaep::new::<Sha256>(), &plaintext)
-      .expect("Should encrypt params");
+    let plaintext = serde_json::to_vec(&params)?;
+    let public_key = OobaPublicKey::try_from(self.jwk.as_ref())?;
+    let ciphertext = public_key.0.encrypt(&mut OsRng, Oaep::new::<Sha256>(), &plaintext)?;
 
-    json!({
+    Ok(json!({
         "length": self.length,
         "key": self.jwk,
         "params": params,
         "next": hex::encode(ciphertext),
         "pad": general_purpose::STANDARD.encode(pad),
-    })
+    }))
   }
 }
 
@@ -94,7 +91,7 @@ pub fn ooba(code: String) -> MFKDF2Result<MFKDF2Factor> {
   })
 }
 
-#[uniffi::export]
+#[cfg_attr(feature = "bindings", uniffi::export)]
 pub async fn derive_ooba(code: String) -> MFKDF2Result<MFKDF2Factor> { ooba(code) }
 
 #[cfg(test)]
@@ -130,7 +127,7 @@ mod tests {
   fn derive_params() {
     let setup = mock_ooba_setup();
 
-    let setup_params = setup.factor_type.setup().params([0u8; 32].into());
+    let setup_params = setup.factor_type.setup().params([0u8; 32].into()).unwrap();
     let code = setup_params["params"]["code"].as_str().unwrap();
 
     let result = ooba(code.to_string());
@@ -144,7 +141,7 @@ mod tests {
     };
 
     ooba.include_params(setup_params).unwrap();
-    let derive_params = ooba.params([0u8; 32].into());
+    let derive_params = ooba.params([0u8; 32].into()).unwrap();
 
     let code = derive_params["params"]["code"].as_str().unwrap();
 
@@ -166,7 +163,7 @@ mod tests {
   fn params_derive_includes_original_params() {
     let setup = mock_ooba_setup();
 
-    let setup_params = setup.factor_type.setup().params([0u8; 32].into());
+    let setup_params = setup.factor_type.setup().params([0u8; 32].into()).unwrap();
     let code = setup_params["params"]["code"].as_str().unwrap();
 
     let result = ooba(code.to_string());
@@ -180,7 +177,7 @@ mod tests {
     };
 
     ooba.include_params(setup_params).unwrap();
-    let derive_params = ooba.params([0u8; 32].into());
+    let derive_params = ooba.params([0u8; 32].into()).unwrap();
 
     assert_eq!(derive_params["params"]["foo"], "bar");
   }
@@ -217,7 +214,7 @@ mod tests {
     let setup = crate::setup::factors::ooba::ooba(options).unwrap();
 
     // Setup for derive
-    let setup_params = setup.factor_type.setup().params([0u8; 32].into());
+    let setup_params = setup.factor_type.setup().params([0u8; 32].into()).unwrap();
     let code = setup_params["params"]["code"].as_str().unwrap();
     let mut ooba: Ooba = match ooba(code.to_string()).unwrap().factor_type {
       FactorType::OOBA(ooba) => ooba,
@@ -226,7 +223,7 @@ mod tests {
     ooba.include_params(setup_params).unwrap();
 
     // 6. Call params_derive
-    let derive_params = ooba.params([0u8; 32].into());
+    let derive_params = ooba.params([0u8; 32].into()).unwrap();
 
     // 7. Get `next` and `params`
     let next_hex = derive_params["next"].as_str().unwrap();
@@ -257,7 +254,7 @@ mod tests {
   #[test]
   fn include_params_missing_pad() {
     let setup = mock_ooba_setup();
-    let mut setup_params = setup.factor_type.setup().params([0u8; 32].into());
+    let mut setup_params = setup.factor_type.setup().params([0u8; 32].into()).unwrap();
     setup_params.as_object_mut().unwrap().remove("pad");
 
     let mut ooba = get_ooba_for_test();
@@ -268,7 +265,7 @@ mod tests {
   #[test]
   fn include_params_invalid_pad() {
     let setup = mock_ooba_setup();
-    let mut setup_params = setup.factor_type.setup().params([0u8; 32].into());
+    let mut setup_params = setup.factor_type.setup().params([0u8; 32].into()).unwrap();
     setup_params["pad"] = json!("not-base64");
 
     let mut ooba = get_ooba_for_test();
@@ -279,7 +276,7 @@ mod tests {
   #[test]
   fn include_params_missing_params_config() {
     let setup = mock_ooba_setup();
-    let mut setup_params = setup.factor_type.setup().params([0u8; 32].into());
+    let mut setup_params = setup.factor_type.setup().params([0u8; 32].into()).unwrap();
     setup_params.as_object_mut().unwrap().remove("params");
 
     let mut ooba = get_ooba_for_test();
@@ -290,7 +287,7 @@ mod tests {
   #[test]
   fn include_params_params_config_not_object() {
     let setup = mock_ooba_setup();
-    let mut setup_params = setup.factor_type.setup().params([0u8; 32].into());
+    let mut setup_params = setup.factor_type.setup().params([0u8; 32].into()).unwrap();
     setup_params["params"] = json!("not-an-object");
 
     let mut ooba = get_ooba_for_test();
@@ -301,7 +298,7 @@ mod tests {
   #[test]
   fn include_params_missing_code() {
     let setup = mock_ooba_setup();
-    let mut setup_params = setup.factor_type.setup().params([0u8; 32].into());
+    let mut setup_params = setup.factor_type.setup().params([0u8; 32].into()).unwrap();
     setup_params["params"].as_object_mut().unwrap().remove("code");
 
     let mut ooba = get_ooba_for_test();
@@ -312,7 +309,7 @@ mod tests {
   #[test]
   fn include_params_missing_length() {
     let setup = mock_ooba_setup();
-    let mut setup_params = setup.factor_type.setup().params([0u8; 32].into());
+    let mut setup_params = setup.factor_type.setup().params([0u8; 32].into()).unwrap();
     setup_params.as_object_mut().unwrap().remove("length");
 
     let mut ooba = get_ooba_for_test();
@@ -323,7 +320,7 @@ mod tests {
   #[test]
   fn include_params_missing_key() {
     let setup = mock_ooba_setup();
-    let mut setup_params = setup.factor_type.setup().params([0u8; 32].into());
+    let mut setup_params = setup.factor_type.setup().params([0u8; 32].into()).unwrap();
     setup_params.as_object_mut().unwrap().remove("key");
 
     let mut ooba = get_ooba_for_test();
