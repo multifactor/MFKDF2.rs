@@ -175,9 +175,11 @@ _ci-summary-failure:
 build-bindings:
     @just header "Building workspace with bindings enabled"
     cargo build --workspace --all-targets --all-features
+    cargo install -f wasm-bindgen-cli # Install wasm-bindgen-cli for ubrn
 
 # Generate the TypeScript bindings
 gen-ts-bindings:
+    @just build-bindings # build the workspace with bindings enabled
     @just header "Generating TypeScript bindings"
     cd mfkdf2-web && npm i && npm run ubrn:web
     @echo "Updating index.web.ts implementation"
@@ -202,12 +204,14 @@ verify-bindings:
 
 # test the TypeScript bindings
 test-bindings:
+    @just build-bindings # build the workspace with bindings enabled
     @just header "Testing TypeScript bindings"
     @just verify-bindings  # verify bindings is generated
     cd mfkdf2-web && npm test
 
 # test the TypeScript bindings with HTML and JUnit reports
 test-bindings-report:
+    @just build-bindings # build the workspace with bindings enabled
     @just header "Testing TypeScript bindings (with reports)"
     @just verify-bindings  # verify bindings is generated
     cd mfkdf2-web && npm run test:report
