@@ -110,8 +110,7 @@ async fn policy_derivation_combinations(
       let derive_factors: HashMap<_, _> =
         combo.iter().map(|name| create_policy_derive_factor(name, name, &factors_policy)).collect();
 
-      let derived =
-        policy::derive::derive(setup.policy.clone(), derive_factors, None).await.unwrap();
+      let derived = policy::derive::derive(setup.policy.clone(), derive_factors, None).unwrap();
       assert_eq!(derived.key, setup.key, "Failed for combination: {:?}", combo);
     }
   }
@@ -182,10 +181,10 @@ async fn validate_invalid() {
 async fn evaluate_basic_1() {
   let policy = create_policy_basic_1().await;
 
-  assert!(!policy::evaluate::evaluate(&policy, vec!["id1".to_string(), "id2".to_string()]).await);
-  assert!(!policy::evaluate::evaluate(&policy, vec!["id3".to_string(), "id4".to_string()]).await);
-  assert!(policy::evaluate::evaluate(&policy, vec!["id1".to_string(), "id4".to_string()]).await);
-  assert!(policy::evaluate::evaluate(&policy, vec!["id2".to_string(), "id3".to_string()]).await);
+  assert!(!policy::evaluate::evaluate(&policy, vec!["id1".to_string(), "id2".to_string()]));
+  assert!(!policy::evaluate::evaluate(&policy, vec!["id3".to_string(), "id4".to_string()]));
+  assert!(policy::evaluate::evaluate(&policy, vec!["id1".to_string(), "id4".to_string()]));
+  assert!(policy::evaluate::evaluate(&policy, vec!["id2".to_string(), "id3".to_string()]));
 }
 
 async fn create_policy_basic_2() -> policy::Policy {
@@ -216,10 +215,10 @@ async fn create_policy_basic_2() -> policy::Policy {
 async fn evaluate_basic_2() {
   let policy = create_policy_basic_2().await;
 
-  assert!(policy::evaluate::evaluate(&policy, vec!["id1".to_string(), "id2".to_string()]).await);
-  assert!(policy::evaluate::evaluate(&policy, vec!["id3".to_string(), "id4".to_string()]).await);
-  assert!(!policy::evaluate::evaluate(&policy, vec!["id1".to_string(), "id4".to_string()]).await);
-  assert!(!policy::evaluate::evaluate(&policy, vec!["id2".to_string(), "id3".to_string()]).await);
+  assert!(policy::evaluate::evaluate(&policy, vec!["id1".to_string(), "id2".to_string()]));
+  assert!(policy::evaluate::evaluate(&policy, vec!["id3".to_string(), "id4".to_string()]));
+  assert!(!policy::evaluate::evaluate(&policy, vec!["id1".to_string(), "id4".to_string()]));
+  assert!(!policy::evaluate::evaluate(&policy, vec!["id2".to_string(), "id3".to_string()]));
 }
 
 #[tokio::test]
@@ -255,7 +254,6 @@ async fn derive_all() {
     ]),
     None,
   )
-  .await
   .unwrap();
   assert_eq!(derived.key, setup.key);
 }
@@ -289,7 +287,6 @@ async fn derive_any() {
     HashMap::from([("id1".to_string(), derive::factors::password("password1").unwrap())]),
     None,
   )
-  .await
   .unwrap();
   assert_eq!(derived.key, setup.key);
 }
@@ -327,7 +324,6 @@ async fn derive_at_least() {
     ]),
     None,
   )
-  .await
   .unwrap();
   assert_eq!(derived.key, setup.key);
 }
@@ -366,7 +362,6 @@ async fn derive_basic_1() {
     ]),
     None,
   )
-  .await
   .unwrap();
   assert_eq!(derive1.key, setup.key);
 
@@ -378,7 +373,6 @@ async fn derive_basic_1() {
     ]),
     None,
   )
-  .await
   .unwrap();
   assert_eq!(derive2.key, setup.key);
 
@@ -390,7 +384,6 @@ async fn derive_basic_1() {
     ]),
     None,
   )
-  .await
   .unwrap();
   assert_eq!(derive3.key, setup.key);
 
@@ -402,7 +395,6 @@ async fn derive_basic_1() {
     ]),
     None,
   )
-  .await
   .unwrap();
   assert_eq!(derive4.key, setup.key);
 }
@@ -441,7 +433,6 @@ async fn derive_basic_2() {
     ]),
     None,
   )
-  .await
   .unwrap();
   assert_eq!(derive1.key, setup.key);
 
@@ -453,7 +444,6 @@ async fn derive_basic_2() {
     ]),
     None,
   )
-  .await
   .unwrap();
   assert_eq!(derive2.key, setup.key);
 }
@@ -505,7 +495,6 @@ async fn derive_deep() {
     ]),
     None,
   )
-  .await
   .unwrap();
   assert_eq!(derive.key, setup.key);
 }
@@ -533,7 +522,7 @@ async fn errors_invalid_policy() {
   // This setup should fail because `derive` calls `policy.validate()`
   let setup = policy::setup::setup(and1, PolicySetupOptions::default()).unwrap();
 
-  policy::derive::derive(setup.policy.clone(), HashMap::new(), None).await.unwrap();
+  policy::derive::derive(setup.policy.clone(), HashMap::new(), None).unwrap();
 }
 
 #[tokio::test]
@@ -557,6 +546,5 @@ async fn errors_invalid_factors() {
     HashMap::from([("id1".to_string(), derive::factors::password("password").unwrap())]),
     None,
   )
-  .await
   .unwrap();
 }
