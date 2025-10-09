@@ -92,58 +92,32 @@ suite('factors/uuid', () => {
       { threshold: 2 }
     );
 
-    const derive1 = await mfkdf.derive.key(
-      setup.policy,
-      {
-        uuid1: await mfkdf.derive.factors.uuid(
-          '9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6e'
-        ),
-        uuid2: await mfkdf.derive.factors.uuid(
-          '1b9d6bcd-bbfd-4b2d-9b5d-ab8dfbbd4bed'
-        )
-      },
+    const derive1 = await mfkdf.derive.key(setup.policy, {
+      uuid1: await mfkdf.derive.factors.uuid('9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6e'),
+      uuid2: await mfkdf.derive.factors.uuid('1b9d6bcd-bbfd-4b2d-9b5d-ab8dfbbd4bed')
+    },
       false
     );
 
-    const derive2 = await mfkdf.derive.key(
-      setup.policy,
-      {
-        uuid2: await mfkdf.derive.factors.uuid(
-          '1b9d6bcd-bbfd-4b2d-9b5d-ab8dfbbd4bed'
-        ),
-        uuid3: await mfkdf.derive.factors.uuid(
-          '6ec0bd7f-11c0-43da-975e-2a8ad9ebae0c'
-        )
-      },
+    const derive2 = await mfkdf.derive.key(setup.policy, {
+      uuid2: await mfkdf.derive.factors.uuid('1b9d6bcd-bbfd-4b2d-9b5d-ab8dfbbd4bed'),
+      uuid3: await mfkdf.derive.factors.uuid('6ec0bd7f-11c0-43da-975e-2a8ad9ebae0c')
+    },
       false
     );
 
-    const derive3 = await mfkdf.derive.key(
-      setup.policy,
-      {
-        uuid1: await mfkdf.derive.factors.uuid(
-          '9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6b'
-        ),
-        uuid3: await mfkdf.derive.factors.uuid(
-          '6ec0bd7f-11c0-43da-975e-2a8ad9ebae0d'
-        )
-      },
+    const derive3 = await mfkdf.derive.key(setup.policy, {
+      uuid1: await mfkdf.derive.factors.uuid('9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6b'),
+      uuid3: await mfkdf.derive.factors.uuid('6ec0bd7f-11c0-43da-975e-2a8ad9ebae0d')
+    },
       false
     );
 
-    const derive4 = await mfkdf.derive.key(
-      setup.policy,
-      {
-        uuid1: await mfkdf.derive.factors.uuid(
-          '9b1deb4d-3b7d-4bad-9bdd-ab8dfbbd4bed'
-        ),
-        uuid2: await mfkdf.derive.factors.uuid(
-          '1b9d6bcd-bbfd-4b2d-9b5d-2b0d7b3dcb6d'
-        ),
-        uuid3: await mfkdf.derive.factors.uuid(
-          '6ec0bd7f-11c0-43da-975e-2a8ad9ebae0b'
-        )
-      },
+    const derive4 = await mfkdf.derive.key(setup.policy, {
+      uuid1: await mfkdf.derive.factors.uuid('9b1deb4d-3b7d-4bad-9bdd-ab8dfbbd4bed'),
+      uuid2: await mfkdf.derive.factors.uuid('1b9d6bcd-bbfd-4b2d-9b5d-2b0d7b3dcb6d'),
+      uuid3: await mfkdf.derive.factors.uuid('6ec0bd7f-11c0-43da-975e-2a8ad9ebae0b')
+    },
       false
     );
 
