@@ -5,7 +5,7 @@ chai.use(chaiAsPromised);
 chai.should();
 
 import { suite, test } from 'mocha';
-import mfkdf, { uniffiInitAsync } from '../../src/api';
+import mfkdf, { initRustLogging, LogLevel, uniffiInitAsync } from '../../src/api';
 import speakeasy from 'speakeasy';
 import { Mfkdf2Error } from '../../src/generated/web/mfkdf2.js';
 
@@ -13,6 +13,7 @@ suite('factors/totp', () => {
   // Initialize UniFFI once before all tests
   before(async () => {
     await uniffiInitAsync();
+    await initRustLogging(LogLevel.Debug)
   });
 
   test('size', async () => {
@@ -26,7 +27,8 @@ suite('factors/totp', () => {
   test('dynamic', async () => {
     const setup = await mfkdf.setup.key([await mfkdf.setup.factors.totp()]);
 
-    const code = parseInt(
+    // calculate code every time to ensure latest code usage
+    let code = parseInt(
       speakeasy.totp({
         secret: Buffer.from(setup.outputs.totp.secret, 'base64').toString('hex'),
         encoding: 'hex',
@@ -36,15 +38,33 @@ suite('factors/totp', () => {
       })
     );
 
-    const totpFactor = await mfkdf.derive.factors.totp(code);
-
     const derive1 = await mfkdf.derive.key(setup.policy, {
-      totp: totpFactor
+      totp: await mfkdf.derive.factors.totp(code)
     });
+
+    code = parseInt(
+      speakeasy.totp({
+        secret: Buffer.from(setup.outputs.totp.secret, 'base64').toString('hex'),
+        encoding: 'hex',
+        step: setup.outputs.totp.period,
+        algorithm: setup.outputs.totp.algorithm,
+        digits: setup.outputs.totp.digits
+      })
+    );
 
     const derive2 = await mfkdf.derive.key(derive1.policy, {
       totp: await mfkdf.derive.factors.totp(code)
     });
+
+    code = parseInt(
+      speakeasy.totp({
+        secret: Buffer.from(setup.outputs.totp.secret, 'base64').toString('hex'),
+        encoding: 'hex',
+        step: setup.outputs.totp.period,
+        algorithm: setup.outputs.totp.algorithm,
+        digits: setup.outputs.totp.digits
+      })
+    );
 
     const derive3 = await mfkdf.derive.key(derive2.policy, {
       totp: await mfkdf.derive.factors.totp(code)
@@ -56,7 +76,6 @@ suite('factors/totp', () => {
   });
 
   test('static', async () => {
-    // Changed: use exactly 20 bytes for TOTP secret, pass Buffer directly
     const setup = await mfkdf.setup.key([
       await mfkdf.setup.factors.totp({
         secret: Buffer.from('abcdefghijklmnopqrst'),
