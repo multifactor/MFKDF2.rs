@@ -1,0 +1,99 @@
+name: Bindings
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  bindings-generation:
+    name: ts
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: stable
+          targets: wasm32-unknown-unknown
+
+      - name: Rust Cache
+        uses: Swatinem/rust-cache@v2
+        with:
+          key: typescript/bindings
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: mfkdf2-web/package-lock.json
+
+      - name: Install wasm-bindgen-cli
+        uses: taiki-e/install-action@v2
+        with:
+          tool: wasm-bindgen-cli
+
+      - name: Cache node_modules
+        id: cache-node-modules
+        uses: actions/cache@v4
+        with:
+          path: mfkdf2-web/node_modules
+          key: ${{ runner.os }}-node-modules-${{ hashFiles('mfkdf2-web/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-node-modules-
+
+      - name: Install mfkdf2-web dependencies
+        if: steps.cache-node-modules.outputs.cache-hit != 'true'
+        working-directory: mfkdf2-web
+        run: npm ci
+
+      - name: Generate TypeScript bindings
+        working-directory: mfkdf2-web
+        run: npm run ubrn:web
+
+      - name: Copy index.web.ts implementation
+        run: cp mfkdf2-web/src/index.ts mfkdf2-web/src/index.web.ts
+
+      - name: Verify bindings were generated
+        run: |
+          if [ ! -d "mfkdf2-web/src/generated" ] || [ -z "$(ls -A mfkdf2-web/src/generated)" ]; then
+            echo "Error: mfkdf2-web/src/generated does not exist or is empty"
+            exit 1
+          fi
+          if [ ! -d "mfkdf2-web/rust_modules" ]; then
+            echo "Error: mfkdf2-web/rust_modules does not exist"
+            exit 1
+          fi
+          echo "✓ TypeScript bindings verified"
+
+      - name: Run TypeScript tests with reports
+        working-directory: mfkdf2-web
+        run: npm run test:report
+
+      - name: Publish JUnit test report
+        if: always()
+        uses: mikepenz/action-junit-report@v4
+        with:
+          report_paths: "mfkdf2-web/test-results/junit/junit.xml"
+          detailed_summary: true
+          include_passed: true
+
+      - name: Upload HTML test report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mfkdf2-web-mochawesome-report
+          path: mfkdf2-web/test-results/mochawesome/
+
+      - name: Run TypeScript type checking
+        working-directory: mfkdf2-web
+        run: npm run typecheck

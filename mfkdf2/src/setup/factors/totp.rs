@@ -1,20 +1,25 @@
-use std::time::SystemTime;
+#[cfg(not(target_arch = "wasm32"))]
+use std::time::{SystemTime, UNIX_EPOCH};
 
 use base64::Engine;
 use rand::{Rng, RngCore, rngs::OsRng};
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
+#[cfg(target_arch = "wasm32")]
+use web_time::{SystemTime, UNIX_EPOCH};
 
 use crate::{
   crypto::encrypt,
-  error::MFKDF2Result,
-  setup::factors::{
-    FactorMetadata, FactorSetup, FactorType, MFKDF2Factor,
-    hotp::{OTPHash, generate_hotp_code},
+  definitions::{FactorMetadata, FactorType, Key, MFKDF2Factor},
+  error::{MFKDF2Error, MFKDF2Result},
+  setup::{
+    FactorSetup,
+    factors::hotp::{OTPHash, generate_hotp_code},
   },
 };
 
-#[derive(Clone, Debug, Serialize, Deserialize, uniffi::Record)]
+#[cfg_attr(feature = "bindings", derive(uniffi::Record))]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct TOTPOptions {
   pub id:     Option<String>,
   pub secret: Option<Vec<u8>>,
@@ -22,7 +27,7 @@ pub struct TOTPOptions {
   pub hash:   OTPHash,
   pub issuer: String,
   pub label:  String,
-  pub time:   Option<SystemTime>,
+  pub time:   Option<u64>, // Unix epoch time in milliseconds
   pub window: u64,
   pub step:   u64,
   pub oracle: Option<Vec<u32>>,
@@ -30,6 +35,8 @@ pub struct TOTPOptions {
 
 impl Default for TOTPOptions {
   fn default() -> Self {
+    let now_ms = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_millis() as u64;
+
     Self {
       id:     Some("totp".to_string()),
       secret: None,
@@ -37,7 +44,7 @@ impl Default for TOTPOptions {
       hash:   OTPHash::Sha1,
       issuer: "MFKDF".to_string(),
       label:  "mfkdf.com".to_string(),
-      time:   Some(SystemTime::now()),
+      time:   Some(now_ms),
       window: 87600,
       step:   30,
       oracle: None,
@@ -45,7 +52,8 @@ impl Default for TOTPOptions {
   }
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, uniffi::Record)]
+#[cfg_attr(feature = "bindings", derive(uniffi::Record))]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct TOTP {
   pub options: TOTPOptions,
   pub params:  String,
@@ -60,13 +68,17 @@ impl FactorMetadata for TOTP {
 }
 
 impl FactorSetup for TOTP {
+  type Output = Value;
+  type Params = Value;
+
   fn bytes(&self) -> Vec<u8> { self.target.to_be_bytes().to_vec() }
 
-  fn params(&self, key: [u8; 32]) -> Value {
+  fn params(&self, key: Key) -> MFKDF2Result<Self::Params> {
     let time =
-      self.options.time.unwrap().duration_since(SystemTime::UNIX_EPOCH).unwrap().as_millis();
+      self.options.time.ok_or(MFKDF2Error::MissingSetupParams("time".to_string()))? as u128;
     let mut offsets = Vec::with_capacity((4 * self.options.window) as usize);
-    let padded_secret = self.options.secret.as_ref().unwrap();
+    let padded_secret =
+      self.options.secret.as_ref().ok_or(MFKDF2Error::MissingSetupParams("secret".to_string()))?;
 
     for i in 0..self.options.window {
       // Calculate the time-step 'T' as per RFC 6238, Section 4.2.
@@ -84,35 +96,27 @@ impl FactorSetup for TOTP {
       offsets.extend_from_slice(&offset.to_be_bytes());
     }
 
-    let pad = encrypt(padded_secret, &key);
+    let pad = encrypt(padded_secret, &key.0);
 
-    json!({
+    Ok(json!({
         "start": time,
-        "hash": match self.options.hash {
-            OTPHash::Sha1 => "sha1",
-            OTPHash::Sha256 => "sha256",
-            OTPHash::Sha512 => "sha512",
-        },
+        "hash": self.options.hash.to_string(),
         "digits": self.options.digits,
         "step": self.options.step,
         "window": self.options.window,
         "pad": base64::prelude::BASE64_STANDARD.encode(&pad),
         "offsets": base64::prelude::BASE64_STANDARD.encode(&offsets),
-    })
+    }))
   }
 
-  fn output(&self, _key: [u8; 32]) -> Value {
+  fn output(&self, _key: Key) -> Self::Output {
     json!({
       "scheme": "otpauth",
       "type": "totp",
       "label": self.options.label,
       "secret": base64::prelude::BASE64_STANDARD.encode(&self.options.secret.clone().unwrap()[..20]),
       "issuer": self.options.issuer,
-      "algorithm": match self.options.hash {
-        OTPHash::Sha1 => "sha1",
-        OTPHash::Sha256 => "sha256",
-        OTPHash::Sha512 => "sha512"
-      },
+      "algorithm": self.options.hash.to_string(),
       "digits": self.options.digits,
       "period": self.options.step,
       // TODO (sambhav): either generate uri yourself or use an external lib
@@ -153,7 +157,8 @@ pub fn totp(options: TOTPOptions) -> MFKDF2Result<MFKDF2Factor> {
   options.secret = Some(padded_secret);
 
   if options.time.is_none() {
-    options.time = Some(SystemTime::now());
+    let now_ms = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_millis() as u64;
+    options.time = Some(now_ms);
   }
 
   // Generate random target
@@ -162,7 +167,7 @@ pub fn totp(options: TOTPOptions) -> MFKDF2Result<MFKDF2Factor> {
   let mut salt = [0u8; 32];
   OsRng.fill_bytes(&mut salt);
 
-  let entropy = Some((options.digits as f64 * 10.0_f64.log2()) as u32);
+  let entropy = Some(options.digits as f64 * 10.0_f64.log2());
 
   Ok(MFKDF2Factor {
     id: Some(id),
@@ -177,10 +182,11 @@ pub fn totp(options: TOTPOptions) -> MFKDF2Result<MFKDF2Factor> {
   })
 }
 
+#[cfg_attr(feature = "bindings", uniffi::export)]
+pub async fn setup_totp(options: TOTPOptions) -> MFKDF2Result<MFKDF2Factor> { totp(options) }
+
 #[cfg(test)]
 mod tests {
-  use std::time::Duration;
-
   use super::*;
   use crate::{crypto::decrypt, error::MFKDF2Error};
 
@@ -189,8 +195,7 @@ mod tests {
       id: Some("test".to_string()),
       digits: 8,
       secret: Some(b"my-super-secret-1234".to_vec()), // 31 bytes
-      time: Some(SystemTime::UNIX_EPOCH + Duration::from_secs(1672531200)), /* 2023-01-01
-                                                       * 00:00:00 UTC */
+      time: Some(1672531200000),                      // 2023-01-01 00:00:00 UTC in milliseconds
       ..Default::default()
     };
 
@@ -286,7 +291,9 @@ mod tests {
       _ => panic!("Factor type should be TOTP"),
     };
 
-    let params = totp_factor.params(key);
+    let params = totp_factor.params(key.into());
+    assert!(params.is_ok());
+    let params = params.unwrap();
     assert!(params.is_object());
 
     assert_eq!(params["start"], 1672531200000_u64);
@@ -316,7 +323,7 @@ mod tests {
       _ => panic!("Factor type should be TOTP"),
     };
 
-    let output = totp_factor.output(key);
+    let output = totp_factor.output(key.into());
     assert!(output.is_object());
 
     assert_eq!(output["scheme"], "otpauth");

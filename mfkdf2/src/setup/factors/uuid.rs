@@ -4,35 +4,39 @@ use serde_json::{Value, json};
 pub use uuid::Uuid;
 
 use crate::{
-  error::{MFKDF2Error, MFKDF2Result},
-  setup::factors::{FactorMetadata, FactorSetup, FactorType, MFKDF2Factor},
+  definitions::{FactorMetadata, FactorType, Key, MFKDF2Factor},
+  error::MFKDF2Result,
+  setup::FactorSetup,
 };
 
-#[derive(Clone, Debug, Serialize, Deserialize, uniffi::Record)]
+#[cfg_attr(feature = "bindings", derive(uniffi::Record))]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct UUIDOptions {
   pub id:   Option<String>,
-  pub uuid: Option<String>,
+  pub uuid: Option<Uuid>,
 }
 
 impl Default for UUIDOptions {
   fn default() -> Self { Self { id: Some("uuid".to_string()), uuid: None } }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, uniffi::Record)]
-pub struct UUID {
-  pub uuid: String,
+#[cfg_attr(feature = "bindings", derive(uniffi::Record))]
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct UUIDFactor {
+  pub uuid: Uuid,
 }
 
-impl FactorMetadata for UUID {
+impl FactorMetadata for UUIDFactor {
   fn kind(&self) -> String { "uuid".to_string() }
 }
 
-impl FactorSetup for UUID {
+impl FactorSetup for UUIDFactor {
+  type Output = Value;
+  type Params = Value;
+
   fn bytes(&self) -> Vec<u8> { self.uuid.as_bytes().to_vec() }
 
-  fn params(&self, _key: [u8; 32]) -> Value { json!({}) }
-
-  fn output(&self, _key: [u8; 32]) -> Value {
+  fn output(&self, _key: Key) -> Self::Output {
     json!({
       "uuid": self.uuid.clone(),
     })
@@ -47,29 +51,21 @@ pub fn uuid(options: UUIDOptions) -> MFKDF2Result<MFKDF2Factor> {
     return Err(crate::error::MFKDF2Error::MissingFactorId);
   }
 
-  let uuid = match options.uuid {
-    None => Uuid::new_v4(),
-    Some(ref uuid) => {
-      if uuid.is_empty() {
-        return Err(MFKDF2Error::InvalidUuid);
-      }
-      Uuid::parse_str(uuid).map_err(|_| MFKDF2Error::InvalidUuid)?
-    },
-  };
+  let uuid = options.uuid.unwrap_or(Uuid::new_v4());
 
   let mut salt = [0u8; 32];
   OsRng.fill_bytes(&mut salt);
 
   Ok(MFKDF2Factor {
     id:          Some(options.id.unwrap_or("uuid".to_string())),
-    factor_type: FactorType::UUID(UUID { uuid: uuid.to_string() }),
+    factor_type: FactorType::UUID(UUIDFactor { uuid }),
     salt:        salt.to_vec(),
-    entropy:     Some(122),
+    entropy:     Some(122.0),
   })
 }
 
-#[uniffi::export]
-pub fn setup_uuid(options: UUIDOptions) -> MFKDF2Result<MFKDF2Factor> { uuid(options) }
+#[cfg_attr(feature = "bindings", uniffi::export)]
+pub async fn setup_uuid(options: UUIDOptions) -> MFKDF2Result<MFKDF2Factor> { uuid(options) }
 
 #[cfg(test)]
 mod tests {
@@ -82,45 +78,29 @@ mod tests {
     assert_eq!(factor.id, Some("test".to_string()));
     assert_eq!(factor.kind(), "uuid");
     assert_eq!(factor.salt.len(), 32);
-    assert_eq!(factor.entropy, Some(122));
+    assert_eq!(factor.entropy, Some(122.0));
   }
 
   #[test]
   fn with_provided_valid_uuid() {
     let valid_uuid = "f9bf78b9-54e7-4696-97dc-5e750de4c592";
-    let options =
-      UUIDOptions { id: Some("test_valid".to_string()), uuid: Some(valid_uuid.to_string()) };
+    let options = UUIDOptions {
+      id:   Some("test_valid".to_string()),
+      uuid: Some(Uuid::parse_str(valid_uuid).unwrap()),
+    };
     let factor = uuid(options).unwrap();
     let factor_uuid = match factor.factor_type {
       FactorType::UUID(u) => u.uuid,
       _ => panic!("Wrong factor type"),
     };
-    assert_eq!(factor_uuid, valid_uuid);
-  }
-
-  #[test]
-  fn with_invalid_uuid() {
-    let invalid_uuid = "not-a-uuid";
-    let options =
-      UUIDOptions { id: Some("test_invalid".to_string()), uuid: Some(invalid_uuid.to_string()) };
-    let result = uuid(options);
-    assert!(matches!(result, Err(MFKDF2Error::InvalidUuid)));
-  }
-
-  #[test]
-  fn with_empty_uuid() {
-    let empty_uuid = "";
-    let options =
-      UUIDOptions { id: Some("test_empty_uuid".to_string()), uuid: Some(empty_uuid.to_string()) };
-    let result = uuid(options);
-    assert!(matches!(result, Err(MFKDF2Error::InvalidUuid)));
+    assert_eq!(factor_uuid, Uuid::parse_str(valid_uuid).unwrap());
   }
 
   #[test]
   fn with_empty_id() {
     let options = UUIDOptions { id: Some("".to_string()), uuid: None };
     let result = uuid(options);
-    assert!(matches!(result, Err(MFKDF2Error::MissingFactorId)));
+    assert!(matches!(result, Err(crate::error::MFKDF2Error::MissingFactorId)));
   }
 
   #[test]
@@ -128,10 +108,5 @@ mod tests {
     let options = UUIDOptions::default();
     let factor = uuid(options).unwrap();
     assert_eq!(factor.id, Some("uuid".to_string()));
-    let factor_uuid = match factor.factor_type {
-      FactorType::UUID(u) => u.uuid,
-      _ => panic!("Wrong factor type"),
-    };
-    assert!(Uuid::parse_str(&factor_uuid).is_ok());
   }
 }

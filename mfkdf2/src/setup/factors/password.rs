@@ -4,11 +4,13 @@ use serde_json::{Value, json};
 use zxcvbn::zxcvbn;
 
 use crate::{
+  definitions::{FactorMetadata, FactorType, Key, MFKDF2Factor},
   error::{MFKDF2Error, MFKDF2Result},
-  setup::factors::{FactorMetadata, FactorSetup, FactorType, MFKDF2Factor},
+  setup::FactorSetup,
 };
 
-#[derive(Clone, Debug, Serialize, Deserialize, uniffi::Record)]
+#[cfg_attr(feature = "bindings", derive(uniffi::Record))]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Password {
   pub password: String,
 }
@@ -18,18 +20,20 @@ impl FactorMetadata for Password {
 }
 
 impl FactorSetup for Password {
+  type Output = Value;
+  type Params = Value;
+
   fn bytes(&self) -> Vec<u8> { self.password.as_bytes().to_vec() }
 
-  fn params(&self, _key: [u8; 32]) -> Value { json!({}) }
-
-  fn output(&self, _key: [u8; 32]) -> Value {
+  fn output(&self, _key: Key) -> Self::Output {
     json!({
       "strength": zxcvbn(&self.password, &[]),
     })
   }
 }
 
-#[derive(Clone, Debug, Default, Serialize, Deserialize, uniffi::Record)]
+#[cfg_attr(feature = "bindings", derive(uniffi::Record))]
+#[derive(Clone, Debug, Default, Serialize, Deserialize)]
 pub struct PasswordOptions {
   pub id: Option<String>,
 }
@@ -59,12 +63,15 @@ pub fn password(
     id:          Some(options.id.unwrap_or("password".to_string())),
     factor_type: FactorType::Password(Password { password }),
     salt:        salt.to_vec(),
-    entropy:     Some(strength.guesses().ilog2()),
+    entropy:     Some(strength.guesses().ilog2() as f64),
   })
 }
 
-#[uniffi::export]
-pub fn setup_password(password: String, options: PasswordOptions) -> MFKDF2Result<MFKDF2Factor> {
+#[cfg_attr(feature = "bindings", uniffi::export)]
+pub async fn setup_password(
+  password: String,
+  options: PasswordOptions,
+) -> MFKDF2Result<MFKDF2Factor> {
   // Reuse the existing constructor logic
   crate::setup::factors::password::password(password, options)
 }
@@ -75,16 +82,16 @@ mod tests {
   use serde_json::json;
 
   use super::*;
-  use crate::{error::MFKDF2Error, setup::factors::FactorSetup};
+  use crate::{error::MFKDF2Error, setup::FactorSetup};
 
   #[test]
   fn password_strength() {
     let factor = password("password", PasswordOptions { id: None }).unwrap();
-    assert_eq!(factor.entropy, Some(1));
+    assert_eq!(factor.entropy, Some(1.0));
 
     let factor =
       password("98p23uijafjj--ah77yhfraklhjaza!?a3", PasswordOptions { id: None }).unwrap();
-    assert_eq!(factor.entropy, Some(63));
+    assert_eq!(factor.entropy, Some(63.0));
   }
 
   #[test]
@@ -107,7 +114,7 @@ mod tests {
       FactorType::Password(p) => {
         assert_eq!(p.password, "hello");
         assert_eq!(p.bytes(), "hello".as_bytes());
-        let params = p.params([0; 32]);
+        let params = p.params([0; 32].into()).unwrap();
         assert_eq!(params, json!({}));
       },
       _ => panic!("Wrong factor type"),

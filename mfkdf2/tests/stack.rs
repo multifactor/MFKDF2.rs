@@ -7,8 +7,7 @@ const HMACSHA1_SECRET: [u8; 20] = [
   0x11, 0x12, 0x13, 0x14,
 ];
 
-async fn mock_setup_stack()
--> Result<mfkdf2::definitions::mfkdf_derived_key::MFKDF2DerivedKey, mfkdf2::error::MFKDF2Error> {
+fn mock_setup_stack() -> Result<mfkdf2::definitions::MFKDF2DerivedKey, mfkdf2::error::MFKDF2Error> {
   let stacked_factors = vec![
     mfkdf2::setup::factors::password(
       "Tr0ubd4dour",
@@ -28,7 +27,7 @@ async fn mock_setup_stack()
   let stacked_factors_2 = vec![
     mfkdf2::setup::factors::uuid::uuid(mfkdf2::setup::factors::uuid::UUIDOptions {
       id:   Some("uuid_1".to_string()),
-      uuid: Some("f9bf78b9-54e7-4696-97dc-5e750de4c592".to_string()),
+      uuid: Some(uuid::Uuid::parse_str("f9bf78b9-54e7-4696-97dc-5e750de4c592").unwrap()),
     }),
     mfkdf2::setup::factors::hmacsha1(mfkdf2::setup::factors::hmacsha1::HmacSha1Options {
       id:     Some("hmacsha1_1".to_string()),
@@ -40,39 +39,39 @@ async fn mock_setup_stack()
 
   let key = mfkdf2::setup::key(
     vec![
-      mfkdf2::setup::factors::stack(stacked_factors, mfkdf2::setup::factors::stack::StackOptions {
-        id: Some("stack_1".to_string()),
-        ..Default::default()
-      })
-      .await?,
+      mfkdf2::setup::factors::stack(
+        stacked_factors,
+        mfkdf2::setup::factors::stack::StackOptions {
+          id: Some("stack_1".to_string()),
+          ..Default::default()
+        },
+      )?,
       mfkdf2::setup::factors::stack(
         stacked_factors_2,
         mfkdf2::setup::factors::stack::StackOptions {
           id: Some("stack_2".to_string()),
           ..Default::default()
         },
-      )
-      .await?,
+      )?,
       mfkdf2::setup::factors::password(
         "my-secure-password",
         mfkdf2::setup::factors::password::PasswordOptions { id: Some("password_3".to_string()) },
       )?,
     ],
     mfkdf2::setup::key::MFKDF2Options { threshold: Some(1), ..Default::default() },
-  )
-  .await?;
+  )?;
   Ok(key)
 }
 
-#[tokio::test]
-async fn stack_setup() {
-  let key = mock_setup_stack().await.unwrap();
+#[test]
+fn stack_setup() {
+  let key = mock_setup_stack().unwrap();
   println!("Setup key: {}", key);
 }
 
-#[tokio::test]
-async fn stack_derive() {
-  let key = mock_setup_stack().await.unwrap();
+#[test]
+fn stack_derive() {
+  let key = mock_setup_stack().unwrap();
   println!("Setup key: {}", key);
 
   let derived_key = mfkdf2::derive::key(
@@ -120,8 +119,10 @@ async fn stack_derive() {
       mfkdf2::derive::factors::stack(HashMap::from([
         (
           "uuid_1".to_string(),
-          mfkdf2::derive::factors::uuid("f9bf78b9-54e7-4696-97dc-5e750de4c592".to_string())
-            .unwrap(),
+          mfkdf2::derive::factors::uuid(
+            uuid::Uuid::parse_str("f9bf78b9-54e7-4696-97dc-5e750de4c592").unwrap(),
+          )
+          .unwrap(),
         ),
         (
           "hmacsha1_1".to_string(),
@@ -138,10 +139,10 @@ async fn stack_derive() {
   assert_eq!(derived_key.key, key.key);
 }
 
-#[tokio::test]
+#[test]
 #[should_panic]
-async fn stack_derive_fail() {
-  let key = mock_setup_stack().await.unwrap();
+fn stack_derive_fail() {
+  let key = mock_setup_stack().unwrap();
   println!("Setup key: {}", key);
 
   let derived_key = mfkdf2::derive::key(
@@ -158,10 +159,10 @@ async fn stack_derive_fail() {
   assert_eq!(derived_key.key, key.key);
 }
 
-#[tokio::test]
+#[test]
 #[should_panic]
-async fn stack_derive_fail_second() {
-  let key = mock_setup_stack().await.unwrap();
+fn stack_derive_fail_second() {
+  let key = mock_setup_stack().unwrap();
   println!("Setup key: {}", key);
 
   let derived_key = mfkdf2::derive::key(
@@ -182,9 +183,9 @@ async fn stack_derive_fail_second() {
   assert_eq!(derived_key.key, key.key);
 }
 
-#[tokio::test]
-async fn stack_policy_json_schema_compliance() {
-  let key = mock_setup_stack().await.unwrap();
+#[test]
+fn stack_policy_json_schema_compliance() {
+  let key = mock_setup_stack().unwrap();
 
   // Serialize the policy to JSON
   let policy_json = serde_json::to_string_pretty(&key.policy).unwrap();

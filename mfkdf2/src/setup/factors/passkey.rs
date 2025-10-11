@@ -1,13 +1,13 @@
 use rand::{RngCore, rngs::OsRng};
 use serde::{Deserialize, Serialize};
-use serde_json::{Value, json};
 
 use crate::{
+  definitions::{FactorMetadata, FactorType, MFKDF2Factor},
   error::{MFKDF2Error, MFKDF2Result},
-  setup::factors::{FactorMetadata, FactorSetup, FactorType, MFKDF2Factor},
+  setup::FactorSetup,
 };
-
-#[derive(Clone, Debug, Serialize, Deserialize, uniffi::Record)]
+#[cfg_attr(feature = "bindings", derive(uniffi::Record))]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Passkey {
   pub secret: Vec<u8>,
 }
@@ -17,14 +17,14 @@ impl FactorMetadata for Passkey {
 }
 
 impl FactorSetup for Passkey {
+  type Output = serde_json::Value;
+  type Params = serde_json::Value;
+
   fn bytes(&self) -> Vec<u8> { self.secret.clone() }
-
-  fn params(&self, _key: [u8; 32]) -> Value { json!({}) }
-
-  fn output(&self, _key: [u8; 32]) -> Value { json!({}) }
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, uniffi::Record)]
+#[cfg_attr(feature = "bindings", derive(uniffi::Record))]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct PasskeyOptions {
   pub id: Option<String>,
 }
@@ -48,11 +48,11 @@ pub fn passkey(secret: Vec<u8>, options: PasskeyOptions) -> MFKDF2Result<MFKDF2F
     id:          Some(options.id.unwrap_or("passkey".to_string())),
     factor_type: FactorType::Passkey(Passkey { secret }),
     salt:        salt.to_vec(),
-    entropy:     Some(256),
+    entropy:     Some(256.0),
   })
 }
 
-#[uniffi::export]
-pub fn setup_passkey(secret: Vec<u8>, options: PasskeyOptions) -> MFKDF2Result<MFKDF2Factor> {
-  crate::setup::factors::passkey::passkey(secret, options)
+#[cfg_attr(feature = "bindings", uniffi::export)]
+pub async fn setup_passkey(secret: Vec<u8>, options: PasskeyOptions) -> MFKDF2Result<MFKDF2Factor> {
+  passkey(secret, options)
 }

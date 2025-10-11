@@ -7,8 +7,9 @@ version = "0.1.0"
 crate-type = ["cdylib", "lib"]
 
 [[bin]]
-name = "uniffi-bindgen"
-path = "uniffi-bindgen.rs"
+name              = "uniffi-bindgen"
+path              = "uniffi-bindgen.rs"
+required-features = ["bindings"]
 
 [dependencies]
 # Cryptography
@@ -18,7 +19,7 @@ cipher = { version = "0.4", default-features = false, features = [
 ] }
 ecb = { version = "0.1", default-features = false }
 hkdf = { version = "0.12", default-features = false }
-sharks = { version = "0.5", default-features = false }
+sharks = { git = "https://github.com/multifactor/gf256sss", version = "0.5.0", default-features = false }
 
 # Randomness
 # TODO (autoparallel): This can be made `no-std` if we need to.
@@ -56,20 +57,32 @@ thiserror = { version = "2.0", default-features = false }
 serde      = { version = "1.0", default-features = false, features = ["derive"] }
 serde_json = { version = "1.0", default-features = false, features = ["alloc"] }
 
+hex = { version = "0.4.3", default-features = false, features = ["alloc"] }
+jsonwebtoken = { version = "10.0.0", default-features = false, features = [
+  "rust_crypto",
+] }
 # Uniffi
-hex          = "0.4.3"
-jsonwebtoken = "9.3.1"
 # TODO (autoparallel): I'm not sure if we can put these features into a different crate or something.
-uniffi = { version = "0.29", features = [
+uniffi = { version = "0.29", optional = true, features = [
   "build",
   "cli",
   "wasm-unstable-single-threaded",
 ] }
 # TODO (@lonerapier): this version of rsa is vulnerable to marvin sidechannel attack. More info at https://github.com/RustCrypto/RSA/blob/master/README.md#%EF%B8%8Fsecurity-warning
-rsa = "0.9.8"
+rsa = { version = "0.9.8", default-features = false }
+
+# Logging
+log = { version = "0.4.28", default-features = false }
+
+[features]
+default = []
+# Enable UniFFI bindings (FFI exports, scaffolding, bin, etc.)
+bindings = ["dep:uniffi"]
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
-getrandom = { version = "0.2", features = ["js"] }
+console_log = { version = "1.0", default-features = false }
+getrandom   = { version = "0.2", default-features = false, features = ["js"] }
+web-time    = { version = "1.1", default-features = false }
 
 [dev-dependencies]
 # itertools = "0.14"

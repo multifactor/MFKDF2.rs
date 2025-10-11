@@ -11,14 +11,15 @@ use uuid::Uuid;
 
 use crate::{
   crypto::{encrypt, hkdf_sha256_with_info, hmacsha256},
-  definitions::mfkdf_derived_key::MFKDF2DerivedKey,
+  definitions::{MFKDF2DerivedKey, MFKDF2Factor},
   error::{MFKDF2Error, MFKDF2Result},
   policy::Policy,
-  setup::factors::{FactorSetup, MFKDF2Factor},
+  setup::FactorSetup,
 };
 
 // TODO (autoparallel): We probably can just use the MFKDF2Factor struct directly here.
-#[derive(Clone, Serialize, Deserialize, Debug, Eq, PartialEq, uniffi::Record)]
+#[derive(Clone, Serialize, Deserialize, Debug, Eq, PartialEq)]
+#[cfg_attr(feature = "bindings", derive(uniffi::Record))]
 pub struct PolicyFactor {
   pub id:     String,
   #[serde(rename = "type")]
@@ -26,11 +27,13 @@ pub struct PolicyFactor {
   pub pad:    String,
   pub salt:   String,
   pub secret: String,
+  // TODO (@lonerapier): convert it into a factor based enum
   pub params: String,
-  pub hint:   String,
+  pub hint:   Option<String>,
 }
 
-#[derive(Clone, Serialize, Deserialize, uniffi::Record)]
+#[cfg_attr(feature = "bindings", derive(uniffi::Record))]
+#[derive(Clone, Serialize, Deserialize)]
 pub struct MFKDF2Options {
   pub id:        Option<String>,
   pub threshold: Option<u8>,
@@ -60,17 +63,7 @@ impl Default for MFKDF2Options {
   }
 }
 
-#[derive(Clone, Debug, Default, Serialize, Deserialize, Eq, PartialEq, uniffi::Record)]
-pub struct MFKDF2Entropy {
-  pub real:        u32,
-  pub theoretical: u32,
-}
-
-#[uniffi::export]
-pub async fn key(
-  factors: Vec<MFKDF2Factor>,
-  options: MFKDF2Options,
-) -> MFKDF2Result<MFKDF2DerivedKey> {
+pub fn key(factors: Vec<MFKDF2Factor>, options: MFKDF2Options) -> MFKDF2Result<MFKDF2DerivedKey> {
   // Sets the threshold to be the number of factors (n of n) if not provided.
   let threshold = options.threshold.unwrap_or(factors.len() as u8);
 
@@ -81,12 +74,12 @@ pub async fn key(
   }
 
   // Generate salt & secret if not provided
-  let salt: [u8; 32] = match options.salt {
-    Some(salt) => salt.try_into().unwrap(),
+  let salt: Vec<u8> = match options.salt {
+    Some(salt) => salt,
     None => {
       let mut salt = [0u8; 32];
       OsRng.fill_bytes(&mut salt);
-      salt
+      salt.to_vec()
     },
   };
 
@@ -143,7 +136,7 @@ pub async fn key(
   let mut ids = HashSet::new();
   let mut outputs = HashMap::new();
   let mut theoretical_entropy: Vec<u32> = Vec::new();
-  let mut real_entropy: Vec<u32> = Vec::new();
+  let mut real_entropy: Vec<f64> = Vec::new();
 
   for (factor, share) in factors.iter().zip(shares.clone()) {
     // Factor id uniqueness
@@ -154,7 +147,7 @@ pub async fn key(
 
     // HKDF stretch & AES-encrypt share
     let stretched = hkdf_sha256_with_info(
-      &factor.factor_type.bytes(),
+      &factor.data(),
       &factor.salt,
       format!("mfkdf2:factor:pad:{}", &factor.id.clone().unwrap()).as_bytes(),
     );
@@ -167,9 +160,9 @@ pub async fn key(
       format!("mfkdf2:factor:params:{}", &factor.id.clone().unwrap()).as_bytes(),
     );
 
-    let params = factor.factor_type.setup().params(params_key);
+    let params = factor.factor_type.setup().params(params_key.into())?;
     // TODO (autoparallel): This should not be an unwrap.
-    outputs.insert(factor.id.clone().unwrap(), factor.factor_type.output(key).to_string());
+    outputs.insert(factor.id.clone().unwrap(), factor.factor_type.output(key.into()).to_string());
 
     let secret_key = hkdf_sha256_with_info(
       &key,
@@ -179,7 +172,7 @@ pub async fn key(
     let factor_secret = encrypt(&stretched, &secret_key);
 
     // Record entropy statistics (in bits) for this factor.
-    theoretical_entropy.push(u32::try_from(factor.factor_type.bytes().len() * 8).unwrap());
+    theoretical_entropy.push(u32::try_from(factor.data().len() * 8).unwrap());
     // TODO (autoparallel): This should not be an unwrap, should entropy really be optional?
     real_entropy.push(factor.entropy.unwrap());
 
@@ -190,7 +183,7 @@ pub async fn key(
       salt:   general_purpose::STANDARD.encode(factor.salt.clone()),
       secret: general_purpose::STANDARD.encode(factor_secret),
       params: serde_json::to_string(&params).unwrap(),
-      hint:   "".to_string(),
+      hint:   None,
     });
   }
 
@@ -198,7 +191,7 @@ pub async fn key(
     schema: "https://mfkdf.com/schema/v2.0.0/policy.json".to_string(),
     id: policy_id,
     threshold,
-    salt: general_purpose::STANDARD.encode(salt),
+    salt: general_purpose::STANDARD.encode(&salt),
     factors: policy_factors,
     hmac: "".to_string(),
     time,
@@ -216,15 +209,15 @@ pub async fn key(
 
   // Calculate entropy
   theoretical_entropy.sort_unstable();
-  real_entropy.sort_unstable();
+  real_entropy.sort_unstable_by(f64::total_cmp);
 
   let required = threshold as usize;
 
   let theoretical_sum: u32 = theoretical_entropy.iter().take(required).copied().sum();
-  let real_sum: u32 = real_entropy.iter().take(required).copied().sum();
+  let real_sum: f64 = real_entropy.iter().take(required).copied().sum();
 
   let entropy_theoretical = theoretical_sum.min(256);
-  let entropy_real = real_sum.min(256);
+  let entropy_real = real_sum.min(256.0) as u32;
 
   Ok(MFKDF2DerivedKey {
     policy,
@@ -232,8 +225,19 @@ pub async fn key(
     secret: secret.to_vec(),
     shares,
     outputs,
-    entropy: MFKDF2Entropy { real: entropy_real, theoretical: entropy_theoretical },
+    entropy: crate::definitions::MFKDF2Entropy {
+      real:        entropy_real,
+      theoretical: entropy_theoretical,
+    },
   })
+}
+
+#[cfg_attr(feature = "bindings", uniffi::export)]
+pub async fn setup_key(
+  factors: Vec<MFKDF2Factor>,
+  options: MFKDF2Options,
+) -> MFKDF2Result<MFKDF2DerivedKey> {
+  key(factors, options)
 }
 
 #[cfg(test)]
@@ -328,10 +332,10 @@ mod tests {
   ])]
   #[case::question_only(vec![question("my secret answer", QuestionOptions::default()).unwrap()])]
   #[case::uuid_only(vec![uuid(UUIDOptions::default()).unwrap()])]
-  #[tokio::test]
-  async fn key_construction(#[case] factors: Vec<MFKDF2Factor>) {
+  #[test]
+  fn key_construction(#[case] factors: Vec<MFKDF2Factor>) {
     let options = MFKDF2Options::default();
-    let derived_key = key(factors.clone(), options.clone()).await.unwrap();
+    let derived_key = key(factors.clone(), options.clone()).unwrap();
 
     let salt = general_purpose::STANDARD.decode(derived_key.policy.salt.clone()).unwrap();
     let mut kek = [0u8; 32];
@@ -396,12 +400,12 @@ mod tests {
   #[case(3, 3)]
   #[case(5, 2)]
   #[case(5, 5)]
-  #[tokio::test]
-  async fn key_construction_with_threshold(#[case] num_factors: usize, #[case] threshold: u8) {
+  #[test]
+  fn key_construction_with_threshold(#[case] num_factors: usize, #[case] threshold: u8) {
     let factors = generate_factors(num_factors);
     let options = MFKDF2Options { threshold: Some(threshold), ..Default::default() };
 
-    let derived_key = key(factors.clone(), options.clone()).await.unwrap();
+    let derived_key = key(factors.clone(), options.clone()).unwrap();
 
     assert_eq!(derived_key.policy.threshold, threshold);
 
@@ -444,14 +448,11 @@ mod tests {
   #[case(3, 0)]
   #[case(3, 4)]
   #[case(0, 0)]
-  #[tokio::test]
-  async fn key_construction_with_invalid_threshold(
-    #[case] num_factors: usize,
-    #[case] threshold: u8,
-  ) {
+  #[test]
+  fn key_construction_with_invalid_threshold(#[case] num_factors: usize, #[case] threshold: u8) {
     let factors = generate_factors(num_factors);
     let options = MFKDF2Options { threshold: Some(threshold), ..Default::default() };
-    let derived_key_result = key(factors.clone(), options.clone()).await;
+    let derived_key_result = key(factors.clone(), options.clone());
 
     assert!(matches!(derived_key_result, Err(MFKDF2Error::InvalidThreshold)));
   }

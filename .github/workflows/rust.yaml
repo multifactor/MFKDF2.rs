@@ -5,9 +5,9 @@ concurrency:
 
 on:
   push:
-    branches: [ main ]
+    branches: [main]
   pull_request:
-    branches: [ main ]
+    branches: [main]
 
 env:
   CARGO_TERM_COLOR: always
@@ -18,7 +18,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      
+
       - name: Install Rust
         uses: dtolnay/rust-toolchain@master
         with:
@@ -112,8 +112,38 @@ jobs:
         with:
           key: rust/test
 
-      - name: Run tests
-        run: cargo test --verbose --workspace
+      - name: Install cargo-nextest
+        uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-nextest
+
+      - name: Run tests (JUnit)
+        run: cargo nextest run --profile ci
+
+      - name: Publish JUnit test report
+        if: always()
+        uses: mikepenz/action-junit-report@v4
+        with:
+          report_paths: "target/nextest/ci/junit.xml"
+          detailed_summary: true
+          include_passed: true
+
+      - name: Setup Node.js for HTML conversion
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Convert JUnit to HTML
+        run: npx --yes xunit-viewer -r target/nextest/ci -o target/nextest/ci/index.html
+
+      - name: Upload HTML and JUnit artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: rust-test-report
+          path: |
+            target/nextest/ci/junit.xml
+            target/nextest/ci/index.html
 
   doc:
     name: doc

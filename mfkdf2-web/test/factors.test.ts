@@ -16,20 +16,20 @@ suite('mfkdf2 bindings', () => {
     console.log('UniFFI initialized');
 
     console.log('Creating setup password factor...');
-    const factor = mfkdf.setup.factors.password('Tr0ubd4dour', { id: 'password_1' });
-    console.log('Setup factor created:', { id: factor.id, kind: factor.kind });
+    const factor = await mfkdf.setup.factors.password('Tr0ubd4dour', { id: 'password_1' });
+    console.log('Setup factor created:', { id: factor.id, type: factor.type });
     factor.should.have.property('id');
-    factor.should.have.property('kind', 'password');
+    factor.should.have.property('type', 'password');
 
     console.log('Creating key with setup factors...');
     const derived = await mfkdf.setup.key([factor]);
     console.log('Key created. Policy ID:', derived.policy.id);
     derived.should.have.property('policy');
-    derived.policy.should.have.property('id');
+    derived.policy.should.have.property('$id');
     derived.should.have.property('key');
 
     console.log('Creating derive password factor...');
-    const deriveFactor = mfkdf.derive.factors.password('Tr0ubd4dour');
+    const deriveFactor = await mfkdf.derive.factors.password('Tr0ubd4dour');
     const factors = new Map([[factor.id, deriveFactor]]);
     console.log('Derive factors prepared with keys:', Array.from(factors.keys()));
     factors.should.be.an('Map');

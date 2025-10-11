@@ -171,13 +171,30 @@ _ci-summary-failure:
     @printf "{{error}}{{bold}}Some checks failed. See output above for details.{{reset}}\n"
     @exit 1
 
+# ensure wasm-bindgen-cli is installed
+ensure-wasm-bindgen-cli:
+    @if ! command -v wasm-bindgen > /dev/null || ! wasm-bindgen --version | grep -q "0.2.101"; then \
+        printf "{{info}}Installing wasm-bindgen-cli 0.2.101...{{reset}}\n" && \
+        cargo install wasm-bindgen-cli --version 0.2.101; \
+    else \
+        printf "{{success}}✓ wasm-bindgen-cli 0.2.101 already installed{{reset}}\n"; \
+    fi
+
+# build the workspace with bindings enabled
+build-bindings:
+    @just header "Building workspace with bindings enabled"
+    cargo build --workspace --all-targets --all-features
+    @just ensure-wasm-bindgen-cli # ensure wasm-bindgen-cli is installed
+
 # Generate the TypeScript bindings
 gen-ts-bindings:
+    @just build-bindings # build the workspace with bindings enabled
     @just header "Generating TypeScript bindings"
     cd mfkdf2-web && npm i && npm run ubrn:web
     @echo "Updating index.web.ts implementation"
     @cp mfkdf2-web/src/index.ts mfkdf2-web/src/index.web.ts
 
+# verify the TypeScript bindings
 verify-bindings:
     @just header "Verifying bindings"
     @if [ ! -d "mfkdf2-web/src/generated" ] || [ -z "$(ls -A mfkdf2-web/src/generated)" ]; then \
@@ -194,7 +211,18 @@ verify-bindings:
     fi
     @printf "{{success}}✓ TypeScript bindings verified{{reset}}\n"
 
+# test the TypeScript bindings
 test-bindings:
+    @just build-bindings # build the workspace with bindings enabled
     @just header "Testing TypeScript bindings"
     @just verify-bindings  # verify bindings is generated
     cd mfkdf2-web && npm test
+
+# test the TypeScript bindings with HTML and JUnit reports
+test-bindings-report:
+    @just build-bindings # build the workspace with bindings enabled
+    @just header "Testing TypeScript bindings (with reports)"
+    @just verify-bindings  # verify bindings is generated
+    cd mfkdf2-web && npm run test:report
+    @printf "{{success}}HTML report:{{reset}} %s\n" "mfkdf2-web/test-results/mochawesome/index.html"
+    @printf "{{success}}JUnit report:{{reset}} %s\n" "mfkdf2-web/test-results/junit/junit.xml"

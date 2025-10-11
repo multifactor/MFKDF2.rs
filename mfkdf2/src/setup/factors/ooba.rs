@@ -8,10 +8,12 @@ use sha2::Sha256;
 
 use crate::{
   crypto::{encrypt, hkdf_sha256_with_info},
+  definitions::{FactorMetadata, FactorType, Key, MFKDF2Factor},
   error::{MFKDF2Error, MFKDF2Result},
-  setup::factors::{FactorMetadata, FactorSetup, FactorType, MFKDF2Factor},
+  setup::FactorSetup,
 };
 
+#[inline]
 pub fn generate_alphanumeric_characters(length: u32) -> String {
   (0..length)
     .map(|_| {
@@ -23,19 +25,23 @@ pub fn generate_alphanumeric_characters(length: u32) -> String {
 
 pub struct OobaPublicKey(pub RsaPublicKey);
 
-#[derive(Clone, Debug, Serialize, Deserialize, uniffi::Record)]
+#[cfg_attr(feature = "bindings", derive(uniffi::Record))]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct OobaOptions {
   pub id:     Option<String>,
-  pub length: u8,
+  pub length: Option<u8>,
   pub key:    Option<String>, // TODO (sambhav): move to uniffi custom types
   pub params: Option<String>,
 }
 
 impl Default for OobaOptions {
-  fn default() -> Self { Self { id: Some("ooba".to_string()), length: 6, key: None, params: None } }
+  fn default() -> Self {
+    Self { id: Some("ooba".to_string()), length: Some(6), key: None, params: None }
+  }
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, uniffi::Record)]
+#[cfg_attr(feature = "bindings", derive(uniffi::Record))]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Ooba {
   pub target: Vec<u8>,
   pub length: u8,
@@ -78,35 +84,34 @@ impl FactorMetadata for Ooba {
 }
 
 impl FactorSetup for Ooba {
+  type Output = Value;
+  type Params = Value;
+
   fn bytes(&self) -> Vec<u8> { self.target.clone() }
 
-  fn params(&self, _key: [u8; 32]) -> Value {
+  fn params(&self, _key: Key) -> MFKDF2Result<Self::Params> {
     let code = generate_alphanumeric_characters(self.length.into()).to_uppercase();
 
     let prev_key = hkdf_sha256_with_info(code.as_bytes(), &[], &[]);
     let pad = encrypt(&self.target, &prev_key);
 
-    let mut params = match serde_json::from_str(&self.params) {
-      Ok(params) => params,
-      Err(_) => json!({}),
-    };
+    let mut params: Value = serde_json::from_str(&self.params)?;
     params["code"] = json!(code);
 
-    let plaintext = serde_json::to_vec(&params).expect("Should serialize params to bytes");
-    let key = OobaPublicKey::try_from(self.jwk.as_str()).expect("JWK should be valid");
-    let ciphertext =
-      key.0.encrypt(&mut OsRng, Oaep::new::<Sha256>(), &plaintext).expect("Should encrypt params");
+    let plaintext = serde_json::to_vec(&params)?;
+    let key = OobaPublicKey::try_from(self.jwk.as_str())?;
+    let ciphertext = key.0.encrypt(&mut OsRng, Oaep::new::<Sha256>(), &plaintext)?;
 
-    json!({
+    Ok(json!({
         "length": self.length,
         "key": self.jwk,
         "params": params,
         "next": hex::encode(ciphertext),
         "pad": general_purpose::STANDARD.encode(pad),
-    })
+    }))
   }
 
-  fn output(&self, _key: [u8; 32]) -> Value { json!({}) }
+  fn output(&self, _key: Key) -> Self::Output { json!({}) }
 }
 
 pub fn ooba(options: OobaOptions) -> MFKDF2Result<MFKDF2Factor> {
@@ -116,7 +121,7 @@ pub fn ooba(options: OobaOptions) -> MFKDF2Result<MFKDF2Factor> {
   {
     return Err(crate::error::MFKDF2Error::MissingFactorId);
   }
-  let length = options.length;
+  let length = options.length.unwrap_or(6);
   if length == 0 || length > 32 {
     return Err(MFKDF2Error::InvalidOobaLength);
   }
@@ -155,12 +160,12 @@ pub fn ooba(options: OobaOptions) -> MFKDF2Result<MFKDF2Factor> {
       jwk: options.key.unwrap(),
       params,
     }),
-    entropy:     Some((length as f64 * 36f64.log2()).round() as u32),
+    entropy:     Some((length as f64 * 36f64.log2()).round()),
   })
 }
 
-#[uniffi::export]
-pub fn setup_ooba(options: OobaOptions) -> MFKDF2Result<MFKDF2Factor> { ooba(options) }
+#[cfg_attr(feature = "bindings", uniffi::export)]
+pub async fn setup_ooba(options: OobaOptions) -> MFKDF2Result<MFKDF2Factor> { ooba(options) }
 
 #[cfg(test)]
 mod tests {
@@ -179,7 +184,7 @@ mod tests {
   fn mock_construction() -> MFKDF2Factor {
     let options = OobaOptions {
       id:     Some("test".to_string()),
-      length: 8,
+      length: Some(8),
       key:    Some(TEST_JWK.to_string()),
       params: Some(r#"{"foo":"bar"}"#.to_string()),
     };
@@ -194,7 +199,7 @@ mod tests {
   fn construction() {
     let options = OobaOptions {
       id:     Some("test".to_string()),
-      length: 8,
+      length: Some(8),
       key:    Some(TEST_JWK.to_string()),
       params: Some(r#"{"foo":"bar"}"#.to_string()),
     };
@@ -219,7 +224,7 @@ mod tests {
   fn empty_id() {
     let options = OobaOptions {
       id:     Some("".to_string()),
-      length: 6,
+      length: Some(6),
       key:    Some(TEST_JWK.to_string()),
       params: None,
     };
@@ -231,7 +236,7 @@ mod tests {
   fn zero_length() {
     let options = OobaOptions {
       id:     Some("test".to_string()),
-      length: 0,
+      length: Some(0),
       key:    Some(TEST_JWK.to_string()),
       params: None,
     };
@@ -243,7 +248,7 @@ mod tests {
   fn large_length() {
     let options = OobaOptions {
       id:     Some("test".to_string()),
-      length: 33,
+      length: Some(33),
       key:    Some(TEST_JWK.to_string()),
       params: None,
     };
@@ -254,7 +259,7 @@ mod tests {
   #[test]
   fn missing_key() {
     let options =
-      OobaOptions { id: Some("test".to_string()), length: 6, key: None, params: None };
+      OobaOptions { id: Some("test".to_string()), length: Some(6), key: None, params: None };
     let result = ooba(options);
     assert!(matches!(result, Err(MFKDF2Error::MissingOobaKey)));
   }
@@ -263,7 +268,7 @@ mod tests {
   fn invalid_key_format() {
     let options = OobaOptions {
       id:     Some("test".to_string()),
-      length: 6,
+      length: Some(6),
       key:    Some("not-a-jwk".to_string()),
       params: None,
     };
@@ -282,7 +287,7 @@ mod tests {
 
     let options = OobaOptions {
       id:     Some("test".to_string()),
-      length: 6,
+      length: Some(6),
       key:    Some(TEST_EC_JWK.to_string()),
       params: None,
     };
@@ -299,7 +304,7 @@ mod tests {
       _ => panic!("Factor type should be Ooba"),
     };
 
-    let params = ooba.params([0u8; 32]);
+    let params = ooba.params([0u8; 32].into()).unwrap();
     assert!(params.is_object());
 
     // check params.next is equal to params.params
@@ -317,7 +322,7 @@ mod tests {
   #[test]
   fn output() {
     let factor = mock_construction();
-    let output = factor.factor_type.output([0u8; 32]);
+    let output = factor.factor_type.output([0u8; 32].into());
     assert!(output.is_object());
   }
 }
