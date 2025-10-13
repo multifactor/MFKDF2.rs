@@ -81,13 +81,13 @@ impl TryFrom<&str> for OobaPublicKey {
 
 impl FactorMetadata for Ooba {
   fn kind(&self) -> String { "ooba".to_string() }
+
+  fn bytes(&self) -> Vec<u8> { self.target.clone() }
 }
 
 impl FactorSetup for Ooba {
   type Output = Value;
   type Params = Value;
-
-  fn bytes(&self) -> Vec<u8> { self.target.clone() }
 
   fn params(&self, _key: Key) -> MFKDF2Result<Self::Params> {
     let code = generate_alphanumeric_characters(self.length.into()).to_uppercase();
