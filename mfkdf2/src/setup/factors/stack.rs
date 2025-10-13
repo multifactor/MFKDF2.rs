@@ -46,13 +46,13 @@ pub struct Stack {
 
 impl FactorMetadata for Stack {
   fn kind(&self) -> String { "stack".to_string() }
+
+  fn bytes(&self) -> Vec<u8> { self.key.key.clone() }
 }
 
 impl FactorSetup for Stack {
   type Output = Value;
   type Params = Value;
-
-  fn bytes(&self) -> Vec<u8> { self.key.key.clone() }
 
   fn params(&self, _key: Key) -> MFKDF2Result<Self::Params> {
     Ok(serde_json::to_value(&self.key.policy)?)

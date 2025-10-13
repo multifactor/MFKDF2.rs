@@ -37,13 +37,13 @@ pub struct HmacSha1 {
 
 impl FactorMetadata for HmacSha1 {
   fn kind(&self) -> String { "hmacsha1".to_string() }
+
+  fn bytes(&self) -> Vec<u8> { self.padded_secret[..20].to_vec() }
 }
 
 impl FactorSetup for HmacSha1 {
   type Output = Value;
   type Params = Value;
-
-  fn bytes(&self) -> Vec<u8> { self.padded_secret[..20].to_vec() }
 
   fn params(&self, _key: Key) -> MFKDF2Result<Value> {
     let mut challenge = [0u8; 64];

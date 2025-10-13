@@ -65,13 +65,13 @@ fn mod_positive(n: i64, m: i64) -> i64 { ((n % m) + m) % m }
 
 impl FactorMetadata for TOTP {
   fn kind(&self) -> String { "totp".to_string() }
+
+  fn bytes(&self) -> Vec<u8> { self.target.to_be_bytes().to_vec() }
 }
 
 impl FactorSetup for TOTP {
   type Output = Value;
   type Params = Value;
-
-  fn bytes(&self) -> Vec<u8> { self.target.to_be_bytes().to_vec() }
 
   fn params(&self, key: Key) -> MFKDF2Result<Self::Params> {
     let time =
