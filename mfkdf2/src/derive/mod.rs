@@ -33,6 +33,7 @@ impl FactorType {
       FactorType::OOBA(ooba) => ooba,
       FactorType::Passkey(passkey) => passkey,
       FactorType::Stack(stack) => stack,
+      FactorType::Persisted(persisted) => persisted,
     }
   }
 
@@ -47,6 +48,7 @@ impl FactorType {
       FactorType::OOBA(ooba) => ooba,
       FactorType::Passkey(passkey) => passkey,
       FactorType::Stack(stack) => stack,
+      FactorType::Persisted(persisted) => persisted,
     }
   }
 }
