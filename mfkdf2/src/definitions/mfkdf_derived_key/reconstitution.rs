@@ -135,7 +135,7 @@ impl MFKDF2DerivedKey {
         material.get(factor.id.as_str()).unwrap()
       } else if data.contains_key(factor.id.as_str()) {
         &hkdf_sha256_with_info(
-          &data.get(factor.id.as_str()).unwrap(),
+          data.get(factor.id.as_str()).unwrap(),
           &salt,
           format!("mfkdf2:factor:pad:{}", factor.id).as_bytes(),
         )
