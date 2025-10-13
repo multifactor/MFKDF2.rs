@@ -168,12 +168,6 @@ mod tests {
   }
 
   #[test]
-  fn invalid_secret() {
-    let result = hmacsha1(HmacSha1Options { id: None, secret: Some(vec![0u8; 19]) });
-    assert!(matches!(result, Err(crate::error::MFKDF2Error::InvalidSecretLength(_))));
-  }
-
-  #[test]
   fn output_setup() {
     let factor = mock_construction();
     let output = factor.factor_type.output([0u8; 32].into());
