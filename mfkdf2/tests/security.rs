@@ -4,7 +4,6 @@ use std::{
 };
 
 use base64::{Engine, engine::general_purpose};
-use hex;
 use mfkdf2::{
   crypto::hkdf_sha256_with_info,
   derive,

@@ -147,7 +147,7 @@ mod tests {
       false,
       false,
     );
-    assert!(matches!(derive_key, Ok(_)));
+    assert!(derive_key.is_ok());
     assert_eq!(derive_key.unwrap().key, setup_key.key);
 
     let wrong_password = derive_factors::password("password2")?;
