@@ -12,7 +12,7 @@ pub fn derived_key_get_subkey(
   purpose: Option<String>,
   salt: Option<Vec<u8>>,
 ) -> Vec<u8> {
-  let purpose = purpose.as_deref();
-  let salts = salt.as_deref();
+  let purpose = purpose.as_ref().map(|v| v.as_str());
+  let salts = salt.as_ref().map(|v| v.as_slice());
   derived_key.get_subkey(purpose, salts).to_vec()
 }

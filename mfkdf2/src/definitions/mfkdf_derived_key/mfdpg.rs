@@ -18,8 +18,8 @@ pub fn derived_key_derive_password(
   salt: Option<Vec<u8>>,
   regex: &str,
 ) -> String {
-  let purpose = purpose.as_deref();
-  let salt = salt.as_deref();
+  let purpose = purpose.as_ref().map(|v| v.as_str());
+  let salt = salt.as_ref().map(|v| v.as_slice());
   derived_key.derive_password(purpose, salt, regex)
 }
 

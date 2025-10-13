@@ -40,8 +40,7 @@ impl MFKDF2DerivedKey {
     )
   }
 
-  pub fn add_hint(&mut self, factor_id: &str, bits: Option<u8>) -> Result<(), MFKDF2Error> {
-    let bits = bits.unwrap_or(7);
+  pub fn add_hint(&mut self, factor_id: &str, bits: u8) -> Result<(), MFKDF2Error> {
     let hint = self.get_hint(factor_id, bits);
     let factor_data = self.policy.factors.iter_mut().find(|f| f.id == factor_id).unwrap();
     factor_data.hint = Some(hint?);
@@ -63,7 +62,7 @@ pub fn derived_key_get_hint(
 pub fn derived_key_add_hint(
   derived_key: MFKDF2DerivedKey,
   factor_id: &str,
-  bits: Option<u8>,
+  bits: u8,
 ) -> Result<MFKDF2DerivedKey, MFKDF2Error> {
   let mut derived_key = derived_key;
   derived_key.add_hint(factor_id, bits)?;
@@ -134,11 +133,11 @@ mod tests {
     let mut setup_key =
       setup::key(setup_factors, MFKDF2Options { integrity: Some(false), ..Default::default() })?;
 
-    setup_key.add_hint("password1", None)?; // Default to 7 bits 
+    setup_key.add_hint("password1", 7)?; // Default to 7 bits as per original JS test
     assert!(setup_key.policy.factors[0].hint.is_some());
     assert_eq!(setup_key.policy.factors[0].hint.as_ref().unwrap().len(), 7);
 
-    setup_key.add_hint("password1", Some(24))?;
+    setup_key.add_hint("password1", 24)?;
     assert!(setup_key.policy.factors[0].hint.is_some());
     assert_eq!(setup_key.policy.factors[0].hint.as_ref().unwrap().len(), 24);
 
@@ -148,7 +147,7 @@ mod tests {
       false,
       false,
     );
-    assert!(derive_key.is_ok());
+    assert!(matches!(derive_key, Ok(_)));
     assert_eq!(derive_key.unwrap().key, setup_key.key);
 
     let wrong_password = derive_factors::password("password2")?;
