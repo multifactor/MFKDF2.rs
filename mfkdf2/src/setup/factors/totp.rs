@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 #[cfg(not(target_arch = "wasm32"))]
 use std::time::{SystemTime, UNIX_EPOCH};
 
@@ -30,7 +31,7 @@ pub struct TOTPOptions {
   pub time:   Option<u64>, // Unix epoch time in milliseconds
   pub window: u64,
   pub step:   u64,
-  pub oracle: Option<Vec<u32>>,
+  pub oracle: Option<HashMap<u64, u32>>,
 }
 
 impl Default for TOTPOptions {
@@ -89,9 +90,19 @@ impl FactorSetup for TOTP {
       let code =
         generate_hotp_code(&padded_secret[..20], counter, &self.options.hash, self.options.digits);
 
-      let offset =
+      let mut offset =
         mod_positive(self.target as i64 - code as i64, 10_i64.pow(self.options.digits as u32))
           as u32;
+
+      let oracle_time = counter * self.options.step * 1000;
+      if self.options.oracle.is_some()
+        && self.options.oracle.as_ref().unwrap().contains_key(&oracle_time)
+      {
+        offset = mod_positive(
+          offset as i64 + *self.options.oracle.as_ref().unwrap().get(&oracle_time).unwrap() as i64,
+          10_i64.pow(self.options.digits as u32),
+        ) as u32;
+      }
 
       offsets.extend_from_slice(&offset.to_be_bytes());
     }
