@@ -80,6 +80,7 @@ mod tests {
   use std::collections::HashMap;
 
   use base64::Engine;
+  use rand::rngs::OsRng;
   use rsa::traits::PublicKeyParts;
   use serde_json::json;
 
@@ -262,8 +263,7 @@ mod tests {
   #[test]
   fn derive_outputs_ooba() {
     let bits = 2048;
-    let private_key =
-      rsa::RsaPrivateKey::new(&mut rsa::rand_core::OsRng, bits).expect("failed to generate a key");
+    let private_key = rsa::RsaPrivateKey::new(&mut OsRng, bits).expect("failed to generate a key");
     let public_key = rsa::RsaPublicKey::from(&private_key);
 
     // 2. & 3. create n and e strings
