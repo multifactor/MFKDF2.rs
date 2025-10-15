@@ -43,14 +43,11 @@ function wrapSetupFactor(factor: raw.Mfkdf2Factor): any {
   const wrapped = wrapFactor(factor);
   return {
     ...wrapped,
-    // TODO (@lonerapier): likely remove these
-    // Add async params() method with optional 32-byte key
     async params(key?: ArrayBuffer) {
       const result = raw.setupFactorTypeParams(factor.factorType, key);
       // Parse JSON string returned by UniFFI (Value is serialized as string)
       return typeof result === 'string' ? JSON.parse(result) : result;
     },
-    // Add async output() method with optional 32-byte key
     async output(key?: ArrayBuffer) {
       const result = raw.setupFactorTypeOutput(factor.factorType, key);
       // Parse JSON string returned by UniFFI (Value is serialized as string)
@@ -185,6 +182,7 @@ function wrapDerivedKey(key: raw.Mfkdf2DerivedKey): any {
       return applyUpdate(updated);
     },
     async reconstitute(remove_factors?: string[], add_factors?: raw.Mfkdf2Factor[], threshold?: number) {
+      // check for integer otherwise uniffi will cast to integer
       if (threshold && !Number.isInteger(threshold)) {
         throw new TypeError('threshold must be an integer');
       }
@@ -194,6 +192,7 @@ function wrapDerivedKey(key: raw.Mfkdf2DerivedKey): any {
       return applyUpdate(updated);
     },
     async strengthen(time: number, memory: number) {
+      // check for integer otherwise uniffi will cast to integer
       if (time && !Number.isInteger(time)) {
         throw new TypeError('time must be a non-negative integer');
       }
@@ -211,6 +210,7 @@ function wrapDerivedKey(key: raw.Mfkdf2DerivedKey): any {
       return Buffer.from(updated);
     },
     async addHint(factorId: string, bits?: number) {
+      // check for integer otherwise uniffi will cast to integer
       if (bits && !Number.isInteger(bits)) {
         throw new TypeError('bits must be an integer');
       }
@@ -220,6 +220,7 @@ function wrapDerivedKey(key: raw.Mfkdf2DerivedKey): any {
       return applyUpdate(updated);
     },
     async getHint(factorId: string, bits: number) {
+      // check for integer otherwise uniffi will cast to integer
       if (bits && !Number.isInteger(bits)) {
         throw new TypeError('bits must be an integer');
       }
@@ -369,7 +370,9 @@ export const mfkdf = {
         return wrapDeriveFactor(await raw.deriveOoba(code));
       },
       async passkey(secret: ArrayBuffer | Buffer) {
-        return wrapDeriveFactor(await raw.derivePasskey(toArrayBuffer(secret) || new Uint8Array(32).buffer)); // TODO (@lonerapier): fix
+        const buffer = toArrayBuffer(secret);
+        if (!buffer) throw new Error('Invalid secret');
+        return wrapDeriveFactor(await raw.derivePasskey(buffer));
       },
       async stack(factors: Record<string, any> | Map<string, any>) {
         // Convert object to Map if needed
