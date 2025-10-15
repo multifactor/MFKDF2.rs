@@ -7,7 +7,8 @@ use crate::{
   error::MFKDF2Result,
 };
 
-#[derive(Clone, Debug, Serialize, Deserialize, uniffi::Record)]
+#[cfg_attr(feature = "bindings", derive(uniffi::Record))]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Persisted {
   pub share: Vec<u8>,
 }
