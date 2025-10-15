@@ -182,7 +182,6 @@ function wrapDerivedKey(key: raw.Mfkdf2DerivedKey): any {
       return applyUpdate(updated);
     },
     async reconstitute(remove_factors?: string[], add_factors?: raw.Mfkdf2Factor[], threshold?: number) {
-      // check for integer otherwise uniffi will cast to integer
       if (threshold && !Number.isInteger(threshold)) {
         throw new TypeError('threshold must be an integer');
       }
@@ -192,7 +191,6 @@ function wrapDerivedKey(key: raw.Mfkdf2DerivedKey): any {
       return applyUpdate(updated);
     },
     async strengthen(time: number, memory: number) {
-      // check for integer otherwise uniffi will cast to integer
       if (time && !Number.isInteger(time)) {
         throw new TypeError('time must be a non-negative integer');
       }
@@ -210,7 +208,6 @@ function wrapDerivedKey(key: raw.Mfkdf2DerivedKey): any {
       return Buffer.from(updated);
     },
     async addHint(factorId: string, bits?: number) {
-      // check for integer otherwise uniffi will cast to integer
       if (bits && !Number.isInteger(bits)) {
         throw new TypeError('bits must be an integer');
       }
@@ -220,7 +217,6 @@ function wrapDerivedKey(key: raw.Mfkdf2DerivedKey): any {
       return applyUpdate(updated);
     },
     async getHint(factorId: string, bits: number) {
-      // check for integer otherwise uniffi will cast to integer
       if (bits && !Number.isInteger(bits)) {
         throw new TypeError('bits must be an integer');
       }

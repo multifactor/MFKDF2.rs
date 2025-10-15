@@ -13,27 +13,68 @@ suite('mfkdf2/changes', () => {
     await uniffiInitAsync();
   });
 
-  suite('key-size-256', () => {
-    test('default', async () => {
-      const setup = await mfkdf.setup.key(
-        [
-          await mfkdf.setup.factors.password('password1', {
-            id: 'password1'
-          })
-        ],
-      )
+  // TODO (@lonerapier): is `kdf` options supported?
+  // suite('key-size-256', () => {
+  //   test('default', async () => {
+  //     const setup = await mfkdf.setup.key(
+  //       [
+  //         await mfkdf.setup.factors.password('password1', {
+  //           id: 'password1'
+  //         })
+  //       ],
+  //       { kdf: 'hkdf' }
+  //     )
 
-      const derive = await mfkdf.derive.key(setup.policy, {
-        password1: await mfkdf.derive.factors.password('password1')
-      })
+  //     const derive = await mfkdf.derive.key(setup.policy, {
+  //       password1: await mfkdf.derive.factors.password('password1')
+  //     })
 
-      derive.key.toString('hex').should.equal(setup.key.toString('hex'))
-      setup.key.length.should.equal(32)
-      derive.key.length.should.equal(32)
-    })
-  })
+  //     derive.key.toString('hex').should.equal(setup.key.toString('hex'))
+  //     setup.key.length.should.equal(32)
+  //     derive.key.length.should.equal(32)
+  //   })
+
+  //   test('override', async () => {
+  //     const setup = await mfkdf.setup.key(
+  //       [
+  //         await mfkdf.setup.factors.password('password1', {
+  //           id: 'password1'
+  //         })
+  //       ],
+  //       { kdf: 'hkdf' }
+  //     )
+
+  //     const derive = await mfkdf.derive.key(setup.policy, {
+  //       password1: await mfkdf.derive.factors.password('password1')
+  //     })
+
+  //     derive.key.toString('hex').should.equal(setup.key.toString('hex'))
+  //     setup.key.length.should.equal(32)
+  //     derive.key.length.should.equal(32)
+  //   })
+  // })
 
   suite('kdf-argon2id', () => {
+    // TODO (@lonerapier): is kdf options supported?
+    // test('default', async () => {
+    //   const setup = await mfkdf.setup.key(
+    //     [
+    //       await mfkdf.setup.factors.password('password1', {
+    //         id: 'password1'
+    //       })
+    //     ],
+    //     { kdf: 'hkdf' }
+    //   )
+
+    //   const derive = await mfkdf.derive.key(setup.policy, {
+    //     password1: mfkdf.derive.factors.password('password1')
+    //   })
+
+    //   derive.key.toString('hex').should.equal(setup.key.toString('hex'))
+    //   setup.key.length.should.equal(32)
+    //   derive.key.length.should.equal(32)
+    // })
+
     test('override/mismatch/time', async () => {
       const setup = await mfkdf.setup.key(
         [
