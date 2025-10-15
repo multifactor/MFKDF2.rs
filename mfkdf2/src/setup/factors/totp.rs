@@ -125,7 +125,7 @@ impl FactorSetup for TOTP {
       "scheme": "otpauth",
       "type": "totp",
       "label": self.options.label,
-      "secret": base64::prelude::BASE64_STANDARD.encode(&self.options.secret.clone().unwrap()[..20]),
+      "secret": &self.options.secret.clone().unwrap()[..20],
       "issuer": self.options.issuer,
       "algorithm": self.options.hash.to_string(),
       "digits": self.options.digits,
@@ -345,8 +345,12 @@ mod tests {
     assert_eq!(output["digits"], 8);
     assert_eq!(output["period"], 30);
 
-    let secret_b64 = output["secret"].as_str().unwrap();
-    let secret = base64::prelude::BASE64_STANDARD.decode(secret_b64).unwrap();
+    let secret = output["secret"]
+      .as_array()
+      .unwrap()
+      .iter()
+      .map(|v| v.as_u64().unwrap() as u8)
+      .collect::<Vec<u8>>();
     assert_eq!(secret.len(), 20);
     assert_eq!(secret, &totp_factor.options.secret.as_ref().unwrap()[..20]);
   }

@@ -110,8 +110,6 @@ impl FactorSetup for Ooba {
         "pad": general_purpose::STANDARD.encode(pad),
     }))
   }
-
-  fn output(&self, _key: Key) -> Self::Output { json!({}) }
 }
 
 pub fn ooba(options: OobaOptions) -> MFKDF2Result<MFKDF2Factor> {
@@ -323,6 +321,6 @@ mod tests {
   fn output() {
     let factor = mock_construction();
     let output = factor.factor_type.output([0u8; 32].into());
-    assert!(output.is_object());
+    assert!(output.is_null());
   }
 }

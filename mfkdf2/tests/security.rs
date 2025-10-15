@@ -279,8 +279,12 @@ async fn totp_dynamic_no_oracle() -> Result<(), MFKDF2Error> {
 
   // Get the secret from the setup outputs
   let outputs: Value = serde_json::from_str(&setup.outputs["totp"])?;
-  let secret_b64 = outputs["secret"].as_str().unwrap();
-  let secret = general_purpose::STANDARD.decode(secret_b64)?;
+  let secret = outputs["secret"]
+    .as_array()
+    .unwrap()
+    .iter()
+    .map(|v| v.as_u64().unwrap() as u8)
+    .collect::<Vec<u8>>();
   let step = outputs["period"].as_u64().unwrap();
   let algorithm_str = outputs["algorithm"].as_str().unwrap();
   let hash = match algorithm_str {
@@ -354,8 +358,12 @@ async fn totp_dynamic_valid_fixed_oracle() {
 
   // Get the secret from the setup outputs
   let outputs: Value = serde_json::from_str(&setup.outputs["totp"]).unwrap();
-  let secret_b64 = outputs["secret"].as_str().unwrap();
-  let secret = general_purpose::STANDARD.decode(secret_b64).unwrap();
+  let secret = outputs["secret"]
+    .as_array()
+    .unwrap()
+    .iter()
+    .map(|v| v.as_u64().unwrap() as u8)
+    .collect::<Vec<u8>>();
   let step = outputs["period"].as_u64().unwrap();
   let algorithm_str = outputs["algorithm"].as_str().unwrap();
   let hash = match algorithm_str {
@@ -449,8 +457,12 @@ async fn totp_dynamic_invalid_fixed_oracle() {
 
   // Get the secret from the setup outputs
   let outputs: Value = serde_json::from_str(&setup.outputs["totp"]).unwrap();
-  let secret_b64 = outputs["secret"].as_str().unwrap();
-  let secret = general_purpose::STANDARD.decode(secret_b64).unwrap();
+  let secret = outputs["secret"]
+    .as_array()
+    .unwrap()
+    .iter()
+    .map(|v| v.as_u64().unwrap() as u8)
+    .collect::<Vec<u8>>();
   let step = outputs["period"].as_u64().unwrap();
   let algorithm_str = outputs["algorithm"].as_str().unwrap();
   let hash = match algorithm_str {
@@ -553,8 +565,12 @@ async fn totp_dynamic_valid_dynamic_oracle() {
 
   // Get the secret from the setup outputs
   let outputs: Value = serde_json::from_str(&setup.outputs["totp"]).unwrap();
-  let secret_b64 = outputs["secret"].as_str().unwrap();
-  let secret = general_purpose::STANDARD.decode(secret_b64).unwrap();
+  let secret = outputs["secret"]
+    .as_array()
+    .unwrap()
+    .iter()
+    .map(|v| v.as_u64().unwrap() as u8)
+    .collect::<Vec<u8>>();
   let step = outputs["period"].as_u64().unwrap();
   let algorithm_str = outputs["algorithm"].as_str().unwrap();
   let hash = match algorithm_str {
