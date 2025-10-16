@@ -10,7 +10,7 @@ use crate::{
   crypto::encrypt,
   definitions::{FactorMetadata, FactorType, Key, MFKDF2Factor},
   error::MFKDF2Result,
-  setup::FactorSetup,
+  setup::{FactorSetup, Setup},
 };
 
 #[cfg_attr(feature = "bindings", derive(uniffi::Record))]
@@ -158,7 +158,7 @@ pub fn generate_hotp_code(secret: &[u8], counter: u64, hash: &OTPHash, digits: u
   code % (10_u32.pow(digits as u32))
 }
 
-pub fn hotp(options: HOTPOptions) -> MFKDF2Result<MFKDF2Factor> {
+pub fn hotp(options: HOTPOptions) -> MFKDF2Result<MFKDF2Factor<Setup>> {
   let mut options = options;
 
   // Validation
@@ -201,9 +201,9 @@ pub fn hotp(options: HOTPOptions) -> MFKDF2Result<MFKDF2Factor> {
 
   // TODO (autoparallel): Code should possibly be an option, though this follows the same pattern as
   // the password factor which stores the actual password in the struct.
-  Ok(MFKDF2Factor {
+  Ok(MFKDF2Factor::<Setup> {
     id: Some(id),
-    factor_type: FactorType::HOTP(HOTP {
+    factor_type: FactorType::<Setup>::HOTP(HOTP {
       options,
       params: serde_json::to_string(&Value::Null).unwrap(),
       code: 0,
@@ -215,7 +215,7 @@ pub fn hotp(options: HOTPOptions) -> MFKDF2Result<MFKDF2Factor> {
 }
 
 #[cfg_attr(feature = "bindings", uniffi::export)]
-pub async fn setup_hotp(options: HOTPOptions) -> MFKDF2Result<MFKDF2Factor> { hotp(options) }
+pub async fn setup_hotp(options: HOTPOptions) -> MFKDF2Result<MFKDF2Factor<Setup>> { hotp(options) }
 
 #[cfg(test)]
 mod tests {
@@ -239,7 +239,7 @@ mod tests {
     assert_eq!(factor.data().len(), 4); // u32 target as bytes
 
     // Test that params can be generated
-    let params = factor.factor_type.setup().params(key.into()).unwrap();
+    let params = factor.factor_type.params(key.into()).unwrap();
     assert!(params.is_object());
 
     assert!(params["hash"].is_string());
@@ -259,7 +259,7 @@ mod tests {
     assert_eq!(factor.id, Some("hotp".to_string()));
     assert_eq!(factor.data().len(), 4);
     assert!(factor.entropy.is_some());
-    let params = factor.factor_type.setup().params(key.into()).unwrap();
+    let params = factor.factor_type.params(key.into()).unwrap();
     assert!(params.is_object());
 
     let output = factor.factor_type.output(key.into());

@@ -4,7 +4,7 @@ mod common;
 
 use std::collections::HashMap;
 
-use mfkdf2::{definitions::MFKDF2DerivedKey, policy::Policy};
+use mfkdf2::{definitions::MFKDF2DerivedKey, policy::Policy, setup::Derive};
 
 use crate::common::{create_derive_factor, create_setup_factor};
 
@@ -51,7 +51,7 @@ fn integrity_disabled_allows_tamper() {
   }
 
   // Build derive map; override the id for the password entry to match the tampered id
-  let mut derive_map: HashMap<String, mfkdf2::definitions::MFKDF2Factor> = HashMap::new();
+  let mut derive_map: HashMap<String, mfkdf2::definitions::MFKDF2Factor<Derive>> = HashMap::new();
   for name in ["password", "hotp", "totp", "uuid"] {
     let (mut id, factor) = create_derive_factor(name, &policy);
     if name == "password" {
@@ -141,7 +141,7 @@ fn integrity_enabled_rejects_factor_id_tamper() {
   }
 
   // Build derive map supplying password under tampered id — integrity must still reject
-  let mut derive_map: HashMap<String, mfkdf2::definitions::MFKDF2Factor> = HashMap::new();
+  let mut derive_map: HashMap<String, mfkdf2::definitions::MFKDF2Factor<Derive>> = HashMap::new();
   for name in ["password", "uuid"] {
     let (mut id, factor) = create_derive_factor(name, &policy);
     if name == "password" {
@@ -173,7 +173,7 @@ fn integrity_enabled_rejects_derived_policy_tamper() {
   }
 
   // Supply factors; integrity ON must now reject
-  let mut derive_map: HashMap<String, mfkdf2::definitions::MFKDF2Factor> = HashMap::new();
+  let mut derive_map: HashMap<String, mfkdf2::definitions::MFKDF2Factor<Derive>> = HashMap::new();
   for name in ["password", "hotp", "uuid", "totp"] {
     let (mut id, factor) = create_derive_factor(name, &tampered);
     if name == "password" {

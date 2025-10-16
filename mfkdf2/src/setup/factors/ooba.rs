@@ -10,7 +10,7 @@ use crate::{
   crypto::{encrypt, hkdf_sha256_with_info},
   definitions::{FactorMetadata, FactorType, Key, MFKDF2Factor},
   error::{MFKDF2Error, MFKDF2Result},
-  setup::FactorSetup,
+  setup::{FactorSetup, Setup},
 };
 
 #[inline]
@@ -112,7 +112,7 @@ impl FactorSetup for Ooba {
   }
 }
 
-pub fn ooba(options: OobaOptions) -> MFKDF2Result<MFKDF2Factor> {
+pub fn ooba(options: OobaOptions) -> MFKDF2Result<MFKDF2Factor<Setup>> {
   // Validation
   if let Some(ref id) = options.id
     && id.is_empty()
@@ -149,10 +149,10 @@ pub fn ooba(options: OobaOptions) -> MFKDF2Result<MFKDF2Factor> {
   let mut salt = [0u8; 32];
   OsRng.fill_bytes(&mut salt);
 
-  Ok(MFKDF2Factor {
+  Ok(MFKDF2Factor::<Setup> {
     id:          Some(options.id.unwrap_or("ooba".to_string())),
     salt:        salt.to_vec(),
-    factor_type: FactorType::OOBA(Ooba {
+    factor_type: FactorType::<Setup>::OOBA(Ooba {
       target: target.to_vec(),
       length,
       jwk: options.key.unwrap(),
@@ -163,7 +163,7 @@ pub fn ooba(options: OobaOptions) -> MFKDF2Result<MFKDF2Factor> {
 }
 
 #[cfg_attr(feature = "bindings", uniffi::export)]
-pub async fn setup_ooba(options: OobaOptions) -> MFKDF2Result<MFKDF2Factor> { ooba(options) }
+pub async fn setup_ooba(options: OobaOptions) -> MFKDF2Result<MFKDF2Factor<Setup>> { ooba(options) }
 
 #[cfg(test)]
 mod tests {
@@ -179,7 +179,7 @@ mod tests {
     "e": "AQAB"
   }"#;
 
-  fn mock_construction() -> MFKDF2Factor {
+  fn mock_construction() -> MFKDF2Factor<Setup> {
     let options = OobaOptions {
       id:     Some("test".to_string()),
       length: Some(8),

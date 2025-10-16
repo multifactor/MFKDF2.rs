@@ -1,7 +1,10 @@
 #![allow(deprecated)]
 #![allow(dead_code)]
 
-use mfkdf2::definitions::MFKDF2DerivedKey;
+use mfkdf2::{
+  definitions::MFKDF2DerivedKey,
+  setup::{Derive, Setup},
+};
 
 pub const HMACSHA1_SECRET: [u8; 20] = [
   0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f, 0x10,
@@ -137,7 +140,7 @@ pub fn mock_mixed_factors_mfkdf2() -> Result<MFKDF2DerivedKey, mfkdf2::error::MF
   Ok(key)
 }
 
-pub fn create_setup_factor(name: &str) -> mfkdf2::definitions::MFKDF2Factor {
+pub fn create_setup_factor(name: &str) -> mfkdf2::definitions::MFKDF2Factor<Setup> {
   match name {
     "password" => mfkdf2::setup::factors::password(
       "Tr0ubd4dour",
@@ -196,7 +199,7 @@ pub fn create_setup_factor(name: &str) -> mfkdf2::definitions::MFKDF2Factor {
 pub fn create_derive_factor(
   name: &str,
   policy: &mfkdf2::policy::Policy,
-) -> (String, mfkdf2::definitions::MFKDF2Factor) {
+) -> (String, mfkdf2::definitions::MFKDF2Factor<Derive>) {
   match name {
     "password" =>
       ("password_1".to_string(), mfkdf2::derive::factors::password("Tr0ubd4dour").unwrap()),

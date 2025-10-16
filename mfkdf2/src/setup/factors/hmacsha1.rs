@@ -6,7 +6,10 @@ use crate::{
   crypto::encrypt,
   definitions::{Key, MFKDF2Factor},
   error::MFKDF2Result,
-  setup::factors::{FactorMetadata, FactorSetup, FactorType},
+  setup::{
+    FactorSetup, Setup,
+    factors::{FactorMetadata, FactorType},
+  },
 };
 
 #[cfg_attr(feature = "bindings", derive(uniffi::Record))]
@@ -67,7 +70,7 @@ impl FactorSetup for HmacSha1 {
   }
 }
 
-pub fn hmacsha1(options: HmacSha1Options) -> MFKDF2Result<MFKDF2Factor> {
+pub fn hmacsha1(options: HmacSha1Options) -> MFKDF2Result<MFKDF2Factor<Setup>> {
   // Validation
   if let Some(ref id) = options.id
     && id.is_empty()
@@ -93,16 +96,20 @@ pub fn hmacsha1(options: HmacSha1Options) -> MFKDF2Result<MFKDF2Factor> {
   let mut salt = [0u8; 32];
   OsRng.fill_bytes(&mut salt);
 
-  Ok(MFKDF2Factor {
+  Ok(MFKDF2Factor::<Setup> {
     id:          Some(id),
     salt:        salt.to_vec(),
-    factor_type: FactorType::HmacSha1(HmacSha1 { padded_secret, response: None, params: None }),
+    factor_type: FactorType::<Setup>::HmacSha1(HmacSha1 {
+      padded_secret,
+      response: None,
+      params: None,
+    }),
     entropy:     Some(160.0),
   })
 }
 
 #[cfg_attr(feature = "bindings", uniffi::export)]
-pub async fn setup_hmacsha1(options: HmacSha1Options) -> MFKDF2Result<MFKDF2Factor> {
+pub async fn setup_hmacsha1(options: HmacSha1Options) -> MFKDF2Result<MFKDF2Factor<Setup>> {
   hmacsha1(options)
 }
 
@@ -115,7 +122,7 @@ mod tests {
     0x11, 0x12, 0x13, 0x14,
   ];
 
-  fn mock_construction() -> MFKDF2Factor {
+  fn mock_construction() -> MFKDF2Factor<Setup> {
     hmacsha1(HmacSha1Options { id: Some("test".to_string()), secret: Some(SECRET.to_vec()) })
       .unwrap()
   }
@@ -130,7 +137,7 @@ mod tests {
     assert_eq!(factor.data(), SECRET.to_vec());
 
     // Get the challenge and pad from params
-    let params = factor.factor_type.setup().params([0u8; 32].into()).unwrap();
+    let params = factor.factor_type.params([0u8; 32].into()).unwrap();
     assert!(params.is_object());
 
     let challenge = hex::decode(params["challenge"].as_str().unwrap()).unwrap();
@@ -156,7 +163,7 @@ mod tests {
     assert_eq!(factor.kind(), "hmacsha1");
     assert_eq!(factor.id, Some("hmacsha1".to_string()));
     assert_eq!(factor.data().len(), 20); // Secret should be 20 bytes
-    assert!(factor.factor_type.setup().params([0u8; 32].into()).unwrap().is_object());
+    assert!(factor.factor_type.params([0u8; 32].into()).unwrap().is_object());
     assert!(factor.factor_type.output([0u8; 32].into()).is_object());
     assert_eq!(factor.entropy, Some(160.0)); // 20 bytes * 8 bits = 160 bits
   }

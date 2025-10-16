@@ -5,13 +5,14 @@ use crate::{
   derive::factors::stack::stack as create_stack_factor,
   error::{MFKDF2Error, MFKDF2Result},
   policy::{Policy, evaluate::evaluate_internal},
+  setup::Derive,
 };
 
 fn expand(
   policy: &Policy,
-  factors: &HashMap<String, MFKDF2Factor>,
+  factors: &HashMap<String, MFKDF2Factor<Derive>>,
   factor_set: &HashSet<String>,
-) -> MFKDF2Result<HashMap<String, MFKDF2Factor>> {
+) -> MFKDF2Result<HashMap<String, MFKDF2Factor<Derive>>> {
   let mut parsed_factors = HashMap::new();
 
   for factor in &policy.factors {
@@ -35,7 +36,7 @@ fn expand(
 
 pub fn derive(
   policy: Policy,
-  factors: HashMap<String, MFKDF2Factor>,
+  factors: HashMap<String, MFKDF2Factor<Derive>>,
   verify: Option<bool>,
 ) -> MFKDF2Result<MFKDF2DerivedKey> {
   if !policy.validate() {
@@ -55,7 +56,7 @@ pub fn derive(
 #[cfg_attr(feature = "bindings", uniffi::export)]
 pub async fn policy_derive(
   policy: Policy,
-  factors: HashMap<String, MFKDF2Factor>,
+  factors: HashMap<String, MFKDF2Factor<Derive>>,
   verify: Option<bool>,
 ) -> MFKDF2Result<MFKDF2DerivedKey> {
   derive(policy, factors, verify)

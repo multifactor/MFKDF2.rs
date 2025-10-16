@@ -6,7 +6,7 @@ use zxcvbn::zxcvbn;
 use crate::{
   definitions::{FactorMetadata, FactorType, Key, MFKDF2Factor},
   error::{MFKDF2Error, MFKDF2Result},
-  setup::FactorSetup,
+  setup::{FactorSetup, Setup},
 };
 
 #[cfg_attr(feature = "bindings", derive(uniffi::Record))]
@@ -52,7 +52,10 @@ impl Default for QuestionOptions {
   fn default() -> Self { Self { id: Some("question".to_string()), question: None } }
 }
 
-pub fn question(answer: impl Into<String>, options: QuestionOptions) -> MFKDF2Result<MFKDF2Factor> {
+pub fn question(
+  answer: impl Into<String>,
+  options: QuestionOptions,
+) -> MFKDF2Result<MFKDF2Factor<Setup>> {
   let answer = answer.into();
   if answer.is_empty() {
     return Err(MFKDF2Error::AnswerEmpty);
@@ -82,9 +85,9 @@ pub fn question(answer: impl Into<String>, options: QuestionOptions) -> MFKDF2Re
   options.question = Some(question);
   options.id = id.clone();
 
-  Ok(MFKDF2Factor {
+  Ok(MFKDF2Factor::<Setup> {
     id,
-    factor_type: FactorType::Question(Question {
+    factor_type: FactorType::<Setup>::Question(Question {
       options,
       params: serde_json::to_string(&Value::Null).unwrap(),
       answer,
@@ -98,7 +101,7 @@ pub fn question(answer: impl Into<String>, options: QuestionOptions) -> MFKDF2Re
 pub async fn setup_question(
   answer: String,
   options: QuestionOptions,
-) -> MFKDF2Result<MFKDF2Factor> {
+) -> MFKDF2Result<MFKDF2Factor<Setup>> {
   question(answer, options)
 }
 
@@ -106,7 +109,7 @@ pub async fn setup_question(
 mod tests {
   use super::*;
 
-  fn mock_construction() -> MFKDF2Factor {
+  fn mock_construction() -> MFKDF2Factor<Setup> {
     let options = QuestionOptions {
       id:       Some("test-question".to_string()),
       question: Some("What is your favorite color?".to_string()),

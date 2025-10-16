@@ -14,7 +14,7 @@ use crate::{
   definitions::{MFKDF2DerivedKey, MFKDF2Factor},
   error::{MFKDF2Error, MFKDF2Result},
   policy::Policy,
-  setup::FactorSetup,
+  setup::{FactorSetup, Setup},
 };
 
 // TODO (autoparallel): We probably can just use the MFKDF2Factor struct directly here.
@@ -63,7 +63,10 @@ impl Default for MFKDF2Options {
   }
 }
 
-pub fn key(factors: Vec<MFKDF2Factor>, options: MFKDF2Options) -> MFKDF2Result<MFKDF2DerivedKey> {
+pub fn key(
+  factors: Vec<MFKDF2Factor<Setup>>,
+  options: MFKDF2Options,
+) -> MFKDF2Result<MFKDF2DerivedKey> {
   // Sets the threshold to be the number of factors (n of n) if not provided.
   let threshold = options.threshold.unwrap_or(factors.len() as u8);
 
@@ -160,7 +163,7 @@ pub fn key(factors: Vec<MFKDF2Factor>, options: MFKDF2Options) -> MFKDF2Result<M
       format!("mfkdf2:factor:params:{}", &factor.id.clone().unwrap()).as_bytes(),
     );
 
-    let params = factor.factor_type.setup().params(params_key.into())?;
+    let params = factor.factor_type.params(params_key.into())?;
     // TODO (autoparallel): This should not be an unwrap.
     outputs.insert(factor.id.clone().unwrap(), factor.factor_type.output(key.into()).to_string());
 
@@ -234,7 +237,7 @@ pub fn key(factors: Vec<MFKDF2Factor>, options: MFKDF2Options) -> MFKDF2Result<M
 
 #[cfg_attr(feature = "bindings", uniffi::export)]
 pub async fn setup_key(
-  factors: Vec<MFKDF2Factor>,
+  factors: Vec<MFKDF2Factor<Setup>>,
   options: MFKDF2Options,
 ) -> MFKDF2Result<MFKDF2DerivedKey> {
   key(factors, options)
@@ -262,7 +265,7 @@ mod tests {
     0x11, 0x12, 0x13, 0x14,
   ];
 
-  fn generate_factors(num: usize) -> Vec<MFKDF2Factor> {
+  fn generate_factors(num: usize) -> Vec<MFKDF2Factor<Setup>> {
     let mut factors =
       vec![password("password123", PasswordOptions { id: Some("pw".to_string()) }).unwrap()];
 
@@ -333,7 +336,7 @@ mod tests {
   #[case::question_only(vec![question("my secret answer", QuestionOptions::default()).unwrap()])]
   #[case::uuid_only(vec![uuid(UUIDOptions::default()).unwrap()])]
   #[test]
-  fn key_construction(#[case] factors: Vec<MFKDF2Factor>) {
+  fn key_construction(#[case] factors: Vec<MFKDF2Factor<Setup>>) {
     let options = MFKDF2Options::default();
     let derived_key = key(factors.clone(), options.clone()).unwrap();
 

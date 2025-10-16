@@ -9,11 +9,11 @@ use crate::{
     logic::{all, and, any, at_least, or},
     setup::PolicySetupOptions,
   },
-  setup::factors,
+  setup::{Derive, Setup, factors},
 };
 
 // Helper to create a factor by name and id for policy tests
-fn create_policy_factor(name: &str, id: &str) -> crate::definitions::MFKDF2Factor {
+fn create_policy_factor(name: &str, id: &str) -> crate::definitions::MFKDF2Factor<Setup> {
   match name {
     "password" =>
       factors::password("password", factors::password::PasswordOptions { id: Some(id.to_string()) })
@@ -47,7 +47,7 @@ fn create_policy_derive_factor(
   name: &str,
   id: &str,
   policy: &crate::policy::Policy,
-) -> (String, crate::definitions::MFKDF2Factor) {
+) -> (String, crate::definitions::MFKDF2Factor<Derive>) {
   match name {
     "password" => (id.to_string(), derive::factors::password("password").unwrap()),
     "question" => (id.to_string(), derive::factors::question("answer").unwrap()),

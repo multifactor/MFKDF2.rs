@@ -4,7 +4,7 @@ use crate::{
   definitions::{FactorType, MFKDF2Factor},
   derive::FactorDerive,
   error::{MFKDF2Error, MFKDF2Result},
-  setup::factors::passkey::Passkey,
+  setup::{Derive, factors::passkey::Passkey},
 };
 
 impl FactorDerive for Passkey {
@@ -17,7 +17,7 @@ impl FactorDerive for Passkey {
   }
 }
 
-pub fn passkey(secret: [u8; 32]) -> MFKDF2Result<MFKDF2Factor> {
+pub fn passkey(secret: [u8; 32]) -> MFKDF2Result<MFKDF2Factor<Derive>> {
   Ok(MFKDF2Factor {
     id:          Some("passkey".to_string()),
     factor_type: FactorType::Passkey(Passkey { secret: secret.to_vec() }),
@@ -27,7 +27,7 @@ pub fn passkey(secret: [u8; 32]) -> MFKDF2Result<MFKDF2Factor> {
 }
 
 #[cfg_attr(feature = "bindings", uniffi::export)]
-pub async fn derive_passkey(secret: Vec<u8>) -> MFKDF2Result<MFKDF2Factor> {
+pub async fn derive_passkey(secret: Vec<u8>) -> MFKDF2Result<MFKDF2Factor<Derive>> {
   if secret.len() != 32 {
     return Err(MFKDF2Error::InvalidSecretLength("passkey".to_string()));
   }

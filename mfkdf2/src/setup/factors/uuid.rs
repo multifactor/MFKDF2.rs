@@ -6,7 +6,7 @@ pub use uuid::Uuid;
 use crate::{
   definitions::{FactorMetadata, FactorType, Key, MFKDF2Factor},
   error::MFKDF2Result,
-  setup::FactorSetup,
+  setup::{FactorSetup, Setup},
 };
 
 #[cfg_attr(feature = "bindings", derive(uniffi::Record))]
@@ -43,7 +43,7 @@ impl FactorSetup for UUIDFactor {
   }
 }
 
-pub fn uuid(options: UUIDOptions) -> MFKDF2Result<MFKDF2Factor> {
+pub fn uuid(options: UUIDOptions) -> MFKDF2Result<MFKDF2Factor<Setup>> {
   // Validation
   if let Some(ref id) = options.id
     && id.is_empty()
@@ -56,16 +56,16 @@ pub fn uuid(options: UUIDOptions) -> MFKDF2Result<MFKDF2Factor> {
   let mut salt = [0u8; 32];
   OsRng.fill_bytes(&mut salt);
 
-  Ok(MFKDF2Factor {
+  Ok(MFKDF2Factor::<Setup> {
     id:          Some(options.id.unwrap_or("uuid".to_string())),
-    factor_type: FactorType::UUID(UUIDFactor { uuid }),
+    factor_type: FactorType::<Setup>::UUID(UUIDFactor { uuid }),
     salt:        salt.to_vec(),
     entropy:     Some(122.0),
   })
 }
 
 #[cfg_attr(feature = "bindings", uniffi::export)]
-pub async fn setup_uuid(options: UUIDOptions) -> MFKDF2Result<MFKDF2Factor> { uuid(options) }
+pub async fn setup_uuid(options: UUIDOptions) -> MFKDF2Result<MFKDF2Factor<Setup>> { uuid(options) }
 
 #[cfg(test)]
 mod tests {

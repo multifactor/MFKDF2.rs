@@ -10,11 +10,12 @@ use crate::{
   derive::FactorDerive,
   error::{MFKDF2Error, MFKDF2Result},
   policy::Policy,
+  setup::Derive,
 };
 
 pub fn key(
   policy: Policy,
-  factors: HashMap<String, MFKDF2Factor>,
+  factors: HashMap<String, MFKDF2Factor<Derive>>,
   verify: bool,
   stack: bool,
 ) -> MFKDF2Result<MFKDF2DerivedKey> {
@@ -79,7 +80,7 @@ pub fn key(
       // TODO (autoparallel): It would be preferred to know the size of this array at compile
       // time.
       shares_bytes.push(Some(plaintext));
-      outputs.insert(factor.id.clone(), material.factor_type.derive().output().to_string());
+      outputs.insert(factor.id.clone(), material.factor_type.output().to_string());
     }
   }
 
@@ -177,7 +178,7 @@ pub fn key(
 #[cfg_attr(feature = "bindings", uniffi::export(default(verify = true, stack = false)))]
 pub async fn derive_key(
   policy: Policy,
-  factors: HashMap<String, MFKDF2Factor>,
+  factors: HashMap<String, MFKDF2Factor<Derive>>,
   verify: bool,
   stack: bool,
 ) -> MFKDF2Result<MFKDF2DerivedKey> {
@@ -206,7 +207,7 @@ mod tests {
       },
     },
     setup::{
-      self,
+      self, Setup,
       factors::{
         hmacsha1::{HmacSha1Options, hmacsha1 as setup_hmacsha1},
         hotp::{HOTPOptions, generate_hotp_code, hotp as setup_hotp},
@@ -228,7 +229,7 @@ mod tests {
     "e": "AQAB"
   }"#;
 
-  fn generate_ooba_setup_factor(id: &str) -> MFKDF2Factor {
+  fn generate_ooba_setup_factor(id: &str) -> MFKDF2Factor<Setup> {
     let options = OobaOptions {
       id:     Some(id.to_string()),
       length: Some(8),

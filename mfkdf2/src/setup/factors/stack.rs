@@ -8,7 +8,7 @@ use crate::{
   definitions::{FactorMetadata, FactorType, Key, MFKDF2DerivedKey, MFKDF2Factor},
   error::{MFKDF2Error, MFKDF2Result},
   setup::{
-    FactorSetup,
+    FactorSetup, FactorState, Setup,
     key::{self, MFKDF2Options},
   },
 };
@@ -39,18 +39,18 @@ impl From<StackOptions> for MFKDF2Options {
 
 #[cfg_attr(feature = "bindings", derive(uniffi::Record))]
 #[derive(Clone, Debug, Serialize, Deserialize)]
-pub struct Stack {
-  pub factors: HashMap<String, MFKDF2Factor>,
+pub struct Stack<S: FactorState> {
+  pub factors: HashMap<String, MFKDF2Factor<S>>,
   pub key:     MFKDF2DerivedKey,
 }
 
-impl FactorMetadata for Stack {
+impl<S: FactorState> FactorMetadata for Stack<S> {
   fn kind(&self) -> String { "stack".to_string() }
 
   fn bytes(&self) -> Vec<u8> { self.key.key.clone() }
 }
 
-impl FactorSetup for Stack {
+impl<S: FactorState> FactorSetup for Stack<S> {
   type Output = Value;
   type Params = Value;
 
@@ -61,7 +61,10 @@ impl FactorSetup for Stack {
   fn output(&self, _key: Key) -> Self::Output { serde_json::to_value(&self.key).unwrap() }
 }
 
-pub fn stack(factors: Vec<MFKDF2Factor>, options: StackOptions) -> MFKDF2Result<MFKDF2Factor> {
+pub fn stack(
+  factors: Vec<MFKDF2Factor<Setup>>,
+  options: StackOptions,
+) -> MFKDF2Result<MFKDF2Factor<Setup>> {
   let id = match options.id {
     None => Some("stack".to_string()),
     Some(ref id) => {
@@ -83,9 +86,9 @@ pub fn stack(factors: Vec<MFKDF2Factor>, options: StackOptions) -> MFKDF2Result<
     factor_map.insert(f.id.clone().unwrap(), f);
   });
 
-  Ok(MFKDF2Factor {
+  Ok(MFKDF2Factor::<Setup> {
     id,
-    factor_type: FactorType::Stack(Stack { factors: factor_map, key: key.clone() }),
+    factor_type: FactorType::<Setup>::Stack(Stack { factors: factor_map, key: key.clone() }),
     salt: salt.to_vec(),
     entropy: Some(key.entropy.real as f64),
   })
@@ -93,9 +96,9 @@ pub fn stack(factors: Vec<MFKDF2Factor>, options: StackOptions) -> MFKDF2Result<
 
 #[cfg_attr(feature = "bindings", uniffi::export)]
 pub async fn setup_stack(
-  factors: Vec<MFKDF2Factor>,
+  factors: Vec<MFKDF2Factor<Setup>>,
   options: StackOptions,
-) -> MFKDF2Result<MFKDF2Factor> {
+) -> MFKDF2Result<MFKDF2Factor<Setup>> {
   stack(factors, options)
 }
 
@@ -150,7 +153,7 @@ mod tests {
     let stack_factor = stack(vec![factor], options).unwrap();
     let key = [0u8; 32];
 
-    let params = stack_factor.factor_type.setup().params(key.into()).unwrap();
+    let params = stack_factor.factor_type.params(key.into()).unwrap();
     let output = stack_factor.factor_type.output(key.into());
 
     if let FactorType::Stack(stack) = stack_factor.factor_type {

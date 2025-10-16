@@ -5,7 +5,7 @@ use crate::{
   definitions::{FactorType, MFKDF2Factor},
   derive::FactorDerive,
   error::{MFKDF2Error, MFKDF2Result},
-  setup::factors::password::Password,
+  setup::{Derive, factors::password::Password},
 };
 
 impl FactorDerive for Password {
@@ -17,7 +17,7 @@ impl FactorDerive for Password {
   fn output(&self) -> Self::Output { json!({"strength": zxcvbn(&self.password, &[])}) }
 }
 
-pub fn password(password: impl Into<String>) -> MFKDF2Result<MFKDF2Factor> {
+pub fn password(password: impl Into<String>) -> MFKDF2Result<MFKDF2Factor<Derive>> {
   let password = std::convert::Into::<String>::into(password);
   if password.is_empty() {
     return Err(MFKDF2Error::PasswordEmpty);
@@ -37,7 +37,7 @@ pub fn password(password: impl Into<String>) -> MFKDF2Result<MFKDF2Factor> {
 }
 
 #[cfg_attr(feature = "bindings", uniffi::export)]
-pub async fn derive_password(password: String) -> MFKDF2Result<MFKDF2Factor> {
+pub async fn derive_password(password: String) -> MFKDF2Result<MFKDF2Factor<Derive>> {
   crate::derive::factors::password::password(password)
 }
 

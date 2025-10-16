@@ -7,7 +7,7 @@ use crate::{
   crypto::{encrypt, hkdf_sha256_with_info, hmacsha256},
   definitions::{MFKDF2DerivedKey, MFKDF2Factor},
   error::{MFKDF2Error, MFKDF2Result},
-  setup::{FactorSetup, key::PolicyFactor},
+  setup::{FactorSetup, Setup, key::PolicyFactor},
 };
 
 impl MFKDF2DerivedKey {
@@ -23,26 +23,26 @@ impl MFKDF2DerivedKey {
     self.reconstitute(factors, &[], None)
   }
 
-  pub fn add_factor(&mut self, factor: MFKDF2Factor) -> MFKDF2Result<()> {
+  pub fn add_factor(&mut self, factor: MFKDF2Factor<Setup>) -> MFKDF2Result<()> {
     self.reconstitute(&[], &[factor], None)
   }
 
-  pub fn add_factors(&mut self, factors: &[MFKDF2Factor]) -> MFKDF2Result<()> {
+  pub fn add_factors(&mut self, factors: &[MFKDF2Factor<Setup>]) -> MFKDF2Result<()> {
     self.reconstitute(&[], factors, None)
   }
 
-  pub fn recover_factor(&mut self, factor: MFKDF2Factor) -> MFKDF2Result<()> {
+  pub fn recover_factor(&mut self, factor: MFKDF2Factor<Setup>) -> MFKDF2Result<()> {
     self.reconstitute(&[], &[factor], None)
   }
 
-  pub fn recover_factors(&mut self, factors: &[MFKDF2Factor]) -> MFKDF2Result<()> {
+  pub fn recover_factors(&mut self, factors: &[MFKDF2Factor<Setup>]) -> MFKDF2Result<()> {
     self.reconstitute(&[], factors, None)
   }
 
   pub fn reconstitute(
     &mut self,
     remove_factor: &[&str],
-    add_factor: &[MFKDF2Factor],
+    add_factor: &[MFKDF2Factor<Setup>],
     threshold: Option<u8>,
   ) -> MFKDF2Result<()> {
     let mut factors = HashMap::new();
@@ -87,7 +87,7 @@ impl MFKDF2DerivedKey {
 
       let params_key =
         hkdf_sha256_with_info(&self.key, &salt, format!("mfkdf2:factor:params:{}", id).as_bytes());
-      let params = factor.factor_type.setup().params(params_key.into())?;
+      let params = factor.factor_type.params(params_key.into())?;
 
       let new_factor = PolicyFactor {
         id:     id.clone(),
@@ -203,61 +203,61 @@ pub fn derived_key_remove_factors(
   Ok(derived_key)
 }
 
-#[cfg_attr(feature = "bindings", uniffi::export)]
-pub fn derived_key_add_factor(
-  derived_key: MFKDF2DerivedKey,
-  factor: MFKDF2Factor,
-) -> MFKDF2Result<MFKDF2DerivedKey> {
-  let mut derived_key = derived_key;
-  derived_key.add_factor(factor)?;
-  Ok(derived_key)
-}
+// #[cfg_attr(feature = "bindings", uniffi::export)]
+// pub fn derived_key_add_factor(
+//   derived_key: MFKDF2DerivedKey,
+//   factor: MFKDF2Factor<Setup>,
+// ) -> MFKDF2Result<MFKDF2DerivedKey> {
+//   let mut derived_key = derived_key;
+//   derived_key.add_factor(factor)?;
+//   Ok(derived_key)
+// }
 
-#[cfg_attr(feature = "bindings", uniffi::export)]
-pub fn derived_key_add_factors(
-  derived_key: MFKDF2DerivedKey,
-  factors: &[MFKDF2Factor],
-) -> MFKDF2Result<MFKDF2DerivedKey> {
-  let mut derived_key = derived_key;
-  derived_key.add_factors(factors)?;
-  Ok(derived_key)
-}
+// #[cfg_attr(feature = "bindings", uniffi::export)]
+// pub fn derived_key_add_factors(
+//   derived_key: MFKDF2DerivedKey,
+//   factors: &[MFKDF2Factor<Setup>],
+// ) -> MFKDF2Result<MFKDF2DerivedKey> {
+//   let mut derived_key = derived_key;
+//   derived_key.add_factors(factors)?;
+//   Ok(derived_key)
+// }
 
-#[cfg_attr(feature = "bindings", uniffi::export)]
-pub fn derived_key_recover_factor(
-  derived_key: MFKDF2DerivedKey,
-  factor: MFKDF2Factor,
-) -> MFKDF2Result<MFKDF2DerivedKey> {
-  let mut derived_key = derived_key;
-  derived_key.recover_factor(factor)?;
-  Ok(derived_key)
-}
+// #[cfg_attr(feature = "bindings", uniffi::export)]
+// pub fn derived_key_recover_factor(
+//   derived_key: MFKDF2DerivedKey,
+//   factor: MFKDF2Factor<Setup>,
+// ) -> MFKDF2Result<MFKDF2DerivedKey> {
+//   let mut derived_key = derived_key;
+//   derived_key.recover_factor(factor)?;
+//   Ok(derived_key)
+// }
 
-#[cfg_attr(feature = "bindings", uniffi::export)]
-pub fn derived_key_recover_factors(
-  derived_key: MFKDF2DerivedKey,
-  factors: &[MFKDF2Factor],
-) -> MFKDF2Result<MFKDF2DerivedKey> {
-  let mut derived_key = derived_key;
-  derived_key.recover_factors(factors)?;
-  Ok(derived_key)
-}
+// #[cfg_attr(feature = "bindings", uniffi::export)]
+// pub fn derived_key_recover_factors(
+//   derived_key: MFKDF2DerivedKey,
+//   factors: &[MFKDF2Factor<Setup>],
+// ) -> MFKDF2Result<MFKDF2DerivedKey> {
+//   let mut derived_key = derived_key;
+//   derived_key.recover_factors(factors)?;
+//   Ok(derived_key)
+// }
 
-#[cfg_attr(feature = "bindings", uniffi::export)]
-pub fn derived_key_reconstitute(
-  derived_key: MFKDF2DerivedKey,
-  remove_factor: &[String],
-  add_factor: &[MFKDF2Factor],
-  threshold: Option<u8>,
-) -> MFKDF2Result<MFKDF2DerivedKey> {
-  let mut derived_key = derived_key;
-  derived_key.reconstitute(
-    remove_factor.iter().map(|f| f.as_str()).collect::<Vec<&str>>().as_ref(),
-    add_factor,
-    threshold,
-  )?;
-  Ok(derived_key)
-}
+// #[cfg_attr(feature = "bindings", uniffi::export)]
+// pub fn derived_key_reconstitute(
+//   derived_key: MFKDF2DerivedKey,
+//   remove_factor: &[String],
+//   add_factor: &[MFKDF2Factor<Setup>],
+//   threshold: Option<u8>,
+// ) -> MFKDF2Result<MFKDF2DerivedKey> {
+//   let mut derived_key = derived_key;
+//   derived_key.reconstitute(
+//     remove_factor.iter().map(|f| f.as_str()).collect::<Vec<&str>>().as_ref(),
+//     add_factor,
+//     threshold,
+//   )?;
+//   Ok(derived_key)
+// }
 
 #[cfg(test)]
 mod tests {

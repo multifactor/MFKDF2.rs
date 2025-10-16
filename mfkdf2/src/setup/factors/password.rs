@@ -6,7 +6,7 @@ use zxcvbn::zxcvbn;
 use crate::{
   definitions::{FactorMetadata, FactorType, Key, MFKDF2Factor},
   error::{MFKDF2Error, MFKDF2Result},
-  setup::FactorSetup,
+  setup::{FactorSetup, Setup},
 };
 
 #[cfg_attr(feature = "bindings", derive(uniffi::Record))]
@@ -41,7 +41,7 @@ pub struct PasswordOptions {
 pub fn password(
   password: impl Into<String>,
   options: PasswordOptions,
-) -> MFKDF2Result<MFKDF2Factor> {
+) -> MFKDF2Result<MFKDF2Factor<Setup>> {
   // Validation
   if let Some(ref id) = options.id
     && id.is_empty()
@@ -59,9 +59,9 @@ pub fn password(
   let mut salt = [0u8; 32];
   OsRng.fill_bytes(&mut salt);
 
-  Ok(MFKDF2Factor {
+  Ok(MFKDF2Factor::<Setup> {
     id:          Some(options.id.unwrap_or("password".to_string())),
-    factor_type: FactorType::Password(Password { password }),
+    factor_type: FactorType::<Setup>::Password(Password { password }),
     salt:        salt.to_vec(),
     entropy:     Some(strength.guesses().ilog2() as f64),
   })
@@ -71,7 +71,7 @@ pub fn password(
 pub async fn setup_password(
   password: String,
   options: PasswordOptions,
-) -> MFKDF2Result<MFKDF2Factor> {
+) -> MFKDF2Result<MFKDF2Factor<Setup>> {
   // Reuse the existing constructor logic
   crate::setup::factors::password::password(password, options)
 }

@@ -14,7 +14,7 @@ use crate::{
   definitions::{FactorMetadata, FactorType, Key, MFKDF2Factor},
   error::{MFKDF2Error, MFKDF2Result},
   setup::{
-    FactorSetup,
+    FactorSetup, Setup,
     factors::hotp::{OTPHash, generate_hotp_code},
   },
 };
@@ -136,7 +136,7 @@ impl FactorSetup for TOTP {
   }
 }
 
-pub fn totp(options: TOTPOptions) -> MFKDF2Result<MFKDF2Factor> {
+pub fn totp(options: TOTPOptions) -> MFKDF2Result<MFKDF2Factor<Setup>> {
   let mut options = options;
 
   // Validation
@@ -180,9 +180,9 @@ pub fn totp(options: TOTPOptions) -> MFKDF2Result<MFKDF2Factor> {
 
   let entropy = Some(options.digits as f64 * 10.0_f64.log2());
 
-  Ok(MFKDF2Factor {
+  Ok(MFKDF2Factor::<Setup> {
     id: Some(id),
-    factor_type: FactorType::TOTP(TOTP {
+    factor_type: FactorType::<Setup>::TOTP(TOTP {
       options,
       params: serde_json::to_string(&Value::Null).unwrap(),
       code: 0,
@@ -194,14 +194,14 @@ pub fn totp(options: TOTPOptions) -> MFKDF2Result<MFKDF2Factor> {
 }
 
 #[cfg_attr(feature = "bindings", uniffi::export)]
-pub async fn setup_totp(options: TOTPOptions) -> MFKDF2Result<MFKDF2Factor> { totp(options) }
+pub async fn setup_totp(options: TOTPOptions) -> MFKDF2Result<MFKDF2Factor<Setup>> { totp(options) }
 
 #[cfg(test)]
 mod tests {
   use super::*;
   use crate::{crypto::decrypt, error::MFKDF2Error};
 
-  fn mock_construction() -> MFKDF2Factor {
+  fn mock_construction() -> MFKDF2Factor<Setup> {
     let options = TOTPOptions {
       id: Some("test".to_string()),
       digits: 8,

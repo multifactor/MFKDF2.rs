@@ -6,7 +6,10 @@ use crate::{
   definitions::{FactorType, Key, MFKDF2Factor},
   derive::FactorDerive,
   error::{MFKDF2Error, MFKDF2Result},
-  setup::factors::hotp::{HOTP, HOTPOptions, OTPHash, generate_hotp_code, mod_positive},
+  setup::{
+    Derive,
+    factors::hotp::{HOTP, HOTPOptions, OTPHash, generate_hotp_code, mod_positive},
+  },
 };
 
 impl FactorDerive for HOTP {
@@ -71,7 +74,7 @@ impl FactorDerive for HOTP {
   }
 }
 
-pub fn hotp(code: u32) -> MFKDF2Result<MFKDF2Factor> {
+pub fn hotp(code: u32) -> MFKDF2Result<MFKDF2Factor<Derive>> {
   // Create HOTP factor with the user-provided code
   // The target will be calculated in include_params once we have the policy parameters
   Ok(MFKDF2Factor {
@@ -90,12 +93,15 @@ pub fn hotp(code: u32) -> MFKDF2Result<MFKDF2Factor> {
 }
 
 #[cfg_attr(feature = "bindings", uniffi::export)]
-pub async fn derive_hotp(code: u32) -> MFKDF2Result<MFKDF2Factor> { hotp(code) }
+pub async fn derive_hotp(code: u32) -> MFKDF2Result<MFKDF2Factor<Derive>> { hotp(code) }
 
 #[cfg(test)]
 mod tests {
   use super::*;
-  use crate::{derive::factors::hotp as derive_hotp, setup::factors::hotp as setup_hotp};
+  use crate::{
+    derive::factors::hotp as derive_hotp,
+    setup::{FactorSetup, factors::hotp as setup_hotp},
+  };
 
   #[test]
   fn hotp_round_trip() {
@@ -118,7 +124,7 @@ mod tests {
 
     // Simulate the policy creation process
     let mock_key = [42u8; 32]; // Mock factor key
-    let setup_params = factor.factor_type.setup().params(mock_key.into()).unwrap();
+    let setup_params = factor.factor_type.params(mock_key.into()).unwrap();
 
     // Extract the expected HOTP code that should work
     let counter = setup_params["counter"].as_u64().unwrap();
@@ -159,7 +165,7 @@ mod tests {
 
     let factor = setup_hotp(hotp_options).unwrap();
 
-    let setup_params = factor.factor_type.setup().params(mock_key.into()).unwrap();
+    let setup_params = factor.factor_type.params(mock_key.into()).unwrap();
 
     // Create a derive instance and generate new params
     // NOTE: this is an incorrect code

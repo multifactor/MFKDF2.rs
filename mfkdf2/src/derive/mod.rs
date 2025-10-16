@@ -7,10 +7,11 @@ use serde_json::Value;
 use crate::{
   definitions::{FactorType, Key},
   error::MFKDF2Result,
+  setup::Derive,
 };
 
 #[allow(unused_variables)]
-pub trait FactorDerive: Send + Sync + std::fmt::Debug {
+pub trait FactorDerive: std::fmt::Debug {
   type Params: serde::Serialize + serde::de::DeserializeOwned + std::fmt::Debug + Default;
   type Output: serde::Serialize + serde::de::DeserializeOwned + std::fmt::Debug + Default;
 
@@ -21,59 +22,100 @@ pub trait FactorDerive: Send + Sync + std::fmt::Debug {
   fn output(&self) -> Self::Output { Self::Output::default() }
 }
 
-impl FactorType {
-  fn derive(&self) -> &dyn FactorDerive<Params = Value, Output = Value> {
-    match self {
-      FactorType::Password(password) => password,
-      FactorType::HOTP(hotp) => hotp,
-      FactorType::Question(question) => question,
-      FactorType::UUID(uuid) => uuid,
-      FactorType::HmacSha1(hmacsha1) => hmacsha1,
-      FactorType::TOTP(totp) => totp,
-      FactorType::OOBA(ooba) => ooba,
-      FactorType::Passkey(passkey) => passkey,
-      FactorType::Stack(stack) => stack,
-      FactorType::Persisted(persisted) => persisted,
-    }
-  }
+// impl<S: FactorState> FactorType<S> {
+//   fn derive(&self) -> &dyn FactorDerive<Params = Value, Output = Value> {
+//     match self {
+//       FactorType::Password(password) => password,
+//       FactorType::HOTP(hotp) => hotp,
+//       FactorType::Question(question) => question,
+//       FactorType::UUID(uuid) => uuid,
+//       FactorType::HmacSha1(hmacsha1) => hmacsha1,
+//       FactorType::TOTP(totp) => totp,
+//       FactorType::OOBA(ooba) => ooba,
+//       FactorType::Passkey(passkey) => passkey,
+//       FactorType::Stack(stack) => stack,
+//       FactorType::Persisted(persisted) => persisted,
 
-  fn derive_mut(&mut self) -> &mut dyn FactorDerive<Params = Value, Output = Value> {
-    match self {
-      FactorType::Password(password) => password,
-      FactorType::HOTP(hotp) => hotp,
-      FactorType::Question(question) => question,
-      FactorType::UUID(uuid) => uuid,
-      FactorType::HmacSha1(hmacsha1) => hmacsha1,
-      FactorType::TOTP(totp) => totp,
-      FactorType::OOBA(ooba) => ooba,
-      FactorType::Passkey(passkey) => passkey,
-      FactorType::Stack(stack) => stack,
-      FactorType::Persisted(persisted) => persisted,
-    }
-  }
-}
+//     }
+//   }
 
-impl FactorDerive for FactorType {
+//   fn derive_mut(&mut self) -> &mut dyn FactorDerive<Params = Value, Output = Value> {
+//     match self {
+//       FactorType::Password(password) => password,
+//       FactorType::HOTP(hotp) => hotp,
+//       FactorType::Question(question) => question,
+//       FactorType::UUID(uuid) => uuid,
+//       FactorType::HmacSha1(hmacsha1) => hmacsha1,
+//       FactorType::TOTP(totp) => totp,
+//       FactorType::OOBA(ooba) => ooba,
+//       FactorType::Passkey(passkey) => passkey,
+//       FactorType::Stack(stack) => stack,
+//       FactorType::Persisted(persisted) => persisted,
+//     }
+//   }
+// }
+
+impl FactorDerive for FactorType<Derive> {
   type Output = Value;
   type Params = Value;
 
   fn include_params(&mut self, params: Self::Params) -> MFKDF2Result<()> {
-    self.derive_mut().include_params(params)
+    match self {
+      FactorType::Password(password) => password.include_params(params),
+      FactorType::HOTP(hotp) => hotp.include_params(params),
+      FactorType::Question(question) => question.include_params(params),
+      FactorType::UUID(uuid) => uuid.include_params(params),
+      FactorType::HmacSha1(hmacsha1) => hmacsha1.include_params(params),
+      FactorType::TOTP(totp) => totp.include_params(params),
+      FactorType::OOBA(ooba) => ooba.include_params(params),
+      FactorType::Passkey(passkey) => passkey.include_params(params),
+      FactorType::Stack(stack) => stack.include_params(params),
+      FactorType::Persisted(persisted) => persisted.include_params(params),
+      FactorType::Phantom(_) => unreachable!("Phantom factor should not be used in this context"),
+    }
   }
 
-  fn params(&self, key: Key) -> MFKDF2Result<Self::Params> { self.derive().params(key) }
+  fn params(&self, key: Key) -> MFKDF2Result<Self::Params> {
+    match self {
+      FactorType::Password(password) => password.params(key),
+      FactorType::HOTP(hotp) => hotp.params(key),
+      FactorType::Question(question) => question.params(key),
+      FactorType::UUID(uuid) => uuid.params(key),
+      FactorType::HmacSha1(hmacsha1) => hmacsha1.params(key),
+      FactorType::TOTP(totp) => totp.params(key),
+      FactorType::OOBA(ooba) => ooba.params(key),
+      FactorType::Passkey(passkey) => passkey.params(key),
+      FactorType::Stack(stack) => stack.params(key),
+      FactorType::Persisted(persisted) => persisted.params(key),
+      FactorType::Phantom(_) => unreachable!("Phantom factor should not be used in this context"),
+    }
+  }
 
-  fn output(&self) -> Self::Output { self.derive().output() }
+  fn output(&self) -> Self::Output {
+    match self {
+      FactorType::Password(password) => password.output(),
+      FactorType::HOTP(hotp) => hotp.output(),
+      FactorType::Question(question) => question.output(),
+      FactorType::UUID(uuid) => uuid.output(),
+      FactorType::HmacSha1(hmacsha1) => hmacsha1.output(),
+      FactorType::TOTP(totp) => totp.output(),
+      FactorType::OOBA(ooba) => ooba.output(),
+      FactorType::Passkey(passkey) => passkey.output(),
+      FactorType::Stack(stack) => stack.output(),
+      FactorType::Persisted(persisted) => persisted.output(),
+      FactorType::Phantom(_) => unreachable!("Phantom factor should not be used in this context"),
+    }
+  }
 }
 
 #[cfg_attr(feature = "bindings", uniffi::export)]
-pub fn derive_factor_params(factor: &FactorType, key: Option<Key>) -> MFKDF2Result<Value> {
+pub fn derive_factor_params(factor: &FactorType<Derive>, key: Option<Key>) -> MFKDF2Result<Value> {
   let key = key.unwrap_or_else(|| [0u8; 32].into());
   factor.params(key)
 }
 
 #[cfg_attr(feature = "bindings", uniffi::export)]
-pub fn derive_factor_output(factor: &FactorType) -> Value { factor.output() }
+pub fn derive_factor_output(factor: &FactorType<Derive>) -> Value { factor.output() }
 
 #[cfg(test)]
 mod tests {

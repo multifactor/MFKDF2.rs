@@ -3,7 +3,10 @@ use serde::{Deserialize, Serialize};
 use crate::{
   definitions::{MFKDF2DerivedKey, MFKDF2Factor},
   error::{MFKDF2Error, MFKDF2Result},
-  setup::key::{MFKDF2Options, key as setup_key},
+  setup::{
+    Setup,
+    key::{MFKDF2Options, key as setup_key},
+  },
 };
 
 #[cfg_attr(feature = "bindings", derive(uniffi::Record))]
@@ -27,7 +30,10 @@ impl From<PolicySetupOptions> for MFKDF2Options {
   }
 }
 
-pub fn setup(factor: MFKDF2Factor, options: PolicySetupOptions) -> MFKDF2Result<MFKDF2DerivedKey> {
+pub fn setup(
+  factor: MFKDF2Factor<Setup>,
+  options: PolicySetupOptions,
+) -> MFKDF2Result<MFKDF2DerivedKey> {
   let derived_key = setup_key(vec![factor], options.into())?;
 
   if !derived_key.policy.validate() {
@@ -39,7 +45,7 @@ pub fn setup(factor: MFKDF2Factor, options: PolicySetupOptions) -> MFKDF2Result<
 
 #[cfg_attr(feature = "bindings", uniffi::export)]
 pub async fn policy_setup(
-  factor: MFKDF2Factor,
+  factor: MFKDF2Factor<Setup>,
   options: PolicySetupOptions,
 ) -> MFKDF2Result<MFKDF2DerivedKey> {
   setup(factor, options)

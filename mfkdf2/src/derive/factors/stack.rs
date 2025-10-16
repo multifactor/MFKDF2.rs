@@ -7,10 +7,10 @@ use crate::{
   derive::FactorDerive,
   error::{MFKDF2Error, MFKDF2Result},
   policy::Policy,
-  setup::factors::stack::Stack,
+  setup::{Derive, factors::stack::Stack},
 };
 
-impl FactorDerive for Stack {
+impl FactorDerive for Stack<Derive> {
   type Output = Value;
   type Params = Value;
 
@@ -31,7 +31,7 @@ impl FactorDerive for Stack {
   fn output(&self) -> Self::Output { serde_json::to_value(&self.key).unwrap_or(json!({})) }
 }
 
-pub fn stack(factors: HashMap<String, MFKDF2Factor>) -> MFKDF2Result<MFKDF2Factor> {
+pub fn stack(factors: HashMap<String, MFKDF2Factor<Derive>>) -> MFKDF2Result<MFKDF2Factor<Derive>> {
   if factors.is_empty() {
     return Err(MFKDF2Error::InvalidDeriveParams("factors".to_string()));
   }
@@ -45,7 +45,9 @@ pub fn stack(factors: HashMap<String, MFKDF2Factor>) -> MFKDF2Result<MFKDF2Facto
 }
 
 #[cfg_attr(feature = "bindings", uniffi::export)]
-pub async fn derive_stack(factors: HashMap<String, MFKDF2Factor>) -> MFKDF2Result<MFKDF2Factor> {
+pub async fn derive_stack(
+  factors: HashMap<String, MFKDF2Factor<Derive>>,
+) -> MFKDF2Result<MFKDF2Factor<Derive>> {
   stack(factors)
 }
 

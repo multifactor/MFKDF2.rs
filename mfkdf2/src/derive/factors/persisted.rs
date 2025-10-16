@@ -5,6 +5,7 @@ use crate::{
   definitions::{FactorMetadata, FactorType, MFKDF2Factor},
   derive::FactorDerive,
   error::MFKDF2Result,
+  setup::Derive,
 };
 
 #[cfg_attr(feature = "bindings", derive(uniffi::Record))]
@@ -28,7 +29,7 @@ impl FactorDerive for Persisted {
   fn output(&self) -> Self::Output { Value::Null }
 }
 
-pub fn persisted(share: Vec<u8>) -> MFKDF2Result<MFKDF2Factor> {
+pub fn persisted(share: Vec<u8>) -> MFKDF2Result<MFKDF2Factor<Derive>> {
   Ok(MFKDF2Factor {
     id:          Some("persisted".to_string()),
     factor_type: FactorType::Persisted(Persisted { share }),
@@ -38,7 +39,9 @@ pub fn persisted(share: Vec<u8>) -> MFKDF2Result<MFKDF2Factor> {
 }
 
 #[cfg_attr(feature = "bindings", uniffi::export)]
-pub async fn derive_persisted(share: Vec<u8>) -> MFKDF2Result<MFKDF2Factor> { persisted(share) }
+pub async fn derive_persisted(share: Vec<u8>) -> MFKDF2Result<MFKDF2Factor<Derive>> {
+  persisted(share)
+}
 
 #[cfg(test)]
 mod tests {

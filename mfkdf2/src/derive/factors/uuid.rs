@@ -5,7 +5,7 @@ use crate::{
   definitions::{FactorType, MFKDF2Factor},
   derive::FactorDerive,
   error::MFKDF2Result,
-  setup::factors::uuid::UUIDFactor,
+  setup::{Derive, factors::uuid::UUIDFactor},
 };
 
 impl FactorDerive for UUIDFactor {
@@ -21,7 +21,7 @@ impl FactorDerive for UUIDFactor {
   }
 }
 
-pub fn uuid(uuid: Uuid) -> MFKDF2Result<MFKDF2Factor> {
+pub fn uuid(uuid: Uuid) -> MFKDF2Result<MFKDF2Factor<Derive>> {
   Ok(MFKDF2Factor {
     id:          None,
     factor_type: FactorType::UUID(UUIDFactor { uuid }),
@@ -31,7 +31,7 @@ pub fn uuid(uuid: Uuid) -> MFKDF2Result<MFKDF2Factor> {
 }
 
 #[cfg_attr(feature = "bindings", uniffi::export)]
-pub async fn derive_uuid(uuid: Uuid) -> MFKDF2Result<MFKDF2Factor> {
+pub async fn derive_uuid(uuid: Uuid) -> MFKDF2Result<MFKDF2Factor<Derive>> {
   crate::derive::factors::uuid(uuid)
 }
 
