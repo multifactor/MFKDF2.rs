@@ -72,13 +72,13 @@ pub struct HOTP {
 
 impl FactorMetadata for HOTP {
   fn kind(&self) -> String { "hotp".to_string() }
+
+  fn bytes(&self) -> Vec<u8> { self.target.to_be_bytes().to_vec() }
 }
 
 impl FactorSetup for HOTP {
   type Output = Value;
   type Params = Value;
-
-  fn bytes(&self) -> Vec<u8> { self.target.to_be_bytes().to_vec() }
 
   fn params(&self, key: Key) -> MFKDF2Result<Self::Params> {
     // Generate or use provided secret

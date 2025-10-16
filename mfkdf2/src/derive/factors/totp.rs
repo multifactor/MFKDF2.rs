@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 #[cfg(not(target_arch = "wasm32"))]
 use std::time::{SystemTime, UNIX_EPOCH};
 
@@ -22,7 +23,7 @@ use crate::{
 #[derive(Clone, Debug, Default, Serialize, Deserialize)]
 pub struct TOTPDeriveOptions {
   pub time:   Option<u64>,
-  pub oracle: Option<Vec<u32>>,
+  pub oracle: Option<HashMap<u64, u32>>,
 }
 
 impl From<TOTPDeriveOptions> for TOTPOptions {
@@ -85,10 +86,12 @@ impl FactorDerive for TOTP {
         MFKDF2Error::InvalidDeriveParams("failed to read 4-byte offset from offsets".to_string())
       })?);
 
-    let oracle_time = (now_counter * step * 1000) as usize;
-    if self.options.oracle.is_some() && self.options.oracle.as_ref().unwrap().len() > oracle_time {
+    let oracle_time = now_counter * step * 1000;
+    if self.options.oracle.is_some()
+      && self.options.oracle.as_ref().unwrap().contains_key(&oracle_time)
+    {
       offset = mod_positive(
-        offset as i64 - self.options.oracle.as_ref().unwrap()[oracle_time] as i64,
+        offset as i64 - *self.options.oracle.as_ref().unwrap().get(&oracle_time).unwrap() as i64,
         10_i64.pow(digits as u32),
       ) as u32;
     }
@@ -125,11 +128,12 @@ impl FactorDerive for TOTP {
       let mut offset =
         mod_positive(self.target as i64 - code as i64, 10_i64.pow(digits as u32)) as u32;
 
-      let oracle_time = (counter * step * 1000) as usize;
-      if self.options.oracle.is_some() && self.options.oracle.as_ref().unwrap().len() > oracle_time
+      let oracle_time = counter * step * 1000;
+      if self.options.oracle.is_some()
+        && self.options.oracle.as_ref().unwrap().contains_key(&oracle_time)
       {
         offset = mod_positive(
-          offset as i64 - self.options.oracle.as_ref().unwrap()[oracle_time] as i64,
+          offset as i64 + *self.options.oracle.as_ref().unwrap().get(&oracle_time).unwrap() as i64,
           10_i64.pow(digits as u32),
         ) as u32;
       }

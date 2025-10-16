@@ -35,7 +35,7 @@ impl FactorDerive for HmacSha1 {
     Ok(())
   }
 
-  fn params(&self, _key: Key) -> MFKDF2Result<Value> {
+  fn params(&self, _key: Key) -> MFKDF2Result<Self::Params> {
     let mut challenge = [0u8; 64];
     OsRng.fill_bytes(&mut challenge);
 
@@ -52,7 +52,7 @@ impl FactorDerive for HmacSha1 {
 
   fn output(&self) -> Self::Output {
     json!({
-      "secret": self.padded_secret[..20],
+      "secret": self.padded_secret,
     })
   }
 }
@@ -215,6 +215,6 @@ mod tests {
       _ => panic!(),
     };
 
-    assert_eq!(secret, &derive_hmac_factor.padded_secret[..20]);
+    assert_eq!(secret, derive_hmac_factor.padded_secret);
   }
 }

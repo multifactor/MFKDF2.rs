@@ -30,7 +30,7 @@ suite('factors/totp', () => {
     // calculate code every time to ensure latest code usage
     let code = parseInt(
       speakeasy.totp({
-        secret: Buffer.from(setup.outputs.totp.secret, 'base64').toString('hex'),
+        secret: Buffer.from(setup.outputs.totp.secret).toString('hex'),
         encoding: 'hex',
         step: setup.outputs.totp.period,
         algorithm: setup.outputs.totp.algorithm,
@@ -44,7 +44,7 @@ suite('factors/totp', () => {
 
     code = parseInt(
       speakeasy.totp({
-        secret: Buffer.from(setup.outputs.totp.secret, 'base64').toString('hex'),
+        secret: Buffer.from(setup.outputs.totp.secret).toString('hex'),
         encoding: 'hex',
         step: setup.outputs.totp.period,
         algorithm: setup.outputs.totp.algorithm,
@@ -58,7 +58,7 @@ suite('factors/totp', () => {
 
     code = parseInt(
       speakeasy.totp({
-        secret: Buffer.from(setup.outputs.totp.secret, 'base64').toString('hex'),
+        secret: Buffer.from(setup.outputs.totp.secret).toString('hex'),
         encoding: 'hex',
         step: setup.outputs.totp.period,
         algorithm: setup.outputs.totp.algorithm,
@@ -79,20 +79,20 @@ suite('factors/totp', () => {
     const setup = await mfkdf.setup.key([
       await mfkdf.setup.factors.totp({
         secret: Buffer.from('abcdefghijklmnopqrst'),
-        time: BigInt(1) // Changed: time needs to be BigInt
+        time: 1
       })
     ]);
 
     const derive1 = await mfkdf.derive.key(setup.policy, {
-      totp: await mfkdf.derive.factors.totp(953265, { time: BigInt(1) })
+      totp: await mfkdf.derive.factors.totp(953265, { time: 1 })
     });
 
     const derive2 = await mfkdf.derive.key(derive1.policy, {
-      totp: await mfkdf.derive.factors.totp(241063, { time: BigInt(30001) })
+      totp: await mfkdf.derive.factors.totp(241063, { time: 30001 })
     });
 
     const derive3 = await mfkdf.derive.key(derive1.policy, {
-      totp: await mfkdf.derive.factors.totp(361687, { time: BigInt(60001) })
+      totp: await mfkdf.derive.factors.totp(361687, { time: 60001 })
     });
 
     derive1.key.toString('hex').should.equal(setup.key.toString('hex'));
@@ -114,17 +114,16 @@ suite('factors/totp', () => {
     */
 
     test('code/window', async () => {
-      // Changed: use exactly 20 bytes for TOTP secret, pass Buffer directly
       const setup = await mfkdf.setup.key([
         await mfkdf.setup.factors.totp({
           secret: Buffer.from('abcdefghijklmnopqrst'),
-          time: BigInt(1650430806597) // Changed: time needs to be BigInt
+          time: 1650430806597
         })
       ]);
 
       await mfkdf.derive
         .key(setup.policy, {
-          totp: await mfkdf.derive.factors.totp(953265, { time: BigInt(1750430943604) }) // Changed: await the derive factor
+          totp: await mfkdf.derive.factors.totp(953265, { time: 1750430943604 })
         })
         .should.be.rejectedWith(Mfkdf2Error.TotpWindowExceeded);
     });
