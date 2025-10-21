@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use argon2::{Argon2, Params, Version};
 use base64::{Engine, engine::general_purpose};
-use ssskit::{SecretSharing, Share};
+use gf256sss::{SecretSharing, Share};
 
 use crate::{
   constants::SECRET_SHARING_POLY,
@@ -85,7 +85,7 @@ pub fn key(
   }
 
   // only first 33 bytes are needed from the share due to byte encoding (x=1 + y=32)
-  // TODO (@lonerapier): remove stupid clones by fixing ssskit fork
+  // TODO (@lonerapier): remove stupid clones by fixing gf256sss fork
   let shares_vec: Vec<Option<Share<SECRET_SHARING_POLY>>> = shares_bytes
     .iter()
     .map(|opt| {
@@ -192,7 +192,6 @@ mod tests {
     time::{SystemTime, UNIX_EPOCH},
   };
 
-  use rand::{RngCore, rngs::OsRng};
   use serde_json::Value;
 
   use super::*;
@@ -614,7 +613,7 @@ mod tests {
   #[test]
   fn passkeys_liveness() -> Result<(), MFKDF2Error> {
     let mut prf = [0u8; 32];
-    OsRng.fill_bytes(&mut prf);
+    rand::fill(&mut prf);
     let setup_derived_key = setup::key::key(
       vec![setup_passkey(prf, PasskeyOptions::default())?],
       MFKDF2Options::default(),
@@ -634,14 +633,14 @@ mod tests {
   #[test]
   fn passkeys_safety() -> Result<(), MFKDF2Error> {
     let mut prf = [0u8; 32];
-    OsRng.fill_bytes(&mut prf);
+    rand::fill(&mut prf);
     let setup_derived_key = setup::key::key(
       vec![setup_passkey(prf, PasskeyOptions::default())?],
       MFKDF2Options::default(),
     )?;
 
     let mut prf2 = [0u8; 32];
-    OsRng.fill_bytes(&mut prf2);
+    rand::fill(&mut prf2);
 
     let derive = derive::key(
       setup_derived_key.policy,

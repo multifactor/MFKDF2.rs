@@ -65,7 +65,7 @@ suite('mfkdf2/security', () => {
     })
   })
 
-  /* TODO (@lonerapier): Implement this test after sharks repo is updated
+  /* TODO (@lonerapier): Implement this test after gf256sss repo is updated
   suite('share-indistinguishability', () => {
     test('share-size', async () => {
       const secret = crypto.randomBytes(32)

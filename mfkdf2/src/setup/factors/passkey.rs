@@ -1,4 +1,3 @@
-use rand::{RngCore, rngs::OsRng};
 use serde::{Deserialize, Serialize};
 
 use crate::{
@@ -44,7 +43,7 @@ pub fn passkey(secret: [u8; 32], options: PasskeyOptions) -> MFKDF2Result<MFKDF2
   let id = options.id.clone().unwrap_or("passkey".to_string());
 
   let mut salt = [0u8; 32];
-  OsRng.fill_bytes(&mut salt);
+  rand::fill(&mut salt);
 
   Ok(MFKDF2Factor {
     id:          Some(id),
