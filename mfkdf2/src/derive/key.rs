@@ -192,6 +192,7 @@ mod tests {
     time::{SystemTime, UNIX_EPOCH},
   };
 
+  use rand::{RngCore, rngs::OsRng};
   use serde_json::Value;
 
   use super::*;
@@ -613,7 +614,7 @@ mod tests {
   #[test]
   fn passkeys_liveness() -> Result<(), MFKDF2Error> {
     let mut prf = [0u8; 32];
-    rand::fill(&mut prf);
+    OsRng.fill_bytes(&mut prf);
     let setup_derived_key = setup::key::key(
       vec![setup_passkey(prf, PasskeyOptions::default())?],
       MFKDF2Options::default(),
@@ -633,14 +634,14 @@ mod tests {
   #[test]
   fn passkeys_safety() -> Result<(), MFKDF2Error> {
     let mut prf = [0u8; 32];
-    rand::fill(&mut prf);
+    OsRng.fill_bytes(&mut prf);
     let setup_derived_key = setup::key::key(
       vec![setup_passkey(prf, PasskeyOptions::default())?],
       MFKDF2Options::default(),
     )?;
 
     let mut prf2 = [0u8; 32];
-    rand::fill(&mut prf2);
+    OsRng.fill_bytes(&mut prf2);
 
     let derive = derive::key(
       setup_derived_key.policy,

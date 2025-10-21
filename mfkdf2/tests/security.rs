@@ -20,6 +20,7 @@ use mfkdf2::{
     key::MFKDF2Options,
   },
 };
+use rand::{RngCore, rngs::OsRng};
 use serde_json::Value;
 
 // Helper function to perform XOR operation on two byte arrays
@@ -88,7 +89,7 @@ async fn factor_fungibility_incorrect() {
 #[tokio::test]
 async fn share_indistinguishability_share_size() -> Result<(), MFKDF2Error> {
   let mut secret = [0u8; 32];
-  rand::fill(&mut secret);
+  OsRng.fill_bytes(&mut secret);
 
   // TODO (@lonerapier): Implement this test after gf256sss repo is updated
 

@@ -1,6 +1,7 @@
 use std::collections::{HashMap, HashSet};
 
 use base64::{Engine, engine::general_purpose};
+use rand::{RngCore, rngs::OsRng};
 
 use crate::{
   constants::SECRET_SHARING_POLY,
@@ -81,7 +82,7 @@ impl MFKDF2DerivedKey {
 
     for factor in add_factor {
       let mut salt = [0u8; 32];
-      rand::fill(&mut salt);
+      OsRng.fill_bytes(&mut salt);
 
       let id = factor.id.clone().ok_or(MFKDF2Error::MissingFactorId)?;
 
@@ -122,7 +123,7 @@ impl MFKDF2DerivedKey {
       return Err(MFKDF2Error::InvalidThreshold);
     }
 
-    let dealer = gf256sss::SecretSharing(threshold).dealer_rng(&self.secret, &mut rand::rng());
+    let dealer = gf256sss::SecretSharing(threshold).dealer_rng(&self.secret, &mut OsRng);
     let shares: Vec<Vec<u8>> = dealer
       .take(factors.len())
       .map(|s: gf256sss::Share<SECRET_SHARING_POLY>| Vec::from(&s))
