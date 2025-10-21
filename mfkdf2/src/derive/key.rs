@@ -2,9 +2,10 @@ use std::collections::HashMap;
 
 use argon2::{Argon2, Params, Version};
 use base64::{Engine, engine::general_purpose};
-use sharks::{Share, Sharks};
+use gf256sss::{SecretSharing, Share};
 
 use crate::{
+  constants::SECRET_SHARING_POLY,
   crypto::{decrypt, hkdf_sha256_with_info, hmacsha256},
   definitions::{MFKDF2DerivedKey, MFKDF2Entropy, MFKDF2Factor},
   derive::FactorDerive,
@@ -84,8 +85,8 @@ pub fn key(
   }
 
   // only first 33 bytes are needed from the share due to byte encoding (x=1 + y=32)
-  // TODO (@lonerapier): remove stupid clones by fixing sharks fork
-  let shares_vec: Vec<Option<Share>> = shares_bytes
+  // TODO (@lonerapier): remove stupid clones by fixing gf256sss fork
+  let shares_vec: Vec<Option<Share<SECRET_SHARING_POLY>>> = shares_bytes
     .iter()
     .map(|opt| {
       opt
@@ -93,11 +94,11 @@ pub fn key(
         .map(|b| Share::try_from(&b[..1 + 32]).map_err(|_| MFKDF2Error::TryFromVecError))
         .transpose()
     })
-    .collect::<Result<Vec<Option<Share>>, _>>()?;
+    .collect::<Result<Vec<Option<Share<SECRET_SHARING_POLY>>>, _>>()?;
 
-  let sharks = Sharks(policy.threshold);
-  let secret = sharks
-    .recover(&shares_vec.clone().into_iter().flatten().collect::<Vec<Share>>())
+  let sss = SecretSharing(policy.threshold);
+  let secret = sss
+    .recover(&shares_vec.clone().into_iter().flatten().collect::<Vec<Share<SECRET_SHARING_POLY>>>())
     .map_err(|_| MFKDF2Error::ShareRecoveryError)?;
   let secret_arr: [u8; 32] = secret[..32].try_into().map_err(|_| MFKDF2Error::TryFromVecError)?;
   let salt_bytes = general_purpose::STANDARD.decode(&policy.salt)?;
@@ -157,9 +158,9 @@ pub fn key(
     new_policy.hmac = hmac;
   }
 
-  let original_shares = sharks
+  let original_shares = sss
     .recover_shares(
-      shares_vec.iter().map(|s| s.as_ref()).collect::<Vec<Option<&Share>>>(),
+      shares_vec.iter().map(|s| s.as_ref()).collect::<Vec<Option<&Share<SECRET_SHARING_POLY>>>>(),
       policy.factors.len(),
     )
     .map_err(|_| MFKDF2Error::ShareRecoveryError)?;
@@ -191,7 +192,6 @@ mod tests {
     time::{SystemTime, UNIX_EPOCH},
   };
 
-  use rand::{RngCore, rngs::OsRng};
   use serde_json::Value;
 
   use super::*;
@@ -613,7 +613,7 @@ mod tests {
   #[test]
   fn passkeys_liveness() -> Result<(), MFKDF2Error> {
     let mut prf = [0u8; 32];
-    OsRng.fill_bytes(&mut prf);
+    rand::fill(&mut prf);
     let setup_derived_key = setup::key::key(
       vec![setup_passkey(prf, PasskeyOptions::default())?],
       MFKDF2Options::default(),
@@ -633,14 +633,14 @@ mod tests {
   #[test]
   fn passkeys_safety() -> Result<(), MFKDF2Error> {
     let mut prf = [0u8; 32];
-    OsRng.fill_bytes(&mut prf);
+    rand::fill(&mut prf);
     let setup_derived_key = setup::key::key(
       vec![setup_passkey(prf, PasskeyOptions::default())?],
       MFKDF2Options::default(),
     )?;
 
     let mut prf2 = [0u8; 32];
-    OsRng.fill_bytes(&mut prf2);
+    rand::fill(&mut prf2);
 
     let derive = derive::key(
       setup_derived_key.policy,

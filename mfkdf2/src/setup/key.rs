@@ -4,12 +4,12 @@ use std::collections::{HashMap, HashSet};
 
 use argon2::{Argon2, Params, Version};
 use base64::{Engine, engine::general_purpose};
-use rand::{RngCore, rngs::OsRng};
+use gf256sss::{SecretSharing, Share};
 use serde::{Deserialize, Serialize};
-use sharks::{Share, Sharks};
 use uuid::Uuid;
 
 use crate::{
+  constants::SECRET_SHARING_POLY,
   crypto::{encrypt, hkdf_sha256_with_info, hmacsha256},
   definitions::{MFKDF2DerivedKey, MFKDF2Factor},
   error::{MFKDF2Error, MFKDF2Result},
@@ -47,9 +47,8 @@ pub struct MFKDF2Options {
 
 impl Default for MFKDF2Options {
   fn default() -> Self {
-    let mut rng = OsRng;
     let mut salt = [0u8; 32];
-    rng.fill_bytes(&mut salt);
+    rand::fill(&mut salt);
 
     Self {
       id:        Some(uuid::Uuid::new_v4().to_string()),
@@ -78,7 +77,7 @@ pub fn key(factors: Vec<MFKDF2Factor>, options: MFKDF2Options) -> MFKDF2Result<M
     Some(salt) => salt,
     None => {
       let mut salt = [0u8; 32];
-      OsRng.fill_bytes(&mut salt);
+      rand::fill(&mut salt);
       salt.to_vec()
     },
   };
@@ -100,10 +99,10 @@ pub fn key(factors: Vec<MFKDF2Factor>, options: MFKDF2Options) -> MFKDF2Result<M
 
   // master secret
   let mut secret: [u8; 32] = [0u8; 32];
-  OsRng.fill_bytes(&mut secret);
+  rand::fill(&mut secret);
 
   let mut key = [0u8; 32];
-  OsRng.fill_bytes(&mut key);
+  rand::fill(&mut key);
 
   // Generate key
   let mut kek = [0u8; 32];
@@ -129,8 +128,10 @@ pub fn key(factors: Vec<MFKDF2Factor>, options: MFKDF2Options) -> MFKDF2Result<M
   let policy_key = encrypt(&key, &kek);
 
   // Split secret into Shamir shares
-  let dealer = Sharks(threshold).dealer_rng(&secret, &mut OsRng);
-  let shares: Vec<Vec<u8>> = dealer.take(factors.len()).map(|s: Share| Vec::from(&s)).collect();
+  let dealer =
+    SecretSharing::<SECRET_SHARING_POLY>(threshold).dealer_rng(&secret, &mut rand::rng());
+  let shares: Vec<Vec<u8>> =
+    dealer.take(factors.len()).map(|s: Share<SECRET_SHARING_POLY>| Vec::from(&s)).collect();
 
   let mut policy_factors = Vec::new();
   let mut ids = HashSet::new();
@@ -382,14 +383,14 @@ mod tests {
     }
 
     // combine shares to get secret
-    let shares_vec: Vec<Share> = shares
+    let shares_vec: Vec<Share<SECRET_SHARING_POLY>> = shares
       .iter()
       .map(|b| Share::try_from(&b[..]).map_err(|_| MFKDF2Error::TryFromVecError))
-      .collect::<Result<Vec<Share>, _>>()
+      .collect::<Result<Vec<Share<SECRET_SHARING_POLY>>, _>>()
       .unwrap();
 
-    let sharks = Sharks(derived_key.policy.threshold);
-    let secret = sharks.recover(&shares_vec).unwrap();
+    let sss = SecretSharing(derived_key.policy.threshold);
+    let secret = sss.recover(&shares_vec).unwrap();
 
     assert_eq!(secret[..32], derived_key.secret);
   }
@@ -432,14 +433,14 @@ mod tests {
     let shares_to_recover: Vec<Vec<u8>> =
       derived_key.shares.iter().take(threshold as usize).cloned().collect();
 
-    let shares_vec: Vec<Share> = shares_to_recover
+    let shares_vec: Vec<Share<SECRET_SHARING_POLY>> = shares_to_recover
       .iter()
       .map(|b| Share::try_from(&b[..]).map_err(|_| MFKDF2Error::TryFromVecError))
-      .collect::<Result<Vec<Share>, _>>()
+      .collect::<Result<Vec<Share<SECRET_SHARING_POLY>>, _>>()
       .unwrap();
 
-    let sharks = Sharks(threshold);
-    let recovered_secret = sharks.recover(&shares_vec).unwrap();
+    let sss = SecretSharing(threshold);
+    let recovered_secret = sss.recover(&shares_vec).unwrap();
 
     assert_eq!(recovered_secret[..32], derived_key.secret);
   }

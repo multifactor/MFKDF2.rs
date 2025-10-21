@@ -53,17 +53,15 @@ pub fn hmacsha256(secret: &[u8], input: &[u8]) -> [u8; 32] {
 
 #[cfg(test)]
 mod tests {
-  use rand::{RngCore, rngs::OsRng};
-
   use super::*;
 
   #[test]
   fn encrypt_decrypt_roundtrip() {
     let mut key = [0u8; 32];
-    OsRng.fill_bytes(&mut key);
+    rand::fill(&mut key);
 
     let mut data = [0u8; 32]; // multiple of 16
-    OsRng.fill_bytes(&mut data);
+    rand::fill(&mut data);
 
     let encrypted = encrypt(&data, &key);
     let decrypted = decrypt(encrypted, &key);
@@ -74,10 +72,10 @@ mod tests {
   #[test]
   fn encrypt_decrypt_roundtrip_non_multiple() {
     let mut key = [0u8; 32];
-    OsRng.fill_bytes(&mut key);
+    rand::fill(&mut key);
 
     let mut data = [0u8; 42]; // not a multiple of 16
-    OsRng.fill_bytes(&mut data);
+    rand::fill(&mut data);
 
     let encrypted = encrypt(&data, &key);
     let decrypted = decrypt(encrypted, &key);
@@ -88,12 +86,12 @@ mod tests {
   #[test]
   fn decrypt_with_wrong_key() {
     let mut key1 = [0u8; 32];
-    OsRng.fill_bytes(&mut key1);
+    rand::fill(&mut key1);
     let mut key2 = [0u8; 32];
-    OsRng.fill_bytes(&mut key2);
+    rand::fill(&mut key2);
 
     let mut data = [0u8; 32];
-    OsRng.fill_bytes(&mut data);
+    rand::fill(&mut data);
 
     let encrypted = encrypt(&data, &key1);
     let decrypted = decrypt(encrypted, &key2);
@@ -104,10 +102,10 @@ mod tests {
   #[test]
   fn decrypt_modified_ciphertext() {
     let mut key = [0u8; 32];
-    OsRng.fill_bytes(&mut key);
+    rand::fill(&mut key);
 
     let mut data = [0u8; 32];
-    OsRng.fill_bytes(&mut data);
+    rand::fill(&mut data);
 
     let mut encrypted = encrypt(&data, &key);
     encrypted[0] ^= 0xff; // Modify a byte
@@ -120,7 +118,7 @@ mod tests {
   #[test]
   fn ciphertext_length() {
     let mut key = [0u8; 32];
-    OsRng.fill_bytes(&mut key);
+    rand::fill(&mut key);
 
     // Test with data length that is a multiple of 16
     let data1 = vec![0u8; 32];
@@ -137,7 +135,7 @@ mod tests {
   #[should_panic]
   fn decrypt_invalid_length() {
     let mut key = [0u8; 32];
-    OsRng.fill_bytes(&mut key);
+    rand::fill(&mut key);
 
     let data = vec![0u8; 17]; // Not a multiple of 16
     decrypt(data, &key); // This should panic

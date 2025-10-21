@@ -1,4 +1,4 @@
-use rand::{SeedableRng, distributions::Distribution};
+use rand::{SeedableRng, distr::Distribution};
 use rand_regex::Regex;
 
 impl crate::definitions::MFKDF2DerivedKey {
