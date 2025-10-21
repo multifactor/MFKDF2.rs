@@ -1,5 +1,6 @@
 use base64::{Engine, engine::general_purpose};
 use jsonwebtoken::jwk::Jwk;
+use rand::{Rng, RngCore, rngs::OsRng};
 use rsa::{Oaep, RsaPublicKey};
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
@@ -16,7 +17,7 @@ use crate::{
 pub fn generate_alphanumeric_characters(length: u32) -> String {
   (0..length)
     .map(|_| {
-      let n: u8 = rand::random_range(0..36); // 0–35
+      let n: u8 = OsRng.gen_range(0..36); // 0–35
       char::from_digit(n as u32, 36).unwrap() // base-36 => 0–9, a–z
     })
     .collect()
@@ -143,11 +144,11 @@ pub fn ooba(options: OobaOptions) -> MFKDF2Result<MFKDF2Factor> {
 
   // Generate 32-byte random target (the factor's data)
   let mut target = [0u8; 32];
-  rand::fill(&mut target);
+  OsRng.fill_bytes(&mut target);
 
   // Random salt to align with other factors shape
   let mut salt = [0u8; 32];
-  rand::fill(&mut salt);
+  OsRng.fill_bytes(&mut salt);
 
   Ok(MFKDF2Factor {
     id:          Some(options.id.unwrap_or("ooba".to_string())),

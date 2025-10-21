@@ -5,6 +5,7 @@ use std::collections::{HashMap, HashSet};
 use argon2::{Argon2, Params, Version};
 use base64::{Engine, engine::general_purpose};
 use gf256sss::{SecretSharing, Share};
+use rand::{RngCore, rngs::OsRng};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
@@ -48,7 +49,7 @@ pub struct MFKDF2Options {
 impl Default for MFKDF2Options {
   fn default() -> Self {
     let mut salt = [0u8; 32];
-    rand::fill(&mut salt);
+    OsRng.fill_bytes(&mut salt);
 
     Self {
       id:        Some(uuid::Uuid::new_v4().to_string()),
@@ -77,7 +78,7 @@ pub fn key(factors: Vec<MFKDF2Factor>, options: MFKDF2Options) -> MFKDF2Result<M
     Some(salt) => salt,
     None => {
       let mut salt = [0u8; 32];
-      rand::fill(&mut salt);
+      OsRng.fill_bytes(&mut salt);
       salt.to_vec()
     },
   };
@@ -99,10 +100,10 @@ pub fn key(factors: Vec<MFKDF2Factor>, options: MFKDF2Options) -> MFKDF2Result<M
 
   // master secret
   let mut secret: [u8; 32] = [0u8; 32];
-  rand::fill(&mut secret);
+  OsRng.fill_bytes(&mut secret);
 
   let mut key = [0u8; 32];
-  rand::fill(&mut key);
+  OsRng.fill_bytes(&mut key);
 
   // Generate key
   let mut kek = [0u8; 32];
@@ -128,8 +129,7 @@ pub fn key(factors: Vec<MFKDF2Factor>, options: MFKDF2Options) -> MFKDF2Result<M
   let policy_key = encrypt(&key, &kek);
 
   // Split secret into Shamir shares
-  let dealer =
-    SecretSharing::<SECRET_SHARING_POLY>(threshold).dealer_rng(&secret, &mut rand::rng());
+  let dealer = SecretSharing::<SECRET_SHARING_POLY>(threshold).dealer_rng(&secret, &mut OsRng);
   let shares: Vec<Vec<u8>> =
     dealer.take(factors.len()).map(|s: Share<SECRET_SHARING_POLY>| Vec::from(&s)).collect();
 

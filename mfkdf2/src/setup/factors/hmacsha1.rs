@@ -1,3 +1,4 @@
+use rand::{RngCore, rngs::OsRng};
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 
@@ -46,7 +47,7 @@ impl FactorSetup for HmacSha1 {
 
   fn params(&self, _key: Key) -> MFKDF2Result<Value> {
     let mut challenge = [0u8; 64];
-    rand::fill(&mut challenge);
+    OsRng.fill_bytes(&mut challenge);
 
     let response = crate::crypto::hmacsha1(&self.padded_secret[..20], &challenge);
     let mut padded_key = [0u8; 32];
@@ -79,18 +80,18 @@ pub fn hmacsha1(options: HmacSha1Options) -> MFKDF2Result<MFKDF2Factor> {
     secret
   } else {
     let mut secret = [0u8; 20];
-    rand::fill(&mut secret);
+    OsRng.fill_bytes(&mut secret);
     secret.to_vec()
   };
   if secret.len() != 20 {
     return Err(crate::error::MFKDF2Error::InvalidSecretLength(id));
   }
   let mut secret_pad = [0u8; 12];
-  rand::fill(&mut secret_pad);
+  OsRng.fill_bytes(&mut secret_pad);
   let padded_secret = secret.iter().chain(secret_pad.iter()).cloned().collect();
 
   let mut salt = [0u8; 32];
-  rand::fill(&mut salt);
+  OsRng.fill_bytes(&mut salt);
 
   Ok(MFKDF2Factor {
     id:          Some(id),

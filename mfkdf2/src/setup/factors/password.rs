@@ -1,3 +1,4 @@
+use rand::{RngCore, rngs::OsRng};
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 use zxcvbn::zxcvbn;
@@ -56,7 +57,7 @@ pub fn password(
 
   // per-factor salt
   let mut salt = [0u8; 32];
-  rand::fill(&mut salt);
+  OsRng.fill_bytes(&mut salt);
 
   Ok(MFKDF2Factor {
     id:          Some(options.id.unwrap_or("password".to_string())),
