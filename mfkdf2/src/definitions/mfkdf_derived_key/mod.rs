@@ -5,6 +5,13 @@ use serde::{Deserialize, Serialize};
 
 use crate::{definitions::entropy::MFKDF2Entropy, policy::Policy};
 
+pub mod crypto;
+pub mod hints;
+pub mod mfdpg;
+pub mod persistence;
+pub mod reconstitution;
+pub mod strengthening;
+
 #[cfg_attr(feature = "bindings", derive(uniffi::Record))]
 #[derive(Clone, Debug, Default, Serialize, Deserialize, Eq, PartialEq)]
 pub struct MFKDF2DerivedKey {

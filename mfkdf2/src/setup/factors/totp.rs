@@ -1,8 +1,9 @@
+use std::collections::HashMap;
 #[cfg(not(target_arch = "wasm32"))]
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use base64::Engine;
-use rand::{Rng, RngCore, rngs::OsRng};
+use rand::{RngCore, rngs::OsRng};
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 #[cfg(target_arch = "wasm32")]
@@ -30,7 +31,7 @@ pub struct TOTPOptions {
   pub time:   Option<u64>, // Unix epoch time in milliseconds
   pub window: u64,
   pub step:   u64,
-  pub oracle: Option<Vec<u32>>,
+  pub oracle: Option<HashMap<u64, u32>>,
 }
 
 impl Default for TOTPOptions {
@@ -65,13 +66,13 @@ fn mod_positive(n: i64, m: i64) -> i64 { ((n % m) + m) % m }
 
 impl FactorMetadata for TOTP {
   fn kind(&self) -> String { "totp".to_string() }
+
+  fn bytes(&self) -> Vec<u8> { self.target.to_be_bytes().to_vec() }
 }
 
 impl FactorSetup for TOTP {
   type Output = Value;
   type Params = Value;
-
-  fn bytes(&self) -> Vec<u8> { self.target.to_be_bytes().to_vec() }
 
   fn params(&self, key: Key) -> MFKDF2Result<Self::Params> {
     let time =
@@ -89,9 +90,19 @@ impl FactorSetup for TOTP {
       let code =
         generate_hotp_code(&padded_secret[..20], counter, &self.options.hash, self.options.digits);
 
-      let offset =
+      let mut offset =
         mod_positive(self.target as i64 - code as i64, 10_i64.pow(self.options.digits as u32))
           as u32;
+
+      let oracle_time = counter * self.options.step * 1000;
+      if self.options.oracle.is_some()
+        && self.options.oracle.as_ref().unwrap().contains_key(&oracle_time)
+      {
+        offset = mod_positive(
+          offset as i64 + *self.options.oracle.as_ref().unwrap().get(&oracle_time).unwrap() as i64,
+          10_i64.pow(self.options.digits as u32),
+        ) as u32;
+      }
 
       offsets.extend_from_slice(&offset.to_be_bytes());
     }
@@ -114,7 +125,7 @@ impl FactorSetup for TOTP {
       "scheme": "otpauth",
       "type": "totp",
       "label": self.options.label,
-      "secret": base64::prelude::BASE64_STANDARD.encode(&self.options.secret.clone().unwrap()[..20]),
+      "secret": &self.options.secret.clone().unwrap()[..20],
       "issuer": self.options.issuer,
       "algorithm": self.options.hash.to_string(),
       "digits": self.options.digits,
@@ -147,9 +158,9 @@ pub fn totp(options: TOTPOptions) -> MFKDF2Result<MFKDF2Factor> {
   }
 
   let secret = options.secret.unwrap_or_else(|| {
-    let mut secret = vec![0u8; 20];
+    let mut secret = [0u8; 20];
     OsRng.fill_bytes(&mut secret);
-    secret
+    secret.to_vec()
   });
   let mut secret_pad = [0u8; 12];
   OsRng.fill_bytes(&mut secret_pad);
@@ -162,7 +173,7 @@ pub fn totp(options: TOTPOptions) -> MFKDF2Result<MFKDF2Factor> {
   }
 
   // Generate random target
-  let target = OsRng.gen_range(0..10_u32.pow(u32::from(options.digits)));
+  let target = OsRng.next_u32() % 10_u32.pow(u32::from(options.digits));
 
   let mut salt = [0u8; 32];
   OsRng.fill_bytes(&mut salt);
@@ -334,8 +345,12 @@ mod tests {
     assert_eq!(output["digits"], 8);
     assert_eq!(output["period"], 30);
 
-    let secret_b64 = output["secret"].as_str().unwrap();
-    let secret = base64::prelude::BASE64_STANDARD.decode(secret_b64).unwrap();
+    let secret = output["secret"]
+      .as_array()
+      .unwrap()
+      .iter()
+      .map(|v| v.as_u64().unwrap() as u8)
+      .collect::<Vec<u8>>();
     assert_eq!(secret.len(), 20);
     assert_eq!(secret, &totp_factor.options.secret.as_ref().unwrap()[..20]);
   }

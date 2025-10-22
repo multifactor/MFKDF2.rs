@@ -1,6 +1,7 @@
 #[cfg(feature = "bindings")]
 uniffi::setup_scaffolding!();
 
+pub mod constants;
 pub mod crypto;
 pub mod definitions;
 pub mod derive;

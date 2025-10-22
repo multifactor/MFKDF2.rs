@@ -28,13 +28,13 @@ pub struct UUIDFactor {
 
 impl FactorMetadata for UUIDFactor {
   fn kind(&self) -> String { "uuid".to_string() }
+
+  fn bytes(&self) -> Vec<u8> { self.uuid.as_bytes().to_vec() }
 }
 
 impl FactorSetup for UUIDFactor {
   type Output = Value;
   type Params = Value;
-
-  fn bytes(&self) -> Vec<u8> { self.uuid.as_bytes().to_vec() }
 
   fn output(&self, _key: Key) -> Self::Output {
     json!({

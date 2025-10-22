@@ -1,5 +1,4 @@
 use base64::{Engine, engine::general_purpose};
-use rand::rngs::OsRng;
 use rsa::Oaep;
 use serde_json::{Value, json};
 use sha2::Sha256;
@@ -58,7 +57,8 @@ impl FactorDerive for Ooba {
 
     let plaintext = serde_json::to_vec(&params)?;
     let public_key = OobaPublicKey::try_from(self.jwk.as_ref())?;
-    let ciphertext = public_key.0.encrypt(&mut OsRng, Oaep::new::<Sha256>(), &plaintext)?;
+    let ciphertext =
+      public_key.0.encrypt(&mut rsa::rand_core::OsRng, Oaep::new::<Sha256>(), &plaintext)?;
 
     Ok(json!({
         "length": self.length,
@@ -183,7 +183,8 @@ mod tests {
   fn params_derive_next_is_decryptable() {
     // 1. Generate a private key
     let bits = 2048;
-    let private_key = RsaPrivateKey::new(&mut OsRng, bits).expect("failed to generate a key");
+    let private_key =
+      RsaPrivateKey::new(&mut rsa::rand_core::OsRng, bits).expect("failed to generate a key");
     let public_key = RsaPublicKey::from(&private_key);
 
     // 2. & 3. create n and e strings

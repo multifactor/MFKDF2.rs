@@ -36,6 +36,7 @@ impl FactorType {
       FactorType::OOBA(ooba) => ooba,
       FactorType::Passkey(passkey) => passkey,
       FactorType::Stack(stack) => stack,
+      _ => unreachable!("Persisted factor should not be used in this context"),
     }
   }
 }
@@ -43,8 +44,6 @@ impl FactorType {
 impl FactorSetup for FactorType {
   type Output = Value;
   type Params = Value;
-
-  fn bytes(&self) -> Vec<u8> { self.setup().bytes() }
 
   fn params(&self, key: Key) -> MFKDF2Result<Self::Params> { self.setup().params(key) }
 

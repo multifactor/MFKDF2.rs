@@ -30,7 +30,7 @@ suite('factors/hmacsha1', () => {
     const setup = await mfkdf.setup.key([await mfkdf.setup.factors.hmacsha1()]);
 
     const secret = Buffer.from(setup.outputs.hmacsha1.secret);
-    // TODO (@lonerapier): convert it into a factor based enum, remove this json.parse
+    // TODO (@lonerapier): convert it into a factor based enum, remove this buffer.from
     const challenge1 = Buffer.from(setup.policy.factors[0].params.challenge, 'hex');
 
     const response1 = crypto
@@ -49,7 +49,7 @@ suite('factors/hmacsha1', () => {
       .digest();
 
     const derive2 = await mfkdf.derive.key(derive1.policy, {
-      hmacsha1: await mfkdf.derive.factors.hmacsha1(response2) // Changed: pass Buffer directly, not .buffer
+      hmacsha1: await mfkdf.derive.factors.hmacsha1(response2)
     });
 
     setup.key.toString('hex').should.equal(derive1.key.toString('hex'));

@@ -15,6 +15,9 @@ pub enum MFKDF2Error {
   #[error("invalid threshold! threshold must be between 1 and the number of factors!")]
   InvalidThreshold,
 
+  #[error("factor {0} does not exist!")]
+  MissingFactor(String),
+
   #[error("factor id is required!")]
   MissingFactorId,
 
@@ -70,9 +73,6 @@ pub enum MFKDF2Error {
   #[error("invalid ooba code")]
   InvalidOobaCode,
 
-  #[error("invalid passkey secret length")]
-  InvalidPasskeySecretLength,
-
   #[error("missing setup params: {0}")]
   MissingSetupParams(String),
 
@@ -87,6 +87,9 @@ pub enum MFKDF2Error {
 
   #[error("hint does not match for factor {0}")]
   HintMismatch(String),
+
+  #[error("invalid hint length: {0}")]
+  InvalidHintLength(&'static str),
 
   #[error(transparent)]
   Argon2Error(#[from] argon2::Error),

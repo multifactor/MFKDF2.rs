@@ -186,7 +186,7 @@ pub fn create_setup_factor(name: &str) -> mfkdf2::definitions::MFKDF2Factor {
     })
     .unwrap(),
     "passkey" => mfkdf2::setup::factors::passkey::passkey(
-      PASSKEY_SECRET.to_vec(),
+      PASSKEY_SECRET,
       mfkdf2::setup::factors::passkey::PasskeyOptions { id: Some("passkey_1".to_string()) },
     )
     .unwrap(),
@@ -247,10 +247,8 @@ pub fn create_derive_factor(
       let code = params["params"]["code"].as_str().unwrap();
       ("ooba_1".to_string(), mfkdf2::derive::factors::ooba(code.to_string()).unwrap())
     },
-    "passkey" => (
-      "passkey_1".to_string(),
-      mfkdf2::derive::factors::passkey::passkey(PASSKEY_SECRET.to_vec()).unwrap(),
-    ),
+    "passkey" =>
+      ("passkey_1".to_string(), mfkdf2::derive::factors::passkey::passkey(PASSKEY_SECRET).unwrap()),
     _ => panic!("Unknown factor type for derive: {}", name),
   }
 }

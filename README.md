@@ -20,19 +20,27 @@ This repository contains the canonical Rust implementation of MFKDF2, with a foc
   - HOTP (HMAC-based One-Time Password)
   - TOTP (Time-based One-Time Password)
   - Hardware tokens (e.g., YubiKey)
+  - Passkey
 - **Self-Service Account Recovery**: Implement K-of-N secret sharing policies, allowing users to recover accounts without centralized recovery keys.
 - **Flexible Policies**: Define arbitrarily complex key derivation policies to meet your specific security requirements.
 - **Cross-Language Support**: Core logic is written in Rust, with bindings for other languages like TypeScript, Python, and more.
 - **Secure by Design**: Built with modern cryptographic primitives and a strong focus on security best practices.
+- **Additional capabilities**:
+  - Modes:
+    - MFCHF (Multi-Factor Credential Hashing Function): enables server-side verification of multiple standard authentication factors simultaneously.
+    - MFDPG (Multi-Factor Deterministic Password Generator): enables stateless password managers and client-side MFA for password-only sites.
+  - Derived-key capabilities:
+    - Strengthening: increase KDF cost over time without changing the enveloped key.
+    - Reconstitution: replace lost or compromised factors without altering the final key.
+    - Persistence: optionally persist factor material to bypass that factor in future derivations.
+    - Hints: provide low-entropy hints to help identify the correct factor.
+  - Entropy: derived-key entropy estimation via Dropbox's zxcvbn
 
 ## Roadmap
 
 For this library to be considered fully production-ready, the following items should be addressed:
 
 - **Complete Factor Implementation**: Not all proposed MFKDF2 factors have been implemented (e.g., fuzzy encryption, QR,  etc.).
-- **Features**: Not all mfkdf features have been implemented.
-  - Modes of operation: mfchf, mfdpg
-  - Derived key features (strengthen, reconstitution, persistence, hints, etc.)
 - **Comprehensive Tests**: While basic tests are in place, more extensive testing is needed, including:
   - Differential testing against the reference JavaScript implementation.
 - **Architecture modifications**: Current architecture mirrors JS reference, and should be moved to natural rust architecture.
@@ -55,6 +63,7 @@ This repository is structured as a workspace with several crates:
   - `definitions`: necessary types required for MFKDF2 key derivation
   - `policy`: MFKDF2 policy construction
   - `crypto`: utility cryptography module
+  - `integrity`: MFKDF2 policy integrity using HMAC construction
 - `mfkdf2-web`: TypeScript/WASM bindings for use in web browsers and Node.js.
 - `mfkdf2-py`: Python bindings for the core library.
 
@@ -106,9 +115,8 @@ cargo run --bin uniffi-bindgen generate --library target/debug/libmfkdf2.dylib -
 
 ## Usage
 
-*Note: The following is a conceptual example. The exact API may differ.*
-
 ```rust
+use std::collections::HashMap;
 use mfkdf2::{derive, setup};
 use mfkdf2::setup::{factors::hotp::HOTPOptions, password::PasswordOptions, key::MFKDF2Options};
 use mfkdf2::derive::factors::{hotp::HOTPOptions, password::PasswordOptions};
@@ -123,11 +131,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     println!("Key: {:?}", key);
 
+    let factors = HashMap::from([
+      ("password".to_string(), derive::factors::password("my-super-secret-password")?),
+      "hotp".to_string(), derive::factors::hotp("123456")?),
+    ]);
     // 3. Derive the key using user inputs
-    let derived_key = derive::key(key.policy, vec![
-        derive::factors::password("my-super-secret-password")?,
-        derive::factors::hotp("123456")?, // User-provided TOTP code
-    ])?;
+    let derived_key = derive::key(key.policy, factors, true, false)?;
 
     println!("Derived Key: {:?}", derived_key);
 
@@ -164,6 +173,7 @@ just ci
 - `just udeps` - Check for unused dependencies
 - `just fmt` - Format code (Rust + TOML)
 - `just gen-ts-bindings` - Generate TypeScript bindings
+- `just verify-bindnigs` - Verify that bindings were properly generated
 - `just test-bindings` - Test the TypeScript bindings
 
 ## License

@@ -24,7 +24,7 @@ suite('setup/factors/passkey', () => {
     const secret = new Uint8Array(16) // Wrong length
     await mfkdf.setup.factors
       .passkey(secret.buffer)
-      .should.be.rejectedWith(Mfkdf2Error.InvalidHmacKey)
+      .should.be.rejectedWith(Mfkdf2Error.InvalidSecretLength)
   })
 
   test('valid - with 32-byte secret', async () => {

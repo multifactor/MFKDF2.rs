@@ -1,12 +1,10 @@
 use serde::{Deserialize, Serialize};
 
-use crate::setup::{
-  FactorSetup,
-  factors::{hmacsha1, hotp, ooba, passkey, password, question, stack, totp, uuid},
-};
+use crate::setup::factors::{hmacsha1, hotp, ooba, passkey, password, question, stack, totp, uuid};
 
 #[cfg_attr(feature = "bindings", uniffi::export)]
 pub trait FactorMetadata: Send + Sync + std::fmt::Debug {
+  fn bytes(&self) -> Vec<u8>;
   fn kind(&self) -> String;
 }
 
@@ -51,10 +49,26 @@ pub enum FactorType {
   OOBA(ooba::Ooba),
   Passkey(passkey::Passkey),
   Stack(stack::Stack),
+  Persisted(crate::derive::factors::persisted::Persisted),
 }
 
-impl FactorType {
-  pub fn kind(&self) -> String {
+impl FactorMetadata for FactorType {
+  fn bytes(&self) -> Vec<u8> {
+    match self {
+      FactorType::Password(password) => password.bytes(),
+      FactorType::HOTP(hotp) => hotp.bytes(),
+      FactorType::Question(question) => question.bytes(),
+      FactorType::UUID(uuid) => uuid.bytes(),
+      FactorType::HmacSha1(hmacsha1) => hmacsha1.bytes(),
+      FactorType::TOTP(totp) => totp.bytes(),
+      FactorType::OOBA(ooba) => ooba.bytes(),
+      FactorType::Passkey(passkey) => passkey.bytes(),
+      FactorType::Stack(stack) => stack.bytes(),
+      FactorType::Persisted(persisted) => persisted.bytes(),
+    }
+  }
+
+  fn kind(&self) -> String {
     match self {
       FactorType::Password(password) => password.kind(),
       FactorType::HOTP(hotp) => hotp.kind(),
@@ -65,6 +79,7 @@ impl FactorType {
       FactorType::OOBA(ooba) => ooba.kind(),
       FactorType::Passkey(passkey) => passkey.kind(),
       FactorType::Stack(stack) => stack.kind(),
+      FactorType::Persisted(persisted) => persisted.kind(),
     }
   }
 }

@@ -1,6 +1,6 @@
 use base64::prelude::*;
 use hmac::{Hmac, Mac};
-use rand::{Rng, RngCore, rngs::OsRng};
+use rand::{RngCore, rngs::OsRng};
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 use sha1::Sha1;
@@ -72,22 +72,22 @@ pub struct HOTP {
 
 impl FactorMetadata for HOTP {
   fn kind(&self) -> String { "hotp".to_string() }
+
+  fn bytes(&self) -> Vec<u8> { self.target.to_be_bytes().to_vec() }
 }
 
 impl FactorSetup for HOTP {
   type Output = Value;
   type Params = Value;
 
-  fn bytes(&self) -> Vec<u8> { self.target.to_be_bytes().to_vec() }
-
   fn params(&self, key: Key) -> MFKDF2Result<Self::Params> {
     // Generate or use provided secret
     let padded_secret = if let Some(secret) = self.options.secret.clone() {
       secret
     } else {
-      let mut secret = vec![0u8; 32]; // Default to 32 bytes
+      let mut secret = [0u8; 32]; // Default to 32 bytes
       OsRng.fill_bytes(&mut secret);
-      secret
+      secret.to_vec()
     };
 
     // Generate HOTP code with counter = 1
@@ -182,9 +182,9 @@ pub fn hotp(options: HOTPOptions) -> MFKDF2Result<MFKDF2Factor> {
   }
 
   let secret = options.secret.unwrap_or_else(|| {
-    let mut secret = vec![0u8; 20];
+    let mut secret = [0u8; 20];
     OsRng.fill_bytes(&mut secret);
-    secret
+    secret.to_vec()
   });
   let mut secret_pad = [0u8; 12];
   OsRng.fill_bytes(&mut secret_pad);
@@ -192,7 +192,7 @@ pub fn hotp(options: HOTPOptions) -> MFKDF2Result<MFKDF2Factor> {
   options.secret = Some(padded_secret);
 
   // Generate random target
-  let target = OsRng.gen_range(0..10_u32.pow(u32::from(options.digits)));
+  let target = OsRng.next_u32() % 10_u32.pow(u32::from(options.digits));
 
   let mut salt = [0u8; 32];
   OsRng.fill_bytes(&mut salt);

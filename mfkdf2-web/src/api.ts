@@ -43,14 +43,11 @@ function wrapSetupFactor(factor: raw.Mfkdf2Factor): any {
   const wrapped = wrapFactor(factor);
   return {
     ...wrapped,
-    // TODO (@lonerapier): likely remove these
-    // Add async params() method with optional 32-byte key
     async params(key?: ArrayBuffer) {
       const result = raw.setupFactorTypeParams(factor.factorType, key);
       // Parse JSON string returned by UniFFI (Value is serialized as string)
       return typeof result === 'string' ? JSON.parse(result) : result;
     },
-    // Add async output() method with optional 32-byte key
     async output(key?: ArrayBuffer) {
       const result = raw.setupFactorTypeOutput(factor.factorType, key);
       // Parse JSON string returned by UniFFI (Value is serialized as string)
@@ -63,6 +60,16 @@ function wrapDeriveFactor(factor: raw.Mfkdf2Factor): any {
   const wrapped = wrapFactor(factor);
   return {
     ...wrapped,
+    async params(key?: ArrayBuffer) {
+      const result = raw.deriveFactorParams(factor.factorType, key);
+      // Parse JSON string returned by UniFFI (Value is serialized as string)
+      return typeof result === 'string' ? JSON.parse(result) : result;
+    },
+    async output() {
+      const result = raw.deriveFactorOutput(factor.factorType);
+      // Parse JSON string returned by UniFFI (Value is serialized as string)
+      return typeof result === 'string' ? JSON.parse(result) : result;
+    }
   }
 }
 
@@ -108,28 +115,130 @@ function unwrapPolicy(policy: any): raw.Policy {
 
 // Wrap derived key to add $id to policy
 function wrapDerivedKey(key: raw.Mfkdf2DerivedKey): any {
-  return {
-    ...key,
+  const outputsToObject = () =>
+    Object.fromEntries(Array.from(key.outputs.entries()).map(([entryKey, value]) => [entryKey, JSON.parse(value)]));
+
+  const updateState = (updated: raw.Mfkdf2DerivedKey) => {
+    key.policy = updated.policy;
+    key.key = updated.key;
+    key.secret = updated.secret;
+    key.shares = updated.shares;
+    key.outputs = updated.outputs;
+    key.entropy = updated.entropy;
+
+    wrapped.policy = wrapPolicy(key.policy);
+  };
+
+  const applyUpdate = (updated: raw.Mfkdf2DerivedKey) => {
+    updateState(updated);
+    return wrapped;
+  };
+
+  const wrapped: any = {
     policy: wrapPolicy(key.policy),
     // Add entropyBits alias for compatibility
-    get key() {
-      return Buffer.from(key.key);
-    },
-    get secret() {
-      return Buffer.from(key.secret);
-    },
-    get shares() {
-      return key.shares.map(share => Buffer.from(share));
-    },
-    get entropyBits() {
-      return key.entropy;
-    },
-    get outputs() {
-      return Object.fromEntries(Array.from(key.outputs.entries()).map(([key, value]) => [key, JSON.parse(value)]));
-    }
+    key: Buffer.from(key.key),
+    secret: Buffer.from(key.secret),
+    shares: key.shares.map(share => Buffer.from(share)),
+    entropyBits: key.entropy,
+    outputs: outputsToObject(),
+    async setThreshold(threshold: number) {
+      if (threshold && !Number.isInteger(threshold)) {
+        throw new TypeError('threshold must be an integer');
+      }
 
-  }
-};
+      key.policy = unwrapPolicy(key.policy);
+      const updated = raw.derivedKeySetThreshold(key, threshold ?? key.policy.threshold);
+      return applyUpdate(updated);
+    },
+    async removeFactor(factorId: string) {
+      key.policy = unwrapPolicy(key.policy);
+      const updated = raw.derivedKeyRemoveFactor(key, factorId);
+      return applyUpdate(updated);
+    },
+    async removeFactors(factorIds: string[]) {
+      key.policy = unwrapPolicy(key.policy);
+      const updated = raw.derivedKeyRemoveFactors(key, factorIds);
+      return applyUpdate(updated);
+    },
+    async addFactor(factor: raw.Mfkdf2Factor) {
+      key.policy = unwrapPolicy(key.policy);
+      const updated = raw.derivedKeyAddFactor(key, factor);
+      return applyUpdate(updated);
+    },
+    async addFactors(factors: raw.Mfkdf2Factor[]) {
+      key.policy = unwrapPolicy(key.policy);
+      const updated = raw.derivedKeyAddFactors(key, factors);
+      return applyUpdate(updated);
+    },
+    async recoverFactor(factor: raw.Mfkdf2Factor) {
+      key.policy = unwrapPolicy(key.policy);
+      const updated = raw.derivedKeyRecoverFactor(key, factor);
+      return applyUpdate(updated);
+    },
+    async recoverFactors(factors: raw.Mfkdf2Factor[]) {
+      key.policy = unwrapPolicy(key.policy);
+      const updated = raw.derivedKeyRecoverFactors(key, factors);
+      return applyUpdate(updated);
+    },
+    async reconstitute(remove_factors?: string[], add_factors?: raw.Mfkdf2Factor[], threshold?: number) {
+      // check for integer otherwise uniffi will cast to integer
+      if (threshold && !Number.isInteger(threshold)) {
+        throw new TypeError('threshold must be an integer');
+      }
+
+      key.policy = unwrapPolicy(key.policy);
+      const updated = raw.derivedKeyReconstitute(key, remove_factors ?? [], add_factors ?? [], threshold);
+      return applyUpdate(updated);
+    },
+    async strengthen(time: number, memory: number) {
+      // check for integer otherwise uniffi will cast to integer
+      if (time && !Number.isInteger(time)) {
+        throw new TypeError('time must be a non-negative integer');
+      }
+      if (memory && !Number.isInteger(memory)) {
+        throw new TypeError('memory must be a non-negative integer');
+      }
+
+      key.policy = unwrapPolicy(key.policy);
+      const updated = raw.derivedKeyStrengthen(key, time, memory);
+      return applyUpdate(updated);
+    },
+    async persistFactor(factorId: string) {
+      key.policy = unwrapPolicy(key.policy);
+      const updated = raw.derivedKeyPersistFactor(key, factorId);
+      return Buffer.from(updated);
+    },
+    async addHint(factorId: string, bits?: number) {
+      // check for integer otherwise uniffi will cast to integer
+      if (bits && !Number.isInteger(bits)) {
+        throw new TypeError('bits must be an integer');
+      }
+
+      key.policy = unwrapPolicy(key.policy);
+      const updated = raw.derivedKeyAddHint(key, factorId, bits);
+      return applyUpdate(updated);
+    },
+    async getHint(factorId: string, bits: number) {
+      // check for integer otherwise uniffi will cast to integer
+      if (bits && !Number.isInteger(bits)) {
+        throw new TypeError('bits must be an integer');
+      }
+
+      key.policy = unwrapPolicy(key.policy);
+      const updated = raw.derivedKeyGetHint(key, factorId, bits);
+      return updated;
+    },
+    async derivePassword(purpose: string, salt: string, regex: RegExp) {
+      // TODO (@lonerapier): fix this type
+      let buffer = toArrayBuffer(Buffer.from(salt));
+      const updated = raw.derivedKeyDerivePassword(key, purpose, buffer, regex.source);
+      return updated;
+    }
+  };
+
+  return wrapped;
+}
 
 export const mfkdf = {
   setup: {
@@ -153,7 +262,7 @@ export const mfkdf = {
         });
         return wrapSetupFactor(factor);
       },
-      async totp(options: { secret?: ArrayBuffer | Buffer, id?: string, digits?: number, hash?: raw.OtpHash, issuer?: string, label?: string, window?: bigint, step?: bigint, time?: bigint, oracle?: number[] } = {}) {
+      async totp(options: { secret?: ArrayBuffer | Buffer, id?: string, digits?: number, hash?: raw.OtpHash, issuer?: string, label?: string, window?: bigint, step?: bigint, time?: bigint | number, oracle?: Record<number, number> } = {}) {
         const factor = await raw.setupTotp({
           id: options.id,
           secret: toArrayBuffer(options.secret),
@@ -161,10 +270,10 @@ export const mfkdf = {
           hash: options.hash ?? raw.OtpHash.Sha1,
           issuer: options.issuer ?? 'MFKDF',
           label: options.label ?? 'mfkdf.com',
-          time: options.time ?? BigInt(Date.now()), // BUG: uniffi doesn't support optional integers
+          time: options.time ? BigInt(options.time) : BigInt(Date.now()), // BUG: uniffi doesn't support optional integers
           window: options.window ?? 87600n,
           step: options.step ?? 30n,
-          oracle: options.oracle
+          oracle: options?.oracle ? new Map(Object.entries(options.oracle).map(([key, value]) => [BigInt(key), value])) : undefined,
         });
         return wrapSetupFactor(factor);
       },
@@ -219,6 +328,13 @@ export const mfkdf = {
       factors: raw.Mfkdf2Factor[],
       options: { id?: string; threshold?: number; salt?: ArrayBuffer | Buffer | Uint8Array, stack?: boolean, integrity?: boolean, time?: number, memory?: number } = {}
     ) {
+      // BUG (@lonerapier): uniffi casts float to integer automatically so we need to check here
+      if (options.time && !Number.isInteger(options.time)) {
+        throw new TypeError('time must be an integer');
+      }
+      if (options.memory && !Number.isInteger(options.memory)) {
+        throw new TypeError('memory must be an integer');
+      }
       const key = await raw.setupKey(factors, {
         id: options.id,
         threshold: options.threshold,
@@ -254,7 +370,9 @@ export const mfkdf = {
         return wrapDeriveFactor(await raw.deriveOoba(code));
       },
       async passkey(secret: ArrayBuffer | Buffer) {
-        return wrapDeriveFactor(await raw.derivePasskey(toArrayBuffer(secret) || new Uint8Array(32).buffer)); // TODO (@lonerapier): fix
+        const buffer = toArrayBuffer(secret);
+        if (!buffer) throw new Error('Invalid secret');
+        return wrapDeriveFactor(await raw.derivePasskey(buffer));
       },
       async stack(factors: Record<string, any> | Map<string, any>) {
         // Convert object to Map if needed
@@ -263,12 +381,18 @@ export const mfkdf = {
           : new Map(Object.entries(factors));
         return wrapDeriveFactor(await raw.deriveStack(factorMap));
       },
-      async totp(code: number, options?: { time?: bigint, oracle?: number[] }) {
+      async totp(code: number, options?: { time?: bigint | number, oracle?: Record<number, number> }) {
         const factor = await raw.deriveTotp(code, {
-          time: options?.time,
-          oracle: options?.oracle
+          time: options?.time ? BigInt(options.time) : undefined,
+          oracle: options?.oracle ? new Map(Object.entries(options.oracle).map(([key, value]) => [BigInt(key), value])) : undefined,
         });
         return wrapDeriveFactor(factor);
+      },
+      async persisted(share: ArrayBuffer | Buffer) {
+        const buffer = toArrayBuffer(share);
+        if (!buffer) throw new Error('Invalid share');
+
+        return wrapDeriveFactor(await raw.derivePersisted(buffer));
       }
     },
     async key(policy: any, factors: Record<string, any> | Map<string, any>, verify?: boolean, stack?: boolean) {

@@ -17,13 +17,13 @@ pub struct Password {
 
 impl FactorMetadata for Password {
   fn kind(&self) -> String { "password".to_string() }
+
+  fn bytes(&self) -> Vec<u8> { self.password.as_bytes().to_vec() }
 }
 
 impl FactorSetup for Password {
   type Output = Value;
   type Params = Value;
-
-  fn bytes(&self) -> Vec<u8> { self.password.as_bytes().to_vec() }
 
   fn output(&self, _key: Key) -> Self::Output {
     json!({
