@@ -642,15 +642,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "gf256sss"
-version = "0.1.0"
-source = "git+https://github.com/multifactor/gf256sss?branch=feat%2Fgeneric-field#751f1c871e00331a610adca2ffbd26c8df36ba65"
-dependencies = [
- "hashbrown",
- "rand",
-]
-
-[[package]]
 name = "glob"
 version = "0.3.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -866,7 +857,6 @@ dependencies = [
  "console_log",
  "ecb",
  "getrandom 0.2.16",
- "gf256sss",
  "hex",
  "hkdf",
  "hmac",
@@ -882,6 +872,7 @@ dependencies = [
  "serde_json",
  "sha1",
  "sha2",
+ "ssskit",
  "thiserror",
  "tokio",
  "uniffi",

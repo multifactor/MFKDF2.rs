@@ -4,9 +4,9 @@ use std::collections::{HashMap, HashSet};
 
 use argon2::{Argon2, Params, Version};
 use base64::{Engine, engine::general_purpose};
-use gf256sss::{SecretSharing, Share};
 use rand::{RngCore, rngs::OsRng};
 use serde::{Deserialize, Serialize};
+use ssskit::{SecretSharing, Share};
 use uuid::Uuid;
 
 use crate::{

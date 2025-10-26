@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use argon2::{Argon2, Params, Version};
 use base64::{Engine, engine::general_purpose};
-use gf256sss::{SecretSharing, Share};
+use ssskit::{SecretSharing, Share};
 
 use crate::{
   constants::SECRET_SHARING_POLY,
@@ -85,7 +85,7 @@ pub fn key(
   }
 
   // only first 33 bytes are needed from the share due to byte encoding (x=1 + y=32)
-  // TODO (@lonerapier): remove stupid clones by fixing gf256sss fork
+  // TODO (@lonerapier): remove stupid clones by fixing ssskit fork
   let shares_vec: Vec<Option<Share<SECRET_SHARING_POLY>>> = shares_bytes
     .iter()
     .map(|opt| {

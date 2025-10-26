@@ -91,7 +91,7 @@ async fn share_indistinguishability_share_size() -> Result<(), MFKDF2Error> {
   let mut secret = [0u8; 32];
   OsRng.fill_bytes(&mut secret);
 
-  // TODO (@lonerapier): Implement this test after gf256sss repo is updated
+  // TODO (@lonerapier): Implement this test after ssskit repo is updated
 
   Ok(())
 }
