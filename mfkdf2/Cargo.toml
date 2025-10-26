@@ -18,8 +18,8 @@ cipher = { version = "0.4", default-features = false, features = [
   "block-padding",
 ] }
 ecb = { version = "0.1", default-features = false }
-gf256sss = { git = "https://github.com/multifactor/gf256sss", branch = "feat/generic-field", version = "0.1.0", default-features = false }
 hkdf = { version = "0.12", default-features = false }
+ssskit = { version = "0.1.0", default-features = false }
 
 # Randomness
 # TODO (autoparallel): This can be made `no-std` if we need to.

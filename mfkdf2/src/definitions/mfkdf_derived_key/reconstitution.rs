@@ -123,10 +123,10 @@ impl MFKDF2DerivedKey {
       return Err(MFKDF2Error::InvalidThreshold);
     }
 
-    let dealer = gf256sss::SecretSharing(threshold).dealer_rng(&self.secret, &mut OsRng);
+    let dealer = ssskit::SecretSharing(threshold).dealer_rng(&self.secret, &mut OsRng);
     let shares: Vec<Vec<u8>> = dealer
       .take(factors.len())
-      .map(|s: gf256sss::Share<SECRET_SHARING_POLY>| Vec::from(&s))
+      .map(|s: ssskit::Share<SECRET_SHARING_POLY>| Vec::from(&s))
       .collect();
 
     let mut new_factors = vec![];
