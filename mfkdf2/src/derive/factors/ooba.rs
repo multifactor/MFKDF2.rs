@@ -57,6 +57,7 @@ impl FactorDerive for Ooba {
 
     let plaintext = serde_json::to_vec(&params)?;
     let public_key = OobaPublicKey::try_from(self.jwk.as_ref())?;
+    // TODO (@lonerapier): use a deterministic RNG
     let ciphertext =
       public_key.0.encrypt(&mut rsa::rand_core::OsRng, Oaep::new::<Sha256>(), &plaintext)?;
 

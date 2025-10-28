@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use rand::{RngCore, rngs::OsRng};
+ 
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
@@ -76,7 +76,7 @@ pub fn stack(factors: Vec<MFKDF2Factor>, options: StackOptions) -> MFKDF2Result<
 
   // per-factor salt
   let mut salt = [0u8; 32];
-  OsRng.fill_bytes(&mut salt);
+  crate::rng::det_rng::fill_bytes(&mut salt);
 
   let mut factor_map = HashMap::new();
   factors.into_iter().for_each(|f| {

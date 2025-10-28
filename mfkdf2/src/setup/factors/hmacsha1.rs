@@ -1,4 +1,3 @@
-use rand::{RngCore, rngs::OsRng};
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 
@@ -6,6 +5,7 @@ use crate::{
   crypto::encrypt,
   definitions::{Key, MFKDF2Factor},
   error::MFKDF2Result,
+  rng::det_rng,
   setup::factors::{FactorMetadata, FactorSetup, FactorType},
 };
 
@@ -47,7 +47,7 @@ impl FactorSetup for HmacSha1 {
 
   fn params(&self, _key: Key) -> MFKDF2Result<Value> {
     let mut challenge = [0u8; 64];
-    OsRng.fill_bytes(&mut challenge);
+    det_rng::fill_bytes(&mut challenge);
 
     let response = crate::crypto::hmacsha1(&self.padded_secret[..20], &challenge);
     let mut padded_key = [0u8; 32];
@@ -80,18 +80,18 @@ pub fn hmacsha1(options: HmacSha1Options) -> MFKDF2Result<MFKDF2Factor> {
     secret
   } else {
     let mut secret = [0u8; 20];
-    OsRng.fill_bytes(&mut secret);
+    det_rng::fill_bytes(&mut secret);
     secret.to_vec()
   };
   if secret.len() != 20 {
     return Err(crate::error::MFKDF2Error::InvalidSecretLength(id));
   }
   let mut secret_pad = [0u8; 12];
-  OsRng.fill_bytes(&mut secret_pad);
+  det_rng::fill_bytes(&mut secret_pad);
   let padded_secret = secret.iter().chain(secret_pad.iter()).cloned().collect();
 
   let mut salt = [0u8; 32];
-  OsRng.fill_bytes(&mut salt);
+  det_rng::fill_bytes(&mut salt);
 
   Ok(MFKDF2Factor {
     id:          Some(id),
@@ -129,8 +129,13 @@ mod tests {
     assert_eq!(factor.id, Some("test".to_string()));
     assert_eq!(factor.data(), SECRET.to_vec());
 
+    println!("factor: {:?}", factor);
+
     // Get the challenge and pad from params
     let params = factor.factor_type.setup().params([0u8; 32].into()).unwrap();
+
+    println!("params: {:?}", params);
+
     assert!(params.is_object());
 
     let challenge = hex::decode(params["challenge"].as_str().unwrap()).unwrap();
