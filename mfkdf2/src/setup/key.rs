@@ -146,10 +146,13 @@ pub fn key(factors: Vec<MFKDF2Factor>, options: MFKDF2Options) -> MFKDF2Result<M
       return Err(MFKDF2Error::DuplicateFactorId);
     }
 
+    let mut salt = [0u8; 32];
+    crate::rng::det_rng::fill_bytes(&mut salt);
+
     // HKDF stretch & AES-encrypt share
     let stretched = hkdf_sha256_with_info(
       &factor.data(),
-      &factor.salt,
+      &salt,
       format!("mfkdf2:factor:pad:{}", &factor.id.clone().unwrap()).as_bytes(),
     );
     let pad = encrypt(&share, &stretched);
@@ -157,7 +160,7 @@ pub fn key(factors: Vec<MFKDF2Factor>, options: MFKDF2Options) -> MFKDF2Result<M
     // Generate factor key
     let params_key = hkdf_sha256_with_info(
       &key,
-      &factor.salt.clone(),
+      &salt,
       format!("mfkdf2:factor:params:{}", &factor.id.clone().unwrap()).as_bytes(),
     );
 
@@ -167,7 +170,7 @@ pub fn key(factors: Vec<MFKDF2Factor>, options: MFKDF2Options) -> MFKDF2Result<M
 
     let secret_key = hkdf_sha256_with_info(
       &key,
-      &factor.salt.clone(),
+      &salt,
       format!("mfkdf2:factor:secret:{}", &factor.id.clone().unwrap()).as_bytes(),
     );
     let factor_secret = encrypt(&stretched, &secret_key);
@@ -181,7 +184,7 @@ pub fn key(factors: Vec<MFKDF2Factor>, options: MFKDF2Options) -> MFKDF2Result<M
       id:     id.unwrap(),
       kind:   factor.kind(),
       pad:    general_purpose::STANDARD.encode(pad),
-      salt:   general_purpose::STANDARD.encode(factor.salt.clone()),
+      salt:   general_purpose::STANDARD.encode(salt),
       secret: general_purpose::STANDARD.encode(factor_secret),
       params: serde_json::to_string(&params).unwrap(),
       hint:   None,
@@ -383,11 +386,8 @@ mod tests {
     }
 
     // combine shares to get secret
-    let shares_vec: Vec<Share<SECRET_SHARING_POLY>> = shares
-      .iter()
-      .map(|b| Share::try_from(&b[..]).map_err(|_| MFKDF2Error::TryFromVecError))
-      .collect::<Result<Vec<Share<SECRET_SHARING_POLY>>, _>>()
-      .unwrap();
+    let shares_vec: Vec<Option<Share<SECRET_SHARING_POLY>>> =
+      shares.into_iter().map(|b| Some(Share::try_from(b.as_slice()).unwrap())).collect();
 
     let sss = SecretSharing(derived_key.policy.threshold);
     let secret = sss.recover(&shares_vec).unwrap();
@@ -433,11 +433,8 @@ mod tests {
     let shares_to_recover: Vec<Vec<u8>> =
       derived_key.shares.iter().take(threshold as usize).cloned().collect();
 
-    let shares_vec: Vec<Share<SECRET_SHARING_POLY>> = shares_to_recover
-      .iter()
-      .map(|b| Share::try_from(&b[..]).map_err(|_| MFKDF2Error::TryFromVecError))
-      .collect::<Result<Vec<Share<SECRET_SHARING_POLY>>, _>>()
-      .unwrap();
+    let shares_vec: Vec<Option<Share<SECRET_SHARING_POLY>>> =
+      shares_to_recover.iter().map(|b| Some(Share::try_from(&b[..]).unwrap())).collect();
 
     let sss = SecretSharing(threshold);
     let recovered_secret = sss.recover(&shares_vec).unwrap();

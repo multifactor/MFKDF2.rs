@@ -20,7 +20,6 @@ use mfkdf2::{
     key::MFKDF2Options,
   },
 };
- 
 use serde_json::Value;
 
 // Helper function to perform XOR operation on two byte arrays

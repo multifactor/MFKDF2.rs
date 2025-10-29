@@ -91,15 +91,13 @@ pub fn key(
     .map(|opt| {
       opt
         .clone()
-        .map(|b| Share::try_from(&b[..1 + 32]).map_err(|_| MFKDF2Error::TryFromVecError))
+        .map(|b| Share::try_from(b.as_slice()).map_err(|_| MFKDF2Error::TryFromVecError))
         .transpose()
     })
     .collect::<Result<Vec<Option<Share<SECRET_SHARING_POLY>>>, _>>()?;
 
   let sss = SecretSharing(policy.threshold);
-  let secret = sss
-    .recover(&shares_vec.clone().into_iter().flatten().collect::<Vec<Share<SECRET_SHARING_POLY>>>())
-    .map_err(|_| MFKDF2Error::ShareRecoveryError)?;
+  let secret = sss.recover(&shares_vec).map_err(|_| MFKDF2Error::ShareRecoveryError)?;
   let secret_arr: [u8; 32] = secret[..32].try_into().map_err(|_| MFKDF2Error::TryFromVecError)?;
   let salt_bytes = general_purpose::STANDARD.decode(&policy.salt)?;
 

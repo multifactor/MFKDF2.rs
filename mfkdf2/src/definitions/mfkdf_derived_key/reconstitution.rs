@@ -1,4 +1,4 @@
-use std::collections::{HashMap, HashSet};
+use std::collections::{BTreeMap, HashSet};
 
 use base64::{Engine, engine::general_purpose};
 
@@ -45,10 +45,10 @@ impl MFKDF2DerivedKey {
     add_factor: &[MFKDF2Factor],
     threshold: Option<u8>,
   ) -> MFKDF2Result<()> {
-    let mut factors = HashMap::new();
-    let mut material: HashMap<String, [u8; 32]> = HashMap::new();
-    let mut outputs = HashMap::new();
-    let mut data = HashMap::new();
+    let mut factors = BTreeMap::new();
+    let mut material: BTreeMap<String, [u8; 32]> = BTreeMap::new();
+    let mut outputs = BTreeMap::new();
+    let mut data = BTreeMap::new();
 
     let threshold = threshold.unwrap_or(self.policy.threshold);
 
@@ -160,7 +160,7 @@ impl MFKDF2DerivedKey {
 
     self.policy.factors = new_factors;
     self.policy.threshold = threshold;
-    self.outputs = outputs;
+    self.outputs = outputs.into_iter().collect();
     self.shares = shares;
 
     if !self.policy.hmac.is_empty() {
