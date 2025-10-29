@@ -1,4 +1,3 @@
- 
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 pub use uuid::Uuid;
@@ -53,13 +52,9 @@ pub fn uuid(options: UUIDOptions) -> MFKDF2Result<MFKDF2Factor> {
 
   let uuid = options.uuid.unwrap_or(Uuid::new_v4());
 
-  let mut salt = [0u8; 32];
-  crate::rng::det_rng::fill_bytes(&mut salt);
-
   Ok(MFKDF2Factor {
     id:          Some(options.id.unwrap_or("uuid".to_string())),
     factor_type: FactorType::UUID(UUIDFactor { uuid }),
-    salt:        salt.to_vec(),
     entropy:     Some(122.0),
   })
 }
@@ -77,7 +72,7 @@ mod tests {
     let factor = uuid(options).unwrap();
     assert_eq!(factor.id, Some("test".to_string()));
     assert_eq!(factor.kind(), "uuid");
-    assert_eq!(factor.salt.len(), 32);
+    // assert_eq!(factor.salt.len(), 32);
     assert_eq!(factor.entropy, Some(122.0));
   }
 

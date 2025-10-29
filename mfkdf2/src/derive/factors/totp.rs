@@ -170,7 +170,6 @@ pub fn totp(code: u32, options: Option<TOTPDeriveOptions>) -> MFKDF2Result<MFKDF
       code,
       target: 0,
     }),
-    salt:        [0u8; 32].to_vec(),
     entropy:     Some(0.0), // TODO (@lonerapier): is entropy used anywhere after derive?
   })
 }

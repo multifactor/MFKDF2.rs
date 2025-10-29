@@ -84,7 +84,6 @@ pub fn ooba(code: String) -> MFKDF2Result<MFKDF2Factor> {
       jwk:    "".to_string(),
       params: "".to_string(),
     }),
-    salt:        [0u8; 32].to_vec(),
     entropy:     None,
   })
 }

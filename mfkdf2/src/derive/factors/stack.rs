@@ -39,7 +39,6 @@ pub fn stack(factors: HashMap<String, MFKDF2Factor>) -> MFKDF2Result<MFKDF2Facto
   Ok(MFKDF2Factor {
     id:          Some("stack".to_string()),
     factor_type: FactorType::Stack(Stack { factors, key: MFKDF2DerivedKey::default() }),
-    salt:        [0u8; 32].to_vec(),
     entropy:     None,
   })
 }

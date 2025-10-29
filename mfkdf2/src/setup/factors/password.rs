@@ -1,4 +1,3 @@
- 
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 use zxcvbn::zxcvbn;
@@ -55,14 +54,9 @@ pub fn password(
   }
   let strength = zxcvbn(&password, &[]);
 
-  // per-factor salt
-  let mut salt = [0u8; 32];
-  crate::rng::det_rng::fill_bytes(&mut salt);
-
   Ok(MFKDF2Factor {
     id:          Some(options.id.unwrap_or("password".to_string())),
     factor_type: FactorType::Password(Password { password }),
-    salt:        salt.to_vec(),
     entropy:     Some(strength.guesses().ilog2() as f64),
   })
 }

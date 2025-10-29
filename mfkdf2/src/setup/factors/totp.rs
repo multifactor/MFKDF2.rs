@@ -3,7 +3,6 @@ use std::collections::HashMap;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use base64::Engine;
- 
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 #[cfg(target_arch = "wasm32")]
@@ -175,9 +174,6 @@ pub fn totp(options: TOTPOptions) -> MFKDF2Result<MFKDF2Factor> {
   // Generate random target
   let target = crate::rng::det_rng::gen_range_u32(10_u32.pow(u32::from(options.digits)));
 
-  let mut salt = [0u8; 32];
-  crate::rng::det_rng::fill_bytes(&mut salt);
-
   let entropy = Some(options.digits as f64 * 10.0_f64.log2());
 
   Ok(MFKDF2Factor {
@@ -188,7 +184,6 @@ pub fn totp(options: TOTPOptions) -> MFKDF2Result<MFKDF2Factor> {
       code: 0,
       target,
     }),
-    salt: salt.to_vec(),
     entropy,
   })
 }
@@ -232,7 +227,7 @@ mod tests {
 
     let factor = result.unwrap();
     assert_eq!(factor.id, Some("test".to_string()));
-    assert_eq!(factor.salt.len(), 32);
+    // assert_eq!(factor.salt.len(), 32);
 
     assert!(matches!(factor.factor_type, FactorType::TOTP(_)));
     if let FactorType::TOTP(totp_factor) = factor.factor_type {

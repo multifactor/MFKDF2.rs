@@ -193,9 +193,6 @@ pub fn hotp(options: HOTPOptions) -> MFKDF2Result<MFKDF2Factor> {
   // Generate random target
   let target = crate::rng::det_rng::gen_range_u32(10_u32.pow(u32::from(options.digits)));
 
-  let mut salt = [0u8; 32];
-  crate::rng::det_rng::fill_bytes(&mut salt);
-
   let entropy = Some(options.digits as f64 * 10.0_f64.log2());
 
   // TODO (autoparallel): Code should possibly be an option, though this follows the same pattern as
@@ -208,7 +205,6 @@ pub fn hotp(options: HOTPOptions) -> MFKDF2Result<MFKDF2Factor> {
       code: 0,
       target,
     }),
-    salt: salt.to_vec(),
     entropy,
   })
 }

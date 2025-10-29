@@ -1,4 +1,3 @@
- 
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 use zxcvbn::zxcvbn;
@@ -75,9 +74,6 @@ pub fn question(answer: impl Into<String>, options: QuestionOptions) -> MFKDF2Re
   let strength = zxcvbn(&answer, &[]);
   let entropy = strength.guesses().ilog2() as f64;
 
-  let mut salt = [0u8; 32];
-  crate::rng::det_rng::fill_bytes(&mut salt);
-
   let mut options = options;
   options.question = Some(question);
   options.id = id.clone();
@@ -89,7 +85,6 @@ pub fn question(answer: impl Into<String>, options: QuestionOptions) -> MFKDF2Re
       params: serde_json::to_string(&Value::Null).unwrap(),
       answer,
     }),
-    salt: salt.to_vec(),
     entropy: Some(entropy as f64),
   })
 }
@@ -127,7 +122,6 @@ mod tests {
 
     let factor = result.unwrap();
     assert_eq!(factor.id, Some("test-question".to_string()));
-    assert_eq!(factor.salt.len(), 32);
 
     assert!(matches!(factor.factor_type, FactorType::Question(_)));
     if let FactorType::Question(q) = factor.factor_type {

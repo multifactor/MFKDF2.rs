@@ -90,12 +90,8 @@ pub fn hmacsha1(options: HmacSha1Options) -> MFKDF2Result<MFKDF2Factor> {
   det_rng::fill_bytes(&mut secret_pad);
   let padded_secret = secret.iter().chain(secret_pad.iter()).cloned().collect();
 
-  let mut salt = [0u8; 32];
-  det_rng::fill_bytes(&mut salt);
-
   Ok(MFKDF2Factor {
     id:          Some(id),
-    salt:        salt.to_vec(),
     factor_type: FactorType::HmacSha1(HmacSha1 { padded_secret, response: None, params: None }),
     entropy:     Some(160.0),
   })

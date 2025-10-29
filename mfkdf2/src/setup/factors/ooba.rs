@@ -145,13 +145,8 @@ pub fn ooba(options: OobaOptions) -> MFKDF2Result<MFKDF2Factor> {
   let mut target = [0u8; 32];
   crate::rng::det_rng::fill_bytes(&mut target);
 
-  // Random salt to align with other factors shape
-  let mut salt = [0u8; 32];
-  crate::rng::det_rng::fill_bytes(&mut salt);
-
   Ok(MFKDF2Factor {
     id:          Some(options.id.unwrap_or("ooba".to_string())),
-    salt:        salt.to_vec(),
     factor_type: FactorType::OOBA(Ooba {
       target: target.to_vec(),
       length,
@@ -207,7 +202,6 @@ mod tests {
 
     let factor = result.unwrap();
     assert_eq!(factor.id, Some("test".to_string()));
-    assert_eq!(factor.salt.len(), 32);
 
     assert!(matches!(factor.factor_type, FactorType::OOBA(_)));
     if let FactorType::OOBA(ooba_factor) = factor.factor_type {
