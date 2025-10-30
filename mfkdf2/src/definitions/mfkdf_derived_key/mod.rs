@@ -13,7 +13,7 @@ pub mod reconstitution;
 pub mod strengthening;
 
 #[cfg_attr(feature = "bindings", derive(uniffi::Record))]
-#[derive(Clone, Debug, Default, Serialize, Deserialize, Eq, PartialEq)]
+#[derive(Clone, Debug, Default, Serialize, Deserialize, PartialEq)]
 pub struct MFKDF2DerivedKey {
   pub policy:  Policy,
   // TODO (@lonerapier): move to uniffi custom type

@@ -42,7 +42,7 @@ pub fn question(answer: impl Into<String>) -> MFKDF2Result<MFKDF2Factor> {
       params:  serde_json::to_string(&Value::Null).unwrap(),
       answer:  answer.clone(),
     }),
-    entropy:     Some(strength.guesses().ilog2() as f64),
+    entropy:     Some((strength.guesses() as f64).log2()),
   })
 }
 

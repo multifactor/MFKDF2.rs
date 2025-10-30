@@ -72,7 +72,6 @@ pub fn question(answer: impl Into<String>, options: QuestionOptions) -> MFKDF2Re
 
   let answer = answer.to_lowercase().replace(|c: char| !c.is_alphanumeric(), "").trim().to_string();
   let strength = zxcvbn(&answer, &[]);
-  let entropy = strength.guesses().ilog2() as f64;
 
   let mut options = options;
   options.question = Some(question);
@@ -85,7 +84,7 @@ pub fn question(answer: impl Into<String>, options: QuestionOptions) -> MFKDF2Re
       params: serde_json::to_string(&Value::Null).unwrap(),
       answer,
     }),
-    entropy: Some(entropy as f64),
+    entropy: Some((strength.guesses() as f64).log2()),
   })
 }
 

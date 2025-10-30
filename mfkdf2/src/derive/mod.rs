@@ -129,7 +129,7 @@ mod tests {
     .unwrap();
 
     let mut setup_key: MFKDF2DerivedKey = serde_json::from_str(&setup.outputs["stack"]).unwrap();
-    setup_key.entropy.real = 0;
+    setup_key.entropy.real = 0.0;
     setup_key.entropy.theoretical = 0;
 
     let derive = derive::key(

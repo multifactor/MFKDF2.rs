@@ -215,13 +215,11 @@ pub fn key(factors: Vec<MFKDF2Factor>, options: MFKDF2Options) -> MFKDF2Result<M
   theoretical_entropy.sort_unstable();
   real_entropy.sort_unstable_by(f64::total_cmp);
 
-  let required = threshold as usize;
-
-  let theoretical_sum: u32 = theoretical_entropy.iter().take(required).copied().sum();
-  let real_sum: f64 = real_entropy.iter().take(required).copied().sum();
+  let theoretical_sum: u32 = theoretical_entropy.iter().take(threshold as usize).copied().sum();
+  let real_sum: f64 = real_entropy.iter().take(threshold as usize).copied().sum();
 
   let entropy_theoretical = theoretical_sum.min(256);
-  let entropy_real = real_sum.min(256.0) as u32;
+  let entropy_real = real_sum.min(256.0);
 
   Ok(MFKDF2DerivedKey {
     policy,

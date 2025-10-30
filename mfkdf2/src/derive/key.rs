@@ -169,7 +169,7 @@ pub fn key(
     secret: secret_arr.to_vec(),
     shares: original_shares.into_iter().map(|s| Vec::from(&s)).collect(),
     outputs,
-    entropy: MFKDF2Entropy { real: 0, theoretical: 0 },
+    entropy: MFKDF2Entropy { real: 0.0, theoretical: 0 },
   })
 }
 
