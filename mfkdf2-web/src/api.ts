@@ -93,24 +93,30 @@ function wrapPolicy(policy: any): any {
 }
 
 // TODO (@lonerapier): try to remove this
-// Unwrap policy to remove $id and $schema
+// Unwrap policy to remove $id and $schema (non-mutating)
 function unwrapPolicy(policy: any): raw.Policy {
-  for (const factor of policy.factors) {
-    factor.kind = factor.type ? factor.type : factor.kind;
-    delete factor.type;
-    factor.params = typeof factor.params === 'object' ? JSON.stringify(factor.params) : factor.params;
-  }
-  policy.id = policy.$id ?? policy.id;
-  policy.schema = policy.$schema ?? policy.schema;
-  delete policy.$id;
-  delete policy.$schema;
+  const unwrapped: any = {
+    ...policy,
+    factors: policy.factors.map((f: any) => {
+      const factor = { ...f };
+      factor.kind = factor.type ? factor.type : factor.kind;
+      delete factor.type;
+      factor.params = typeof factor.params === 'object' ? JSON.stringify(factor.params) : factor.params;
+      return factor;
+    })
+  };
 
-  policy.time = policy.time ?? 0;
-  policy.memory = policy.memory ?? 0;
+  unwrapped.id = unwrapped.$id ?? unwrapped.id;
+  unwrapped.schema = unwrapped.$schema ?? unwrapped.schema;
+  delete unwrapped.$id;
+  delete unwrapped.$schema;
 
-  delete policy.size;
+  unwrapped.time = unwrapped.time ?? 0;
+  unwrapped.memory = unwrapped.memory ?? 0;
 
-  return policy;
+  delete unwrapped.size;
+
+  return unwrapped;
 }
 
 // Wrap derived key to add $id to policy
@@ -136,7 +142,6 @@ function wrapDerivedKey(key: raw.Mfkdf2DerivedKey): any {
 
   const wrapped: any = {
     policy: wrapPolicy(key.policy),
-    // Add entropyBits alias for compatibility
     key: Buffer.from(key.key),
     secret: Buffer.from(key.secret),
     shares: key.shares.map(share => Buffer.from(share)),
