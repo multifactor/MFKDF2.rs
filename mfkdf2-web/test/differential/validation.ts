@@ -28,7 +28,7 @@ function isPolicyFactorEqual(a: any, b: any): boolean {
     console.error('policy factor type mismatch', a.type, b.type);
     return false;
   }
-  if (JSON.stringify(a.params) !== JSON.stringify(b.params)) {
+  if (JSON.stringify(a.params, Object.keys(a.params).sort()) !== JSON.stringify(b.params, Object.keys(b.params).sort())) {
     console.error('policy factor params mismatch', a.params, b.params);
     return false;
   }

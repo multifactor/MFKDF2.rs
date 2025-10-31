@@ -185,13 +185,15 @@ pub fn hotp(options: HOTPOptions) -> MFKDF2Result<MFKDF2Factor> {
     crate::rng::det_rng::fill_bytes(&mut secret);
     secret.to_vec()
   });
-  let mut secret_pad = [0u8; 12];
-  crate::rng::det_rng::fill_bytes(&mut secret_pad);
-  let padded_secret = secret.iter().chain(secret_pad.iter()).cloned().collect();
-  options.secret = Some(padded_secret);
 
   // Generate random target
-  let target = crate::rng::det_rng::gen_range_u32(10_u32.pow(u32::from(options.digits)));
+  let target = crate::rng::det_rng::gen_range_u32(10_u32.pow(u32::from(options.digits)) - 1);
+
+  // Pad secret to 32 bytes
+  let mut secret_pad = [0u8; 12];
+  crate::rng::det_rng::fill_bytes(&mut secret_pad);
+  let padded_secret = secret.iter().chain(secret_pad.iter()).cloned().collect::<Vec<u8>>();
+  options.secret = Some(padded_secret);
 
   let entropy = Some(options.digits as f64 * 10.0_f64.log2());
 
