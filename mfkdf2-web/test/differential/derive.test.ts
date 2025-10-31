@@ -11,6 +11,7 @@ import { derivedKeyIsEqual } from './validation';
 
 import mfkdf from 'mfkdf';
 import speakeasy from 'speakeasy';
+import crypto from 'crypto';
 
 // each factor individually and single
 // each factor inidividually and multiple
@@ -167,6 +168,157 @@ suite('differential/derive', () => {
 
       const derive2 = await mfkdf2.derive.key(setup2.policy, {
         totp1: await mfkdf2.derive.factors.totp(code, { time })
+      })
+
+      derive2.key.toString('hex').should.equal(setup2.key.toString('hex'))
+
+      derivedKeyIsEqual(setup, setup2).should.be.true
+      derivedKeyIsEqual(derive, derive2).should.be.true
+    })
+
+    test('hmacsha1', async () => {
+      const secret = Buffer.from('abcdefghijklmnopqrst')
+
+      const setup = await mfkdf.setup.key([
+        await mfkdf.setup.factors.hmacsha1({ id: 'hmac1', secret })
+      ], { id: 'key1' })
+
+      const challenge = Buffer.from(setup.policy.factors[0].params.challenge, 'hex')
+      const response = crypto.createHmac('sha1', secret).update(challenge).digest()
+
+      const derive = await mfkdf.derive.key(setup.policy, {
+        hmac1: await mfkdf.derive.factors.hmacsha1(response)
+      })
+
+      derive.key.toString('hex').should.equal(setup.key.toString('hex'))
+
+      const setup2 = await mfkdf2.setup.key([
+        await mfkdf2.setup.factors.hmacsha1({ id: 'hmac1', secret })
+      ], { id: 'key1' })
+
+      const challenge2 = Buffer.from(setup2.policy.factors[0].params.challenge, 'hex')
+      const response2 = crypto.createHmac('sha1', secret).update(challenge2).digest()
+
+      const derive2 = await mfkdf2.derive.key(setup2.policy, {
+        hmac1: await mfkdf2.derive.factors.hmacsha1(response2)
+      })
+
+      derive2.key.toString('hex').should.equal(setup2.key.toString('hex'))
+
+      derivedKeyIsEqual(setup, setup2).should.be.true
+      derivedKeyIsEqual(derive, derive2).should.be.true
+    })
+
+    test('passkey', async () => {
+      const secret = Buffer.from(Array.from({ length: 32 }, (_, i) => i))
+
+      const setup = await mfkdf.setup.key([
+        await mfkdf.setup.factors.passkey(secret, { id: 'passkey1' })
+      ], { id: 'key1' })
+
+      const derive = await mfkdf.derive.key(setup.policy, {
+        passkey1: await mfkdf.derive.factors.passkey(secret)
+      })
+
+      derive.key.toString('hex').should.equal(setup.key.toString('hex'))
+
+      const setup2 = await mfkdf2.setup.key([
+        await mfkdf2.setup.factors.passkey(secret, { id: 'passkey1' })
+      ], { id: 'key1' })
+
+      const derive2 = await mfkdf2.derive.key(setup2.policy, {
+        passkey1: await mfkdf2.derive.factors.passkey(secret)
+      })
+
+      derive2.key.toString('hex').should.equal(setup2.key.toString('hex'))
+
+      derivedKeyIsEqual(setup, setup2).should.be.true
+      derivedKeyIsEqual(derive, derive2).should.be.true
+    })
+
+    test('stack', async () => {
+      const setup = await mfkdf.setup.key([
+        await mfkdf.setup.factors.stack([
+          await mfkdf.setup.factors.password('password1', { id: 'password1' }),
+          await mfkdf.setup.factors.password('password2', { id: 'password2' })
+        ], { id: 'stack1' })
+      ], { id: 'key1' })
+
+      const derive = await mfkdf.derive.key(setup.policy, {
+        stack1: await mfkdf.derive.factors.stack({
+          password1: await mfkdf.derive.factors.password('password1'),
+          password2: await mfkdf.derive.factors.password('password2')
+        })
+      })
+
+      derive.key.toString('hex').should.equal(setup.key.toString('hex'))
+
+      const setup2 = await mfkdf2.setup.key([
+        await mfkdf2.setup.factors.stack([
+          await mfkdf2.setup.factors.password('password1', { id: 'password1' }),
+          await mfkdf2.setup.factors.password('password2', { id: 'password2' })
+        ], { id: 'stack1' })
+      ], { id: 'key1' })
+
+      const derive2 = await mfkdf2.derive.key(setup2.policy, {
+        stack1: await mfkdf2.derive.factors.stack({
+          password1: await mfkdf2.derive.factors.password('password1'),
+          password2: await mfkdf2.derive.factors.password('password2')
+        })
+      })
+
+      derive2.key.toString('hex').should.equal(setup2.key.toString('hex'))
+
+      derivedKeyIsEqual(setup, setup2).should.be.true
+      derivedKeyIsEqual(derive, derive2).should.be.true
+    })
+
+    test('ooba', async () => {
+      const keyPair = await crypto.webcrypto.subtle.generateKey(
+        {
+          hash: 'SHA-256',
+          modulusLength: 2048,
+          name: 'RSA-OAEP',
+          publicExponent: new Uint8Array([1, 0, 1])
+        },
+        true,
+        ['encrypt', 'decrypt']
+      )
+
+      const setup = await mfkdf.setup.key([
+        await mfkdf.setup.factors.ooba({ id: 'ooba1', key: keyPair.publicKey, params: { email: 'test@mfkdf.com' } })
+      ], { id: 'key1' })
+
+      const next = setup.policy.factors[0].params.next
+      const decrypted = await crypto.webcrypto.subtle.decrypt(
+        { name: 'RSA-OAEP' },
+        keyPair.privateKey,
+        Buffer.from(next, 'hex')
+      )
+      const json = JSON.parse(Buffer.from(decrypted).toString())
+      const code = json.code
+
+      const derive = await mfkdf.derive.key(setup.policy, {
+        ooba1: await mfkdf.derive.factors.ooba(code)
+      })
+
+      derive.key.toString('hex').should.equal(setup.key.toString('hex'))
+
+      const setup2 = await mfkdf2.setup.key([
+        await mfkdf2.setup.factors.ooba({ id: 'ooba1', key: keyPair.publicKey, params: { email: 'test@mfkdf.com' } })
+      ], { id: 'key1' })
+
+      const next2 = setup2.policy.factors[0].params.next
+      const decrypted2 = await crypto.webcrypto.subtle.decrypt(
+        { name: 'RSA-OAEP' },
+        keyPair.privateKey,
+        Buffer.from(next2, 'hex')
+      )
+      const json2 = JSON.parse(Buffer.from(decrypted2).toString())
+      const code2 = json2.code
+
+      const derive2 = await mfkdf2.derive.key(setup2.policy, {
+        ooba1: await mfkdf2.derive.factors.ooba(code2)
       })
 
       derive2.key.toString('hex').should.equal(setup2.key.toString('hex'))
