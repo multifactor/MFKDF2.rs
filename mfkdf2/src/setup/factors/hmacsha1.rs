@@ -38,7 +38,7 @@ pub struct HmacSha1 {
 impl FactorMetadata for HmacSha1 {
   fn kind(&self) -> String { "hmacsha1".to_string() }
 
-  fn bytes(&self) -> Vec<u8> { self.padded_secret[..20].to_vec() }
+  fn bytes(&self) -> Vec<u8> { self.padded_secret.clone() }
 }
 
 impl FactorSetup for HmacSha1 {
@@ -83,6 +83,10 @@ pub fn hmacsha1(options: HmacSha1Options) -> MFKDF2Result<MFKDF2Factor> {
     det_rng::fill_bytes(&mut secret);
     secret.to_vec()
   };
+  log::debug!(
+    "secret: {:?}",
+    secret.iter().map(|b| format!("{:02x}", b)).collect::<Vec<_>>().join(" ")
+  );
   if secret.len() != 20 {
     return Err(crate::error::MFKDF2Error::InvalidSecretLength(id));
   }
@@ -123,14 +127,10 @@ mod tests {
 
     assert_eq!(factor.kind(), "hmacsha1");
     assert_eq!(factor.id, Some("test".to_string()));
-    assert_eq!(factor.data(), SECRET.to_vec());
-
-    println!("factor: {:?}", factor);
+    assert_eq!(factor.data()[..20], SECRET);
 
     // Get the challenge and pad from params
     let params = factor.factor_type.setup().params([0u8; 32].into()).unwrap();
-
-    println!("params: {:?}", params);
 
     assert!(params.is_object());
 
@@ -156,7 +156,7 @@ mod tests {
     let factor = hmacsha1(HmacSha1Options { id: None, secret: None }).unwrap();
     assert_eq!(factor.kind(), "hmacsha1");
     assert_eq!(factor.id, Some("hmacsha1".to_string()));
-    assert_eq!(factor.data().len(), 20); // Secret should be 20 bytes
+    assert_eq!(factor.data().len(), 32); // Secret should be 20 bytes + 12 bytes of padding
     assert!(factor.factor_type.setup().params([0u8; 32].into()).unwrap().is_object());
     assert!(factor.factor_type.output([0u8; 32].into()).is_object());
     assert_eq!(factor.entropy, Some(160.0)); // 20 bytes * 8 bits = 160 bits
@@ -181,7 +181,7 @@ mod tests {
       .map(|v| v.as_u64().unwrap() as u8)
       .collect::<Vec<u8>>();
 
-    assert_eq!(secret, factor.data());
+    assert_eq!(secret, factor.data()[..20]);
   }
 
   #[test]
