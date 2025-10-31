@@ -29,6 +29,7 @@ pub struct PolicyFactor {
   pub secret: String,
   // TODO (@lonerapier): convert it into a factor based enum
   pub params: String,
+  #[serde(skip_serializing_if = "Option::is_none")]
   pub hint:   Option<String>,
 }
 
@@ -206,6 +207,10 @@ pub fn key(factors: Vec<MFKDF2Factor>, options: MFKDF2Options) -> MFKDF2Result<M
   // Derive an integrity key specific to the policy and compute a policy HMAC
   if options.integrity.unwrap_or(true) {
     let integrity_data = policy.extract();
+    // log::debug!(
+    //   "integrity_data: {:?}",
+    //   integrity_data.iter().map(|b| format!("{:02x}", b)).collect::<Vec<_>>().join(" ")
+    // );
     let integrity_key = hkdf_sha256_with_info(&key, &salt, "mfkdf2:integrity".as_bytes());
     let digest = hmacsha256(&integrity_key, &integrity_data);
     policy.hmac = general_purpose::STANDARD.encode(digest);

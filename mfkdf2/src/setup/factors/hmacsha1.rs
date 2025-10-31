@@ -83,10 +83,6 @@ pub fn hmacsha1(options: HmacSha1Options) -> MFKDF2Result<MFKDF2Factor> {
     det_rng::fill_bytes(&mut secret);
     secret.to_vec()
   };
-  log::debug!(
-    "secret: {:?}",
-    secret.iter().map(|b| format!("{:02x}", b)).collect::<Vec<_>>().join(" ")
-  );
   if secret.len() != 20 {
     return Err(crate::error::MFKDF2Error::InvalidSecretLength(id));
   }
