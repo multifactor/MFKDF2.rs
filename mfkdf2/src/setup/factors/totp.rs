@@ -161,10 +161,6 @@ pub fn totp(options: TOTPOptions) -> MFKDF2Result<MFKDF2Factor> {
     crate::rng::det_rng::fill_bytes(&mut secret);
     secret.to_vec()
   });
-  let mut secret_pad = [0u8; 12];
-  crate::rng::det_rng::fill_bytes(&mut secret_pad);
-  let padded_secret = secret.iter().chain(secret_pad.iter()).cloned().collect();
-  options.secret = Some(padded_secret);
 
   if options.time.is_none() {
     let now_ms = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_millis() as u64;
@@ -172,7 +168,12 @@ pub fn totp(options: TOTPOptions) -> MFKDF2Result<MFKDF2Factor> {
   }
 
   // Generate random target
-  let target = crate::rng::det_rng::gen_range_u32(10_u32.pow(u32::from(options.digits)));
+  let target = crate::rng::det_rng::gen_range_u32(10_u32.pow(u32::from(options.digits)) - 1);
+
+  let mut secret_pad = [0u8; 12];
+  crate::rng::det_rng::fill_bytes(&mut secret_pad);
+  let padded_secret = secret.iter().chain(secret_pad.iter()).cloned().collect();
+  options.secret = Some(padded_secret);
 
   let entropy = Some(options.digits as f64 * 10.0_f64.log2());
 
