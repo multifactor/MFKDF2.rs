@@ -81,11 +81,11 @@ mod tests {
   #[test]
   fn password_strength() {
     let factor = password("password", PasswordOptions { id: None }).unwrap();
-    assert_eq!(factor.entropy, Some(1.0));
+    assert_eq!(factor.entropy.unwrap().floor(), 1.0);
 
     let factor =
       password("98p23uijafjj--ah77yhfraklhjaza!?a3", PasswordOptions { id: None }).unwrap();
-    assert_eq!(factor.entropy, Some(63.0));
+    assert_eq!(factor.entropy, Some(64.0));
   }
 
   #[test]

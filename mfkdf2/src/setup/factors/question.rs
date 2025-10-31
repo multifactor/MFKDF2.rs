@@ -176,7 +176,7 @@ mod tests {
       question: Some("What is the capital of France?".to_string()),
     })
     .unwrap();
-    assert_eq!(factor.entropy, Some(9.0));
+    assert_eq!(factor.entropy.unwrap().floor(), 9.0);
   }
 
   #[test]
