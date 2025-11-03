@@ -30,7 +30,11 @@ pub fn question(answer: impl Into<String>) -> MFKDF2Result<MFKDF2Factor> {
   if answer.is_empty() {
     return Err(MFKDF2Error::AnswerEmpty);
   }
-  let answer = answer.to_lowercase().replace(|c: char| !c.is_alphanumeric(), "").trim().to_string();
+  let answer = answer
+    .to_lowercase()
+    .replace(|c: char| !c.is_alphanumeric() && !c.is_whitespace(), "")
+    .trim()
+    .to_string();
   let strength = zxcvbn(&answer, &[]);
 
   Ok(MFKDF2Factor {

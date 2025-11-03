@@ -143,8 +143,8 @@ pub fn key(
   let integrity_key = hkdf_sha256_with_info(&key, &salt_bytes, "mfkdf2:integrity".as_bytes());
   if verify {
     let integrity_data = policy.extract();
-    let hmac = hmacsha256(&integrity_key, &integrity_data);
-    let hmac = general_purpose::STANDARD.encode(hmac);
+    let digest = hmacsha256(&integrity_key, &integrity_data);
+    let hmac = general_purpose::STANDARD.encode(digest);
     if policy.hmac != hmac {
       return Err(MFKDF2Error::PolicyIntegrityCheckFailed);
     }

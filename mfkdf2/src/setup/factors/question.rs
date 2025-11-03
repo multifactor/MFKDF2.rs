@@ -70,7 +70,11 @@ pub fn question(answer: impl Into<String>, options: QuestionOptions) -> MFKDF2Re
     Some(ref ques) => ques.clone(),
   };
 
-  let answer = answer.to_lowercase().replace(|c: char| !c.is_alphanumeric(), "").trim().to_string();
+  let answer = answer
+    .to_lowercase()
+    .replace(|c: char| !c.is_alphanumeric() && !c.is_whitespace(), "")
+    .trim()
+    .to_string();
   let strength = zxcvbn(&answer, &[]);
 
   let mut options = options;
@@ -124,7 +128,7 @@ mod tests {
 
     assert!(matches!(factor.factor_type, FactorType::Question(_)));
     if let FactorType::Question(q) = factor.factor_type {
-      assert_eq!(q.answer, "bluenoyellow");
+      assert_eq!(q.answer, "blue no yellow");
       assert_eq!(q.options.question, Some("What is your favorite color?".to_string()));
     }
   }
@@ -183,7 +187,7 @@ mod tests {
   fn answer_normalization() {
     let factor = question("  My answer is... 'Test 123!' ", QuestionOptions::default()).unwrap();
     if let FactorType::Question(q) = factor.factor_type {
-      assert_eq!(q.answer, "myansweristest123");
+      assert_eq!(q.answer, "my answer is test 123");
     } else {
       panic!("Wrong factor type");
     }
