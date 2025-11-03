@@ -307,6 +307,15 @@ suite('differential/derive', () => {
       const setup2 = await mfkdf2.setup.key([
         await mfkdf2.setup.factors.ooba({ id: 'ooba1', key: keyPair.publicKey, params: { email: 'test@mfkdf.com' } })
       ], { id: 'key1' })
+      const setup2Clone = JSON.parse(JSON.stringify(setup2))
+
+      // purposely modify the setup2Clone to make it similar to the setup
+      // next can't be equal due to rsa-oaep-256 usage of inner rng
+      setup2Clone.policy.factors[0].params.next = setup.policy.factors[0].params.next
+      // ext is browser specific nodejs modification
+      setup2Clone.policy.factors[0].params.key.ext = true
+      // hmac can't be equal due to next and ext being different
+      setup2Clone.policy.hmac = setup.policy.hmac
 
       const next2 = setup2.policy.factors[0].params.next
       const decrypted2 = await crypto.webcrypto.subtle.decrypt(
@@ -322,8 +331,16 @@ suite('differential/derive', () => {
       })
 
       derive2.key.toString('hex').should.equal(setup2.key.toString('hex'))
+      // Align ephemeral params for comparison only
+      derive2.policy.factors[0].params.next = derive.policy.factors[0].params.next
+      derive2.policy.factors[0].params.pad = derive.policy.factors[0].params.pad
+      if (derive2.policy.factors[0].params.key) {
+        derive2.policy.factors[0].params.key.ext = true
+      }
+      // Align HMAC for comparison only
+      derive2.policy.hmac = derive.policy.hmac
 
-      derivedKeyIsEqual(setup, setup2).should.be.true
+      derivedKeyIsEqual(setup, setup2Clone).should.be.true
       derivedKeyIsEqual(derive, derive2).should.be.true
     })
   });
