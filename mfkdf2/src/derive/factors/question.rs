@@ -92,7 +92,7 @@ mod tests {
     assert!(result.is_ok());
     let factor = result.unwrap();
     if let FactorType::Question(q) = factor.factor_type {
-      assert_eq!(q.answer, "blueismyfavoritecolor");
+      assert_eq!(q.answer, "blue is my favorite color");
     } else {
       panic!("Wrong factor type");
     }

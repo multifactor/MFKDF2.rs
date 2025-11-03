@@ -4,6 +4,6 @@ rust:
 
 web:
   ts: src/generated/web
-  features: ["bindings"]
+  features: ["bindings", "differential-test"]
 bindings:
   ts: src/generated/rn

@@ -374,6 +374,429 @@ suite('differential/derive', () => {
       derivedKeyIsEqual(setup, setup2).should.be.true
       derivedKeyIsEqual(derive, derive2).should.be.true
     })
+
+    test('uuid', async () => {
+      const uuid1 = '9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6d'
+      const uuid2 = '550e8400-e29b-41d4-a716-446655440000'
+
+      const setup = await mfkdf.setup.key([
+        await mfkdf.setup.factors.uuid({ id: 'uuid1', uuid: uuid1 }),
+        await mfkdf.setup.factors.uuid({ id: 'uuid2', uuid: uuid2 })
+      ], { id: 'key1' })
+
+      const derive = await mfkdf.derive.key(setup.policy, {
+        uuid1: await mfkdf.derive.factors.uuid(uuid1),
+        uuid2: await mfkdf.derive.factors.uuid(uuid2)
+      })
+
+      derive.key.toString('hex').should.equal(setup.key.toString('hex'))
+
+      const setup2 = await mfkdf2.setup.key([
+        await mfkdf2.setup.factors.uuid({ id: 'uuid1', uuid: uuid1 }),
+        await mfkdf2.setup.factors.uuid({ id: 'uuid2', uuid: uuid2 })
+      ], { id: 'key1' })
+
+      const derive2 = await mfkdf2.derive.key(setup2.policy, {
+        uuid1: await mfkdf2.derive.factors.uuid(uuid1),
+        uuid2: await mfkdf2.derive.factors.uuid(uuid2)
+      })
+
+      derive2.key.toString('hex').should.equal(setup2.key.toString('hex'))
+
+      derivedKeyIsEqual(setup, setup2).should.be.true
+      derivedKeyIsEqual(derive, derive2).should.be.true
+    })
+
+    test('question', async () => {
+      const answer1 = ' Fido-'
+      const question1 = 'What is the name of your first pet?'
+      const answer2 = 'New York'
+      const question2 = 'What city were you born in?'
+
+      const setup = await mfkdf.setup.key([
+        await mfkdf.setup.factors.question(answer1, { id: 'question1', question: question1 }),
+        await mfkdf.setup.factors.question(answer2, { id: 'question2', question: question2 })
+      ], { id: 'key1' })
+
+      const derive = await mfkdf.derive.key(setup.policy, {
+        question1: await mfkdf.derive.factors.question(answer1),
+        question2: await mfkdf.derive.factors.question(answer2)
+      })
+
+      derive.key.toString('hex').should.equal(setup.key.toString('hex'))
+
+      const setup2 = await mfkdf2.setup.key([
+        await mfkdf2.setup.factors.question(answer1, { id: 'question1', question: question1 }),
+        await mfkdf2.setup.factors.question(answer2, { id: 'question2', question: question2 })
+      ], { id: 'key1' })
+
+      const derive2 = await mfkdf2.derive.key(setup2.policy, {
+        question1: await mfkdf2.derive.factors.question(answer1),
+        question2: await mfkdf2.derive.factors.question(answer2)
+      })
+
+      derive2.key.toString('hex').should.equal(setup2.key.toString('hex'))
+
+      derivedKeyIsEqual(setup, setup2).should.be.true
+      derivedKeyIsEqual(derive, derive2).should.be.true
+    })
+
+    test('hotp', async () => {
+      const secret1 = Buffer.from('abcdefghijklmnopqrst')
+      const secret2 = Buffer.from('zyxwvutsrqponmlkjihg')
+
+      const setup = await mfkdf.setup.key([
+        await mfkdf.setup.factors.hotp({ id: 'hotp1', secret: secret1 }),
+        await mfkdf.setup.factors.hotp({ id: 'hotp2', secret: secret2 })
+      ], { id: 'key1' })
+
+      const params1 = setup.policy.factors[0].params
+      const params2 = setup.policy.factors[1].params
+      const counter1 = params1.counter
+      const counter2 = params2.counter
+
+      const code1 = parseInt(speakeasy.hotp({
+        secret: secret1.toString('hex'),
+        encoding: 'hex',
+        counter: counter1,
+        digits: 6,
+        algorithm: 'sha1'
+      }))
+      const code2 = parseInt(speakeasy.hotp({
+        secret: secret2.toString('hex'),
+        encoding: 'hex',
+        counter: counter2,
+        digits: 6,
+        algorithm: 'sha1'
+      }))
+
+      const derive = await mfkdf.derive.key(setup.policy, {
+        hotp1: await mfkdf.derive.factors.hotp(code1),
+        hotp2: await mfkdf.derive.factors.hotp(code2)
+      })
+
+      derive.key.toString('hex').should.equal(setup.key.toString('hex'))
+
+      const setup2 = await mfkdf2.setup.key([
+        await mfkdf2.setup.factors.hotp({ id: 'hotp1', secret: secret1 }),
+        await mfkdf2.setup.factors.hotp({ id: 'hotp2', secret: secret2 })
+      ], { id: 'key1' })
+
+      const params1_2 = setup2.policy.factors[0].params
+      const params2_2 = setup2.policy.factors[1].params
+      const counter1_2 = params1_2.counter
+      const counter2_2 = params2_2.counter
+
+      const code1_2 = parseInt(speakeasy.hotp({
+        secret: secret1.toString('hex'),
+        encoding: 'hex',
+        counter: counter1_2,
+        digits: 6,
+        algorithm: 'sha1'
+      }))
+      const code2_2 = parseInt(speakeasy.hotp({
+        secret: secret2.toString('hex'),
+        encoding: 'hex',
+        counter: counter2_2,
+        digits: 6,
+        algorithm: 'sha1'
+      }))
+
+      const derive2 = await mfkdf2.derive.key(setup2.policy, {
+        hotp1: await mfkdf2.derive.factors.hotp(code1_2),
+        hotp2: await mfkdf2.derive.factors.hotp(code2_2)
+      })
+
+      derive2.key.toString('hex').should.equal(setup2.key.toString('hex'))
+
+      derivedKeyIsEqual(setup, setup2).should.be.true
+      derivedKeyIsEqual(derive, derive2).should.be.true
+    })
+
+    test('totp', async () => {
+      const secret1 = Buffer.from('abcdefghijklmnopqrst')
+      const secret2 = Buffer.from('zyxwvutsrqponmlkjihg')
+      const time = 1
+
+      const setup = await mfkdf.setup.key([
+        await mfkdf.setup.factors.totp({ id: 'totp1', secret: secret1, time }),
+        await mfkdf.setup.factors.totp({ id: 'totp2', secret: secret2, time })
+      ], { id: 'key1' })
+
+      const code1 = parseInt(
+        speakeasy.totp({
+          secret: secret1.toString('hex'),
+          encoding: 'hex',
+          step: 30,
+          algorithm: 'sha1',
+          digits: 6,
+          time
+        })
+      )
+      const code2 = parseInt(
+        speakeasy.totp({
+          secret: secret2.toString('hex'),
+          encoding: 'hex',
+          step: 30,
+          algorithm: 'sha1',
+          digits: 6,
+          time
+        })
+      )
+
+      const derive = await mfkdf.derive.key(setup.policy, {
+        totp1: await mfkdf.derive.factors.totp(code1, { time }),
+        totp2: await mfkdf.derive.factors.totp(code2, { time })
+      })
+
+      derive.key.toString('hex').should.equal(setup.key.toString('hex'))
+
+      const setup2 = await mfkdf2.setup.key([
+        await mfkdf2.setup.factors.totp({ id: 'totp1', secret: secret1, time }),
+        await mfkdf2.setup.factors.totp({ id: 'totp2', secret: secret2, time })
+      ], { id: 'key1' })
+
+      const derive2 = await mfkdf2.derive.key(setup2.policy, {
+        totp1: await mfkdf2.derive.factors.totp(code1, { time }),
+        totp2: await mfkdf2.derive.factors.totp(code2, { time })
+      })
+
+      derive2.key.toString('hex').should.equal(setup2.key.toString('hex'))
+
+      derivedKeyIsEqual(setup, setup2).should.be.true
+      derivedKeyIsEqual(derive, derive2).should.be.true
+    })
+
+    test('hmacsha1', async () => {
+      const secret1 = Buffer.from('abcdefghijklmnopqrst')
+      const secret2 = Buffer.from('zyxwvutsrqponmlkjihg')
+
+      const setup = await mfkdf.setup.key([
+        await mfkdf.setup.factors.hmacsha1({ id: 'hmac1', secret: secret1 }),
+        await mfkdf.setup.factors.hmacsha1({ id: 'hmac2', secret: secret2 })
+      ], { id: 'key1' })
+
+      const challenge1 = Buffer.from(setup.policy.factors[0].params.challenge, 'hex')
+      const response1 = crypto.createHmac('sha1', secret1).update(challenge1).digest()
+      const challenge2 = Buffer.from(setup.policy.factors[1].params.challenge, 'hex')
+      const response2 = crypto.createHmac('sha1', secret2).update(challenge2).digest()
+
+      const derive = await mfkdf.derive.key(setup.policy, {
+        hmac1: await mfkdf.derive.factors.hmacsha1(response1),
+        hmac2: await mfkdf.derive.factors.hmacsha1(response2)
+      })
+
+      derive.key.toString('hex').should.equal(setup.key.toString('hex'))
+
+      const setup2 = await mfkdf2.setup.key([
+        await mfkdf2.setup.factors.hmacsha1({ id: 'hmac1', secret: secret1 }),
+        await mfkdf2.setup.factors.hmacsha1({ id: 'hmac2', secret: secret2 })
+      ], { id: 'key1' })
+
+      const challenge1_2 = Buffer.from(setup2.policy.factors[0].params.challenge, 'hex')
+      const response1_2 = crypto.createHmac('sha1', secret1).update(challenge1_2).digest()
+      const challenge2_2 = Buffer.from(setup2.policy.factors[1].params.challenge, 'hex')
+      const response2_2 = crypto.createHmac('sha1', secret2).update(challenge2_2).digest()
+
+      const derive2 = await mfkdf2.derive.key(setup2.policy, {
+        hmac1: await mfkdf2.derive.factors.hmacsha1(response1_2),
+        hmac2: await mfkdf2.derive.factors.hmacsha1(response2_2)
+      })
+
+      derive2.key.toString('hex').should.equal(setup2.key.toString('hex'))
+
+      derivedKeyIsEqual(setup, setup2).should.be.true
+      derivedKeyIsEqual(derive, derive2).should.be.true
+    })
+
+    test('passkey', async () => {
+      const secret1 = Buffer.from(Array.from({ length: 32 }, (_, i) => i))
+      const secret2 = Buffer.from(Array.from({ length: 32 }, (_, i) => i + 32))
+
+      const setup = await mfkdf.setup.key([
+        await mfkdf.setup.factors.passkey(secret1, { id: 'passkey1' }),
+        await mfkdf.setup.factors.passkey(secret2, { id: 'passkey2' })
+      ], { id: 'key1' })
+
+      const derive = await mfkdf.derive.key(setup.policy, {
+        passkey1: await mfkdf.derive.factors.passkey(secret1),
+        passkey2: await mfkdf.derive.factors.passkey(secret2)
+      })
+
+      derive.key.toString('hex').should.equal(setup.key.toString('hex'))
+
+      const setup2 = await mfkdf2.setup.key([
+        await mfkdf2.setup.factors.passkey(secret1, { id: 'passkey1' }),
+        await mfkdf2.setup.factors.passkey(secret2, { id: 'passkey2' })
+      ], { id: 'key1' })
+
+      const derive2 = await mfkdf2.derive.key(setup2.policy, {
+        passkey1: await mfkdf2.derive.factors.passkey(secret1),
+        passkey2: await mfkdf2.derive.factors.passkey(secret2)
+      })
+
+      derive2.key.toString('hex').should.equal(setup2.key.toString('hex'))
+
+      derivedKeyIsEqual(setup, setup2).should.be.true
+      derivedKeyIsEqual(derive, derive2).should.be.true
+    })
+
+    test('stack', async () => {
+      const setup = await mfkdf.setup.key([
+        await mfkdf.setup.factors.stack([
+          await mfkdf.setup.factors.password('password1', { id: 'password1' }),
+          await mfkdf.setup.factors.password('password2', { id: 'password2' })
+        ], { id: 'stack1' }),
+        await mfkdf.setup.factors.stack([
+          await mfkdf.setup.factors.password('password3', { id: 'password3' }),
+          await mfkdf.setup.factors.password('password4', { id: 'password4' })
+        ], { id: 'stack2' })
+      ], { id: 'key1' })
+
+      const derive = await mfkdf.derive.key(setup.policy, {
+        stack1: await mfkdf.derive.factors.stack({
+          password1: await mfkdf.derive.factors.password('password1'),
+          password2: await mfkdf.derive.factors.password('password2')
+        }),
+        stack2: await mfkdf.derive.factors.stack({
+          password3: await mfkdf.derive.factors.password('password3'),
+          password4: await mfkdf.derive.factors.password('password4')
+        })
+      })
+
+      derive.key.toString('hex').should.equal(setup.key.toString('hex'))
+
+      const setup2 = await mfkdf2.setup.key([
+        await mfkdf2.setup.factors.stack([
+          await mfkdf2.setup.factors.password('password1', { id: 'password1' }),
+          await mfkdf2.setup.factors.password('password2', { id: 'password2' })
+        ], { id: 'stack1' }),
+        await mfkdf2.setup.factors.stack([
+          await mfkdf2.setup.factors.password('password3', { id: 'password3' }),
+          await mfkdf2.setup.factors.password('password4', { id: 'password4' })
+        ], { id: 'stack2' })
+      ], { id: 'key1' })
+
+      const derive2 = await mfkdf2.derive.key(setup2.policy, {
+        stack1: await mfkdf2.derive.factors.stack({
+          password1: await mfkdf2.derive.factors.password('password1'),
+          password2: await mfkdf2.derive.factors.password('password2')
+        }),
+        stack2: await mfkdf2.derive.factors.stack({
+          password3: await mfkdf2.derive.factors.password('password3'),
+          password4: await mfkdf2.derive.factors.password('password4')
+        })
+      })
+
+      derive2.key.toString('hex').should.equal(setup2.key.toString('hex'))
+
+      derivedKeyIsEqual(setup, setup2).should.be.true
+      derivedKeyIsEqual(derive, derive2).should.be.true
+    })
+
+    test('ooba', async () => {
+      const keyPair1 = await crypto.webcrypto.subtle.generateKey(
+        {
+          hash: 'SHA-256',
+          modulusLength: 2048,
+          name: 'RSA-OAEP',
+          publicExponent: new Uint8Array([1, 0, 1])
+        },
+        true,
+        ['encrypt', 'decrypt']
+      )
+      const keyPair2 = await crypto.webcrypto.subtle.generateKey(
+        {
+          hash: 'SHA-256',
+          modulusLength: 2048,
+          name: 'RSA-OAEP',
+          publicExponent: new Uint8Array([1, 0, 1])
+        },
+        true,
+        ['encrypt', 'decrypt']
+      )
+
+      const setup = await mfkdf.setup.key([
+        await mfkdf.setup.factors.ooba({ id: 'ooba1', key: keyPair1.publicKey, params: { email: 'test1@mfkdf.com' } }),
+        await mfkdf.setup.factors.ooba({ id: 'ooba2', key: keyPair2.publicKey, params: { email: 'test2@mfkdf.com' } })
+      ], { id: 'key1' })
+
+      const next1 = setup.policy.factors[0].params.next
+      const decrypted1 = await crypto.webcrypto.subtle.decrypt(
+        { name: 'RSA-OAEP' },
+        keyPair1.privateKey,
+        Buffer.from(next1, 'hex')
+      )
+      const json1 = JSON.parse(Buffer.from(decrypted1).toString())
+      const code1 = json1.code
+
+      const next2 = setup.policy.factors[1].params.next
+      const decrypted2 = await crypto.webcrypto.subtle.decrypt(
+        { name: 'RSA-OAEP' },
+        keyPair2.privateKey,
+        Buffer.from(next2, 'hex')
+      )
+      const json2 = JSON.parse(Buffer.from(decrypted2).toString())
+      const code2 = json2.code
+
+      const derive = await mfkdf.derive.key(setup.policy, {
+        ooba1: await mfkdf.derive.factors.ooba(code1),
+        ooba2: await mfkdf.derive.factors.ooba(code2)
+      })
+
+      derive.key.toString('hex').should.equal(setup.key.toString('hex'))
+
+      const setup2 = await mfkdf2.setup.key([
+        await mfkdf2.setup.factors.ooba({ id: 'ooba1', key: keyPair1.publicKey, params: { email: 'test1@mfkdf.com' } }),
+        await mfkdf2.setup.factors.ooba({ id: 'ooba2', key: keyPair2.publicKey, params: { email: 'test2@mfkdf.com' } })
+      ], { id: 'key1' })
+      const setup2Clone = JSON.parse(JSON.stringify(setup2))
+
+      // purposely modify the setup2Clone to make it similar to the setup
+      // next can't be equal due to rsa-oaep-256 usage of inner rng
+      setup2Clone.policy.factors[0].params.next = setup.policy.factors[0].params.next
+      setup2Clone.policy.factors[1].params.next = setup.policy.factors[1].params.next
+      // ext is browser specific nodejs modification
+      setup2Clone.policy.factors[0].params.key.ext = true
+      setup2Clone.policy.factors[1].params.key.ext = true
+      // hmac can't be equal due to next and ext being different
+      setup2Clone.policy.hmac = setup.policy.hmac
+
+      const next1_2 = setup2.policy.factors[0].params.next
+      const decrypted1_2 = await crypto.webcrypto.subtle.decrypt(
+        { name: 'RSA-OAEP' },
+        keyPair1.privateKey,
+        Buffer.from(next1_2, 'hex')
+      )
+      const json1_2 = JSON.parse(Buffer.from(decrypted1_2).toString())
+      const code1_2 = json1_2.code
+
+      const next2_2 = setup2.policy.factors[1].params.next
+      const decrypted2_2 = await crypto.webcrypto.subtle.decrypt(
+        { name: 'RSA-OAEP' },
+        keyPair2.privateKey,
+        Buffer.from(next2_2, 'hex')
+      )
+      const json2_2 = JSON.parse(Buffer.from(decrypted2_2).toString())
+      const code2_2 = json2_2.code
+
+      const derive2 = await mfkdf2.derive.key(setup2.policy, {
+        ooba1: await mfkdf2.derive.factors.ooba(code1_2),
+        ooba2: await mfkdf2.derive.factors.ooba(code2_2)
+      })
+
+      derive2.key.toString('hex').should.equal(setup2.key.toString('hex'))
+      // Align ephemeral params for comparison only
+      derive2.policy.factors[0].params.next = derive.policy.factors[0].params.next
+      derive2.policy.factors[1].params.next = derive.policy.factors[1].params.next
+      derive2.policy.factors[0].params.key.ext = true
+      derive2.policy.factors[1].params.key.ext = true
+      // Align HMAC for comparison only
+      derive2.policy.hmac = derive.policy.hmac
+
+      derivedKeyIsEqual(setup, setup2Clone).should.be.true
+      derivedKeyIsEqual(derive, derive2).should.be.true
+    })
   });
 
   suite('factor threshold', () => {
@@ -405,6 +828,472 @@ suite('differential/derive', () => {
       derive2.key.toString('hex').should.equal(setup2.key.toString('hex'))
 
       derivedKeyIsEqual(setup, setup2).should.be.true
+      derivedKeyIsEqual(derive, derive2).should.be.true
+    })
+
+    test('uuid', async () => {
+      const uuid1 = '9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6d'
+      const uuid2 = '550e8400-e29b-41d4-a716-446655440000'
+      const uuid3 = '6ba7b810-9dad-11d1-80b4-00c04fd430c8'
+
+      const setup = await mfkdf.setup.key([
+        await mfkdf.setup.factors.uuid({ id: 'uuid1', uuid: uuid1 }),
+        await mfkdf.setup.factors.uuid({ id: 'uuid2', uuid: uuid2 }),
+        await mfkdf.setup.factors.uuid({ id: 'uuid3', uuid: uuid3 })
+      ], { threshold: 2, id: 'key1' })
+
+      const derive = await mfkdf.derive.key(setup.policy, {
+        uuid1: await mfkdf.derive.factors.uuid(uuid1),
+        uuid2: await mfkdf.derive.factors.uuid(uuid2)
+      })
+
+      derive.key.toString('hex').should.equal(setup.key.toString('hex'))
+
+      const setup2 = await mfkdf2.setup.key([
+        await mfkdf2.setup.factors.uuid({ id: 'uuid1', uuid: uuid1 }),
+        await mfkdf2.setup.factors.uuid({ id: 'uuid2', uuid: uuid2 }),
+        await mfkdf2.setup.factors.uuid({ id: 'uuid3', uuid: uuid3 })
+      ], { threshold: 2, id: 'key1' })
+
+      const derive2 = await mfkdf2.derive.key(setup2.policy, {
+        uuid1: await mfkdf2.derive.factors.uuid(uuid1),
+        uuid2: await mfkdf2.derive.factors.uuid(uuid2)
+      })
+
+      derive2.key.toString('hex').should.equal(setup2.key.toString('hex'))
+
+      derivedKeyIsEqual(setup, setup2).should.be.true
+      derivedKeyIsEqual(derive, derive2).should.be.true
+    })
+
+    test('question', async () => {
+      const answer1 = ' Fido-'
+      const question1 = 'What is the name of your first pet?'
+      const answer2 = 'New York'
+      const question2 = 'What city were you born in?'
+      const answer3 = 'Blue'
+      const question3 = 'What is your favorite color?'
+
+      const setup = await mfkdf.setup.key([
+        await mfkdf.setup.factors.question(answer1, { id: 'question1', question: question1 }),
+        await mfkdf.setup.factors.question(answer2, { id: 'question2', question: question2 }),
+        await mfkdf.setup.factors.question(answer3, { id: 'question3', question: question3 })
+      ], { threshold: 2, id: 'key1' })
+
+      const derive = await mfkdf.derive.key(setup.policy, {
+        question1: await mfkdf.derive.factors.question(answer1),
+        question2: await mfkdf.derive.factors.question(answer2)
+      })
+
+      derive.key.toString('hex').should.equal(setup.key.toString('hex'))
+
+      const setup2 = await mfkdf2.setup.key([
+        await mfkdf2.setup.factors.question(answer1, { id: 'question1', question: question1 }),
+        await mfkdf2.setup.factors.question(answer2, { id: 'question2', question: question2 }),
+        await mfkdf2.setup.factors.question(answer3, { id: 'question3', question: question3 })
+      ], { threshold: 2, id: 'key1' })
+
+      const derive2 = await mfkdf2.derive.key(setup2.policy, {
+        question1: await mfkdf2.derive.factors.question(answer1),
+        question2: await mfkdf2.derive.factors.question(answer2)
+      })
+
+      derive2.key.toString('hex').should.equal(setup2.key.toString('hex'))
+
+      derivedKeyIsEqual(setup, setup2).should.be.true
+      derivedKeyIsEqual(derive, derive2).should.be.true
+    })
+
+    test('hotp', async () => {
+      const secret1 = Buffer.from('abcdefghijklmnopqrst')
+      const secret2 = Buffer.from('zyxwvutsrqponmlkjihg')
+      const secret3 = Buffer.from('0123456789abcdefghij')
+
+      const setup = await mfkdf.setup.key([
+        await mfkdf.setup.factors.hotp({ id: 'hotp1', secret: secret1 }),
+        await mfkdf.setup.factors.hotp({ id: 'hotp2', secret: secret2 }),
+        await mfkdf.setup.factors.hotp({ id: 'hotp3', secret: secret3 })
+      ], { threshold: 2, id: 'key1' })
+
+      const params1 = setup.policy.factors[0].params
+      const params2 = setup.policy.factors[1].params
+      const counter1 = params1.counter
+      const counter2 = params2.counter
+
+      const code1 = parseInt(speakeasy.hotp({
+        secret: secret1.toString('hex'),
+        encoding: 'hex',
+        counter: counter1,
+        digits: 6,
+        algorithm: 'sha1'
+      }))
+      const code2 = parseInt(speakeasy.hotp({
+        secret: secret2.toString('hex'),
+        encoding: 'hex',
+        counter: counter2,
+        digits: 6,
+        algorithm: 'sha1'
+      }))
+
+      const derive = await mfkdf.derive.key(setup.policy, {
+        hotp1: await mfkdf.derive.factors.hotp(code1),
+        hotp2: await mfkdf.derive.factors.hotp(code2)
+      })
+
+      derive.key.toString('hex').should.equal(setup.key.toString('hex'))
+
+      const setup2 = await mfkdf2.setup.key([
+        await mfkdf2.setup.factors.hotp({ id: 'hotp1', secret: secret1 }),
+        await mfkdf2.setup.factors.hotp({ id: 'hotp2', secret: secret2 }),
+        await mfkdf2.setup.factors.hotp({ id: 'hotp3', secret: secret3 })
+      ], { threshold: 2, id: 'key1' })
+
+      const params1_2 = setup2.policy.factors[0].params
+      const params2_2 = setup2.policy.factors[1].params
+      const counter1_2 = params1_2.counter
+      const counter2_2 = params2_2.counter
+
+      const code1_2 = parseInt(speakeasy.hotp({
+        secret: secret1.toString('hex'),
+        encoding: 'hex',
+        counter: counter1_2,
+        digits: 6,
+        algorithm: 'sha1'
+      }))
+      const code2_2 = parseInt(speakeasy.hotp({
+        secret: secret2.toString('hex'),
+        encoding: 'hex',
+        counter: counter2_2,
+        digits: 6,
+        algorithm: 'sha1'
+      }))
+
+      const derive2 = await mfkdf2.derive.key(setup2.policy, {
+        hotp1: await mfkdf2.derive.factors.hotp(code1_2),
+        hotp2: await mfkdf2.derive.factors.hotp(code2_2)
+      })
+
+      derive2.key.toString('hex').should.equal(setup2.key.toString('hex'))
+
+      derivedKeyIsEqual(setup, setup2).should.be.true
+      derivedKeyIsEqual(derive, derive2).should.be.true
+    })
+
+    test('totp', async () => {
+      const secret1 = Buffer.from('abcdefghijklmnopqrst')
+      const secret2 = Buffer.from('zyxwvutsrqponmlkjihg')
+      const secret3 = Buffer.from('0123456789abcdefghij')
+      const time = 1
+
+      const setup = await mfkdf.setup.key([
+        await mfkdf.setup.factors.totp({ id: 'totp1', secret: secret1, time }),
+        await mfkdf.setup.factors.totp({ id: 'totp2', secret: secret2, time }),
+        await mfkdf.setup.factors.totp({ id: 'totp3', secret: secret3, time })
+      ], { threshold: 2, id: 'key1' })
+
+      const code1 = parseInt(
+        speakeasy.totp({
+          secret: secret1.toString('hex'),
+          encoding: 'hex',
+          step: 30,
+          algorithm: 'sha1',
+          digits: 6,
+          time
+        })
+      )
+      const code2 = parseInt(
+        speakeasy.totp({
+          secret: secret2.toString('hex'),
+          encoding: 'hex',
+          step: 30,
+          algorithm: 'sha1',
+          digits: 6,
+          time
+        })
+      )
+
+      const derive = await mfkdf.derive.key(setup.policy, {
+        totp1: await mfkdf.derive.factors.totp(code1, { time }),
+        totp2: await mfkdf.derive.factors.totp(code2, { time })
+      })
+
+      derive.key.toString('hex').should.equal(setup.key.toString('hex'))
+
+      const setup2 = await mfkdf2.setup.key([
+        await mfkdf2.setup.factors.totp({ id: 'totp1', secret: secret1, time }),
+        await mfkdf2.setup.factors.totp({ id: 'totp2', secret: secret2, time }),
+        await mfkdf2.setup.factors.totp({ id: 'totp3', secret: secret3, time })
+      ], { threshold: 2, id: 'key1' })
+
+      const derive2 = await mfkdf2.derive.key(setup2.policy, {
+        totp1: await mfkdf2.derive.factors.totp(code1, { time }),
+        totp2: await mfkdf2.derive.factors.totp(code2, { time })
+      })
+
+      derive2.key.toString('hex').should.equal(setup2.key.toString('hex'))
+
+      derivedKeyIsEqual(setup, setup2).should.be.true
+      derivedKeyIsEqual(derive, derive2).should.be.true
+    })
+
+    test('hmacsha1', async () => {
+      const secret1 = Buffer.from('abcdefghijklmnopqrst')
+      const secret2 = Buffer.from('zyxwvutsrqponmlkjihg')
+      const secret3 = Buffer.from('0123456789abcdefghij')
+
+      const setup = await mfkdf.setup.key([
+        await mfkdf.setup.factors.hmacsha1({ id: 'hmac1', secret: secret1 }),
+        await mfkdf.setup.factors.hmacsha1({ id: 'hmac2', secret: secret2 }),
+        await mfkdf.setup.factors.hmacsha1({ id: 'hmac3', secret: secret3 })
+      ], { threshold: 2, id: 'key1' })
+
+      const challenge1 = Buffer.from(setup.policy.factors[0].params.challenge, 'hex')
+      const response1 = crypto.createHmac('sha1', secret1).update(challenge1).digest()
+      const challenge2 = Buffer.from(setup.policy.factors[1].params.challenge, 'hex')
+      const response2 = crypto.createHmac('sha1', secret2).update(challenge2).digest()
+
+      const derive = await mfkdf.derive.key(setup.policy, {
+        hmac1: await mfkdf.derive.factors.hmacsha1(response1),
+        hmac2: await mfkdf.derive.factors.hmacsha1(response2)
+      })
+
+      derive.key.toString('hex').should.equal(setup.key.toString('hex'))
+
+      const setup2 = await mfkdf2.setup.key([
+        await mfkdf2.setup.factors.hmacsha1({ id: 'hmac1', secret: secret1 }),
+        await mfkdf2.setup.factors.hmacsha1({ id: 'hmac2', secret: secret2 }),
+        await mfkdf2.setup.factors.hmacsha1({ id: 'hmac3', secret: secret3 })
+      ], { threshold: 2, id: 'key1' })
+
+      const challenge1_2 = Buffer.from(setup2.policy.factors[0].params.challenge, 'hex')
+      const response1_2 = crypto.createHmac('sha1', secret1).update(challenge1_2).digest()
+      const challenge2_2 = Buffer.from(setup2.policy.factors[1].params.challenge, 'hex')
+      const response2_2 = crypto.createHmac('sha1', secret2).update(challenge2_2).digest()
+
+      const derive2 = await mfkdf2.derive.key(setup2.policy, {
+        hmac1: await mfkdf2.derive.factors.hmacsha1(response1_2),
+        hmac2: await mfkdf2.derive.factors.hmacsha1(response2_2)
+      })
+
+      derive2.key.toString('hex').should.equal(setup2.key.toString('hex'))
+
+      derivedKeyIsEqual(setup, setup2).should.be.true
+      derivedKeyIsEqual(derive, derive2).should.be.true
+    })
+
+    test('passkey', async () => {
+      const secret1 = Buffer.from(Array.from({ length: 32 }, (_, i) => i))
+      const secret2 = Buffer.from(Array.from({ length: 32 }, (_, i) => i + 32))
+      const secret3 = Buffer.from(Array.from({ length: 32 }, (_, i) => i + 64))
+
+      const setup = await mfkdf.setup.key([
+        await mfkdf.setup.factors.passkey(secret1, { id: 'passkey1' }),
+        await mfkdf.setup.factors.passkey(secret2, { id: 'passkey2' }),
+        await mfkdf.setup.factors.passkey(secret3, { id: 'passkey3' })
+      ], { threshold: 2, id: 'key1' })
+
+      const derive = await mfkdf.derive.key(setup.policy, {
+        passkey1: await mfkdf.derive.factors.passkey(secret1),
+        passkey2: await mfkdf.derive.factors.passkey(secret2)
+      })
+
+      derive.key.toString('hex').should.equal(setup.key.toString('hex'))
+
+      const setup2 = await mfkdf2.setup.key([
+        await mfkdf2.setup.factors.passkey(secret1, { id: 'passkey1' }),
+        await mfkdf2.setup.factors.passkey(secret2, { id: 'passkey2' }),
+        await mfkdf2.setup.factors.passkey(secret3, { id: 'passkey3' })
+      ], { threshold: 2, id: 'key1' })
+
+      const derive2 = await mfkdf2.derive.key(setup2.policy, {
+        passkey1: await mfkdf2.derive.factors.passkey(secret1),
+        passkey2: await mfkdf2.derive.factors.passkey(secret2)
+      })
+
+      derive2.key.toString('hex').should.equal(setup2.key.toString('hex'))
+
+      derivedKeyIsEqual(setup, setup2).should.be.true
+      derivedKeyIsEqual(derive, derive2).should.be.true
+    })
+
+    test('stack', async () => {
+      const setup = await mfkdf.setup.key([
+        await mfkdf.setup.factors.stack([
+          await mfkdf.setup.factors.password('password1', { id: 'password1' }),
+          await mfkdf.setup.factors.password('password2', { id: 'password2' })
+        ], { id: 'stack1' }),
+        await mfkdf.setup.factors.stack([
+          await mfkdf.setup.factors.password('password3', { id: 'password3' }),
+          await mfkdf.setup.factors.password('password4', { id: 'password4' })
+        ], { id: 'stack2' }),
+        await mfkdf.setup.factors.stack([
+          await mfkdf.setup.factors.password('password5', { id: 'password5' }),
+          await mfkdf.setup.factors.password('password6', { id: 'password6' })
+        ], { id: 'stack3' })
+      ], { threshold: 2, id: 'key1' })
+
+      const derive = await mfkdf.derive.key(setup.policy, {
+        stack1: await mfkdf.derive.factors.stack({
+          password1: await mfkdf.derive.factors.password('password1'),
+          password2: await mfkdf.derive.factors.password('password2')
+        }),
+        stack2: await mfkdf.derive.factors.stack({
+          password3: await mfkdf.derive.factors.password('password3'),
+          password4: await mfkdf.derive.factors.password('password4')
+        })
+      })
+
+      derive.key.toString('hex').should.equal(setup.key.toString('hex'))
+
+      const setup2 = await mfkdf2.setup.key([
+        await mfkdf2.setup.factors.stack([
+          await mfkdf2.setup.factors.password('password1', { id: 'password1' }),
+          await mfkdf2.setup.factors.password('password2', { id: 'password2' })
+        ], { id: 'stack1' }),
+        await mfkdf2.setup.factors.stack([
+          await mfkdf2.setup.factors.password('password3', { id: 'password3' }),
+          await mfkdf2.setup.factors.password('password4', { id: 'password4' })
+        ], { id: 'stack2' }),
+        await mfkdf2.setup.factors.stack([
+          await mfkdf2.setup.factors.password('password5', { id: 'password5' }),
+          await mfkdf2.setup.factors.password('password6', { id: 'password6' })
+        ], { id: 'stack3' })
+      ], { threshold: 2, id: 'key1' })
+
+      const derive2 = await mfkdf2.derive.key(setup2.policy, {
+        stack1: await mfkdf2.derive.factors.stack({
+          password1: await mfkdf2.derive.factors.password('password1'),
+          password2: await mfkdf2.derive.factors.password('password2')
+        }),
+        stack2: await mfkdf2.derive.factors.stack({
+          password3: await mfkdf2.derive.factors.password('password3'),
+          password4: await mfkdf2.derive.factors.password('password4')
+        })
+      })
+
+      derive2.key.toString('hex').should.equal(setup2.key.toString('hex'))
+
+      derivedKeyIsEqual(setup, setup2).should.be.true
+      derivedKeyIsEqual(derive, derive2).should.be.true
+    })
+
+    test('ooba', async () => {
+      const keyPair1 = await crypto.webcrypto.subtle.generateKey(
+        {
+          hash: 'SHA-256',
+          modulusLength: 2048,
+          name: 'RSA-OAEP',
+          publicExponent: new Uint8Array([1, 0, 1])
+        },
+        true,
+        ['encrypt', 'decrypt']
+      )
+      const keyPair2 = await crypto.webcrypto.subtle.generateKey(
+        {
+          hash: 'SHA-256',
+          modulusLength: 2048,
+          name: 'RSA-OAEP',
+          publicExponent: new Uint8Array([1, 0, 1])
+        },
+        true,
+        ['encrypt', 'decrypt']
+      )
+      const keyPair3 = await crypto.webcrypto.subtle.generateKey(
+        {
+          hash: 'SHA-256',
+          modulusLength: 2048,
+          name: 'RSA-OAEP',
+          publicExponent: new Uint8Array([1, 0, 1])
+        },
+        true,
+        ['encrypt', 'decrypt']
+      )
+
+      const setup = await mfkdf.setup.key([
+        await mfkdf.setup.factors.ooba({ id: 'ooba1', key: keyPair1.publicKey, params: { email: 'test1@mfkdf.com' } }),
+        await mfkdf.setup.factors.ooba({ id: 'ooba2', key: keyPair2.publicKey, params: { email: 'test2@mfkdf.com' } }),
+        await mfkdf.setup.factors.ooba({ id: 'ooba3', key: keyPair3.publicKey, params: { email: 'test3@mfkdf.com' } })
+      ], { threshold: 2, id: 'key1' })
+
+      const next1 = setup.policy.factors[0].params.next
+      const decrypted1 = await crypto.webcrypto.subtle.decrypt(
+        { name: 'RSA-OAEP' },
+        keyPair1.privateKey,
+        Buffer.from(next1, 'hex')
+      )
+      const json1 = JSON.parse(Buffer.from(decrypted1).toString())
+      const code1 = json1.code
+
+      const next2 = setup.policy.factors[1].params.next
+      const decrypted2 = await crypto.webcrypto.subtle.decrypt(
+        { name: 'RSA-OAEP' },
+        keyPair2.privateKey,
+        Buffer.from(next2, 'hex')
+      )
+      const json2 = JSON.parse(Buffer.from(decrypted2).toString())
+      const code2 = json2.code
+
+      const derive = await mfkdf.derive.key(setup.policy, {
+        ooba1: await mfkdf.derive.factors.ooba(code1),
+        ooba2: await mfkdf.derive.factors.ooba(code2)
+      })
+
+      derive.key.toString('hex').should.equal(setup.key.toString('hex'))
+
+      const setup2 = await mfkdf2.setup.key([
+        await mfkdf2.setup.factors.ooba({ id: 'ooba1', key: keyPair1.publicKey, params: { email: 'test1@mfkdf.com' } }),
+        await mfkdf2.setup.factors.ooba({ id: 'ooba2', key: keyPair2.publicKey, params: { email: 'test2@mfkdf.com' } }),
+        await mfkdf2.setup.factors.ooba({ id: 'ooba3', key: keyPair3.publicKey, params: { email: 'test3@mfkdf.com' } })
+      ], { threshold: 2, id: 'key1' })
+      const setup2Clone = JSON.parse(JSON.stringify(setup2))
+
+      // purposely modify the setup2Clone to make it similar to the setup
+      // next can't be equal due to rsa-oaep-256 usage of inner rng
+      setup2Clone.policy.factors[0].params.next = setup.policy.factors[0].params.next
+      setup2Clone.policy.factors[1].params.next = setup.policy.factors[1].params.next
+      setup2Clone.policy.factors[2].params.next = setup.policy.factors[2].params.next
+      // ext is browser specific nodejs modification
+      setup2Clone.policy.factors[0].params.key.ext = true
+      setup2Clone.policy.factors[1].params.key.ext = true
+      setup2Clone.policy.factors[2].params.key.ext = true
+      // hmac can't be equal due to next and ext being different
+      setup2Clone.policy.hmac = setup.policy.hmac
+
+      const next1_2 = setup2.policy.factors[0].params.next
+      const decrypted1_2 = await crypto.webcrypto.subtle.decrypt(
+        { name: 'RSA-OAEP' },
+        keyPair1.privateKey,
+        Buffer.from(next1_2, 'hex')
+      )
+      const json1_2 = JSON.parse(Buffer.from(decrypted1_2).toString())
+      const code1_2 = json1_2.code
+
+      const next2_2 = setup2.policy.factors[1].params.next
+      const decrypted2_2 = await crypto.webcrypto.subtle.decrypt(
+        { name: 'RSA-OAEP' },
+        keyPair2.privateKey,
+        Buffer.from(next2_2, 'hex')
+      )
+      const json2_2 = JSON.parse(Buffer.from(decrypted2_2).toString())
+      const code2_2 = json2_2.code
+
+      const derive2 = await mfkdf2.derive.key(setup2.policy, {
+        ooba1: await mfkdf2.derive.factors.ooba(code1_2),
+        ooba2: await mfkdf2.derive.factors.ooba(code2_2)
+      })
+
+      derive2.key.toString('hex').should.equal(setup2.key.toString('hex'))
+      // Align ephemeral params for comparison only
+      derive2.policy.factors[0].params.next = derive.policy.factors[0].params.next
+      derive2.policy.factors[1].params.next = derive.policy.factors[1].params.next
+      derive2.policy.factors[2].params.next = derive.policy.factors[2].params.next
+      derive2.policy.factors[0].params.key.ext = true
+      derive2.policy.factors[1].params.key.ext = true
+      derive2.policy.factors[2].params.key.ext = true
+      // Align HMAC for comparison only
+      derive2.policy.hmac = derive.policy.hmac
+
+      derivedKeyIsEqual(setup, setup2Clone).should.be.true
       derivedKeyIsEqual(derive, derive2).should.be.true
     })
   });
