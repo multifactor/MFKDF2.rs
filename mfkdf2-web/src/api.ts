@@ -74,6 +74,84 @@ function wrapDeriveFactor(factor: raw.Mfkdf2Factor): any {
 }
 
 // Wrap policy to add $id property for JSON schema compatibility
+function deepParseParams(value: any): any {
+  if (typeof value === 'string') {
+    try {
+      return deepParseParams(JSON.parse(value));
+    } catch {
+      return value;
+    }
+  }
+
+  if (Array.isArray(value)) {
+    return value.map(deepParseParams);
+  }
+
+  if (value && typeof value === 'object') {
+    const parsed: any = {};
+    for (const [key, nested] of Object.entries(value)) {
+      parsed[key] = deepParseParams(nested);
+    }
+    return parsed;
+  }
+
+  return value;
+}
+
+function stringifyFactorParams(value: any): any {
+  if (value === undefined || value === null) {
+    return value;
+  }
+
+  if (typeof value === 'string') {
+    return value;
+  }
+
+  const POLICY_ORDER = ['$id', '$schema', 'factors', 'key', 'memory', 'salt', 'threshold', 'time'];
+  const FACTOR_ORDER = ['id', 'pad', 'params', 'salt', 'secret', 'type', 'hint'];
+
+  const stringifyPolicy = (input: any): string => JSON.stringify(orderValue(input, 'policy'));
+
+  function orderValue(input: any, context?: 'policy' | 'factor'): any {
+    if (Array.isArray(input)) {
+      if (context === 'policy') {
+        return input.map((item) => orderValue(item, 'factor'));
+      }
+      return input.map((item) => orderValue(item));
+    }
+
+    if (input && typeof input === 'object') {
+      const baseOrder = context === 'policy' ? POLICY_ORDER : context === 'factor' ? FACTOR_ORDER : [];
+      const extras = Object.keys(input).filter((key) => !baseOrder.includes(key)).sort();
+      const keys = [...baseOrder, ...extras];
+      const ordered: any = {};
+
+      for (const key of keys) {
+        if (!(key in input)) continue;
+
+        if (context === 'factor' && key === 'params') {
+          const nested = input[key];
+          ordered.params = typeof nested === 'string' ? nested : stringifyPolicy(nested);
+          continue;
+        }
+
+        if (key === 'factors' && Array.isArray(input[key])) {
+          ordered.factors = input[key].map((item: any) => orderValue(item, 'factor'));
+          continue;
+        }
+
+        ordered[key] = orderValue(input[key]);
+      }
+
+      return ordered;
+    }
+
+    return input;
+  }
+
+  return stringifyPolicy(value);
+}
+
 function wrapPolicy(policy: any): any {
   const wrapped = {
     ...policy,
@@ -87,7 +165,7 @@ function wrapPolicy(policy: any): any {
   for (const factor of wrapped.factors) {
     factor.type = factor.type ?? factor.kind;
     delete factor.kind;
-    factor.params = JSON.parse(factor.params);
+    factor.params = deepParseParams(factor.params);
   }
 
   return wrapped;
@@ -102,7 +180,8 @@ function unwrapPolicy(policy: any): raw.Policy {
       const factor = { ...f };
       factor.kind = factor.type ? factor.type : factor.kind;
       delete factor.type;
-      factor.params = typeof factor.params === 'object' ? JSON.stringify(factor.params) : factor.params;
+      const stringified = stringifyFactorParams(factor.params);
+      factor.params = stringified;
       return factor;
     })
   };
