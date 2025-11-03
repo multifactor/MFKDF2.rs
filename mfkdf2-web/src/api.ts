@@ -83,6 +83,7 @@ function wrapPolicy(policy: any): any {
   delete wrapped.id;
   delete wrapped.schema;
 
+  // console.log('wrapped factors', wrapped.factors);
   for (const factor of wrapped.factors) {
     factor.type = factor.type ?? factor.kind;
     delete factor.kind;

@@ -59,7 +59,7 @@ suite('factors/hmacsha1', () => {
   test('static', async () => {
     // TODO (@lonerapier): investigate why the pad is different
     const setup =
-      '{"$schema":"https://mfkdf.com/schema/v2.0.0/policy.json","$id":"8b6874f7-5dbb-4196-bc89-347cd6b02dc6","size":32,"threshold":1,"key":"LPJNul+wow4m6DsqxbninhsWHlwfp0JecwQzYpOLmCQ=","salt":"LPJNul+wow4m6DsqxbninhsWHlwfp0JecwQzYpOLmCQ=","factors":[{"id":"hmacsha1","type":"hmacsha1","pad":"RvNBkCLB7QPY2DkTl8tra0QGxiBjqvE12gEP00i5c+y+1pmcyqqLYDgVLxmvGu+L","salt":"PsS1B6fPovsuMfKZinw6hn0kTw1VEpoM8jRFR/8SyT0=","params":{"challenge":"5a5f71c3a584b797d3c8f7d0f59653a2234781b06f2540df42946aa380f634a3430e6aad294e392543cc4ecd3da039bfa8041b179d14afd360a104e3354f01dd","pad":"9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08"}}]}';
+      '{"$schema":"https://mfkdf.com/schema/v2.0.0/policy.json","$id":"8b6874f7-5dbb-4196-bc89-347cd6b02dc6","size":32,"threshold":1,"key":"LPJNul+wow4m6DsqxbninhsWHlwfp0JecwQzYpOLmCQ=","salt":"LPJNul+wow4m6DsqxbninhsWHlwfp0JecwQzYpOLmCQ=","factors":[{"id":"hmacsha1","type":"hmacsha1","pad":"PsS1B6fPovsuMfKZinw6hn0kTw1VEpoM8jRFR/8SyT0=","salt":"PsS1B6fPovsuMfKZinw6hn0kTw1VEpoM8jRFR/8SyT0=","params":{"challenge":"5a5f71c3a584b797d3c8f7d0f59653a2234781b06f2540df42946aa380f634a3430e6aad294e392543cc4ecd3da039bfa8041b179d14afd360a104e3354f01dd","pad":"9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08"}}]}'
 
     const derive = await mfkdf.derive.key(
       JSON.parse(setup),
@@ -74,7 +74,7 @@ suite('factors/hmacsha1', () => {
     derive.key
       .toString('hex')
       .should.equal(
-        'de03ba857b7d643de56f7b93cadb8f4d5465c69aa50fba7f00151e37b639f95f'
+        '2747ebf65219aee6630a758e40fd05ccbb39ab465745ea1c9a6c5adb6673d2d3'
       );
   });
 

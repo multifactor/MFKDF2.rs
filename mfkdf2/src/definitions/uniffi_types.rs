@@ -1,3 +1,4 @@
+use jsonwebtoken::jwk::Jwk;
 use serde_json::Value;
 use uuid::Uuid;
 
@@ -20,6 +21,13 @@ uniffi::custom_type!(HmacSha1Response, Vec<u8>, {
       ))
     }
   }
+});
+
+#[cfg(feature = "bindings")]
+uniffi::custom_type!(Jwk, String, {
+  remote,
+  lower: |v| serde_json::to_string(&v).expect("serialize Jwk"),
+  try_lift: |s: String| Ok(serde_json::from_str(&s)?),
 });
 
 #[cfg(feature = "bindings")]

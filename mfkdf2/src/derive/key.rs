@@ -190,8 +190,11 @@ mod tests {
     time::{SystemTime, UNIX_EPOCH},
   };
 
+  use jsonwebtoken::jwk::Jwk;
   use rand::{RngCore, rngs::OsRng};
-  use serde_json::Value;
+  use rsa::{Oaep, RsaPrivateKey, RsaPublicKey, traits::PublicKeyParts};
+  use serde_json::{Value, json};
+  use sha2::Sha256;
 
   use super::*;
   use crate::{
@@ -218,21 +221,34 @@ mod tests {
     },
   };
 
-  const TEST_JWK: &str = r#"{
-    "key_ops": ["encrypt", "decrypt"],
-    "ext": true,
-    "alg": "RSA-OAEP-256",
-    "kty": "RSA",
-    "n": "1jR1L4H7Wov2W3XWlw1OII-fh_YuzfbZgpMCeSIPUd5oPvyvRf8nshkclQ9EQy6QlCZPX0HzCqkGokppxirKisyjfAlremiL8H60t2aapN_T3eClJ3KUxyEO1cejWoKejD86OtL_DWc04odInpcRmFgAF8mgjbEZRD0oSzaGlr70Ezi8p0yhpMTFM2Ltn0LG6SJ2_LGQwpEFNFf7790IoNpx8vKIZq0Ok1dGhC808f2t0ZhVFmxYnR-fp1jxd5B9nYDkjyJbWQK4vPlpAOgHw9v8G2Cg2X1TX2Ywr19tB249es2NlOYrFRQugzPyKfuVYxpFgoJfMuP83SPx-RvK6w",
-    "e": "AQAB"
-  }"#;
+  fn keypair() -> (RsaPrivateKey, RsaPublicKey) {
+    let bits = 2048;
+    let private_key =
+      RsaPrivateKey::new(&mut rsa::rand_core::OsRng, bits).expect("failed to generate a key");
+    let public_key = RsaPublicKey::from(&private_key);
+    (private_key, public_key)
+  }
 
-  fn generate_ooba_setup_factor(id: &str) -> MFKDF2Factor {
+  fn jwk(key: &RsaPublicKey) -> Jwk {
+    let n = base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(key.n().to_bytes_be());
+    let e = base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(key.e().to_bytes_be());
+    let jwk = json!({
+      "key_ops": ["encrypt", "decrypt"],
+      "ext": true,
+      "alg": "RSA-OAEP-256",
+      "kty": "RSA",
+      "n": n,
+      "e": e
+    });
+    serde_json::from_value(jwk).unwrap()
+  }
+
+  fn generate_ooba_setup_factor(id: &str, key: &RsaPublicKey) -> MFKDF2Factor {
     let options = OobaOptions {
       id:     Some(id.to_string()),
       length: Some(8),
-      key:    Some(TEST_JWK.to_string()),
-      params: Some(r#"{"foo":"bar"}"#.to_string()),
+      key:    Some(jwk(key)),
+      params: Some(json!({"foo":"bar"})),
     };
 
     setup_ooba(options).unwrap()
@@ -336,7 +352,8 @@ mod tests {
       _ => panic!("Wrong factor type"),
     };
 
-    let mut setup_ooba_factor = generate_ooba_setup_factor("ooba");
+    let (private_key, public_key) = keypair();
+    let mut setup_ooba_factor = generate_ooba_setup_factor("ooba", &public_key);
     setup_ooba_factor.id = Some("ooba".to_string());
 
     let setup_factors =
@@ -381,8 +398,13 @@ mod tests {
     let policy_ooba_factor =
       setup_derived_key.policy.factors.iter().find(|f| f.id == "ooba").unwrap();
     let ooba_params: Value = serde_json::from_str(&policy_ooba_factor.params).unwrap();
-    let ooba_code = ooba_params["params"]["code"].as_str().unwrap();
-    let mut derive_ooba_factor = derive_ooba(ooba_code.to_string()).unwrap();
+    let ciphertext = hex::decode(ooba_params["next"].as_str().unwrap()).unwrap();
+    let decrypted = serde_json::from_slice::<Value>(
+      &private_key.decrypt(Oaep::new::<Sha256>(), &ciphertext).unwrap(),
+    )
+    .unwrap();
+    let code = decrypted["code"].as_str().unwrap();
+    let mut derive_ooba_factor = derive_ooba(code.to_string()).unwrap();
     derive_ooba_factor.id = Some("ooba".to_string());
     derive_factors_map.insert("ooba".to_string(), derive_ooba_factor);
 
@@ -477,7 +499,8 @@ mod tests {
     let mut setup_totp_factor = setup_totp(TOTPOptions::default()).unwrap();
     setup_totp_factor.id = Some("totp".to_string());
 
-    let mut setup_ooba_factor = generate_ooba_setup_factor("ooba");
+    let (_, public_key) = keypair();
+    let mut setup_ooba_factor = generate_ooba_setup_factor("ooba", &public_key);
     setup_ooba_factor.id = Some("ooba".to_string());
 
     let setup_factors = vec![

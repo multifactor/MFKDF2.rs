@@ -271,21 +271,21 @@ mod tests {
     let e = base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(public_key.e().to_bytes_be());
 
     // 4. Construct JWK
-    let jwk = serde_json::json!({
+    let jwk: jsonwebtoken::jwk::Jwk = serde_json::from_value(json!({
         "key_ops": ["encrypt", "decrypt"],
         "ext": true,
         "alg": "RSA-OAEP-256",
         "kty": "RSA",
         "n": n,
         "e": e
-    })
-    .to_string();
+    }))
+    .unwrap();
 
     let setup = setup::key(
       vec![
         setup::factors::ooba::ooba(OobaOptions {
           key: Some(jwk),
-          params: Some(r#"{ "email": "test@mfkdf.com" }"#.to_string()),
+          params: Some(json!({ "email": "test@mfkdf.com" })),
           ..Default::default()
         })
         .unwrap(),
