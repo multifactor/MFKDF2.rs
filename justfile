@@ -173,11 +173,11 @@ _ci-summary-failure:
 
 # ensure wasm-bindgen-cli is installed
 ensure-wasm-bindgen-cli:
-    @if ! command -v wasm-bindgen > /dev/null || ! wasm-bindgen --version | grep -q "0.2.101"; then \
-        printf "{{info}}Installing wasm-bindgen-cli 0.2.101...{{reset}}\n" && \
-        cargo install wasm-bindgen-cli --version 0.2.101; \
+    @if ! command -v wasm-bindgen > /dev/null || ! wasm-bindgen --version | grep -q "0.2.104"; then \
+        printf "{{info}}Installing wasm-bindgen-cli 0.2.104...{{reset}}\n" && \
+        cargo install wasm-bindgen-cli --version 0.2.104; \
     else \
-        printf "{{success}}✓ wasm-bindgen-cli 0.2.101 already installed{{reset}}\n"; \
+        printf "{{success}}✓ wasm-bindgen-cli 0.2.104 already installed{{reset}}\n"; \
     fi
 
 # build the workspace with bindings enabled

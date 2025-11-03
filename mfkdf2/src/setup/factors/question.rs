@@ -20,13 +20,13 @@ pub struct Question {
 
 impl FactorMetadata for Question {
   fn kind(&self) -> String { "question".to_string() }
+
+  fn bytes(&self) -> Vec<u8> { self.answer.as_bytes().to_vec() }
 }
 
 impl FactorSetup for Question {
   type Output = Value;
   type Params = Value;
-
-  fn bytes(&self) -> Vec<u8> { self.answer.as_bytes().to_vec() }
 
   fn params(&self, _key: Key) -> MFKDF2Result<Self::Params> {
     Ok(json!({

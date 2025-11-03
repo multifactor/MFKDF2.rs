@@ -2,9 +2,10 @@ use std::collections::HashMap;
 
 use argon2::{Argon2, Params, Version};
 use base64::{Engine, engine::general_purpose};
-use sharks::{Share, Sharks};
+use ssskit::{SecretSharing, Share};
 
 use crate::{
+  constants::SECRET_SHARING_POLY,
   crypto::{decrypt, hkdf_sha256_with_info, hmacsha256},
   definitions::{MFKDF2DerivedKey, MFKDF2Entropy, MFKDF2Factor},
   derive::FactorDerive,
@@ -54,7 +55,7 @@ pub fn key(
       if let Some(ref factor_hint) = factor.hint {
         let buffer = hkdf_sha256_with_info(
           &stretched,
-          &material.salt,
+          &salt_bytes,
           format!("mfkdf2:factor:hint:{}", factor.id).as_bytes(),
         );
 
@@ -84,8 +85,8 @@ pub fn key(
   }
 
   // only first 33 bytes are needed from the share due to byte encoding (x=1 + y=32)
-  // TODO (@lonerapier): remove stupid clones by fixing sharks fork
-  let shares_vec: Vec<Option<Share>> = shares_bytes
+  // TODO (@lonerapier): remove stupid clones by fixing ssskit fork
+  let shares_vec: Vec<Option<Share<SECRET_SHARING_POLY>>> = shares_bytes
     .iter()
     .map(|opt| {
       opt
@@ -93,11 +94,11 @@ pub fn key(
         .map(|b| Share::try_from(&b[..1 + 32]).map_err(|_| MFKDF2Error::TryFromVecError))
         .transpose()
     })
-    .collect::<Result<Vec<Option<Share>>, _>>()?;
+    .collect::<Result<Vec<Option<Share<SECRET_SHARING_POLY>>>, _>>()?;
 
-  let sharks = Sharks(policy.threshold);
-  let secret = sharks
-    .recover(&shares_vec.clone().into_iter().flatten().collect::<Vec<Share>>())
+  let sss = SecretSharing(policy.threshold);
+  let secret = sss
+    .recover(&shares_vec.clone().into_iter().flatten().collect::<Vec<Share<SECRET_SHARING_POLY>>>())
     .map_err(|_| MFKDF2Error::ShareRecoveryError)?;
   let secret_arr: [u8; 32] = secret[..32].try_into().map_err(|_| MFKDF2Error::TryFromVecError)?;
   let salt_bytes = general_purpose::STANDARD.decode(&policy.salt)?;
@@ -157,9 +158,9 @@ pub fn key(
     new_policy.hmac = hmac;
   }
 
-  let original_shares = sharks
+  let original_shares = sss
     .recover_shares(
-      shares_vec.iter().map(|s| s.as_ref()).collect::<Vec<Option<&Share>>>(),
+      shares_vec.iter().map(|s| s.as_ref()).collect::<Vec<Option<&Share<SECRET_SHARING_POLY>>>>(),
       policy.factors.len(),
     )
     .map_err(|_| MFKDF2Error::ShareRecoveryError)?;
@@ -191,14 +192,19 @@ mod tests {
     time::{SystemTime, UNIX_EPOCH},
   };
 
+  use rand::{RngCore, rngs::OsRng};
   use serde_json::Value;
 
   use super::*;
   use crate::{
     definitions::FactorType,
-    derive::factors::{
-      hmacsha1::hmacsha1 as derive_hmacsha1, hotp::hotp as derive_hotp, ooba::ooba as derive_ooba,
-      password::password as derive_password, totp::totp as derive_totp,
+    derive::{
+      self,
+      factors::{
+        hmacsha1::hmacsha1 as derive_hmacsha1, hotp::hotp as derive_hotp,
+        ooba::ooba as derive_ooba, passkey::passkey as derive_passkey,
+        password::password as derive_password, persisted, totp::totp as derive_totp,
+      },
     },
     setup::{
       self,
@@ -206,6 +212,7 @@ mod tests {
         hmacsha1::{HmacSha1Options, hmacsha1 as setup_hmacsha1},
         hotp::{HOTPOptions, generate_hotp_code, hotp as setup_hotp},
         ooba::{OobaOptions, ooba as setup_ooba},
+        passkey::{PasskeyOptions, passkey as setup_passkey},
         password::{PasswordOptions, password as setup_password},
         totp::{TOTPOptions, totp as setup_totp},
       },
@@ -577,5 +584,73 @@ mod tests {
 
     // Assertions
     assert_eq!(derived_key.shares, setup_derived_key.shares);
+  }
+
+  #[test]
+  fn key_derivation_persisted() -> Result<(), MFKDF2Error> {
+    // Setup phase
+    let setup_factors = vec![
+      setup_hotp(HOTPOptions::default())?,
+      setup_password("password", PasswordOptions::default())?,
+    ];
+    let setup_derived_key = setup::key::key(setup_factors, MFKDF2Options::default())?;
+
+    let hotp = setup_derived_key.persist_factor("hotp");
+
+    let derive = derive::key(
+      setup_derived_key.policy,
+      HashMap::from([
+        ("hotp".to_string(), persisted(hotp)?),
+        ("password".to_string(), derive_password("password")?),
+      ]),
+      true,
+      false,
+    )?;
+    assert_eq!(derive.key, setup_derived_key.key);
+
+    Ok(())
+  }
+
+  #[test]
+  fn passkeys_liveness() -> Result<(), MFKDF2Error> {
+    let mut prf = [0u8; 32];
+    OsRng.fill_bytes(&mut prf);
+    let setup_derived_key = setup::key::key(
+      vec![setup_passkey(prf, PasskeyOptions::default())?],
+      MFKDF2Options::default(),
+    )?;
+
+    let derive = derive::key(
+      setup_derived_key.policy,
+      HashMap::from([("passkey".to_string(), derive_passkey(prf)?)]),
+      true,
+      false,
+    )?;
+    assert_eq!(derive.key, setup_derived_key.key);
+
+    Ok(())
+  }
+
+  #[test]
+  fn passkeys_safety() -> Result<(), MFKDF2Error> {
+    let mut prf = [0u8; 32];
+    OsRng.fill_bytes(&mut prf);
+    let setup_derived_key = setup::key::key(
+      vec![setup_passkey(prf, PasskeyOptions::default())?],
+      MFKDF2Options::default(),
+    )?;
+
+    let mut prf2 = [0u8; 32];
+    OsRng.fill_bytes(&mut prf2);
+
+    let derive = derive::key(
+      setup_derived_key.policy,
+      HashMap::from([("passkey".to_string(), derive_passkey(prf2)?)]),
+      false,
+      false,
+    )?;
+    assert_ne!(derive.key, setup_derived_key.key);
+
+    Ok(())
   }
 }

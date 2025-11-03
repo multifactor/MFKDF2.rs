@@ -81,13 +81,13 @@ impl TryFrom<&str> for OobaPublicKey {
 
 impl FactorMetadata for Ooba {
   fn kind(&self) -> String { "ooba".to_string() }
+
+  fn bytes(&self) -> Vec<u8> { self.target.clone() }
 }
 
 impl FactorSetup for Ooba {
   type Output = Value;
   type Params = Value;
-
-  fn bytes(&self) -> Vec<u8> { self.target.clone() }
 
   fn params(&self, _key: Key) -> MFKDF2Result<Self::Params> {
     let code = generate_alphanumeric_characters(self.length.into()).to_uppercase();
@@ -100,7 +100,8 @@ impl FactorSetup for Ooba {
 
     let plaintext = serde_json::to_vec(&params)?;
     let key = OobaPublicKey::try_from(self.jwk.as_str())?;
-    let ciphertext = key.0.encrypt(&mut OsRng, Oaep::new::<Sha256>(), &plaintext)?;
+    let ciphertext =
+      key.0.encrypt(&mut rsa::rand_core::OsRng, Oaep::new::<Sha256>(), &plaintext)?;
 
     Ok(json!({
         "length": self.length,
@@ -110,8 +111,6 @@ impl FactorSetup for Ooba {
         "pad": general_purpose::STANDARD.encode(pad),
     }))
   }
-
-  fn output(&self, _key: Key) -> Self::Output { json!({}) }
 }
 
 pub fn ooba(options: OobaOptions) -> MFKDF2Result<MFKDF2Factor> {
@@ -323,6 +322,6 @@ mod tests {
   fn output() {
     let factor = mock_construction();
     let output = factor.factor_type.output([0u8; 32].into());
-    assert!(output.is_object());
+    assert!(output.is_null());
   }
 }

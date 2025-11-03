@@ -19,11 +19,15 @@ cipher = { version = "0.4", default-features = false, features = [
 ] }
 ecb = { version = "0.1", default-features = false }
 hkdf = { version = "0.12", default-features = false }
-sharks = { git = "https://github.com/multifactor/gf256sss", version = "0.5.0", default-features = false }
+ssskit = { version = "0.1.0", default-features = false }
 
 # Randomness
 # TODO (autoparallel): This can be made `no-std` if we need to.
-rand = { version = "0.8", default-features = false, features = ["std"] }
+rand = { version = "0.8.5", default-features = false, features = [
+  "std",
+] }
+rand_chacha = { version = "0.3.0", default-features = false }
+rand_regex = { version = "0.16.0", default-features = false }
 
 # Password Strength
 zxcvbn = { version = "3.1", default-features = false, features = ["ser"] }
@@ -43,7 +47,6 @@ base64 = { version = "0.22", default-features = false, features = ["std"] }
 # Hashing
 argon2 = { version = "0.5.3", default-features = false, features = ["std"] }
 
-# TODO: May not need SHA2 anymore.
 sha1 = { version = "0.10", default-features = false }
 sha2 = { version = "0.10", default-features = false }
 
@@ -73,6 +76,9 @@ rsa = { version = "0.9.8", default-features = false }
 
 # Logging
 log = { version = "0.4.28", default-features = false }
+
+# Regex
+regex = { version = "1.11.3", default-features = false }
 
 [features]
 default = []
