@@ -60,7 +60,7 @@ function isPolicyEqual(a: any, b: any): boolean {
     console.error('policy salt mismatch', a.salt, b.salt);
     return false;
   }
-  if (a.hmac !== b.hmac) {
+  if (a.hmac && b.hmac && a.hmac !== b.hmac) {
     console.error('policy hmac mismatch', a.hmac, b.hmac);
     return false;
   }

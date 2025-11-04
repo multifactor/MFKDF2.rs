@@ -213,6 +213,12 @@ function wrapDerivedKey(key: raw.Mfkdf2DerivedKey): any {
     key.entropy = updated.entropy;
 
     wrapped.policy = wrapPolicy(key.policy);
+    // refresh exposed buffers/objects to reflect latest state
+    wrapped.key = Buffer.from(key.key);
+    wrapped.secret = Buffer.from(key.secret);
+    wrapped.shares = key.shares.map(share => Buffer.from(share));
+    wrapped.entropyBits = key.entropy;
+    wrapped.outputs = outputsToObject();
   };
 
   const applyUpdate = (updated: raw.Mfkdf2DerivedKey) => {
