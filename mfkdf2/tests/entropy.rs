@@ -21,7 +21,7 @@ fn entropy_3_of_3_passwords() -> Result<(), mfkdf2::error::MFKDF2Error> {
     MFKDF2Options { threshold: Some(3), ..Default::default() },
   )?;
 
-  let expected_real = (4.0 as f64).log2() + (33.0 as f64).log2() + (33.0 as f64).log2();
+  let expected_real = 4.0_f64.log2() + 33.0_f64.log2() + 33.0_f64.log2();
   assert_eq!(setup.entropy.real, expected_real);
   assert_eq!(setup.entropy.theoretical, 8 * 8 * 3);
 
@@ -45,7 +45,7 @@ fn entropy_2_of_3_passwords() -> Result<(), mfkdf2::error::MFKDF2Error> {
     MFKDF2Options { threshold: Some(2), ..Default::default() },
   )?;
 
-  let expected_real = (4.0 as f64).log2() + (33.0 as f64).log2();
+  let expected_real = 4.0_f64.log2() + 33.0_f64.log2();
   assert_eq!(setup.entropy.real, expected_real);
   assert_eq!(setup.entropy.theoretical, 8 * 8 * 2);
 
@@ -69,7 +69,7 @@ fn entropy_1_of_3_passwords() -> Result<(), mfkdf2::error::MFKDF2Error> {
     MFKDF2Options { threshold: Some(1), ..Default::default() },
   )?;
 
-  let expected_real = (4.0 as f64).log2();
+  let expected_real = 4.0_f64.log2();
   assert_eq!(setup.entropy.real, expected_real);
   assert_eq!(setup.entropy.theoretical, (8 * 8));
 
@@ -119,7 +119,7 @@ async fn entropy_policy_combinators() -> Result<(), mfkdf2::error::MFKDF2Error> 
     PolicySetupOptions::default(),
   )?;
 
-  let expected_real = (4.0 as f64).log2() * 2.0;
+  let expected_real = 4.0_f64.log2() * 2.0;
   assert_eq!(policy.entropy.real, expected_real);
 
   Ok(())
@@ -135,7 +135,7 @@ fn entropy_totp_hotp_6_digits() -> Result<(), mfkdf2::error::MFKDF2Error> {
     MFKDF2Options { threshold: Some(2), ..Default::default() },
   )?;
 
-  let expected_real = (10f64.powi(6) as f64).log2() * 2.0;
+  let expected_real = 10f64.powi(6).log2() * 2.0;
   assert_eq!(setup.entropy.real, expected_real);
 
   Ok(())
@@ -157,7 +157,7 @@ fn entropy_totp_hotp_8_digits() -> Result<(), mfkdf2::error::MFKDF2Error> {
     MFKDF2Options { threshold: Some(2), ..Default::default() },
   )?;
 
-  let expected_real = (10f64.powi(8)).log2() * 2.0;
+  let expected_real = 10f64.powi(8).log2() * 2.0;
   assert_eq!(setup.entropy.real, expected_real);
 
   Ok(())

@@ -414,6 +414,57 @@ mod tests {
     // Assertions
     assert_eq!(derived_key.key, setup_derived_key.key);
     assert_eq!(derived_key.secret, setup_derived_key.secret);
+
+    // derive again
+
+    derive_factors_map = HashMap::new();
+
+    // hotp factor
+    let policy_hotp_factor = derived_key.policy.factors.iter().find(|f| f.id == "hotp").unwrap();
+    let hotp_params: Value = serde_json::from_str(&policy_hotp_factor.params).unwrap();
+    let hotp_padded_secret = hotp.options.secret.as_ref().unwrap();
+    let counter = hotp_params["counter"].as_u64().unwrap();
+    let correct_code = generate_hotp_code(
+      &hotp_padded_secret[..20],
+      counter,
+      &hotp.options.hash,
+      hotp.options.digits,
+    );
+    let mut derive_hotp_factor = derive_hotp(correct_code as u32).unwrap();
+    derive_hotp_factor.id = Some("hotp".to_string());
+    derive_factors_map.insert("hotp".to_string(), derive_hotp_factor);
+
+    // totp factor
+    let time = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_millis();
+    let counter = time as u64 / (totp.options.step * 1000);
+    let totp_code = generate_hotp_code(
+      &totp_padded_secret[..20],
+      counter,
+      &totp.options.hash,
+      totp.options.digits,
+    );
+    let mut derive_totp_factor = derive_totp(totp_code as u32, None).unwrap();
+    derive_totp_factor.id = Some("totp".to_string());
+    derive_factors_map.insert("totp".to_string(), derive_totp_factor);
+
+    // ooba factor
+    let policy_ooba_factor = derived_key.policy.factors.iter().find(|f| f.id == "ooba").unwrap();
+    let ooba_params: Value = serde_json::from_str(&policy_ooba_factor.params).unwrap();
+    let ciphertext = hex::decode(ooba_params["next"].as_str().unwrap()).unwrap();
+    let decrypted = serde_json::from_slice::<Value>(
+      &private_key.decrypt(Oaep::new::<Sha256>(), &ciphertext).unwrap(),
+    )
+    .unwrap();
+    let code = decrypted["code"].as_str().unwrap();
+    let mut derive_ooba_factor = derive_ooba(code.to_string()).unwrap();
+    derive_ooba_factor.id = Some("ooba".to_string());
+    derive_factors_map.insert("ooba".to_string(), derive_ooba_factor);
+
+    let derived_key2 = key(derived_key.policy, derive_factors_map, true, false).unwrap();
+
+    // Assertions
+    assert_eq!(derived_key.key, derived_key2.key);
+    assert_eq!(derived_key.secret, derived_key2.secret);
   }
 
   #[test]

@@ -77,8 +77,8 @@ pub fn ooba(code: String) -> MFKDF2Result<MFKDF2Factor> {
     factor_type: FactorType::OOBA(Ooba {
       target: vec![],
       length: 0,
-      code,
-      jwk: None,
+      code:   code.to_uppercase(),
+      jwk:    None,
       params: json!({}),
     }),
     entropy:     None,

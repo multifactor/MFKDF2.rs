@@ -5,15 +5,13 @@ chai.use(chaiAsPromised);
 chai.should();
 
 import { suite, test } from 'mocha';
-import mfkdf, { initRustLogging, LogLevel, uniffiInitAsync } from '../../src/api';
+import mfkdf, { uniffiInitAsync } from '../../src/api';
 import crypto from 'crypto';
-import { Mfkdf2Error } from '../../src/generated/web/mfkdf2';
 
 suite('derive/outputs', () => {
   // Initialize UniFFI once before all tests
   before(async () => {
     await uniffiInitAsync();
-    await initRustLogging(LogLevel.Debug);
   });
 
   test('stack', async () => {

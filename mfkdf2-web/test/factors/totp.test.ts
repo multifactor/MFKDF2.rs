@@ -5,7 +5,7 @@ chai.use(chaiAsPromised);
 chai.should();
 
 import { suite, test } from 'mocha';
-import mfkdf, { initRustLogging, LogLevel, uniffiInitAsync } from '../../src/api';
+import mfkdf, { uniffiInitAsync } from '../../src/api';
 import speakeasy from 'speakeasy';
 import { Mfkdf2Error } from '../../src/generated/web/mfkdf2.js';
 
@@ -13,7 +13,6 @@ suite('factors/totp', () => {
   // Initialize UniFFI once before all tests
   before(async () => {
     await uniffiInitAsync();
-    await initRustLogging(LogLevel.Debug)
   });
 
   test('size', async () => {

@@ -5,7 +5,7 @@ chai.use(chaiAsPromised);
 chai.should();
 
 import { suite, test } from 'mocha';
-import mfkdf, { uniffiInitAsync, initRustLogging, LogLevel } from '../../src/api';
+import mfkdf, { uniffiInitAsync } from '../../src/api';
 import crypto from 'crypto';
 import { Mfkdf2Error } from '../../src/generated/web/mfkdf2';
 

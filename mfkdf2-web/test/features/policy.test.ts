@@ -6,7 +6,6 @@ chai.should();
 
 import { suite, test } from 'mocha';
 import mfkdf, { uniffiInitAsync } from '../../src/api';
-import speakeasy from 'speakeasy';
 import { Mfkdf2Error } from '../../src/generated/web/mfkdf2.js';
 
 suite('policy', () => {

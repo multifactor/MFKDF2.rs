@@ -6,20 +6,11 @@ chai.should();
 
 import { suite, test } from 'mocha';
 import { mfkdf as mfkdf2, uniffiInitAsync, initRustLogging, LogLevel } from '../../src/api';
-import { Mfkdf2Error } from '../../src';
 import { derivedKeyIsEqual } from './validation';
 
 import mfkdf from 'mfkdf';
 import speakeasy from 'speakeasy';
 import crypto from 'crypto';
-
-// each factor individually and single
-// each factor inidividually and multiple
-// factor combinations with full threshold
-// factor combinations with partial threshold
-// stack factors
-// reconstitution
-// factor outputs match
 
 suite('differential/derive', () => {
   // Initialize UniFFI once before all tests
@@ -28,6 +19,7 @@ suite('differential/derive', () => {
     await initRustLogging(LogLevel.Debug);
   });
 
+  // each factor individually with single factor
   suite('single factor', () => {
     test('password', async () => {
       const setup = await mfkdf.setup.key([
@@ -345,6 +337,7 @@ suite('differential/derive', () => {
     })
   });
 
+  // each factor inidividually and multiple factors
   suite('multiple factors', () => {
     test('password', async () => {
       const setup = await mfkdf.setup.key([
@@ -799,6 +792,7 @@ suite('differential/derive', () => {
     })
   });
 
+  // single factor combinations with partial threshold
   suite('factor threshold', () => {
     test('password', async () => {
       const setup = await mfkdf.setup.key([
@@ -1298,6 +1292,7 @@ suite('differential/derive', () => {
     })
   });
 
+  // factor combinations with partial threshold with stack factors
   suite('factor combinations', () => {
     test('password + question + uuid', async () => {
       const answer = ' Fido-'
