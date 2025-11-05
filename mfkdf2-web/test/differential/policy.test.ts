@@ -84,7 +84,6 @@ suite('differential/policy', () => {
         ]),
         { id: 'policy1' }
       );
-      console.log(setup2.policy);
 
       const derive2 = await mfkdf2.policy.derive(setup2.policy, {
         password1: await mfkdf2.derive.factors.password('password1'),

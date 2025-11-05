@@ -15,7 +15,7 @@ function bufferArrayEqual(a: unknown, b: unknown): boolean {
   return true;
 }
 
-function numbersClose(a: number, b: number, eps = 1): boolean {
+function numbersClose(a: number, b: number, eps = 1e-10): boolean {
   return Math.abs(a - b) <= eps;
 }
 
