@@ -34,20 +34,20 @@ pub enum Encoding {
 #[cfg_attr(feature = "bindings", derive(uniffi::Enum))]
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
 pub enum HashAlgorithm {
-  #[serde(rename = "SHA1")]
+  #[serde(rename = "sha1")]
   Sha1,
-  #[serde(rename = "SHA256")]
+  #[serde(rename = "sha256")]
   Sha256,
-  #[serde(rename = "SHA512")]
+  #[serde(rename = "sha512")]
   Sha512,
 }
 
 impl std::fmt::Display for HashAlgorithm {
   fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
     write!(f, "{}", match self {
-      HashAlgorithm::Sha1 => "SHA1",
-      HashAlgorithm::Sha256 => "SHA256",
-      HashAlgorithm::Sha512 => "SHA512",
+      HashAlgorithm::Sha1 => "sha1",
+      HashAlgorithm::Sha256 => "sha256",
+      HashAlgorithm::Sha512 => "sha512",
     })
   }
 }
@@ -106,8 +106,13 @@ fn secret_to_base32_no_pad(secret: &str, enc: Encoding) -> Result<String, String
 
 pub fn otpauth_url(options: &OtpauthUrlOptions) -> Result<String, MFKDF2Error> {
   let enc = options.shared.as_ref().and_then(|s| s.encoding).unwrap_or(Encoding::Ascii);
-  let alg =
-    options.shared.as_ref().and_then(|s| s.algorithm.clone()).unwrap_or(HashAlgorithm::Sha1);
+  let alg = options
+    .shared
+    .as_ref()
+    .and_then(|s| s.algorithm.clone())
+    .unwrap_or(HashAlgorithm::Sha1)
+    .to_string()
+    .to_ascii_uppercase();
   let digits = options.digits.unwrap_or(6);
   let period = options.period.unwrap_or(30);
   let kind = options.kind.unwrap_or(Kind::Totp);

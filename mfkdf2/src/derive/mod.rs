@@ -128,7 +128,8 @@ mod tests {
     )
     .unwrap();
 
-    let mut setup_key: MFKDF2DerivedKey = serde_json::from_str(&setup.outputs["stack"]).unwrap();
+    let mut setup_key: MFKDF2DerivedKey =
+      serde_json::from_value(setup.outputs["stack"].clone()).unwrap();
     setup_key.entropy.real = 0.0;
     setup_key.entropy.theoretical = 0;
 
@@ -166,7 +167,8 @@ mod tests {
     )
     .unwrap();
 
-    let derive_key: MFKDF2DerivedKey = serde_json::from_str(&derive.outputs["stack"]).unwrap();
+    let derive_key: MFKDF2DerivedKey =
+      serde_json::from_value(derive.outputs["stack"].clone()).unwrap();
 
     assert_eq!(setup_key, derive_key);
   }
@@ -179,7 +181,7 @@ mod tests {
     )
     .unwrap();
 
-    let outputs = serde_json::from_str::<serde_json::Value>(&setup.outputs["hmacsha1"]).unwrap();
+    let outputs = setup.outputs["hmacsha1"].clone();
     let secret = outputs["secret"]
       .as_array()
       .unwrap()
@@ -362,9 +364,9 @@ mod tests {
     assert_eq!(
       setup.outputs,
       HashMap::from([
-        ("uuid1".to_string(), json!({"uuid": "9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6d"}).to_string()),
-        ("uuid2".to_string(), json!({"uuid": "1b9d6bcd-bbfd-4b2d-9b5d-ab8dfbbd4bed"}).to_string()),
-        ("uuid3".to_string(), json!({"uuid": "6ec0bd7f-11c0-43da-975e-2a8ad9ebae0b"}).to_string()),
+        ("uuid1".to_string(), json!({"uuid": "9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6d"})),
+        ("uuid2".to_string(), json!({"uuid": "1b9d6bcd-bbfd-4b2d-9b5d-ab8dfbbd4bed"})),
+        ("uuid3".to_string(), json!({"uuid": "6ec0bd7f-11c0-43da-975e-2a8ad9ebae0b"})),
       ])
     );
 
@@ -394,8 +396,8 @@ mod tests {
     assert_eq!(
       derive.outputs,
       HashMap::from([
-        ("uuid1".to_string(), json!({"uuid": "9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6d"}).to_string()),
-        ("uuid3".to_string(), json!({"uuid": "6ec0bd7f-11c0-43da-975e-2a8ad9ebae0b"}).to_string()),
+        ("uuid1".to_string(), json!({"uuid": "9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6d"})),
+        ("uuid3".to_string(), json!({"uuid": "6ec0bd7f-11c0-43da-975e-2a8ad9ebae0b"})),
       ])
     );
   }

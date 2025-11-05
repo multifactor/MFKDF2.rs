@@ -342,23 +342,23 @@ export const mfkdf = {
         });
         return wrapSetupFactor(factor);
       },
-      async hotp(options: { secret?: ArrayBuffer | Buffer, id?: string, digits?: number, hash?: raw.OtpHash, issuer?: string, label?: string } = {}) {
+      async hotp(options: { secret?: ArrayBuffer | Buffer, id?: string, digits?: number, hash?: raw.HashAlgorithm, issuer?: string, label?: string } = {}) {
         const factor = await raw.setupHotp({
           id: options.id,
           secret: toArrayBuffer(options.secret),
           digits: options.digits ?? 6,
-          hash: options.hash ?? raw.OtpHash.Sha1,
+          hash: options.hash ?? raw.HashAlgorithm.Sha1,
           issuer: options.issuer ?? 'MFKDF',
           label: options.label ?? 'mfkdf.com'
         });
         return wrapSetupFactor(factor);
       },
-      async totp(options: { secret?: ArrayBuffer | Buffer, id?: string, digits?: number, hash?: raw.OtpHash, issuer?: string, label?: string, window?: bigint, step?: bigint, time?: bigint | number, oracle?: Record<number, number> } = {}) {
+      async totp(options: { secret?: ArrayBuffer | Buffer, id?: string, digits?: number, hash?: raw.HashAlgorithm, issuer?: string, label?: string, window?: bigint, step?: bigint, time?: bigint | number, oracle?: Record<number, number> } = {}) {
         const factor = await raw.setupTotp({
           id: options.id,
           secret: toArrayBuffer(options.secret),
           digits: options.digits ?? 6,
-          hash: options.hash ?? raw.OtpHash.Sha1,
+          hash: options.hash ?? raw.HashAlgorithm.Sha1,
           issuer: options.issuer ?? 'MFKDF',
           label: options.label ?? 'mfkdf.com',
           time: options.time ? BigInt(options.time) : BigInt(Date.now()), // BUG: uniffi doesn't support optional integers

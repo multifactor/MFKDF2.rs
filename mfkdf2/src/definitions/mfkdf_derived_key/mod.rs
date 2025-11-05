@@ -2,6 +2,7 @@ use std::collections::HashMap;
 
 use base64::engine::general_purpose;
 use serde::{Deserialize, Serialize};
+use serde_json::Value;
 
 use crate::{definitions::entropy::MFKDF2Entropy, policy::Policy};
 
@@ -20,7 +21,7 @@ pub struct MFKDF2DerivedKey {
   pub key:     Vec<u8>,
   pub secret:  Vec<u8>,
   pub shares:  Vec<Vec<u8>>,
-  pub outputs: HashMap<String, String>,
+  pub outputs: HashMap<String, Value>,
   pub entropy: MFKDF2Entropy,
 }
 

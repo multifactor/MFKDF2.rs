@@ -17,7 +17,6 @@ use mfkdf2::{
     key::MFKDF2Options,
   },
 };
-use serde_json::Value;
 
 // Helper function to perform XOR operation on two byte arrays
 fn xor(a: &[u8], b: &[u8]) -> Vec<u8> { a.iter().zip(b.iter()).map(|(x, y)| x ^ y).collect() }
@@ -274,7 +273,7 @@ async fn totp_dynamic_no_oracle() -> Result<(), MFKDF2Error> {
   )?;
 
   // Get the secret from the setup outputs
-  let outputs: Value = serde_json::from_str(&setup.outputs["totp"])?;
+  let outputs = setup.outputs.get("totp").unwrap();
   let secret = outputs["secret"]
     .as_array()
     .unwrap()
@@ -353,7 +352,7 @@ async fn totp_dynamic_valid_fixed_oracle() {
   .unwrap();
 
   // Get the secret from the setup outputs
-  let outputs: Value = serde_json::from_str(&setup.outputs["totp"]).unwrap();
+  let outputs = setup.outputs.get("totp").unwrap();
   let secret = outputs["secret"]
     .as_array()
     .unwrap()
@@ -452,7 +451,7 @@ async fn totp_dynamic_invalid_fixed_oracle() {
   .unwrap();
 
   // Get the secret from the setup outputs
-  let outputs: Value = serde_json::from_str(&setup.outputs["totp"]).unwrap();
+  let outputs = setup.outputs.get("totp").unwrap();
   let secret = outputs["secret"]
     .as_array()
     .unwrap()
@@ -560,7 +559,7 @@ async fn totp_dynamic_valid_dynamic_oracle() {
   .unwrap();
 
   // Get the secret from the setup outputs
-  let outputs: Value = serde_json::from_str(&setup.outputs["totp"]).unwrap();
+  let outputs = setup.outputs.get("totp").unwrap();
   let secret = outputs["secret"]
     .as_array()
     .unwrap()

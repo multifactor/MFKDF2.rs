@@ -100,8 +100,7 @@ impl MFKDF2DerivedKey {
       };
 
       factors.insert(id.clone(), new_factor);
-      outputs
-        .insert(id.clone(), factor.factor_type.output(self.key.clone().try_into()?).to_string());
+      outputs.insert(id.clone(), factor.factor_type.output(self.key.clone().try_into()?));
       data.insert(id.clone(), factor.data());
       if material.contains_key(&id) {
         material.remove(&id);

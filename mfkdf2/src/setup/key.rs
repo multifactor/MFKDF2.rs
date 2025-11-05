@@ -167,7 +167,7 @@ pub fn key(factors: Vec<MFKDF2Factor>, options: MFKDF2Options) -> MFKDF2Result<M
 
     let params = factor.factor_type.setup().params(params_key.into())?;
     // TODO (autoparallel): This should not be an unwrap.
-    outputs.insert(factor.id.clone().unwrap(), factor.factor_type.output(key.into()).to_string());
+    outputs.insert(factor.id.clone().unwrap(), factor.factor_type.output(key.into()));
 
     let secret_key = hkdf_sha256_with_info(
       &key,
