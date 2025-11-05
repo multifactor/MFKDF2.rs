@@ -207,11 +207,12 @@ mod tests {
         password::password as derive_password, persisted, totp::totp as derive_totp,
       },
     },
+    otpauth::generate_hotp_code,
     setup::{
       self,
       factors::{
         hmacsha1::{HmacSha1Options, hmacsha1 as setup_hmacsha1},
-        hotp::{HOTPOptions, generate_hotp_code, hotp as setup_hotp},
+        hotp::{HOTPOptions, hotp as setup_hotp},
         ooba::{OobaOptions, ooba as setup_ooba},
         passkey::{PasskeyOptions, passkey as setup_passkey},
         password::{PasswordOptions, password as setup_password},

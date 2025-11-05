@@ -58,6 +58,12 @@ pub enum MFKDF2Error {
   #[error("TOTP window exceeded")]
   TOTPWindowExceeded,
 
+  #[error("invalid secret")]
+  InvalidSecret,
+
+  #[error("missing otpauth url options: {0}")]
+  MissingOtpAuthUrlOptions(&'static str),
+
   #[error("invalid uuid")]
   InvalidUuid,
 

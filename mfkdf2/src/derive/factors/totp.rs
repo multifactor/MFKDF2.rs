@@ -13,8 +13,9 @@ use crate::{
   definitions::{FactorType, Key, MFKDF2Factor},
   derive::FactorDerive,
   error::{MFKDF2Error, MFKDF2Result},
+  otpauth::{HashAlgorithm, generate_hotp_code},
   setup::factors::{
-    hotp::{OTPHash, generate_hotp_code, mod_positive},
+    hotp::mod_positive,
     totp::{TOTP, TOTPOptions},
   },
 };
@@ -115,7 +116,7 @@ impl FactorDerive for TOTP {
       params["step"].as_u64().ok_or(MFKDF2Error::MissingDeriveParams("step".to_string()))?;
     let digits =
       params["digits"].as_u64().ok_or(MFKDF2Error::MissingDeriveParams("digits".to_string()))?;
-    let hash: OTPHash = serde_json::from_value(params["hash"].clone())?;
+    let hash: HashAlgorithm = serde_json::from_value(params["hash"].clone())?;
 
     let time =
       self.options.time.ok_or(MFKDF2Error::MissingDeriveParams("time".to_string()))? as u128;
@@ -200,7 +201,7 @@ mod tests {
       id:     Some("totp-test".to_string()),
       secret: Some(b"hello world mfkdf2!!".to_vec()),
       digits: 6,
-      hash:   OTPHash::Sha1,
+      hash:   HashAlgorithm::Sha1,
       step:   30,
       window: 5,
       time:   Some(now_ms),
@@ -215,7 +216,7 @@ mod tests {
     let offsets = vec![0u8; 4 * 5]; // 4 bytes per offset * window size
     json!({
       "digits": 6,
-      "hash": "sha1",
+      "hash": HashAlgorithm::Sha1.to_string(),
       "pad": "cGFk",
       "start": now_ms,
       "step": 30,

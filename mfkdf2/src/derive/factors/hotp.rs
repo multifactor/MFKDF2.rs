@@ -6,7 +6,8 @@ use crate::{
   definitions::{FactorType, Key, MFKDF2Factor},
   derive::FactorDerive,
   error::{MFKDF2Error, MFKDF2Result},
-  setup::factors::hotp::{HOTP, HOTPOptions, OTPHash, generate_hotp_code, mod_positive},
+  otpauth::{HashAlgorithm, generate_hotp_code},
+  setup::factors::hotp::{HOTP, HOTPOptions, mod_positive},
 };
 
 impl FactorDerive for HOTP {
@@ -51,7 +52,7 @@ impl FactorDerive for HOTP {
     let counter =
       params["counter"].as_u64().ok_or(MFKDF2Error::MissingDeriveParams("counter".to_string()))?
         + 1;
-    let hash: OTPHash = serde_json::from_value(params["hash"].clone())?;
+    let hash: HashAlgorithm = serde_json::from_value(params["hash"].clone())?;
     let generated_code =
       generate_hotp_code(&padded_secret[..20], counter, &hash, self.options.digits);
 
@@ -103,7 +104,7 @@ mod tests {
       id:     Some("hotp".to_string()),
       secret: Some(secret.clone()),
       digits: 6,
-      hash:   OTPHash::Sha1,
+      hash:   HashAlgorithm::Sha1,
       issuer: "MFKDF".to_string(),
       label:  "test".to_string(),
     };
@@ -151,7 +152,7 @@ mod tests {
       id: Some("hotp".to_string()),
       secret: Some(secret),
       digits: 6,
-      hash: OTPHash::Sha1,
+      hash: HashAlgorithm::Sha1,
       ..Default::default()
     };
 

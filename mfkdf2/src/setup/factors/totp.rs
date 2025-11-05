@@ -12,10 +12,8 @@ use crate::{
   crypto::encrypt,
   definitions::{FactorMetadata, FactorType, Key, MFKDF2Factor},
   error::{MFKDF2Error, MFKDF2Result},
-  setup::{
-    FactorSetup,
-    factors::hotp::{OTPHash, generate_hotp_code},
-  },
+  otpauth::{self, HashAlgorithm, OtpauthUrlOptions, generate_hotp_code},
+  setup::FactorSetup,
 };
 
 #[cfg_attr(feature = "bindings", derive(uniffi::Record))]
@@ -24,7 +22,7 @@ pub struct TOTPOptions {
   pub id:     Option<String>,
   pub secret: Option<Vec<u8>>,
   pub digits: u8,
-  pub hash:   OTPHash,
+  pub hash:   HashAlgorithm,
   pub issuer: String,
   pub label:  String,
   pub time:   Option<u64>, // Unix epoch time in milliseconds
@@ -41,7 +39,7 @@ impl Default for TOTPOptions {
       id:     Some("totp".to_string()),
       secret: None,
       digits: 6,
-      hash:   OTPHash::Sha1,
+      hash:   HashAlgorithm::Sha1,
       issuer: "MFKDF".to_string(),
       label:  "mfkdf.com".to_string(),
       time:   Some(now_ms),
@@ -129,8 +127,19 @@ impl FactorSetup for TOTP {
       "algorithm": self.options.hash.to_string(),
       "digits": self.options.digits,
       "period": self.options.step,
-      // TODO (sambhav): either generate uri yourself or use an external lib
-      "uri": ""
+      "uri": otpauth::otpauth_url(&OtpauthUrlOptions {
+        secret: hex::encode(&self.options.secret.clone().unwrap()[..20]),
+        label: self.options.label.clone(),
+        kind: Some(otpauth::Kind::Totp),
+        counter: None,
+        issuer: Some(self.options.issuer.clone()),
+        digits: Some(self.options.digits),
+        period: Some(self.options.step),
+        shared: Some(otpauth::SharedOptions {
+          encoding: Some(otpauth::Encoding::Hex),
+          algorithm: Some(self.options.hash.clone()),
+        }),
+      }).unwrap()
     })
   }
 }
@@ -217,7 +226,7 @@ mod tests {
     let options = TOTPOptions {
       id: Some("test".to_string()),
       digits: 8,
-      hash: OTPHash::Sha256,
+      hash: HashAlgorithm::Sha256,
       issuer: "TestCorp".to_string(),
       label: "tester@testcorp.com".to_string(),
       ..Default::default()
@@ -233,7 +242,7 @@ mod tests {
     assert!(matches!(factor.factor_type, FactorType::TOTP(_)));
     if let FactorType::TOTP(totp_factor) = factor.factor_type {
       assert_eq!(totp_factor.options.digits, 8);
-      assert_eq!(totp_factor.options.hash, OTPHash::Sha256);
+      assert_eq!(totp_factor.options.hash, HashAlgorithm::Sha256);
       assert_eq!(totp_factor.options.issuer, "TestCorp".to_string());
       assert_eq!(totp_factor.options.label, "tester@testcorp.com".to_string());
       assert!(totp_factor.options.secret.is_some());

@@ -123,7 +123,7 @@ pub fn mock_hotp_mfkdf2() -> Result<MFKDF2DerivedKey, mfkdf2::error::MFKDF2Error
     id:     Some("hotp_1".to_string()),
     secret: Some(HOTP_SECRET.to_vec()),
     digits: 6,
-    hash:   mfkdf2::setup::factors::hotp::OTPHash::Sha1,
+    hash:   mfkdf2::otpauth::HashAlgorithm::Sha1,
     issuer: "MFKDF".to_string(),
     label:  "test".to_string(),
   })]
@@ -145,7 +145,7 @@ pub fn mock_mixed_factors_mfkdf2() -> Result<MFKDF2DerivedKey, mfkdf2::error::MF
       id:     Some("hotp_1".to_string()),
       secret: Some(HOTP_SECRET.to_vec()),
       digits: 6,
-      hash:   mfkdf2::setup::factors::hotp::OTPHash::Sha256,
+      hash:   mfkdf2::otpauth::HashAlgorithm::Sha256,
       issuer: "MFKDF".to_string(),
       label:  "test".to_string(),
     }),
@@ -169,7 +169,7 @@ pub fn create_setup_factor(name: &str) -> mfkdf2::definitions::MFKDF2Factor {
       id:     Some("hotp_1".to_string()),
       secret: Some(HOTP_SECRET.to_vec()),
       digits: 6,
-      hash:   mfkdf2::setup::factors::hotp::OTPHash::Sha256,
+      hash:   mfkdf2::otpauth::HashAlgorithm::Sha256,
       issuer: "MFKDF".to_string(),
       label:  "test".to_string(),
     })
@@ -234,7 +234,7 @@ pub fn create_derive_factor(
       let hash = serde_json::from_value(params["hash"].clone()).unwrap();
 
       let generated_code =
-        mfkdf2::setup::factors::hotp::generate_hotp_code(&HOTP_SECRET, counter, &hash, digits);
+        mfkdf2::otpauth::generate_hotp_code(&HOTP_SECRET, counter, &hash, digits);
       ("hotp_1".to_string(), mfkdf2::derive::factors::hotp(generated_code).unwrap())
     },
     "totp" => {
@@ -247,8 +247,7 @@ pub fn create_derive_factor(
       let digits = params["digits"].as_u64().unwrap() as u8;
       let counter = time as u64 / (step * 1000);
 
-      let totp_code =
-        mfkdf2::setup::factors::hotp::generate_hotp_code(&TOTP_SECRET, counter, &hash, digits);
+      let totp_code = mfkdf2::otpauth::generate_hotp_code(&TOTP_SECRET, counter, &hash, digits);
       ("totp_1".to_string(), mfkdf2::derive::factors::totp(totp_code, None).unwrap())
     },
     "hmacsha1" => {
