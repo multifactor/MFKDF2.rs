@@ -89,7 +89,7 @@ suite('mfkdf2/strengthening', () => {
           ],
           { time: -1 }
         )
-        .should.be.rejectedWith('unreachable', 'time must be non-negative')
+        .should.be.rejectedWith(TypeError, 'time must be a non-negative integer')
 
       await mfkdf.setup
         .key(
@@ -100,7 +100,7 @@ suite('mfkdf2/strengthening', () => {
           ],
           { time: 1.5 }
         )
-        .should.be.rejectedWith(TypeError, 'time must be an integer')
+        .should.be.rejectedWith(TypeError, 'time must be a non-negative integer')
 
       await mfkdf.setup
         .key(
@@ -111,7 +111,7 @@ suite('mfkdf2/strengthening', () => {
           ],
           { memory: -1 }
         )
-        .should.be.rejectedWith('unreachable', 'memory must be non-negative')
+        .should.be.rejectedWith('memory must be a non-negative integer')
 
       await mfkdf.setup
         .key(
@@ -122,7 +122,7 @@ suite('mfkdf2/strengthening', () => {
           ],
           { memory: 1.5 }
         )
-        .should.be.rejectedWith(TypeError, 'memory must be an integer')
+        .should.be.rejectedWith(TypeError, 'memory must be a non-negative integer')
     })
   })
 
@@ -239,7 +239,7 @@ suite('mfkdf2/strengthening', () => {
 
     await derive
       .strengthen(-1, 0)
-      .should.be.rejectedWith('unreachable', 'time must be a non-negative integer')
+      .should.be.rejectedWith(TypeError, 'time must be a non-negative integer')
 
     await derive
       .strengthen(1.5, 0)
@@ -247,10 +247,7 @@ suite('mfkdf2/strengthening', () => {
 
     await derive
       .strengthen(0, -1)
-      .should.be.rejectedWith(
-        'unreachable',
-        'memory must be a non-negative integer'
-      )
+      .should.be.rejectedWith(TypeError, 'memory must be a non-negative integer')
 
     await derive
       .strengthen(0, 1.5)

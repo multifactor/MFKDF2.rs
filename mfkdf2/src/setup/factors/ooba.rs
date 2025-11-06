@@ -309,6 +309,6 @@ mod tests {
     let (_, public_key) = keypair();
     let factor = mock_construction(&public_key);
     let output = factor.factor_type.output([0u8; 32].into());
-    assert!(output.is_null());
+    assert_eq!(output, json!({}));
   }
 }

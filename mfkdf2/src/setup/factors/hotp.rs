@@ -89,7 +89,7 @@ impl FactorSetup for HOTP {
       "scheme": "otpauth",
       "type": "hotp",
       "label": self.options.label,
-      "secret": base64::prelude::BASE64_STANDARD.encode(&self.options.secret.clone().unwrap()[..20]),
+      "secret": &self.options.secret.clone().unwrap()[..20],
       "issuer": self.options.issuer,
       "algorithm": self.options.hash.to_string(),
       "digits": self.options.digits,

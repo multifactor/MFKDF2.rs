@@ -132,10 +132,12 @@ pub fn otpauth_url(options: &OtpauthUrlOptions) -> Result<String, MFKDF2Error> {
 
   if matches!(kind, Kind::Totp) {
     url.push_str(&format!("&period={period}"));
-  } else {
-    let counter = options.counter.ok_or(MFKDF2Error::MissingOtpAuthUrlOptions("counter"))?;
-    url.push_str(&format!("&counter={counter}"));
   }
+  // TODO (@lonerapier): speakeasy doesn't add counter to the url for hotp
+  // else {
+  //   let counter = options.counter.ok_or(MFKDF2Error::MissingOtpAuthUrlOptions("counter"))?;
+  //   url.push_str(&format!("&counter={counter}"));
+  // }
 
   Ok(url)
 }
@@ -218,8 +220,7 @@ mod tests {
     let url = otpauth_url(&options).unwrap();
     assert_eq!(
       url,
-      "otpauth://hotp/mylabel?secret=NV4XGZLDOJSXI&issuer=myissuer&algorithm=SHA1&digits=6&\
-       counter=1"
+      "otpauth://hotp/mylabel?secret=NV4XGZLDOJSXI&issuer=myissuer&algorithm=SHA1&digits=6"
     );
   }
 

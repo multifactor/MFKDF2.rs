@@ -19,6 +19,30 @@ function numbersClose(a: number, b: number, eps = 1e-10): boolean {
   return Math.abs(a - b) <= eps;
 }
 
+const deepSort = (v: any): any =>
+  Array.isArray(v) ? v.map(deepSort)
+    : v && v.constructor === Object
+      ? Object.keys(v).sort().reduce((o, k) => (o[k] = deepSort(v[k]), o), {} as any)
+      : v;
+
+// Normalize array buffer to array of numbers for comparison
+function normalizeArrayBuffer(v: any): any {
+  if (v == null) return v;
+  if (Buffer.isBuffer(v)) return Array.from(v.values());
+  if (v instanceof ArrayBuffer) return Array.from(new Uint8Array(v));
+  if (typeof ArrayBuffer !== 'undefined' && ArrayBuffer.isView(v)) {
+    const view = v as ArrayBufferView;
+    return Array.from(new Uint8Array(view.buffer, view.byteOffset, view.byteLength));
+  }
+  if (Array.isArray(v)) return v.map(normalizeArrayBuffer);
+  if (v && typeof v === 'object') {
+    const out: any = {};
+    for (const [k, val] of Object.entries(v)) out[k] = normalizeArrayBuffer(val);
+    return out;
+  }
+  return v;
+}
+
 function isPolicyFactorEqual(a: any, b: any): boolean {
   if (a.id !== b.id) {
     console.error('policy factor id mismatch', a.id, b.id);
@@ -28,7 +52,7 @@ function isPolicyFactorEqual(a: any, b: any): boolean {
     console.error('policy factor type mismatch', a.type, b.type);
     return false;
   }
-  if (JSON.stringify(a.params, Object.keys(a.params).sort()) !== JSON.stringify(b.params, Object.keys(b.params).sort())) {
+  if (JSON.stringify(deepSort(a.params)) !== JSON.stringify(deepSort(b.params))) {
     console.error('policy factor params mismatch', a.params, b.params);
     return false;
   }
@@ -114,7 +138,54 @@ function derivedKeyIsEqual(a: any, b: any): boolean {
       return false;
     }
   }
+  if (a.outputs && b.outputs) {
+    // iterate through factors
+    // for each factor
+    // if strength key exists, pop it out, and delete from output
+    // deepsort and stringify the outputs, and then compare
+    // for entropy, only compare following keys: [guesses, guesses_log10, score]
+    // Remove 'strength' from outputs, and deep sort them for comparison
+    const outputsKeys = Object.keys(a.outputs);
+    for (const factorId of outputsKeys) {
+      const isDerivedKey = (v: any) => v && typeof v === 'object' && 'policy' in v && 'outputs' in v && 'key' in v;
+
+      if (isDerivedKey(a.outputs[factorId]) && isDerivedKey(b.outputs[factorId])) {
+        console.log("skipping stack factor output check", factorId);
+        continue;
+      }
+
+      const aOutput = { ...a.outputs[factorId] };
+      const bOutput = { ...b.outputs[factorId] };
+
+      // Remove 'strength' key if it exists
+      const aStrength = aOutput.strength;
+      const bStrength = bOutput.strength;
+      if ('strength' in aOutput) delete aOutput.strength;
+      if ('strength' in bOutput) delete bOutput.strength;
+
+      const aOutputs = JSON.stringify(deepSort(normalizeArrayBuffer(aOutput)));
+      const bOutputs = JSON.stringify(deepSort(normalizeArrayBuffer(bOutput)));
+      if (aOutputs !== bOutputs) {
+        console.error('outputs mismatch', factorId, aOutputs, "\n", bOutputs);
+        return false;
+      }
+      if (aStrength && bStrength) {
+        if (aStrength.guesses !== bStrength.guesses) {
+          console.error('strength guesses mismatch', aStrength.guesses, bStrength.guesses);
+          return false;
+        }
+        if (!numbersClose(aStrength.guesses_log10, bStrength.guesses_log10)) {
+          console.error('strength guesses_log10 mismatch', aStrength.guesses_log10, bStrength.guesses_log10);
+          return false;
+        }
+        if (aStrength.score !== bStrength.score) {
+          console.error('strength score mismatch', aStrength.score, bStrength.score);
+          return false;
+        }
+      }
+    }
+  }
   return true;
 }
 
-export { derivedKeyIsEqual };
+export { derivedKeyIsEqual, deepSort };

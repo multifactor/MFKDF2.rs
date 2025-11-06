@@ -18,7 +18,7 @@ pub trait FactorDerive: Send + Sync + std::fmt::Debug {
   fn params(&self, key: Key) -> MFKDF2Result<Self::Params> {
     Ok(serde_json::from_value(serde_json::json!({}))?)
   }
-  fn output(&self) -> Self::Output { Self::Output::default() }
+  fn output(&self) -> Self::Output { serde_json::from_value(serde_json::json!({})).unwrap() }
 }
 
 impl FactorType {

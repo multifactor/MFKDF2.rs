@@ -284,10 +284,10 @@ function wrapDerivedKey(key: raw.Mfkdf2DerivedKey): any {
     },
     async strengthen(time: number, memory: number) {
       // check for integer otherwise uniffi will cast to integer
-      if (time && !Number.isInteger(time)) {
+      if (time && !Number.isInteger(time) || time < 0) {
         throw new TypeError('time must be a non-negative integer');
       }
-      if (memory && !Number.isInteger(memory)) {
+      if (memory && !Number.isInteger(memory) || memory < 0) {
         throw new TypeError('memory must be a non-negative integer');
       }
 
@@ -420,11 +420,11 @@ export const mfkdf = {
       options: { id?: string; threshold?: number; salt?: ArrayBuffer | Buffer | Uint8Array, stack?: boolean, integrity?: boolean, time?: number, memory?: number } = {}
     ) {
       // BUG (@lonerapier): uniffi casts float to integer automatically so we need to check here
-      if (options.time && !Number.isInteger(options.time)) {
-        throw new TypeError('time must be an integer');
+      if (options.time !== undefined && (!Number.isInteger(options.time) || options.time < 0)) {
+        throw new TypeError('time must be a non-negative integer');
       }
-      if (options.memory && !Number.isInteger(options.memory)) {
-        throw new TypeError('memory must be an integer');
+      if (options.memory !== undefined && (!Number.isInteger(options.memory) || options.memory < 0)) {
+        throw new TypeError('memory must be a non-negative integer');
       }
       const key = await raw.setupKey(factors, {
         id: options.id,
