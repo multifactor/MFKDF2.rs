@@ -1,3 +1,10 @@
 [workspace]
 members  = ["mfkdf2", "mfkdf2-py"]
 resolver = "2"
+
+[profile.release]
+codegen-units    = 1
+debug-assertions = false
+lto              = true
+opt-level        = 3
+panic            = "abort"

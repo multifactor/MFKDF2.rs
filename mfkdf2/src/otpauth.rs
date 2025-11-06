@@ -133,8 +133,7 @@ pub fn otpauth_url(options: &OtpauthUrlOptions) -> Result<String, MFKDF2Error> {
   if matches!(kind, Kind::Totp) {
     url.push_str(&format!("&period={period}"));
   } else {
-    let counter =
-      options.counter.ok_or_else(|| MFKDF2Error::MissingOtpAuthUrlOptions("counter"))?;
+    let counter = options.counter.ok_or(MFKDF2Error::MissingOtpAuthUrlOptions("counter"))?;
     url.push_str(&format!("&counter={counter}"));
   }
 

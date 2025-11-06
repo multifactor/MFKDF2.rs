@@ -11,6 +11,8 @@
   },
   "scripts": {
     "ubrn:web": "ubrn build web",
+    "ubrn:web:release": "CARGO_TARGET_WASM32_UNKNOWN_UNKNOWN_RUSTFLAGS='-C opt-level=3 -C codegen-units=1 -C panic=abort -C target-feature=+simd128' ubrn build web --release --target web",
+    "wasm:opt": "wasm-opt -O3 --enable-simd -o src/generated/web/wasm-bindgen/index_bg.opt.wasm src/generated/web/wasm-bindgen/index_bg.wasm",
     "ubrn:checkout": "ubrn checkout",
     "ubrn:clean": "rm -rfv cpp/ android/CMakeLists.txt android/src/main/java android/*.cpp ios/ src/Native* src/*.web.ts* src/generated/",
     "typecheck": "tsc",
