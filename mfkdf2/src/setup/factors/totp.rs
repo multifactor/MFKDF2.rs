@@ -167,7 +167,7 @@ pub fn totp(options: TOTPOptions) -> MFKDF2Result<MFKDF2Factor> {
 
   let secret = options.secret.unwrap_or_else(|| {
     let mut secret = [0u8; 20];
-    crate::rng::det_rng::fill_bytes(&mut secret);
+    crate::rng::fill_bytes(&mut secret);
     secret.to_vec()
   });
 
@@ -177,10 +177,10 @@ pub fn totp(options: TOTPOptions) -> MFKDF2Result<MFKDF2Factor> {
   }
 
   // Generate random target
-  let target = crate::rng::det_rng::gen_range_u32(10_u32.pow(u32::from(options.digits)) - 1);
+  let target = crate::rng::gen_range_u32(10_u32.pow(u32::from(options.digits)) - 1);
 
   let mut secret_pad = [0u8; 12];
-  crate::rng::det_rng::fill_bytes(&mut secret_pad);
+  crate::rng::fill_bytes(&mut secret_pad);
   let padded_secret = secret.iter().chain(secret_pad.iter()).cloned().collect();
   options.secret = Some(padded_secret);
 

@@ -5,7 +5,7 @@ use crate::{
   crypto::encrypt,
   definitions::{Key, MFKDF2Factor},
   error::MFKDF2Result,
-  rng::det_rng,
+  rng,
   setup::factors::{FactorMetadata, FactorSetup, FactorType},
 };
 
@@ -47,7 +47,7 @@ impl FactorSetup for HmacSha1 {
 
   fn params(&self, _key: Key) -> MFKDF2Result<Value> {
     let mut challenge = [0u8; 64];
-    det_rng::fill_bytes(&mut challenge);
+    rng::fill_bytes(&mut challenge);
 
     let response = crate::crypto::hmacsha1(&self.padded_secret[..20], &challenge);
     let mut padded_key = [0u8; 32];
@@ -80,14 +80,14 @@ pub fn hmacsha1(options: HmacSha1Options) -> MFKDF2Result<MFKDF2Factor> {
     secret
   } else {
     let mut secret = [0u8; 20];
-    det_rng::fill_bytes(&mut secret);
+    rng::fill_bytes(&mut secret);
     secret.to_vec()
   };
   if secret.len() != 20 {
     return Err(crate::error::MFKDF2Error::InvalidSecretLength(id));
   }
   let mut secret_pad = [0u8; 12];
-  det_rng::fill_bytes(&mut secret_pad);
+  rng::fill_bytes(&mut secret_pad);
   let padded_secret = secret.iter().chain(secret_pad.iter()).cloned().collect();
 
   Ok(MFKDF2Factor {

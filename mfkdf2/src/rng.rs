@@ -1,5 +1,5 @@
 #[cfg(feature = "differential-test")]
-pub mod det_rng {
+mod rng_impl {
   use std::cell::RefCell;
 
   use rand::{CryptoRng, RngCore, SeedableRng};
@@ -32,7 +32,7 @@ pub mod det_rng {
 }
 
 #[cfg(not(feature = "differential-test"))]
-pub mod det_rng {
+mod rng_impl {
   use rand::{RngCore, rngs::OsRng};
 
   pub type GlobalRng = OsRng;
@@ -43,9 +43,11 @@ pub mod det_rng {
   pub fn gen_range_u8(max: u8) -> u8 { if max == 0 { 0 } else { (next_u32() % max as u32) as u8 } }
 }
 
+pub use rng_impl::*;
+
 #[cfg(test)]
 mod tests {
-  use super::det_rng::*;
+  use super::*;
 
   #[test]
   fn test_fill_bytes() {

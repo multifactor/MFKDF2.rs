@@ -81,7 +81,7 @@ impl MFKDF2DerivedKey {
 
     for factor in add_factor {
       let mut salt = [0u8; 32];
-      crate::rng::det_rng::fill_bytes(&mut salt);
+      crate::rng::fill_bytes(&mut salt);
 
       let id = factor.id.clone().ok_or(MFKDF2Error::MissingFactorId)?;
 
@@ -121,8 +121,8 @@ impl MFKDF2DerivedKey {
       return Err(MFKDF2Error::InvalidThreshold);
     }
 
-    let dealer = ssskit::SecretSharing(threshold)
-      .dealer_rng(&self.secret, &mut crate::rng::det_rng::GlobalRng);
+    let dealer =
+      ssskit::SecretSharing(threshold).dealer_rng(&self.secret, &mut crate::rng::GlobalRng);
     let shares: Vec<Vec<u8>> = dealer
       .take(factors.len())
       .map(|s: ssskit::Share<SECRET_SHARING_POLY>| Vec::from(&s))

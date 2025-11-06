@@ -84,7 +84,7 @@ async fn factor_fungibility_incorrect() {
 #[tokio::test]
 async fn share_indistinguishability_share_size() -> Result<(), MFKDF2Error> {
   let mut secret = [0u8; 32];
-  mfkdf2::rng::det_rng::fill_bytes(&mut secret);
+  mfkdf2::rng::fill_bytes(&mut secret);
 
   // TODO (@lonerapier): Implement this test after ssskit repo is updated
 

@@ -36,7 +36,7 @@ impl FactorDerive for HmacSha1 {
 
   fn params(&self, _key: Key) -> MFKDF2Result<Self::Params> {
     let mut challenge = [0u8; 64];
-    crate::rng::det_rng::fill_bytes(&mut challenge);
+    crate::rng::fill_bytes(&mut challenge);
 
     let response = crate::crypto::hmacsha1(&self.padded_secret[..20], &challenge);
     let mut padded_key = [0u8; 32];

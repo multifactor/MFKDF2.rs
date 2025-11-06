@@ -49,7 +49,7 @@ pub struct MFKDF2Options {
 impl Default for MFKDF2Options {
   fn default() -> Self {
     let mut salt = [0u8; 32];
-    crate::rng::det_rng::fill_bytes(&mut salt);
+    crate::rng::fill_bytes(&mut salt);
 
     Self {
       id:        Some(uuid::Uuid::new_v4().to_string()),
@@ -78,7 +78,7 @@ pub fn key(factors: Vec<MFKDF2Factor>, options: MFKDF2Options) -> MFKDF2Result<M
     Some(salt) => salt,
     None => {
       let mut salt = [0u8; 32];
-      crate::rng::det_rng::fill_bytes(&mut salt);
+      crate::rng::fill_bytes(&mut salt);
       salt.to_vec()
     },
   };
@@ -100,10 +100,10 @@ pub fn key(factors: Vec<MFKDF2Factor>, options: MFKDF2Options) -> MFKDF2Result<M
 
   // master secret
   let mut secret: [u8; 32] = [0u8; 32];
-  crate::rng::det_rng::fill_bytes(&mut secret);
+  crate::rng::fill_bytes(&mut secret);
 
   let mut key = [0u8; 32];
-  crate::rng::det_rng::fill_bytes(&mut key);
+  crate::rng::fill_bytes(&mut key);
 
   // Generate key
   let mut kek = [0u8; 32];
@@ -129,7 +129,7 @@ pub fn key(factors: Vec<MFKDF2Factor>, options: MFKDF2Options) -> MFKDF2Result<M
   let policy_key = encrypt(&key, &kek);
 
   // Split secret into Shamir shares
-  let mut rng = crate::rng::det_rng::GlobalRng;
+  let mut rng = crate::rng::GlobalRng;
   let dealer = SecretSharing::<SECRET_SHARING_POLY>(threshold).dealer_rng(&secret, &mut rng);
   let shares: Vec<Vec<u8>> =
     dealer.take(factors.len()).map(|s: Share<SECRET_SHARING_POLY>| Vec::from(&s)).collect();
@@ -148,7 +148,7 @@ pub fn key(factors: Vec<MFKDF2Factor>, options: MFKDF2Options) -> MFKDF2Result<M
     }
 
     let mut salt = [0u8; 32];
-    crate::rng::det_rng::fill_bytes(&mut salt);
+    crate::rng::fill_bytes(&mut salt);
 
     // HKDF stretch & AES-encrypt share
     let stretched = hkdf_sha256_with_info(

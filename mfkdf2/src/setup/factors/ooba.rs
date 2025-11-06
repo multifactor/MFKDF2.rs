@@ -17,7 +17,7 @@ use crate::{
 pub fn generate_alphanumeric_characters(length: u32) -> String {
   (0..length)
     .map(|_| {
-      let n: u8 = crate::rng::det_rng::gen_range_u8(36); // 0–35
+      let n: u8 = crate::rng::gen_range_u8(36); // 0–35
       char::from_digit(n as u32, 36).unwrap() // base-36 => 0–9, a–z
     })
     .collect()
@@ -130,7 +130,7 @@ pub fn ooba(options: OobaOptions) -> MFKDF2Result<MFKDF2Factor> {
 
   // Generate 32-byte random target (the factor's data)
   let mut target = [0u8; 32];
-  crate::rng::det_rng::fill_bytes(&mut target);
+  crate::rng::fill_bytes(&mut target);
 
   Ok(MFKDF2Factor {
     id:          Some(options.id.unwrap_or("ooba".to_string())),
