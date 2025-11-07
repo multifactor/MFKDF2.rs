@@ -1,9 +1,8 @@
-use sha2::{Digest, Sha256};
-
 use crate::{definitions::MFKDF2Factor, error::MFKDF2Result, setup::factors::stack::StackOptions};
 
 #[cfg(feature = "differential-test")]
 fn factor_id(n: u8, factors: &[MFKDF2Factor]) -> String {
+  use sha2::{Digest, Sha256};
   // Deterministic stack id based on threshold and sorted child ids
   let mut child_ids: Vec<String> =
     factors.iter().map(|f| f.id.clone().unwrap_or_default()).collect();

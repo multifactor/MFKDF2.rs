@@ -33,9 +33,22 @@ mod rng_impl {
 
 #[cfg(not(feature = "differential-test"))]
 mod rng_impl {
-  use rand::{RngCore, rngs::OsRng};
+  use rand::{CryptoRng, RngCore, rngs::OsRng};
 
-  pub type GlobalRng = OsRng;
+  pub struct GlobalRng;
+
+  impl RngCore for GlobalRng {
+    fn next_u32(&mut self) -> u32 { OsRng.next_u32() }
+
+    fn next_u64(&mut self) -> u64 { OsRng.next_u64() }
+
+    fn fill_bytes(&mut self, dest: &mut [u8]) { OsRng.fill_bytes(dest) }
+
+    fn try_fill_bytes(&mut self, dest: &mut [u8]) -> Result<(), rand::Error> {
+      OsRng.try_fill_bytes(dest)
+    }
+  }
+  impl CryptoRng for GlobalRng {}
 
   pub fn fill_bytes(dst: &mut [u8]) { OsRng.fill_bytes(dst); }
   pub fn next_u32() -> u32 { OsRng.next_u32() }

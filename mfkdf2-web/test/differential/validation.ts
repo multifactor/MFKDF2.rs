@@ -150,7 +150,7 @@ function derivedKeyIsEqual(a: any, b: any): boolean {
       const isDerivedKey = (v: any) => v && typeof v === 'object' && 'policy' in v && 'outputs' in v && 'key' in v;
 
       if (isDerivedKey(a.outputs[factorId]) && isDerivedKey(b.outputs[factorId])) {
-        console.log("skipping stack factor output check", factorId);
+        console.info("skipping stack factor output check", factorId);
         continue;
       }
 

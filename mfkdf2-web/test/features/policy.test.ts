@@ -33,20 +33,23 @@ suite('policy', () => {
     });
 
     test('invalid', async () => {
-      // await mfkdf.policy
-      // .setup(
-      await mfkdf.policy.and(
-        await mfkdf.policy.or(
-          await mfkdf.setup.factors.password('password1', { id: 'password1' }),
-          await mfkdf.setup.factors.password('password2', { id: 'password2' })
-        ),
-        await mfkdf.policy.or(
-          await mfkdf.setup.factors.password('password3', { id: 'password1' }),
-          await mfkdf.setup.factors.password('password4', { id: 'password2' })
-        )
-      )
-        .should.be.rejectedWith(Mfkdf2Error.DuplicateFactorId);
-      // )
+      try {
+        await mfkdf.policy
+          .setup(
+            await mfkdf.policy.and(
+              await mfkdf.policy.or(
+                await mfkdf.setup.factors.password('password1', { id: 'password1' }),
+                await mfkdf.setup.factors.password('password2', { id: 'password2' })
+              ),
+              await mfkdf.policy.or(
+                await mfkdf.setup.factors.password('password3', { id: 'password1' }),
+                await mfkdf.setup.factors.password('password4', { id: 'password2' })
+              )
+            )
+          )
+      } catch (error) {
+        error.should.be.instanceOf(Mfkdf2Error.DuplicateFactorId);
+      }
     });
   });
 

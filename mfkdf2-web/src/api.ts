@@ -74,23 +74,23 @@ function wrapDeriveFactor(factor: raw.Mfkdf2Factor): any {
 }
 
 // Wrap policy to add $id property for JSON schema compatibility
-function deepParseParams(value: any): any {
+function deepParse(value: any): any {
   if (typeof value === 'string') {
     try {
-      return deepParseParams(JSON.parse(value));
+      return deepParse(JSON.parse(value));
     } catch {
       return value;
     }
   }
 
   if (Array.isArray(value)) {
-    return value.map(deepParseParams);
+    return value.map(deepParse);
   }
 
   if (value && typeof value === 'object') {
     const parsed: any = {};
     for (const [key, nested] of Object.entries(value)) {
-      parsed[key] = deepParseParams(nested);
+      parsed[key] = deepParse(nested);
     }
     return parsed;
   }
@@ -161,11 +161,10 @@ function wrapPolicy(policy: any): any {
   delete wrapped.id;
   delete wrapped.schema;
 
-  // console.log('wrapped factors', wrapped.factors);
   for (const factor of wrapped.factors) {
     factor.type = factor.type ?? factor.kind;
     delete factor.kind;
-    factor.params = deepParseParams(factor.params);
+    factor.params = deepParse(factor.params);
   }
 
   return wrapped;

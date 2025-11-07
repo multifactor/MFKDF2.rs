@@ -129,8 +129,8 @@ pub fn key(factors: Vec<MFKDF2Factor>, options: MFKDF2Options) -> MFKDF2Result<M
   let policy_key = encrypt(&key, &kek);
 
   // Split secret into Shamir shares
-  let mut rng = crate::rng::GlobalRng;
-  let dealer = SecretSharing::<SECRET_SHARING_POLY>(threshold).dealer_rng(&secret, &mut rng);
+  let dealer =
+    SecretSharing::<SECRET_SHARING_POLY>(threshold).dealer_rng(&secret, &mut crate::rng::GlobalRng);
   let shares: Vec<Vec<u8>> =
     dealer.take(factors.len()).map(|s: Share<SECRET_SHARING_POLY>| Vec::from(&s)).collect();
 
