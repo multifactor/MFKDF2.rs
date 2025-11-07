@@ -39,13 +39,21 @@ jobs:
           name: mfkdf2-web-mochawesome-report
           path: site/web
 
+      - name: Download Web differential report artifact
+        uses: dawidd6/action-download-artifact@v3
+        with:
+          workflow: bindings.yaml
+          branch: main
+          name: mfkdf2-web-differential-report
+          path: site/web-diff
+
       - name: Create landing index
         env:
           COMMIT_SHA: ${{ github.event.workflow_run.head_sha }}
           REPO: ${{ github.repository }}
         run: |
           set -euo pipefail
-          mkdir -p site site/rust site/web
+          mkdir -p site site/rust site/web site/web-diff
 
           # Force Pages to serve raw files (no Jekyll processing)
           touch site/.nojekyll
@@ -60,6 +68,12 @@ jobs:
           web_idx="$(find site/web -maxdepth 3 -type f -name 'index.html' | head -n1 || true)"
           if [ -n "${web_idx:-}" ] && [ "$web_idx" != "site/web/index.html" ]; then
             cp "$web_idx" site/web/index.html
+          fi
+
+          # ---- Normalize Web differential report ----
+          web_diff_idx="$(find site/web-diff -maxdepth 3 -type f -name 'index.html' | head -n1 || true)"
+          if [ -n "${web_diff_idx:-}" ] && [ "$web_diff_idx" != "site/web-diff/index.html" ]; then
+            cp "$web_diff_idx" site/web-diff/index.html
           fi
 
           # Landing page with strictly relative links and commit hash
@@ -82,6 +96,7 @@ jobs:
               <ul>
                 <li><a href="./rust/index.html">Rust report</a></li>
                 <li><a href="./web/index.html">Web (TS) report</a></li>
+                <li><a href="./web-diff/index.html">Web differential report</a></li>
               </ul>
             </body>
           </html>
@@ -91,6 +106,7 @@ jobs:
           test -f site/index.html
           test -f site/rust/index.html || { echo "Rust report index missing"; exit 1; }
           test -f site/web/index.html  || { echo "Web report index missing"; exit 1; }
+          test -f site/web-diff/index.html || { echo "Web differential report index missing"; exit 1; }
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3

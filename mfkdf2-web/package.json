@@ -10,16 +10,19 @@
     "url": "git://github.com/multifactor/mfkdf2.rs.git"
   },
   "scripts": {
-    "ubrn:web": "ubrn build web",
-    "ubrn:web:release": "CARGO_TARGET_WASM32_UNKNOWN_UNKNOWN_RUSTFLAGS='-C opt-level=3 -C codegen-units=1 -C panic=abort -C target-feature=+simd128' ubrn build web --release --target web",
+    "ubrn:web": "ubrn build web --config .config/ubrn.config.yaml",
+    "ubrn:web:release": "CARGO_TARGET_WASM32_UNKNOWN_UNKNOWN_RUSTFLAGS='-C opt-level=3 -C codegen-units=1 -C panic=abort -C target-feature=+simd128' ubrn build web --release --config .config/ubrn.config.yaml",
+    "ubrn:web:differential": "ubrn build web --config .config/ubrn-differential.config.yaml",
+    "ubrn:web:differential:release": "CARGO_TARGET_WASM32_UNKNOWN_UNKNOWN_RUSTFLAGS='-C opt-level=3 -C codegen-units=1 -C panic=abort -C target-feature=+simd128' ubrn build web --release --config .config/ubrn-differential.config.yaml",
     "wasm:opt": "wasm-opt -O3 --enable-simd -o src/generated/web/wasm-bindgen/index_bg.opt.wasm src/generated/web/wasm-bindgen/index_bg.wasm",
     "ubrn:checkout": "ubrn checkout",
     "ubrn:clean": "rm -rfv cpp/ android/CMakeLists.txt android/src/main/java android/*.cpp ios/ src/Native* src/*.web.ts* src/generated/",
     "typecheck": "tsc",
     "test": "npx tsx node_modules/mocha/bin/mocha --ignore test/differential/**/*.test.ts",
-    "test:differential": "npx tsx node_modules/mocha/bin/mocha -- -g 'differential'",
-    "test:report": "npx tsx node_modules/mocha/bin/mocha --ignore test/differential/**/*.test.ts --reporter mocha-multi-reporters --reporter-options configFile=mocha-reporters.json",
+    "test:report": "npx tsx node_modules/mocha/bin/mocha --ignore test/differential/**/*.test.ts --reporter mocha-multi-reporters --reporter-options configFile=.config/mocha-reporters.json",
     "test:watch": "npx tsx node_modules/mocha/bin/mocha --watch",
+    "test:differential": "npx tsx node_modules/mocha/bin/mocha -- -g 'differential'",
+    "test:differential:report": "npx tsx node_modules/mocha/bin/mocha -- -g 'differential' --reporter mocha-multi-reporters --reporter-options configFile=.config/mocha-reporters-differential.json",
     "build": "npm run build:esm && npm run build:cjs",
     "build:esm": "tsc -p tsconfig.esm.json",
     "build:cjs": "tsc -p tsconfig.cjs.json"

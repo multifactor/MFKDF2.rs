@@ -10,7 +10,7 @@ import * as mfkdf2 from './generated/web/mfkdf2';
 import initAsync from './generated/web/wasm-bindgen/index.js';
 
 export async function uniffiInitAsync() {
-  const wasmPath = new URL('./generated/web/wasm-bindgen/index_bg.opt.wasm', import.meta.url);
+  const wasmPath = new URL('./generated/web/wasm-bindgen/index_bg.wasm', import.meta.url);
   const { readFile } = await import('node:fs/promises');
   const bytes = await readFile(wasmPath);
   await initAsync({ module_or_path: bytes })

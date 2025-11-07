@@ -58,7 +58,7 @@ jobs:
 
       - name: Generate TypeScript bindings
         working-directory: mfkdf2-web
-        run: npm run ubrn:web
+        run: npm run ubrn:web:release
 
       - name: Copy index.web.ts implementation
         run: cp mfkdf2-web/src/index.ts mfkdf2-web/src/index.web.ts
@@ -93,6 +93,25 @@ jobs:
         with:
           name: mfkdf2-web-mochawesome-report
           path: mfkdf2-web/test-results/mochawesome/
+
+
+      - name: Generate TypeScript bindings for differential tests
+        working-directory: mfkdf2-web
+        run: npm run ubrn:web:differential:release
+
+      - name: Copy index.web.ts implementation
+        run: cp mfkdf2-web/src/index.ts mfkdf2-web/src/index.web.ts
+
+      - name: Run differential tests with reports
+        working-directory: mfkdf2-web
+        run: npm run test:differential:report
+
+      - name: Upload differential HTML test report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mfkdf2-web-differential-report
+          path: mfkdf2-web/test-results/mochawesome-differential/
 
       - name: Run TypeScript type checking
         working-directory: mfkdf2-web
