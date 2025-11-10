@@ -61,6 +61,6 @@
     "tsconfig-paths": "^4.2.0",
     "tsx": "^4.19.0",
     "typescript": "^5.6.2",
-    "mfkdf": "github:lonerapier/MFKDF#differential-tests"
+    "mfkdf": "github:multifactor/MFKDF#test/differential-testing"
   }
 }
