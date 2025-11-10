@@ -1,0 +1,114 @@
+name: Reports
+
+on:
+  workflow_run:
+    workflows: ["Rust", "Bindings"]
+    types: [completed]
+
+permissions:
+  contents: read
+  actions: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install mdbook
+        uses: taiki-e/install-action@cargo-binstall
+        with:
+          tool: mdbook
+
+      - name: Build mdBook
+        run: mdbook build docs
+
+      - name: Prepare reports directory inside mdBook output
+        run: mkdir -p docs/book/reports/{rust,web,web-diff}
+
+      - name: Download Rust report artifact
+        uses: dawidd6/action-download-artifact@v3
+        with:
+          workflow: rust.yaml
+          branch: main
+          name: rust-test-report
+          path: docs/book/reports/rust
+
+      - name: Download Web (TS) report artifact
+        uses: dawidd6/action-download-artifact@v3
+        with:
+          workflow: bindings.yaml
+          branch: main
+          name: mfkdf2-web-mochawesome-report
+          path: docs/book/reports/web
+
+      - name: Download Web differential report artifact
+        uses: dawidd6/action-download-artifact@v3
+        with:
+          workflow: bindings.yaml
+          branch: main
+          name: mfkdf2-web-differential-report
+          path: docs/book/reports/web-diff
+
+      - name: Normalize report indexes
+        env:
+          COMMIT_SHA: ${{ github.event.workflow_run.head_sha }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          mkdir -p docs/book/reports docs/book/reports/rust docs/book/reports/web docs/book/reports/web-diff
+
+          # Force Pages to serve raw files (no Jekyll processing)
+          touch docs/book/.nojekyll
+
+          # ---- Normalize Rust report ----
+          rust_idx="$(find docs/book/reports/rust -maxdepth 3 -type f \( -name 'index.html' -o -name '*mochawesome*.html' -o -name '*xunit*.html' \) | head -n1 || true)"
+          if [ -n "${rust_idx:-}" ] && [ "$rust_idx" != "docs/book/reports/rust/index.html" ]; then
+            cp "$rust_idx" docs/book/reports/rust/index.html
+          fi
+
+          # ---- Normalize Web/TS report ----
+          web_idx="$(find docs/book/reports/web -maxdepth 3 -type f -name 'index.html' | head -n1 || true)"
+          if [ -n "${web_idx:-}" ] && [ "$web_idx" != "docs/book/reports/web/index.html" ]; then
+            cp "$web_idx" docs/book/reports/web/index.html
+          fi
+
+          # ---- Normalize Web differential report ----
+          web_diff_idx="$(find docs/book/reports/web-diff -maxdepth 3 -type f -name 'index.html' | head -n1 || true)"
+          if [ -n "${web_diff_idx:-}" ] && [ "$web_diff_idx" != "docs/book/reports/web-diff/index.html" ]; then
+            cp "$web_diff_idx" docs/book/reports/web-diff/index.html
+          fi
+
+          # Basic sanity checks to fail fast instead of deploying broken links
+          test -f docs/book/index.html
+          test -f docs/book/reports/rust/index.html || { echo "Rust report index missing"; exit 1; }
+          test -f docs/book/reports/web/index.html  || { echo "Web report index missing"; exit 1; }
+          test -f docs/book/reports/web-diff/index.html || { echo "Web differential report index missing"; exit 1; }
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: docs/book
+
+  deploy:
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: test-reports
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

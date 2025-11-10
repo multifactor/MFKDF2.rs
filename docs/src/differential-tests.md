@@ -49,6 +49,14 @@ just test-bindings
 
 This executes the differential test suite under `mfkdf2-web/test/differential/`, validating equivalence against the reference implementation.
 
+## Test Reports
+
+When CI completes successfully, the latest reports are embedded alongside this book:
+
+- [Web differential report](reports/web-diff/index.html)
+- [Web (TS) report](reports/web/index.html)
+- [Rust report](reports/rust/index.html)
+
 ## What is not tested (or intentionally excluded)
 
 - `ooba` derived key differs due to unavoidable platform/RNG differences:

@@ -51,4 +51,12 @@ Bindings expose the Rust core to other languages (e.g., TypeScript/Web via WASM)
 
 - [Bindings](bindings/bindings.md)
 
+## Test reports 
+
+The CI pipelines publish test reports directly into the mdBook output. After a successful run of the Rust and Bindings workflows, the following report indexes are available:
+
+- [Rust report](reports/rust/index.html)
+- [Web (TS) report](reports/web/index.html)
+- [Web differential report](reports/web-diff/index.html)
+
 # Development
