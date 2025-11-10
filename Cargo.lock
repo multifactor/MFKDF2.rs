@@ -1530,7 +1530,7 @@ dependencies = [
 [[package]]
 name = "ssskit"
 version = "0.1.1"
-source = "git+https://github.com/multifactor/ssskit.git?branch=differential-tests#c0f0d0d30d7728442dc370f274dba250a5aeb75d"
+source = "git+https://github.com/multifactor/ssskit.git?branch=main#7cdd4b45d2d1a68621bfaaa92985209de17d1480"
 dependencies = [
  "hashbrown",
  "rand",

@@ -30,7 +30,8 @@ sha2   = { version = "0.10", default-features = false }
 hmac = { version = "0.12", default-features = false }
 
 # Shamir Secret Sharing
-ssskit = { git = "https://github.com/multifactor/ssskit.git", branch = "differential-tests" }
+# TODO (autoparallel): move this to a fixed version once ssskit is released.
+ssskit = { git = "https://github.com/multifactor/ssskit.git", branch = "main" }
 
 # Randomness
 # TODO (autoparallel): This can be made `no-std` if we need to.
@@ -83,12 +84,6 @@ data-encoding = { version = "2.9.0", default-features = false, features = [
 ] }
 regex = { version = "1.11.3", default-features = false }
 
-[features]
-default = []
-# Enable UniFFI bindings (FFI exports, scaffolding, bin, etc.)
-bindings          = ["dep:uniffi"]
-differential-test = []
-
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 console_log = { version = "1.0", default-features = false }
 getrandom   = { version = "0.2", default-features = false, features = ["js"] }
@@ -98,3 +93,10 @@ web-time    = { version = "1.1", default-features = false }
 # itertools = "0.14"
 rstest = "0.25"
 tokio  = { version = "1.42", features = ["full"] }
+
+
+[features]
+default = []
+# Enable UniFFI bindings (FFI exports, scaffolding, bin, etc.)
+bindings          = ["dep:uniffi"]
+differential-test = []

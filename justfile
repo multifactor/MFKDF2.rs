@@ -180,15 +180,6 @@ ensure-wasm-bindgen-cli:
         printf "{{success}}✓ wasm-bindgen-cli 0.2.104 already installed{{reset}}\n"; \
     fi
 
-# fails if wasm-opt is missing
-ensure-wasm-opt:
-    @if command -v wasm-opt >/dev/null 2>&1; then \
-      printf "{{success}}✓ wasm-opt is installed{reset}}\n"; \
-    else \
-      printf "{{error}}wasm-opt not found on PATH{{reset}}\n"; \
-      exit 1; \
-    fi
-
 # installs wasm-opt via cargo if missing
 install-wasm-opt:
     @if command -v wasm-opt >/dev/null 2>&1; then \
@@ -198,14 +189,17 @@ install-wasm-opt:
       printf "{{success}}✓ Installed wasm-opt{reset}}\n"; \
     fi
 
-# build the workspace with bindings enabled
-build-bindings:
-    @just header "Building workspace with bindings enabled"
-    cargo build --workspace --all-targets --all-features
-    @just ensure-wasm-bindgen-cli # ensure wasm-bindgen-cli is installed
+# fails if wasm-opt is missing
+ensure-wasm-opt:
+    @if command -v wasm-opt >/dev/null 2>&1; then \
+      printf "{{success}}✓ wasm-opt is installed{reset}}\n"; \
+    else \
+      printf "{{error}}wasm-opt not found on PATH{{reset}}\n"; \
+      exit 1; \
+    fi
 
 gen-ts-bindings-debug:
-    @just build-bindings # build the workspace with bindings enabled
+    @just ensure-wasm-bindgen-cli # ensure wasm-bindgen-cli is installed
     @just header "Generating TypeScript bindings"
     cd mfkdf2-web && npm i && npm run ubrn:web
     @echo "Updating index.web.ts implementation"
@@ -213,7 +207,7 @@ gen-ts-bindings-debug:
 
 # Generate the TypeScript bindings
 gen-ts-bindings:
-    @just build-bindings # build the workspace with bindings enabled
+    @just ensure-wasm-bindgen-cli # ensure wasm-bindgen-cli is installed
     @just header "Generating TypeScript bindings"
     cd mfkdf2-web && npm i && npm run ubrn:web:release
     @just ensure-wasm-opt # ensure wasm-opt is installed
@@ -223,6 +217,14 @@ gen-ts-bindings:
     @cp mfkdf2-web/src/index.ts mfkdf2-web/src/index.web.ts
     @just header "Point glue to optimized wasm"
     sed -i.bak 's/index_bg\.wasm/index_bg\.opt\.wasm/g' mfkdf2-web/src/index.web.ts && rm mfkdf2-web/src/index.web.ts.bak
+
+gen-ts-bindings-differential:
+    @just ensure-wasm-bindgen-cli # ensure wasm-bindgen-cli is installed
+    @just header "Generating TypeScript bindings"
+    cd mfkdf2-web && npm i && npm run ubrn:web:differential:release
+    @echo "Updating index.web.ts implementation"
+    @cp mfkdf2-web/src/index.ts mfkdf2-web/src/index.web.ts
+
 
 # verify the TypeScript bindings
 verify-bindings:
