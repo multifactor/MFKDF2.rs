@@ -45,6 +45,7 @@ install-tools:
 install-rust:
     @just header "Installing Rust Toolchain"
     rustup install
+    rustup target add wasm32-unknown-unknown
 
 # Install uniffi and Node.js dependencies
 install-uniffi-deps:
@@ -261,14 +262,18 @@ verify-bindings:
 
 # test the TypeScript bindings
 test-bindings:
-    @just build-bindings # build the workspace with bindings enabled
     @just header "Testing TypeScript bindings"
     @just verify-bindings  # verify bindings is generated
     cd mfkdf2-web && npm test
 
+# test the TypeScript bindings
+test-bindings-differential:
+    @just header "Testing TypeScript bindings (differential)"
+    @just verify-bindings  # verify bindings is generated
+    cd mfkdf2-web && npm run test:differential
+
 # test the TypeScript bindings with HTML and JUnit reports
 test-bindings-report:
-    @just build-bindings # build the workspace with bindings enabled
     @just header "Testing TypeScript bindings (with reports)"
     @just verify-bindings  # verify bindings is generated
     cd mfkdf2-web && npm run test:report

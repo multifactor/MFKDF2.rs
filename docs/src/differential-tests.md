@@ -1,5 +1,7 @@
 # Differential tests
 
+<!-- toc -->
+
 ## Why differential tests? What is the scope?
 
 The canonical JavaScript implementation of the specification is currently maintained in [MFKDF](https://github.com/multifactor/mfkdf). This repository aims to be the primary implementation written in Rust, with bindings provided to other languages and runtimes.
@@ -44,7 +46,7 @@ rustup target add wasm32-unknown-unknown
 just gen-ts-bindings-differential
 
 # Run the TypeScript test suite (includes differential tests)
-just test-bindings
+just test-bindings-differential
 ```
 
 This executes the differential test suite under `mfkdf2-web/test/differential/`, validating equivalence against the reference implementation.
@@ -64,12 +66,3 @@ When CI completes successfully, the latest reports are embedded alongside this b
   - `ext`: Node’s native JWK includes `ext` for browser support (not specified in the RFC).
   - `hmac`: differs due to the above fields.
 - The derived-key output check for the stack factor is skipped.
-
-## Currently identified issues
-
-- Usage of Node native WebCrypto APIs in the reference and deviations from RFC behavior, e.g., [`subtle.exportKey`](https://nodejs.org/api/webcrypto.html#subtleexportkeyformat-key).
-- No explicit zeroization of sensitive memory on drop.
-- Lack of constant‑time implementations for side‑channel resistance in some paths.
-- Uninitialized fields in some factors (e.g., entropy, params).
-- See also: [`SECURITY.md`](../../SECURITY.md) for broader issues identified across dependent crates and components.
-

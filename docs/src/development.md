@@ -1,5 +1,7 @@
 # Development
 
+<!-- toc -->
+
 ## Repository details
 
 The core library is written in Rust. This repository uses `just` as a command runner for common tasks.
@@ -58,5 +60,3 @@ The CI pipelines publish test reports directly into the mdBook output. After a s
 - [Rust report](reports/rust/index.html)
 - [Web (TS) report](reports/web/index.html)
 - [Web differential report](reports/web-diff/index.html)
-
-# Development

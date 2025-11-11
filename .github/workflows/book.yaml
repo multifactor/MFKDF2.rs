@@ -29,7 +29,8 @@ jobs:
       - name: Install mdbook
         uses: taiki-e/install-action@cargo-binstall
         with:
-          tool: mdbook
+          tool: mdbook,mdbook-toc
+
 
       - name: Build mdBook
         run: mdbook build docs

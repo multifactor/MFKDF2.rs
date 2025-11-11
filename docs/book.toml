@@ -10,6 +10,11 @@ build-dir = "book"
 [rust]
 edition = "2024"
 
+[preprocessor.toc]
+command   = "mdbook-toc"
+max-level = 4
+renderer  = ["html"]
+
 [output.linkcheck]
 # Are we allowed to link to files outside of the book's root directory? This
 # may help prevent linking to sensitive files (e.g. "../../../../etc/shadow")

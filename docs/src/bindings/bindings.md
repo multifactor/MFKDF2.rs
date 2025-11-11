@@ -1,11 +1,14 @@
 # Bindings
 
+<!-- toc -->
+
 Bindings enable using the Rust core library from other languages and runtimes. This repository currently emphasizes TypeScript/Web (WASM) bindings and includes scaffolding for additional languages.
 
 ## Purpose
 
-- Provide a consistent, well-typed interface to the MFKDF2 core across ecosystems.
-- Reuse the audited, performant Rust implementation rather than reimplementing logic per language.
+- Deliver a uniform, statically-typed interface to the MFKDF2 core, enabling consistent integration across ecosystems.
+- Leverage the thoroughly reviewed and highly performant Rust implementation to prevent redundant logic and ensure reliability across language boundaries.
+- Rely on the proven, security-focused Rust cryptography ecosystem to provide robust and trustworthy cryptographic operations.
 
 ## Bindings architecture
 
@@ -19,6 +22,8 @@ Conceptually, the flow is:
 1. Rust core types and functions are marked for export through UniFFI.
 2. Code generation produces language bindings and low‑level glue (plus wasm-bindgen for WebAssembly targets).
 3. The TypeScript facade (`mfkdf2-web/src/api.ts`) presents a stable, user‑friendly API that mirrors the reference implementation while delegating to the generated layer.
+
+More details about FFI layer can be found at uniffi [documentation](https://mozilla.github.io/uniffi-rs/latest/).
 
 ### Facade responsibilities
 
@@ -59,9 +64,6 @@ Install the following once:
 # Rust toolchain
 rustup install
 
-# Target for WebAssembly builds
-rustup target add wasm32-unknown-unknown
-
 # Project command runner
 cargo install just
 
@@ -76,7 +78,7 @@ The setup ensures:
 - `mdbook` is installed
 
 For WebAssembly-specific builds, the workflow also uses:
-- `wasm-bindgen-cli` (version pinned in automation to 0.2.104)
+- `wasm-bindgen-cli` (version pinned to 0.2.104)
 - `wasm-opt` for optimization (installed via cargo wrapper when required)
 
 ## Generate bindings
