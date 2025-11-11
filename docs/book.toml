@@ -1,0 +1,40 @@
+[book]
+authors     = ["Multifactor", "Sambhav Dusad"]
+description = "Next-Generation Multi-Factor Key Derivation Function"
+language    = "en"
+title       = "MFKDF2"
+
+[build]
+build-dir = "book"
+
+[rust]
+edition = "2024"
+
+[output.linkcheck]
+# Are we allowed to link to files outside of the book's root directory? This
+# may help prevent linking to sensitive files (e.g. "../../../../etc/shadow")
+optional                    = true
+traverse-parent-directories = true
+
+[output.html]
+mathjax-support   = false
+smart-punctuation = true
+
+default-theme = "light"
+git-branch    = "main"
+
+[output.html.playground]
+editable     = true
+line-numbers = true
+
+[output.html.search]
+boost-hierarchy     = 2
+boost-paragraph     = 1
+boost-title         = 2
+expand              = true
+heading-split-level = 2
+limit-results       = 20
+use-boolean-and     = true
+
+[output.html.redirect]
+"/format/config.html" = "configuration/index.html"

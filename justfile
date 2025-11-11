@@ -34,11 +34,18 @@ install-tools:
     else \
         printf "{{success}}✓ uniffi-bindgen already installed{{reset}}\n"; \
     fi
+    if ! command -v mdbook > /dev/null; then \
+        printf "{{info}}Installing mdBook...{{reset}}\n" && \
+        cargo install mdbook; \
+    else \
+        printf "{{success}}✓ mdBook already installed{{reset}}\n"; \
+    fi
 
 # Install rust toolchain
 install-rust:
     @just header "Installing Rust Toolchain"
     rustup install
+    rustup target add wasm32-unknown-unknown
 
 # Install uniffi and Node.js dependencies
 install-uniffi-deps:
@@ -111,6 +118,16 @@ docs:
 doc-check:
     @just header "Checking cargo docs"
     RUSTDOCFLAGS="-D warnings" cargo doc --no-deps --all-features
+
+# Build the mdBook in docs/
+mdbook-build:
+    @just header "Building mdBook (docs/)"
+    mdbook build docs
+
+# Serve the mdBook locally with live reload
+mdbook-serve:
+    @just header "Serving mdBook at http://localhost:3000"
+    mdbook serve docs --open --hostname 127.0.0.1 --port 3000
 
 # Show your relevant environment information
 info:
@@ -245,14 +262,18 @@ verify-bindings:
 
 # test the TypeScript bindings
 test-bindings:
-    @just build-bindings # build the workspace with bindings enabled
     @just header "Testing TypeScript bindings"
     @just verify-bindings  # verify bindings is generated
     cd mfkdf2-web && npm test
 
+# test the TypeScript bindings
+test-bindings-differential:
+    @just header "Testing TypeScript bindings (differential)"
+    @just verify-bindings  # verify bindings is generated
+    cd mfkdf2-web && npm run test:differential
+
 # test the TypeScript bindings with HTML and JUnit reports
 test-bindings-report:
-    @just build-bindings # build the workspace with bindings enabled
     @just header "Testing TypeScript bindings (with reports)"
     @just verify-bindings  # verify bindings is generated
     cd mfkdf2-web && npm run test:report
