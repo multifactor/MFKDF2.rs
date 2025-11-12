@@ -10,12 +10,6 @@ build-dir = "book"
 [rust]
 edition = "2024"
 
-[output.linkcheck]
-# Are we allowed to link to files outside of the book's root directory? This
-# may help prevent linking to sensitive files (e.g. "../../../../etc/shadow")
-optional                    = true
-traverse-parent-directories = true
-
 [output.html]
 mathjax-support   = false
 smart-punctuation = true
