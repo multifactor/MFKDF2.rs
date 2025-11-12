@@ -30,7 +30,11 @@ pub fn question(answer: impl Into<String>) -> MFKDF2Result<MFKDF2Factor> {
   if answer.is_empty() {
     return Err(MFKDF2Error::AnswerEmpty);
   }
-  let answer = answer.to_lowercase().replace(|c: char| !c.is_alphanumeric(), "").trim().to_string();
+  let answer = answer
+    .to_lowercase()
+    .replace(|c: char| !c.is_alphanumeric() && !c.is_whitespace(), "")
+    .trim()
+    .to_string();
   let strength = zxcvbn(&answer, &[]);
 
   Ok(MFKDF2Factor {
@@ -42,8 +46,7 @@ pub fn question(answer: impl Into<String>) -> MFKDF2Result<MFKDF2Factor> {
       params:  serde_json::to_string(&Value::Null).unwrap(),
       answer:  answer.clone(),
     }),
-    salt:        [0u8; 32].to_vec(),
-    entropy:     Some(strength.guesses().ilog2() as f64),
+    entropy:     Some((strength.guesses() as f64).log2()),
   })
 }
 
@@ -89,7 +92,7 @@ mod tests {
     assert!(result.is_ok());
     let factor = result.unwrap();
     if let FactorType::Question(q) = factor.factor_type {
-      assert_eq!(q.answer, "blueismyfavoritecolor");
+      assert_eq!(q.answer, "blue is my favorite color");
     } else {
       panic!("Wrong factor type");
     }

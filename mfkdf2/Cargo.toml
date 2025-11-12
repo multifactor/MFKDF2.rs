@@ -19,7 +19,19 @@ cipher = { version = "0.4", default-features = false, features = [
 ] }
 ecb = { version = "0.1", default-features = false }
 hkdf = { version = "0.12", default-features = false }
-ssskit = { version = "0.1.0", default-features = false }
+# TODO (@lonerapier): this version of rsa is vulnerable to marvin sidechannel attack. More info at https://github.com/RustCrypto/RSA/blob/master/README.md#%EF%B8%8Fsecurity-warning
+rsa = { version = "0.9.8", default-features = false }
+# Hashing
+argon2 = { version = "0.5.3", default-features = false, features = ["std"] }
+sha1   = { version = "0.10", default-features = false }
+sha2   = { version = "0.10", default-features = false }
+
+# HMAC
+hmac = { version = "0.12", default-features = false }
+
+# Shamir Secret Sharing
+# TODO (autoparallel): move this to a fixed version once ssskit is released.
+ssskit = { git = "https://github.com/multifactor/ssskit.git", branch = "main" }
 
 # Randomness
 # TODO (autoparallel): This can be made `no-std` if we need to.
@@ -44,15 +56,6 @@ uuid = { version = "1.17", default-features = false, features = [
 # TODO (autoparallel): This can be made `no-std` if we need to.
 base64 = { version = "0.22", default-features = false, features = ["std"] }
 
-# Hashing
-argon2 = { version = "0.5.3", default-features = false, features = ["std"] }
-
-sha1 = { version = "0.10", default-features = false }
-sha2 = { version = "0.10", default-features = false }
-
-# HMAC
-hmac = { version = "0.12", default-features = false }
-
 # Error Handling
 thiserror = { version = "2.0", default-features = false }
 
@@ -71,19 +74,15 @@ uniffi = { version = "0.29", optional = true, features = [
   "cli",
   "wasm-unstable-single-threaded",
 ] }
-# TODO (@lonerapier): this version of rsa is vulnerable to marvin sidechannel attack. More info at https://github.com/RustCrypto/RSA/blob/master/README.md#%EF%B8%8Fsecurity-warning
-rsa = { version = "0.9.8", default-features = false }
 
 # Logging
 log = { version = "0.4.28", default-features = false }
 
 # Regex
+data-encoding = { version = "2.9.0", default-features = false, features = [
+  "alloc",
+] }
 regex = { version = "1.11.3", default-features = false }
-
-[features]
-default = []
-# Enable UniFFI bindings (FFI exports, scaffolding, bin, etc.)
-bindings = ["dep:uniffi"]
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 console_log = { version = "1.0", default-features = false }
@@ -94,3 +93,10 @@ web-time    = { version = "1.1", default-features = false }
 # itertools = "0.14"
 rstest = "0.25"
 tokio  = { version = "1.42", features = ["full"] }
+
+
+[features]
+default = []
+# Enable UniFFI bindings (FFI exports, scaffolding, bin, etc.)
+bindings          = ["dep:uniffi"]
+differential-test = []

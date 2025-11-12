@@ -4,7 +4,6 @@ use std::collections::{HashMap, HashSet};
 
 use argon2::{Argon2, Params, Version};
 use base64::{Engine, engine::general_purpose};
-use rand::{RngCore, rngs::OsRng};
 use serde::{Deserialize, Serialize};
 use ssskit::{SecretSharing, Share};
 use uuid::Uuid;
@@ -30,6 +29,7 @@ pub struct PolicyFactor {
   pub secret: String,
   // TODO (@lonerapier): convert it into a factor based enum
   pub params: String,
+  #[serde(skip_serializing_if = "Option::is_none")]
   pub hint:   Option<String>,
 }
 
@@ -49,7 +49,7 @@ pub struct MFKDF2Options {
 impl Default for MFKDF2Options {
   fn default() -> Self {
     let mut salt = [0u8; 32];
-    OsRng.fill_bytes(&mut salt);
+    crate::rng::fill_bytes(&mut salt);
 
     Self {
       id:        Some(uuid::Uuid::new_v4().to_string()),
@@ -78,7 +78,7 @@ pub fn key(factors: Vec<MFKDF2Factor>, options: MFKDF2Options) -> MFKDF2Result<M
     Some(salt) => salt,
     None => {
       let mut salt = [0u8; 32];
-      OsRng.fill_bytes(&mut salt);
+      crate::rng::fill_bytes(&mut salt);
       salt.to_vec()
     },
   };
@@ -100,10 +100,10 @@ pub fn key(factors: Vec<MFKDF2Factor>, options: MFKDF2Options) -> MFKDF2Result<M
 
   // master secret
   let mut secret: [u8; 32] = [0u8; 32];
-  OsRng.fill_bytes(&mut secret);
+  crate::rng::fill_bytes(&mut secret);
 
   let mut key = [0u8; 32];
-  OsRng.fill_bytes(&mut key);
+  crate::rng::fill_bytes(&mut key);
 
   // Generate key
   let mut kek = [0u8; 32];
@@ -129,7 +129,8 @@ pub fn key(factors: Vec<MFKDF2Factor>, options: MFKDF2Options) -> MFKDF2Result<M
   let policy_key = encrypt(&key, &kek);
 
   // Split secret into Shamir shares
-  let dealer = SecretSharing::<SECRET_SHARING_POLY>(threshold).dealer_rng(&secret, &mut OsRng);
+  let dealer =
+    SecretSharing::<SECRET_SHARING_POLY>(threshold).dealer_rng(&secret, &mut crate::rng::GlobalRng);
   let shares: Vec<Vec<u8>> =
     dealer.take(factors.len()).map(|s: Share<SECRET_SHARING_POLY>| Vec::from(&s)).collect();
 
@@ -146,10 +147,13 @@ pub fn key(factors: Vec<MFKDF2Factor>, options: MFKDF2Options) -> MFKDF2Result<M
       return Err(MFKDF2Error::DuplicateFactorId);
     }
 
+    let mut salt = [0u8; 32];
+    crate::rng::fill_bytes(&mut salt);
+
     // HKDF stretch & AES-encrypt share
     let stretched = hkdf_sha256_with_info(
       &factor.data(),
-      &factor.salt,
+      &salt,
       format!("mfkdf2:factor:pad:{}", &factor.id.clone().unwrap()).as_bytes(),
     );
     let pad = encrypt(&share, &stretched);
@@ -157,17 +161,17 @@ pub fn key(factors: Vec<MFKDF2Factor>, options: MFKDF2Options) -> MFKDF2Result<M
     // Generate factor key
     let params_key = hkdf_sha256_with_info(
       &key,
-      &factor.salt.clone(),
+      &salt,
       format!("mfkdf2:factor:params:{}", &factor.id.clone().unwrap()).as_bytes(),
     );
 
     let params = factor.factor_type.setup().params(params_key.into())?;
     // TODO (autoparallel): This should not be an unwrap.
-    outputs.insert(factor.id.clone().unwrap(), factor.factor_type.output(key.into()).to_string());
+    outputs.insert(factor.id.clone().unwrap(), factor.factor_type.output(key.into()));
 
     let secret_key = hkdf_sha256_with_info(
       &key,
-      &factor.salt.clone(),
+      &salt,
       format!("mfkdf2:factor:secret:{}", &factor.id.clone().unwrap()).as_bytes(),
     );
     let factor_secret = encrypt(&stretched, &secret_key);
@@ -181,7 +185,7 @@ pub fn key(factors: Vec<MFKDF2Factor>, options: MFKDF2Options) -> MFKDF2Result<M
       id:     id.unwrap(),
       kind:   factor.kind(),
       pad:    general_purpose::STANDARD.encode(pad),
-      salt:   general_purpose::STANDARD.encode(factor.salt.clone()),
+      salt:   general_purpose::STANDARD.encode(salt),
       secret: general_purpose::STANDARD.encode(factor_secret),
       params: serde_json::to_string(&params).unwrap(),
       hint:   None,
@@ -212,13 +216,11 @@ pub fn key(factors: Vec<MFKDF2Factor>, options: MFKDF2Options) -> MFKDF2Result<M
   theoretical_entropy.sort_unstable();
   real_entropy.sort_unstable_by(f64::total_cmp);
 
-  let required = threshold as usize;
-
-  let theoretical_sum: u32 = theoretical_entropy.iter().take(required).copied().sum();
-  let real_sum: f64 = real_entropy.iter().take(required).copied().sum();
+  let theoretical_sum: u32 = theoretical_entropy.iter().take(threshold as usize).copied().sum();
+  let real_sum: f64 = real_entropy.iter().take(threshold as usize).copied().sum();
 
   let entropy_theoretical = theoretical_sum.min(256);
-  let entropy_real = real_sum.min(256.0) as u32;
+  let entropy_real = real_sum.min(256.0);
 
   Ok(MFKDF2DerivedKey {
     policy,
@@ -383,11 +385,8 @@ mod tests {
     }
 
     // combine shares to get secret
-    let shares_vec: Vec<Share<SECRET_SHARING_POLY>> = shares
-      .iter()
-      .map(|b| Share::try_from(&b[..]).map_err(|_| MFKDF2Error::TryFromVecError))
-      .collect::<Result<Vec<Share<SECRET_SHARING_POLY>>, _>>()
-      .unwrap();
+    let shares_vec: Vec<Option<Share<SECRET_SHARING_POLY>>> =
+      shares.into_iter().map(|b| Some(Share::try_from(b.as_slice()).unwrap())).collect();
 
     let sss = SecretSharing(derived_key.policy.threshold);
     let secret = sss.recover(&shares_vec).unwrap();
@@ -433,11 +432,8 @@ mod tests {
     let shares_to_recover: Vec<Vec<u8>> =
       derived_key.shares.iter().take(threshold as usize).cloned().collect();
 
-    let shares_vec: Vec<Share<SECRET_SHARING_POLY>> = shares_to_recover
-      .iter()
-      .map(|b| Share::try_from(&b[..]).map_err(|_| MFKDF2Error::TryFromVecError))
-      .collect::<Result<Vec<Share<SECRET_SHARING_POLY>>, _>>()
-      .unwrap();
+    let shares_vec: Vec<Option<Share<SECRET_SHARING_POLY>>> =
+      shares_to_recover.iter().map(|b| Some(Share::try_from(&b[..]).unwrap())).collect();
 
     let sss = SecretSharing(threshold);
     let recovered_secret = sss.recover(&shares_vec).unwrap();

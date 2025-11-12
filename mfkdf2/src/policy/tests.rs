@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use rstest::rstest;
 
 use crate::{
-  derive,
+  derive, otpauth,
   policy::{
     self, Policy,
     logic::{all, and, any, at_least, or},
@@ -22,7 +22,7 @@ fn create_policy_factor(name: &str, id: &str) -> crate::definitions::MFKDF2Facto
       id:     Some("hotp".to_string()),
       secret: Some(vec![0u8; 20]),
       digits: 6,
-      hash:   factors::hotp::OTPHash::Sha256,
+      hash:   otpauth::HashAlgorithm::Sha256,
       issuer: "MFKDF".to_string(),
       label:  "test".to_string(),
     })
@@ -60,7 +60,7 @@ fn create_policy_derive_factor(
       let digits = params["digits"].as_u64().unwrap() as u8;
       let hash = serde_json::from_value(params["hash"].clone()).unwrap();
       let secret = vec![0u8; 20];
-      let code = crate::setup::factors::hotp::generate_hotp_code(&secret, counter, &hash, digits);
+      let code = otpauth::generate_hotp_code(&secret, counter, &hash, digits);
       (id.to_string(), derive::factors::hotp(code).unwrap())
     },
     "totp" => {
@@ -75,7 +75,7 @@ fn create_policy_derive_factor(
       let digits = params["digits"].as_u64().unwrap() as u8;
       let counter = time as u64 / (step * 1000);
       let secret = vec![0u8; 20];
-      let code = crate::setup::factors::hotp::generate_hotp_code(&secret, counter, &hash, digits);
+      let code = otpauth::generate_hotp_code(&secret, counter, &hash, digits);
       (id.to_string(), derive::factors::totp(code, None).unwrap())
     },
     _ => panic!("Unknown factor type: {}", name),

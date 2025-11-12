@@ -8,26 +8,21 @@ use mfkdf2::{
   crypto::hkdf_sha256_with_info,
   derive,
   error::MFKDF2Error,
+  otpauth::{HashAlgorithm, generate_hotp_code},
   policy,
   policy::setup::PolicySetupOptions,
   setup::{
     self,
-    factors::{
-      hotp::{HOTPOptions, OTPHash, generate_hotp_code},
-      password::PasswordOptions,
-      totp::TOTPOptions,
-    },
+    factors::{hotp::HOTPOptions, password::PasswordOptions, totp::TOTPOptions},
     key::MFKDF2Options,
   },
 };
-use rand::{RngCore, rngs::OsRng};
-use serde_json::Value;
 
 // Helper function to perform XOR operation on two byte arrays
 fn xor(a: &[u8], b: &[u8]) -> Vec<u8> { a.iter().zip(b.iter()).map(|(x, y)| x ^ y).collect() }
 
 // Helper function to generate TOTP code from secret and current time
-fn generate_totp_code(secret: &[u8], step: u64, hash: &OTPHash, digits: u8) -> u32 {
+fn generate_totp_code(secret: &[u8], step: u64, hash: &HashAlgorithm, digits: u8) -> u32 {
   let now = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs();
   let counter = now / step;
   generate_hotp_code(secret, counter, hash, digits)
@@ -89,7 +84,7 @@ async fn factor_fungibility_incorrect() {
 #[tokio::test]
 async fn share_indistinguishability_share_size() -> Result<(), MFKDF2Error> {
   let mut secret = [0u8; 32];
-  OsRng.fill_bytes(&mut secret);
+  mfkdf2::rng::fill_bytes(&mut secret);
 
   // TODO (@lonerapier): Implement this test after ssskit repo is updated
 
@@ -278,7 +273,7 @@ async fn totp_dynamic_no_oracle() -> Result<(), MFKDF2Error> {
   )?;
 
   // Get the secret from the setup outputs
-  let outputs: Value = serde_json::from_str(&setup.outputs["totp"])?;
+  let outputs = setup.outputs.get("totp").unwrap();
   let secret = outputs["secret"]
     .as_array()
     .unwrap()
@@ -288,10 +283,10 @@ async fn totp_dynamic_no_oracle() -> Result<(), MFKDF2Error> {
   let step = outputs["period"].as_u64().unwrap();
   let algorithm_str = outputs["algorithm"].as_str().unwrap();
   let hash = match algorithm_str {
-    "sha1" => OTPHash::Sha1,
-    "sha256" => OTPHash::Sha256,
-    "sha512" => OTPHash::Sha512,
-    _ => OTPHash::Sha1,
+    "sha1" => HashAlgorithm::Sha1,
+    "sha256" => HashAlgorithm::Sha256,
+    "sha512" => HashAlgorithm::Sha512,
+    _ => HashAlgorithm::Sha1,
   };
   let digits = outputs["digits"].as_u64().unwrap() as u8;
 
@@ -357,7 +352,7 @@ async fn totp_dynamic_valid_fixed_oracle() {
   .unwrap();
 
   // Get the secret from the setup outputs
-  let outputs: Value = serde_json::from_str(&setup.outputs["totp"]).unwrap();
+  let outputs = setup.outputs.get("totp").unwrap();
   let secret = outputs["secret"]
     .as_array()
     .unwrap()
@@ -367,10 +362,10 @@ async fn totp_dynamic_valid_fixed_oracle() {
   let step = outputs["period"].as_u64().unwrap();
   let algorithm_str = outputs["algorithm"].as_str().unwrap();
   let hash = match algorithm_str {
-    "sha1" => OTPHash::Sha1,
-    "sha256" => OTPHash::Sha256,
-    "sha512" => OTPHash::Sha512,
-    _ => OTPHash::Sha1,
+    "sha1" => HashAlgorithm::Sha1,
+    "sha256" => HashAlgorithm::Sha256,
+    "sha512" => HashAlgorithm::Sha512,
+    _ => HashAlgorithm::Sha1,
   };
   let digits = outputs["digits"].as_u64().unwrap() as u8;
 
@@ -456,7 +451,7 @@ async fn totp_dynamic_invalid_fixed_oracle() {
   .unwrap();
 
   // Get the secret from the setup outputs
-  let outputs: Value = serde_json::from_str(&setup.outputs["totp"]).unwrap();
+  let outputs = setup.outputs.get("totp").unwrap();
   let secret = outputs["secret"]
     .as_array()
     .unwrap()
@@ -466,10 +461,10 @@ async fn totp_dynamic_invalid_fixed_oracle() {
   let step = outputs["period"].as_u64().unwrap();
   let algorithm_str = outputs["algorithm"].as_str().unwrap();
   let hash = match algorithm_str {
-    "sha1" => OTPHash::Sha1,
-    "sha256" => OTPHash::Sha256,
-    "sha512" => OTPHash::Sha512,
-    _ => OTPHash::Sha1,
+    "sha1" => HashAlgorithm::Sha1,
+    "sha256" => HashAlgorithm::Sha256,
+    "sha512" => HashAlgorithm::Sha512,
+    _ => HashAlgorithm::Sha1,
   };
   let digits = outputs["digits"].as_u64().unwrap() as u8;
 
@@ -564,7 +559,7 @@ async fn totp_dynamic_valid_dynamic_oracle() {
   .unwrap();
 
   // Get the secret from the setup outputs
-  let outputs: Value = serde_json::from_str(&setup.outputs["totp"]).unwrap();
+  let outputs = setup.outputs.get("totp").unwrap();
   let secret = outputs["secret"]
     .as_array()
     .unwrap()
@@ -574,10 +569,10 @@ async fn totp_dynamic_valid_dynamic_oracle() {
   let step = outputs["period"].as_u64().unwrap();
   let algorithm_str = outputs["algorithm"].as_str().unwrap();
   let hash = match algorithm_str {
-    "sha1" => OTPHash::Sha1,
-    "sha256" => OTPHash::Sha256,
-    "sha512" => OTPHash::Sha512,
-    _ => OTPHash::Sha1,
+    "sha1" => HashAlgorithm::Sha1,
+    "sha256" => HashAlgorithm::Sha256,
+    "sha512" => HashAlgorithm::Sha512,
+    _ => HashAlgorithm::Sha1,
   };
   let digits = outputs["digits"].as_u64().unwrap() as u8;
 

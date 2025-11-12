@@ -80,7 +80,7 @@ pub fn key(
       // TODO (autoparallel): It would be preferred to know the size of this array at compile
       // time.
       shares_bytes.push(Some(plaintext));
-      outputs.insert(factor.id.clone(), material.factor_type.derive().output().to_string());
+      outputs.insert(factor.id.clone(), material.factor_type.derive().output());
     }
   }
 
@@ -91,15 +91,13 @@ pub fn key(
     .map(|opt| {
       opt
         .clone()
-        .map(|b| Share::try_from(&b[..1 + 32]).map_err(|_| MFKDF2Error::TryFromVecError))
+        .map(|b| Share::try_from(b.as_slice()).map_err(|_| MFKDF2Error::TryFromVecError))
         .transpose()
     })
     .collect::<Result<Vec<Option<Share<SECRET_SHARING_POLY>>>, _>>()?;
 
   let sss = SecretSharing(policy.threshold);
-  let secret = sss
-    .recover(&shares_vec.clone().into_iter().flatten().collect::<Vec<Share<SECRET_SHARING_POLY>>>())
-    .map_err(|_| MFKDF2Error::ShareRecoveryError)?;
+  let secret = sss.recover(&shares_vec).map_err(|_| MFKDF2Error::ShareRecoveryError)?;
   let secret_arr: [u8; 32] = secret[..32].try_into().map_err(|_| MFKDF2Error::TryFromVecError)?;
   let salt_bytes = general_purpose::STANDARD.decode(&policy.salt)?;
 
@@ -145,8 +143,8 @@ pub fn key(
   let integrity_key = hkdf_sha256_with_info(&key, &salt_bytes, "mfkdf2:integrity".as_bytes());
   if verify {
     let integrity_data = policy.extract();
-    let hmac = hmacsha256(&integrity_key, &integrity_data);
-    let hmac = general_purpose::STANDARD.encode(hmac);
+    let digest = hmacsha256(&integrity_key, &integrity_data);
+    let hmac = general_purpose::STANDARD.encode(digest);
     if policy.hmac != hmac {
       return Err(MFKDF2Error::PolicyIntegrityCheckFailed);
     }
@@ -171,7 +169,7 @@ pub fn key(
     secret: secret_arr.to_vec(),
     shares: original_shares.into_iter().map(|s| Vec::from(&s)).collect(),
     outputs,
-    entropy: MFKDF2Entropy { real: 0, theoretical: 0 },
+    entropy: MFKDF2Entropy { real: 0.0, theoretical: 0 },
   })
 }
 
@@ -192,8 +190,11 @@ mod tests {
     time::{SystemTime, UNIX_EPOCH},
   };
 
+  use jsonwebtoken::jwk::Jwk;
   use rand::{RngCore, rngs::OsRng};
-  use serde_json::Value;
+  use rsa::{Oaep, RsaPrivateKey, RsaPublicKey, traits::PublicKeyParts};
+  use serde_json::{Value, json};
+  use sha2::Sha256;
 
   use super::*;
   use crate::{
@@ -206,11 +207,12 @@ mod tests {
         password::password as derive_password, persisted, totp::totp as derive_totp,
       },
     },
+    otpauth::generate_hotp_code,
     setup::{
       self,
       factors::{
         hmacsha1::{HmacSha1Options, hmacsha1 as setup_hmacsha1},
-        hotp::{HOTPOptions, generate_hotp_code, hotp as setup_hotp},
+        hotp::{HOTPOptions, hotp as setup_hotp},
         ooba::{OobaOptions, ooba as setup_ooba},
         passkey::{PasskeyOptions, passkey as setup_passkey},
         password::{PasswordOptions, password as setup_password},
@@ -220,21 +222,34 @@ mod tests {
     },
   };
 
-  const TEST_JWK: &str = r#"{
-    "key_ops": ["encrypt", "decrypt"],
-    "ext": true,
-    "alg": "RSA-OAEP-256",
-    "kty": "RSA",
-    "n": "1jR1L4H7Wov2W3XWlw1OII-fh_YuzfbZgpMCeSIPUd5oPvyvRf8nshkclQ9EQy6QlCZPX0HzCqkGokppxirKisyjfAlremiL8H60t2aapN_T3eClJ3KUxyEO1cejWoKejD86OtL_DWc04odInpcRmFgAF8mgjbEZRD0oSzaGlr70Ezi8p0yhpMTFM2Ltn0LG6SJ2_LGQwpEFNFf7790IoNpx8vKIZq0Ok1dGhC808f2t0ZhVFmxYnR-fp1jxd5B9nYDkjyJbWQK4vPlpAOgHw9v8G2Cg2X1TX2Ywr19tB249es2NlOYrFRQugzPyKfuVYxpFgoJfMuP83SPx-RvK6w",
-    "e": "AQAB"
-  }"#;
+  fn keypair() -> (RsaPrivateKey, RsaPublicKey) {
+    let bits = 2048;
+    let private_key =
+      RsaPrivateKey::new(&mut rsa::rand_core::OsRng, bits).expect("failed to generate a key");
+    let public_key = RsaPublicKey::from(&private_key);
+    (private_key, public_key)
+  }
 
-  fn generate_ooba_setup_factor(id: &str) -> MFKDF2Factor {
+  fn jwk(key: &RsaPublicKey) -> Jwk {
+    let n = base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(key.n().to_bytes_be());
+    let e = base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(key.e().to_bytes_be());
+    let jwk = json!({
+      "key_ops": ["encrypt", "decrypt"],
+      "ext": true,
+      "alg": "RSA-OAEP-256",
+      "kty": "RSA",
+      "n": n,
+      "e": e
+    });
+    serde_json::from_value(jwk).unwrap()
+  }
+
+  fn generate_ooba_setup_factor(id: &str, key: &RsaPublicKey) -> MFKDF2Factor {
     let options = OobaOptions {
       id:     Some(id.to_string()),
       length: Some(8),
-      key:    Some(TEST_JWK.to_string()),
-      params: Some(r#"{"foo":"bar"}"#.to_string()),
+      key:    Some(jwk(key)),
+      params: Some(json!({"foo":"bar"})),
     };
 
     setup_ooba(options).unwrap()
@@ -338,7 +353,8 @@ mod tests {
       _ => panic!("Wrong factor type"),
     };
 
-    let mut setup_ooba_factor = generate_ooba_setup_factor("ooba");
+    let (private_key, public_key) = keypair();
+    let mut setup_ooba_factor = generate_ooba_setup_factor("ooba", &public_key);
     setup_ooba_factor.id = Some("ooba".to_string());
 
     let setup_factors =
@@ -383,8 +399,13 @@ mod tests {
     let policy_ooba_factor =
       setup_derived_key.policy.factors.iter().find(|f| f.id == "ooba").unwrap();
     let ooba_params: Value = serde_json::from_str(&policy_ooba_factor.params).unwrap();
-    let ooba_code = ooba_params["params"]["code"].as_str().unwrap();
-    let mut derive_ooba_factor = derive_ooba(ooba_code.to_string()).unwrap();
+    let ciphertext = hex::decode(ooba_params["next"].as_str().unwrap()).unwrap();
+    let decrypted = serde_json::from_slice::<Value>(
+      &private_key.decrypt(Oaep::new::<Sha256>(), &ciphertext).unwrap(),
+    )
+    .unwrap();
+    let code = decrypted["code"].as_str().unwrap();
+    let mut derive_ooba_factor = derive_ooba(code.to_string()).unwrap();
     derive_ooba_factor.id = Some("ooba".to_string());
     derive_factors_map.insert("ooba".to_string(), derive_ooba_factor);
 
@@ -394,6 +415,57 @@ mod tests {
     // Assertions
     assert_eq!(derived_key.key, setup_derived_key.key);
     assert_eq!(derived_key.secret, setup_derived_key.secret);
+
+    // derive again
+
+    derive_factors_map = HashMap::new();
+
+    // hotp factor
+    let policy_hotp_factor = derived_key.policy.factors.iter().find(|f| f.id == "hotp").unwrap();
+    let hotp_params: Value = serde_json::from_str(&policy_hotp_factor.params).unwrap();
+    let hotp_padded_secret = hotp.options.secret.as_ref().unwrap();
+    let counter = hotp_params["counter"].as_u64().unwrap();
+    let correct_code = generate_hotp_code(
+      &hotp_padded_secret[..20],
+      counter,
+      &hotp.options.hash,
+      hotp.options.digits,
+    );
+    let mut derive_hotp_factor = derive_hotp(correct_code as u32).unwrap();
+    derive_hotp_factor.id = Some("hotp".to_string());
+    derive_factors_map.insert("hotp".to_string(), derive_hotp_factor);
+
+    // totp factor
+    let time = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_millis();
+    let counter = time as u64 / (totp.options.step * 1000);
+    let totp_code = generate_hotp_code(
+      &totp_padded_secret[..20],
+      counter,
+      &totp.options.hash,
+      totp.options.digits,
+    );
+    let mut derive_totp_factor = derive_totp(totp_code as u32, None).unwrap();
+    derive_totp_factor.id = Some("totp".to_string());
+    derive_factors_map.insert("totp".to_string(), derive_totp_factor);
+
+    // ooba factor
+    let policy_ooba_factor = derived_key.policy.factors.iter().find(|f| f.id == "ooba").unwrap();
+    let ooba_params: Value = serde_json::from_str(&policy_ooba_factor.params).unwrap();
+    let ciphertext = hex::decode(ooba_params["next"].as_str().unwrap()).unwrap();
+    let decrypted = serde_json::from_slice::<Value>(
+      &private_key.decrypt(Oaep::new::<Sha256>(), &ciphertext).unwrap(),
+    )
+    .unwrap();
+    let code = decrypted["code"].as_str().unwrap();
+    let mut derive_ooba_factor = derive_ooba(code.to_string()).unwrap();
+    derive_ooba_factor.id = Some("ooba".to_string());
+    derive_factors_map.insert("ooba".to_string(), derive_ooba_factor);
+
+    let derived_key2 = key(derived_key.policy, derive_factors_map, true, false).unwrap();
+
+    // Assertions
+    assert_eq!(derived_key.key, derived_key2.key);
+    assert_eq!(derived_key.secret, derived_key2.secret);
   }
 
   #[test]
@@ -479,7 +551,8 @@ mod tests {
     let mut setup_totp_factor = setup_totp(TOTPOptions::default()).unwrap();
     setup_totp_factor.id = Some("totp".to_string());
 
-    let mut setup_ooba_factor = generate_ooba_setup_factor("ooba");
+    let (_, public_key) = keypair();
+    let mut setup_ooba_factor = generate_ooba_setup_factor("ooba", &public_key);
     setup_ooba_factor.id = Some("ooba".to_string());
 
     let setup_factors = vec![

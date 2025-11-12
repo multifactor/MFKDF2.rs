@@ -17,13 +17,25 @@ pub struct PolicySetupOptions {
 
 impl From<PolicySetupOptions> for MFKDF2Options {
   fn from(value: PolicySetupOptions) -> Self {
-    MFKDF2Options {
-      id: value.id,
-      threshold: value.threshold,
-      integrity: value.integrity,
-      salt: value.salt,
-      ..Default::default()
+    let PolicySetupOptions { id, threshold, integrity, salt } = value;
+
+    let mut options = MFKDF2Options::default();
+
+    if let Some(id) = id {
+      options.id = Some(id);
     }
+
+    options.threshold = threshold;
+
+    if let Some(integrity) = integrity {
+      options.integrity = Some(integrity);
+    }
+
+    if let Some(salt) = salt {
+      options.salt = Some(salt);
+    }
+
+    options
   }
 }
 

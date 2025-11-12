@@ -1,4 +1,3 @@
-use rand::{RngCore, rngs::OsRng};
 use serde_json::{Value, json};
 
 use crate::{
@@ -37,7 +36,7 @@ impl FactorDerive for HmacSha1 {
 
   fn params(&self, _key: Key) -> MFKDF2Result<Self::Params> {
     let mut challenge = [0u8; 64];
-    OsRng.fill_bytes(&mut challenge);
+    crate::rng::fill_bytes(&mut challenge);
 
     let response = crate::crypto::hmacsha1(&self.padded_secret[..20], &challenge);
     let mut padded_key = [0u8; 32];
@@ -65,7 +64,6 @@ pub fn hmacsha1(response: HmacSha1Response) -> MFKDF2Result<MFKDF2Factor> {
       params:        None,
       padded_secret: [0u8; 32].to_vec(),
     }),
-    salt:        [0u8; 32].to_vec(),
     entropy:     Some(160.0),
   })
 }

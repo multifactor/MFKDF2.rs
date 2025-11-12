@@ -1,15 +1,12 @@
 use base64::prelude::*;
-use hmac::{Hmac, Mac};
-use rand::{RngCore, rngs::OsRng};
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
-use sha1::Sha1;
-use sha2::{Sha256, Sha512};
 
 use crate::{
   crypto::encrypt,
   definitions::{FactorMetadata, FactorType, Key, MFKDF2Factor},
   error::MFKDF2Result,
+  otpauth::{self, HashAlgorithm, OtpauthUrlOptions, generate_hotp_code},
   setup::FactorSetup,
 };
 
@@ -21,30 +18,9 @@ pub struct HOTPOptions {
   // Initially this should be 20 bytes, that later gets padded to 32 during construction.
   pub secret: Option<Vec<u8>>,
   pub digits: u8,
-  pub hash:   OTPHash,
+  pub hash:   HashAlgorithm,
   pub issuer: String,
   pub label:  String,
-}
-
-#[cfg_attr(feature = "bindings", derive(uniffi::Enum))]
-#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
-pub enum OTPHash {
-  #[serde(rename = "sha1")]
-  Sha1,
-  #[serde(rename = "sha256")]
-  Sha256,
-  #[serde(rename = "sha512")]
-  Sha512,
-}
-
-impl std::fmt::Display for OTPHash {
-  fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-    write!(f, "{}", match self {
-      OTPHash::Sha1 => "sha1",
-      OTPHash::Sha256 => "sha256",
-      OTPHash::Sha512 => "sha512",
-    })
-  }
 }
 
 impl Default for HOTPOptions {
@@ -53,7 +29,7 @@ impl Default for HOTPOptions {
       id:     Some("hotp".to_string()),
       secret: None,
       digits: 6,
-      hash:   OTPHash::Sha1,
+      hash:   HashAlgorithm::Sha1,
       issuer: "MFKDF".to_string(),
       label:  "mfkdf.com".to_string(),
     }
@@ -86,7 +62,7 @@ impl FactorSetup for HOTP {
       secret
     } else {
       let mut secret = [0u8; 32]; // Default to 32 bytes
-      OsRng.fill_bytes(&mut secret);
+      crate::rng::fill_bytes(&mut secret);
       secret.to_vec()
     };
 
@@ -113,50 +89,30 @@ impl FactorSetup for HOTP {
       "scheme": "otpauth",
       "type": "hotp",
       "label": self.options.label,
-      "secret": base64::prelude::BASE64_STANDARD.encode(&self.options.secret.clone().unwrap()[..20]),
+      "secret": &self.options.secret.clone().unwrap()[..20],
       "issuer": self.options.issuer,
       "algorithm": self.options.hash.to_string(),
       "digits": self.options.digits,
       "counter": 1,
-      // TODO (sambhav): either generate uri yourself or use an external lib
-      "uri": ""
+      "uri": otpauth::otpauth_url(&OtpauthUrlOptions {
+        secret: hex::encode(&self.options.secret.clone().unwrap()[..20]),
+        label: self.options.label.clone(),
+        kind: Some(otpauth::Kind::Hotp),
+        counter: Some(1),
+        issuer: Some(self.options.issuer.clone()),
+        digits: Some(self.options.digits),
+        period: None,
+        shared: Some(otpauth::SharedOptions {
+          encoding: Some(otpauth::Encoding::Hex),
+          algorithm: Some(self.options.hash.clone()),
+        }),
+      }).unwrap()
     })
   }
 }
 
 #[inline]
 pub fn mod_positive(n: i64, m: i64) -> i64 { ((n % m) + m) % m }
-
-pub fn generate_hotp_code(secret: &[u8], counter: u64, hash: &OTPHash, digits: u8) -> u32 {
-  let counter_bytes = counter.to_be_bytes();
-
-  let digest = match hash {
-    OTPHash::Sha1 => {
-      let mut mac = Hmac::<Sha1>::new_from_slice(secret).unwrap();
-      mac.update(&counter_bytes);
-      mac.finalize().into_bytes().to_vec()
-    },
-    OTPHash::Sha256 => {
-      let mut mac = Hmac::<Sha256>::new_from_slice(secret).unwrap();
-      mac.update(&counter_bytes);
-      mac.finalize().into_bytes().to_vec()
-    },
-    OTPHash::Sha512 => {
-      let mut mac = Hmac::<Sha512>::new_from_slice(secret).unwrap();
-      mac.update(&counter_bytes);
-      mac.finalize().into_bytes().to_vec()
-    },
-  };
-
-  // Dynamic truncation as per RFC 4226
-  let offset = (digest[digest.len() - 1] & 0xf) as usize;
-  let code = ((digest[offset] & 0x7f) as u32) << 24
-    | (digest[offset + 1] as u32) << 16
-    | (digest[offset + 2] as u32) << 8
-    | (digest[offset + 3] as u32);
-
-  code % (10_u32.pow(digits as u32))
-}
 
 pub fn hotp(options: HOTPOptions) -> MFKDF2Result<MFKDF2Factor> {
   let mut options = options;
@@ -183,19 +139,18 @@ pub fn hotp(options: HOTPOptions) -> MFKDF2Result<MFKDF2Factor> {
 
   let secret = options.secret.unwrap_or_else(|| {
     let mut secret = [0u8; 20];
-    OsRng.fill_bytes(&mut secret);
+    crate::rng::fill_bytes(&mut secret);
     secret.to_vec()
   });
-  let mut secret_pad = [0u8; 12];
-  OsRng.fill_bytes(&mut secret_pad);
-  let padded_secret = secret.iter().chain(secret_pad.iter()).cloned().collect();
-  options.secret = Some(padded_secret);
 
   // Generate random target
-  let target = OsRng.next_u32() % 10_u32.pow(u32::from(options.digits));
+  let target = crate::rng::gen_range_u32(10_u32.pow(u32::from(options.digits)) - 1);
 
-  let mut salt = [0u8; 32];
-  OsRng.fill_bytes(&mut salt);
+  // Pad secret to 32 bytes
+  let mut secret_pad = [0u8; 12];
+  crate::rng::fill_bytes(&mut secret_pad);
+  let padded_secret = secret.iter().chain(secret_pad.iter()).cloned().collect::<Vec<u8>>();
+  options.secret = Some(padded_secret);
 
   let entropy = Some(options.digits as f64 * 10.0_f64.log2());
 
@@ -209,7 +164,6 @@ pub fn hotp(options: HOTPOptions) -> MFKDF2Result<MFKDF2Factor> {
       code: 0,
       target,
     }),
-    salt: salt.to_vec(),
     entropy,
   })
 }
@@ -228,7 +182,7 @@ mod tests {
       id:     Some("test_hotp".to_string()),
       secret: Some(b"hello world mfkdf2!!".to_vec()),
       digits: 6,
-      hash:   OTPHash::Sha1,
+      hash:   HashAlgorithm::Sha1,
       issuer: "MFKDF".to_string(),
       label:  "test".to_string(),
     };
@@ -264,25 +218,6 @@ mod tests {
 
     let output = factor.factor_type.output(key.into());
     assert!(output.is_object());
-  }
-
-  #[test]
-  fn test_generate_hotp_code() {
-    let secret = b"hello world";
-    let counter = 1;
-    let hash = OTPHash::Sha1;
-    let digits = 6;
-
-    let code = generate_hotp_code(secret, counter, &hash, digits);
-    assert!(code < 10_u32.pow(digits as u32));
-
-    // Same inputs should produce same output
-    let code2 = generate_hotp_code(secret, counter, &hash, digits);
-    assert_eq!(code, code2);
-
-    // Different counter should produce different output
-    let code3 = generate_hotp_code(secret, counter + 1, &hash, digits);
-    assert_ne!(code, code3);
   }
 
   #[test]
@@ -323,7 +258,7 @@ mod tests {
       id:     Some("hotp".to_string()),
       secret: Some(b"hello world mfkdf2!!".to_vec()),
       digits: 6,
-      hash:   OTPHash::Sha1,
+      hash:   HashAlgorithm::Sha1,
       issuer: "MFKDF".to_string(),
       label:  "test".to_string(),
     };

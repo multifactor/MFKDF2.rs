@@ -1,7 +1,6 @@
-use std::collections::{HashMap, HashSet};
+use std::collections::{BTreeMap, HashSet};
 
 use base64::{Engine, engine::general_purpose};
-use rand::{RngCore, rngs::OsRng};
 
 use crate::{
   constants::SECRET_SHARING_POLY,
@@ -46,10 +45,10 @@ impl MFKDF2DerivedKey {
     add_factor: &[MFKDF2Factor],
     threshold: Option<u8>,
   ) -> MFKDF2Result<()> {
-    let mut factors = HashMap::new();
-    let mut material: HashMap<String, [u8; 32]> = HashMap::new();
-    let mut outputs = HashMap::new();
-    let mut data = HashMap::new();
+    let mut factors = BTreeMap::new();
+    let mut material: BTreeMap<String, [u8; 32]> = BTreeMap::new();
+    let mut outputs = BTreeMap::new();
+    let mut data = BTreeMap::new();
 
     let threshold = threshold.unwrap_or(self.policy.threshold);
 
@@ -82,7 +81,7 @@ impl MFKDF2DerivedKey {
 
     for factor in add_factor {
       let mut salt = [0u8; 32];
-      OsRng.fill_bytes(&mut salt);
+      crate::rng::fill_bytes(&mut salt);
 
       let id = factor.id.clone().ok_or(MFKDF2Error::MissingFactorId)?;
 
@@ -101,8 +100,7 @@ impl MFKDF2DerivedKey {
       };
 
       factors.insert(id.clone(), new_factor);
-      outputs
-        .insert(id.clone(), factor.factor_type.output(self.key.clone().try_into()?).to_string());
+      outputs.insert(id.clone(), factor.factor_type.output(self.key.clone().try_into()?));
       data.insert(id.clone(), factor.data());
       if material.contains_key(&id) {
         material.remove(&id);
@@ -123,7 +121,8 @@ impl MFKDF2DerivedKey {
       return Err(MFKDF2Error::InvalidThreshold);
     }
 
-    let dealer = ssskit::SecretSharing(threshold).dealer_rng(&self.secret, &mut OsRng);
+    let dealer =
+      ssskit::SecretSharing(threshold).dealer_rng(&self.secret, &mut crate::rng::GlobalRng);
     let shares: Vec<Vec<u8>> = dealer
       .take(factors.len())
       .map(|s: ssskit::Share<SECRET_SHARING_POLY>| Vec::from(&s))
@@ -160,7 +159,7 @@ impl MFKDF2DerivedKey {
 
     self.policy.factors = new_factors;
     self.policy.threshold = threshold;
-    self.outputs = outputs;
+    self.outputs = outputs.into_iter().collect();
     self.shares = shares;
 
     if !self.policy.hmac.is_empty() {

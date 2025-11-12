@@ -1,4 +1,3 @@
-use rand::{RngCore, rngs::OsRng};
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 
@@ -6,6 +5,7 @@ use crate::{
   crypto::encrypt,
   definitions::{Key, MFKDF2Factor},
   error::MFKDF2Result,
+  rng,
   setup::factors::{FactorMetadata, FactorSetup, FactorType},
 };
 
@@ -38,7 +38,7 @@ pub struct HmacSha1 {
 impl FactorMetadata for HmacSha1 {
   fn kind(&self) -> String { "hmacsha1".to_string() }
 
-  fn bytes(&self) -> Vec<u8> { self.padded_secret[..20].to_vec() }
+  fn bytes(&self) -> Vec<u8> { self.padded_secret.clone() }
 }
 
 impl FactorSetup for HmacSha1 {
@@ -47,7 +47,7 @@ impl FactorSetup for HmacSha1 {
 
   fn params(&self, _key: Key) -> MFKDF2Result<Value> {
     let mut challenge = [0u8; 64];
-    OsRng.fill_bytes(&mut challenge);
+    rng::fill_bytes(&mut challenge);
 
     let response = crate::crypto::hmacsha1(&self.padded_secret[..20], &challenge);
     let mut padded_key = [0u8; 32];
@@ -80,22 +80,18 @@ pub fn hmacsha1(options: HmacSha1Options) -> MFKDF2Result<MFKDF2Factor> {
     secret
   } else {
     let mut secret = [0u8; 20];
-    OsRng.fill_bytes(&mut secret);
+    rng::fill_bytes(&mut secret);
     secret.to_vec()
   };
   if secret.len() != 20 {
     return Err(crate::error::MFKDF2Error::InvalidSecretLength(id));
   }
   let mut secret_pad = [0u8; 12];
-  OsRng.fill_bytes(&mut secret_pad);
+  rng::fill_bytes(&mut secret_pad);
   let padded_secret = secret.iter().chain(secret_pad.iter()).cloned().collect();
-
-  let mut salt = [0u8; 32];
-  OsRng.fill_bytes(&mut salt);
 
   Ok(MFKDF2Factor {
     id:          Some(id),
-    salt:        salt.to_vec(),
     factor_type: FactorType::HmacSha1(HmacSha1 { padded_secret, response: None, params: None }),
     entropy:     Some(160.0),
   })
@@ -127,10 +123,11 @@ mod tests {
 
     assert_eq!(factor.kind(), "hmacsha1");
     assert_eq!(factor.id, Some("test".to_string()));
-    assert_eq!(factor.data(), SECRET.to_vec());
+    assert_eq!(factor.data()[..20], SECRET);
 
     // Get the challenge and pad from params
     let params = factor.factor_type.setup().params([0u8; 32].into()).unwrap();
+
     assert!(params.is_object());
 
     let challenge = hex::decode(params["challenge"].as_str().unwrap()).unwrap();
@@ -155,7 +152,7 @@ mod tests {
     let factor = hmacsha1(HmacSha1Options { id: None, secret: None }).unwrap();
     assert_eq!(factor.kind(), "hmacsha1");
     assert_eq!(factor.id, Some("hmacsha1".to_string()));
-    assert_eq!(factor.data().len(), 20); // Secret should be 20 bytes
+    assert_eq!(factor.data().len(), 32); // Secret should be 20 bytes + 12 bytes of padding
     assert!(factor.factor_type.setup().params([0u8; 32].into()).unwrap().is_object());
     assert!(factor.factor_type.output([0u8; 32].into()).is_object());
     assert_eq!(factor.entropy, Some(160.0)); // 20 bytes * 8 bits = 160 bits
@@ -180,7 +177,7 @@ mod tests {
       .map(|v| v.as_u64().unwrap() as u8)
       .collect::<Vec<u8>>();
 
-    assert_eq!(secret, factor.data());
+    assert_eq!(secret, factor.data()[..20]);
   }
 
   #[test]

@@ -32,7 +32,6 @@ pub fn persisted(share: Vec<u8>) -> MFKDF2Result<MFKDF2Factor> {
   Ok(MFKDF2Factor {
     id:          Some("persisted".to_string()),
     factor_type: FactorType::Persisted(Persisted { share }),
-    salt:        [0u8; 32].to_vec(),
     entropy:     None,
   })
 }

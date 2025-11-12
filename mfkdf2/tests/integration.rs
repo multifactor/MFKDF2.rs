@@ -202,8 +202,7 @@ fn key_derive_hotp() -> Result<(), mfkdf2::error::MFKDF2Error> {
 
   // Generate the HOTP code that the user would need to provide
   // This simulates what would come from an authenticator app
-  let generated_code =
-    mfkdf2::setup::factors::hotp::generate_hotp_code(&HOTP_SECRET, counter, &hash, digits);
+  let generated_code = mfkdf2::otpauth::generate_hotp_code(&HOTP_SECRET, counter, &hash, digits);
 
   println!("Generated HOTP code: {}", generated_code);
 
@@ -249,8 +248,7 @@ fn key_derive_mixed_password_hotp() -> Result<(), mfkdf2::error::MFKDF2Error> {
   let hash = serde_json::from_value(params["hash"].clone()).unwrap();
 
   // Generate the correct HOTP code using SHA256 (different from previous test)
-  let generated_code =
-    mfkdf2::setup::factors::hotp::generate_hotp_code(&HOTP_SECRET, counter, &hash, digits);
+  let generated_code = mfkdf2::otpauth::generate_hotp_code(&HOTP_SECRET, counter, &hash, digits);
 
   println!("Generated HOTP code (SHA256): {}", generated_code);
 

@@ -1,0 +1,12 @@
+{
+  "reporterEnabled": "mochawesome",
+  "mochawesomeReporterOptions": {
+    "reportDir": "test-results/mochawesome-differential",
+    "reportFilename": "index",
+    "quiet": true,
+    "overwrite": true,
+    "html": true,
+    "json": false,
+    "charts": true
+  }
+}

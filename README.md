@@ -35,14 +35,13 @@ This repository contains the canonical Rust implementation of MFKDF2, with a foc
     - Persistence: optionally persist factor material to bypass that factor in future derivations.
     - Hints: provide low-entropy hints to help identify the correct factor.
   - Entropy: derived-key entropy estimation via Dropbox's zxcvbn
+- **Comprehensive Testing and Differential Validation**: Includes rigorous test coverage and differential testing to verify correctness by comparing against the canonical JavaScript reference implementation.
 
 ## Roadmap
 
 For this library to be considered fully production-ready, the following items should be addressed:
 
 - **Complete Factor Implementation**: Not all proposed MFKDF2 factors have been implemented (e.g., fuzzy encryption, QR,  etc.).
-- **Comprehensive Tests**: While basic tests are in place, more extensive testing is needed, including:
-  - Differential testing against the reference JavaScript implementation.
 - **Architecture modifications**: Current architecture mirrors JS reference, and should be moved to natural rust architecture.
   - Builder pattern for factor (setup, derive) construction
   - Uniffi custom types

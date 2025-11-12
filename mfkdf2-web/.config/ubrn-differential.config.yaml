@@ -1,0 +1,9 @@
+rust:
+  directory: ../mfkdf2
+  manifestPath: Cargo.toml
+
+web:
+  ts: src/generated/web
+  features: ["bindings", "differential-test"]
+bindings:
+  ts: src/generated/rn

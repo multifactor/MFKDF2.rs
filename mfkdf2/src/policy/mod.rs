@@ -22,6 +22,8 @@ pub struct Policy {
   pub threshold: u8,
   pub salt:      String,
   pub factors:   Vec<PolicyFactor>,
+  #[serde(skip_serializing_if = "String::is_empty")]
+  #[serde(default = "String::new")]
   pub hmac:      String,
   pub time:      u32,
   pub memory:    u32,

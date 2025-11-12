@@ -1,4 +1,3 @@
-use rand::{RngCore, rngs::OsRng};
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 use zxcvbn::zxcvbn;
@@ -71,12 +70,12 @@ pub fn question(answer: impl Into<String>, options: QuestionOptions) -> MFKDF2Re
     Some(ref ques) => ques.clone(),
   };
 
-  let answer = answer.to_lowercase().replace(|c: char| !c.is_alphanumeric(), "").trim().to_string();
+  let answer = answer
+    .to_lowercase()
+    .replace(|c: char| !c.is_alphanumeric() && !c.is_whitespace(), "")
+    .trim()
+    .to_string();
   let strength = zxcvbn(&answer, &[]);
-  let entropy = strength.guesses().ilog2() as f64;
-
-  let mut salt = [0u8; 32];
-  OsRng.fill_bytes(&mut salt);
 
   let mut options = options;
   options.question = Some(question);
@@ -89,8 +88,7 @@ pub fn question(answer: impl Into<String>, options: QuestionOptions) -> MFKDF2Re
       params: serde_json::to_string(&Value::Null).unwrap(),
       answer,
     }),
-    salt: salt.to_vec(),
-    entropy: Some(entropy as f64),
+    entropy: Some((strength.guesses() as f64).log2()),
   })
 }
 
@@ -127,11 +125,10 @@ mod tests {
 
     let factor = result.unwrap();
     assert_eq!(factor.id, Some("test-question".to_string()));
-    assert_eq!(factor.salt.len(), 32);
 
     assert!(matches!(factor.factor_type, FactorType::Question(_)));
     if let FactorType::Question(q) = factor.factor_type {
-      assert_eq!(q.answer, "bluenoyellow");
+      assert_eq!(q.answer, "blue no yellow");
       assert_eq!(q.options.question, Some("What is your favorite color?".to_string()));
     }
   }
@@ -183,14 +180,14 @@ mod tests {
       question: Some("What is the capital of France?".to_string()),
     })
     .unwrap();
-    assert_eq!(factor.entropy, Some(9.0));
+    assert_eq!(factor.entropy.unwrap().floor(), 9.0);
   }
 
   #[test]
   fn answer_normalization() {
     let factor = question("  My answer is... 'Test 123!' ", QuestionOptions::default()).unwrap();
     if let FactorType::Question(q) = factor.factor_type {
-      assert_eq!(q.answer, "myansweristest123");
+      assert_eq!(q.answer, "my answer is test 123");
     } else {
       panic!("Wrong factor type");
     }

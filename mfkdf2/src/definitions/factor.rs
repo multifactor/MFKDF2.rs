@@ -13,7 +13,6 @@ pub trait FactorMetadata: Send + Sync + std::fmt::Debug {
 pub struct MFKDF2Factor {
   pub id:          Option<String>,
   pub factor_type: FactorType,
-  pub salt:        Vec<u8>,
   pub entropy:     Option<f64>,
 }
 
@@ -29,7 +28,6 @@ impl std::fmt::Debug for MFKDF2Factor {
       .field("kind", &self.kind())
       .field("id", &self.id)
       .field("data", &self.factor_type)
-      .field("salt", &self.salt)
       .field("params", &"<function>")
       .field("entropy", &self.entropy)
       .field("output", &"<future>")

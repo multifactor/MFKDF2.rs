@@ -118,7 +118,7 @@ jobs:
           tool: cargo-nextest
 
       - name: Run tests (JUnit)
-        run: cargo nextest run --profile ci
+        run: cargo nextest run --release --profile ci
 
       - name: Publish JUnit test report
         if: always()

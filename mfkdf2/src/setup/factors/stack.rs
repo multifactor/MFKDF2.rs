@@ -1,6 +1,5 @@
 use std::collections::HashMap;
 
-use rand::{RngCore, rngs::OsRng};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
@@ -74,10 +73,6 @@ pub fn stack(factors: Vec<MFKDF2Factor>, options: StackOptions) -> MFKDF2Result<
 
   let key = key::key(factors.clone(), options.into())?;
 
-  // per-factor salt
-  let mut salt = [0u8; 32];
-  OsRng.fill_bytes(&mut salt);
-
   let mut factor_map = HashMap::new();
   factors.into_iter().for_each(|f| {
     factor_map.insert(f.id.clone().unwrap(), f);
@@ -86,7 +81,6 @@ pub fn stack(factors: Vec<MFKDF2Factor>, options: StackOptions) -> MFKDF2Result<
   Ok(MFKDF2Factor {
     id,
     factor_type: FactorType::Stack(Stack { factors: factor_map, key: key.clone() }),
-    salt: salt.to_vec(),
     entropy: Some(key.entropy.real as f64),
   })
 }

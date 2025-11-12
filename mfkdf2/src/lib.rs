@@ -7,7 +7,9 @@ pub mod definitions;
 pub mod derive;
 pub mod error;
 pub mod integrity;
+pub mod otpauth;
 pub mod policy;
+pub mod rng;
 pub mod setup;
 
 type LogLevel = log::Level;

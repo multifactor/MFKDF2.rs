@@ -34,11 +34,18 @@ install-tools:
     else \
         printf "{{success}}✓ uniffi-bindgen already installed{{reset}}\n"; \
     fi
+    if ! command -v mdbook > /dev/null; then \
+        printf "{{info}}Installing mdBook...{{reset}}\n" && \
+        cargo install mdbook; \
+    else \
+        printf "{{success}}✓ mdBook already installed{{reset}}\n"; \
+    fi
 
 # Install rust toolchain
 install-rust:
     @just header "Installing Rust Toolchain"
     rustup install
+    rustup target add wasm32-unknown-unknown
 
 # Install uniffi and Node.js dependencies
 install-uniffi-deps:
@@ -112,6 +119,16 @@ doc-check:
     @just header "Checking cargo docs"
     RUSTDOCFLAGS="-D warnings" cargo doc --no-deps --all-features
 
+# Build the mdBook in docs/
+mdbook-build:
+    @just header "Building mdBook (docs/)"
+    mdbook build docs
+
+# Serve the mdBook locally with live reload
+mdbook-serve:
+    @just header "Serving mdBook at http://localhost:3000"
+    mdbook serve docs --open --hostname 127.0.0.1 --port 3000
+
 # Show your relevant environment information
 info:
     @just header "Environment Information"
@@ -180,19 +197,51 @@ ensure-wasm-bindgen-cli:
         printf "{{success}}✓ wasm-bindgen-cli 0.2.104 already installed{{reset}}\n"; \
     fi
 
-# build the workspace with bindings enabled
-build-bindings:
-    @just header "Building workspace with bindings enabled"
-    cargo build --workspace --all-targets --all-features
-    @just ensure-wasm-bindgen-cli # ensure wasm-bindgen-cli is installed
+# installs wasm-opt via cargo if missing
+install-wasm-opt:
+    @if command -v wasm-opt >/dev/null 2>&1; then \
+      printf "{{success}}✓ wasm-opt already installed{reset}}\n"; \
+    else \
+      cargo install wasm-opt --locked; \
+      printf "{{success}}✓ Installed wasm-opt{reset}}\n"; \
+    fi
 
-# Generate the TypeScript bindings
-gen-ts-bindings:
-    @just build-bindings # build the workspace with bindings enabled
+# fails if wasm-opt is missing
+ensure-wasm-opt:
+    @if command -v wasm-opt >/dev/null 2>&1; then \
+      printf "{{success}}✓ wasm-opt is installed{reset}}\n"; \
+    else \
+      printf "{{error}}wasm-opt not found on PATH{{reset}}\n"; \
+      exit 1; \
+    fi
+
+gen-ts-bindings-debug:
+    @just ensure-wasm-bindgen-cli # ensure wasm-bindgen-cli is installed
     @just header "Generating TypeScript bindings"
     cd mfkdf2-web && npm i && npm run ubrn:web
     @echo "Updating index.web.ts implementation"
     @cp mfkdf2-web/src/index.ts mfkdf2-web/src/index.web.ts
+
+# Generate the TypeScript bindings
+gen-ts-bindings:
+    @just ensure-wasm-bindgen-cli # ensure wasm-bindgen-cli is installed
+    @just header "Generating TypeScript bindings"
+    cd mfkdf2-web && npm i && npm run ubrn:web:release
+    @just ensure-wasm-opt # ensure wasm-opt is installed
+    @just header "Optimizing WASM module"
+    cd mfkdf2-web && npm run wasm:opt
+    @echo "Updating index.web.ts implementation"
+    @cp mfkdf2-web/src/index.ts mfkdf2-web/src/index.web.ts
+    @just header "Point glue to optimized wasm"
+    sed -i.bak 's/index_bg\.wasm/index_bg\.opt\.wasm/g' mfkdf2-web/src/index.web.ts && rm mfkdf2-web/src/index.web.ts.bak
+
+gen-ts-bindings-differential:
+    @just ensure-wasm-bindgen-cli # ensure wasm-bindgen-cli is installed
+    @just header "Generating TypeScript bindings"
+    cd mfkdf2-web && npm i && npm run ubrn:web:differential:release
+    @echo "Updating index.web.ts implementation"
+    @cp mfkdf2-web/src/index.ts mfkdf2-web/src/index.web.ts
+
 
 # verify the TypeScript bindings
 verify-bindings:
@@ -213,14 +262,18 @@ verify-bindings:
 
 # test the TypeScript bindings
 test-bindings:
-    @just build-bindings # build the workspace with bindings enabled
     @just header "Testing TypeScript bindings"
     @just verify-bindings  # verify bindings is generated
     cd mfkdf2-web && npm test
 
+# test the TypeScript bindings
+test-bindings-differential:
+    @just header "Testing TypeScript bindings (differential)"
+    @just verify-bindings  # verify bindings is generated
+    cd mfkdf2-web && npm run test:differential
+
 # test the TypeScript bindings with HTML and JUnit reports
 test-bindings-report:
-    @just build-bindings # build the workspace with bindings enabled
     @just header "Testing TypeScript bindings (with reports)"
     @just verify-bindings  # verify bindings is generated
     cd mfkdf2-web && npm run test:report

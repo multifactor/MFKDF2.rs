@@ -22,7 +22,7 @@ suite('setup/factors/hmacsha1', () => {
   test('valid - with defaults', async () => {
     const factor = await mfkdf.setup.factors.hmacsha1()
     factor.type.should.equal('hmacsha1')
-    factor.data.should.have.length(20) // 20 bytes
+    factor.data.should.have.length(32) // 20 bytes + 12 bytes of padding
     factor.id.should.equal('hmacsha1')
     const params = await factor.params()
     params.should.have.property('challenge')
@@ -36,7 +36,7 @@ suite('setup/factors/hmacsha1', () => {
     ])
     const factor = await mfkdf.setup.factors.hmacsha1({ secret })
     factor.type.should.equal('hmacsha1')
-    factor.data.should.deep.equal(secret)
+    factor.data.slice(0, 20).should.deep.equal(secret)
   })
 
   test('valid - with id', async () => {

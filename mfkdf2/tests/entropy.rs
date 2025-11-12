@@ -3,8 +3,6 @@ use mfkdf2::{
   setup::{factors::password::PasswordOptions, key::MFKDF2Options},
 };
 
-fn floor_log2(x: f64) -> i64 { x.log2().floor() as i64 }
-
 #[test]
 fn entropy_3_of_3_passwords() -> Result<(), mfkdf2::error::MFKDF2Error> {
   // ['12345678', 'ABCDEFGH', 'abcdefgh'] with threshold 3
@@ -23,9 +21,8 @@ fn entropy_3_of_3_passwords() -> Result<(), mfkdf2::error::MFKDF2Error> {
     MFKDF2Options { threshold: Some(3), ..Default::default() },
   )?;
 
-  // Expected: floor(log2(4) + log2(33) + log2(33)) and theoretical = 8*8*3
-  let expected_real = floor_log2(4.0) + floor_log2(33.0) + floor_log2(33.0);
-  assert_eq!(setup.entropy.real, expected_real as u32);
+  let expected_real = 4.0_f64.log2() + 33.0_f64.log2() + 33.0_f64.log2();
+  assert_eq!(setup.entropy.real, expected_real);
   assert_eq!(setup.entropy.theoretical, 8 * 8 * 3);
 
   Ok(())
@@ -48,9 +45,8 @@ fn entropy_2_of_3_passwords() -> Result<(), mfkdf2::error::MFKDF2Error> {
     MFKDF2Options { threshold: Some(2), ..Default::default() },
   )?;
 
-  // Expected: floor(log2(4) + log2(33)) and theoretical = 8*8*2
-  let expected_real = floor_log2(4.0) + floor_log2(33.0);
-  assert_eq!(setup.entropy.real, expected_real as u32);
+  let expected_real = 4.0_f64.log2() + 33.0_f64.log2();
+  assert_eq!(setup.entropy.real, expected_real);
   assert_eq!(setup.entropy.theoretical, 8 * 8 * 2);
 
   Ok(())
@@ -73,9 +69,8 @@ fn entropy_1_of_3_passwords() -> Result<(), mfkdf2::error::MFKDF2Error> {
     MFKDF2Options { threshold: Some(1), ..Default::default() },
   )?;
 
-  // Expected: floor(log2(4)) and theoretical = 8*8*1
-  let expected_real = floor_log2(4.0);
-  assert_eq!(setup.entropy.real, expected_real as u32);
+  let expected_real = 4.0_f64.log2();
+  assert_eq!(setup.entropy.real, expected_real);
   assert_eq!(setup.entropy.theoretical, (8 * 8));
 
   Ok(())
@@ -124,9 +119,8 @@ async fn entropy_policy_combinators() -> Result<(), mfkdf2::error::MFKDF2Error> 
     PolicySetupOptions::default(),
   )?;
 
-  // Expected: floor(log2(4) * 2)
-  let expected_real = floor_log2(4.0 * 4.0); // same as floor(Math.log2(4) * 2)
-  assert_eq!(policy.entropy.real, expected_real as u32);
+  let expected_real = 4.0_f64.log2() * 2.0;
+  assert_eq!(policy.entropy.real, expected_real);
 
   Ok(())
 }
@@ -141,9 +135,8 @@ fn entropy_totp_hotp_6_digits() -> Result<(), mfkdf2::error::MFKDF2Error> {
     MFKDF2Options { threshold: Some(2), ..Default::default() },
   )?;
 
-  // Expected: floor(log2(10 ** 6) * 2)
-  let expected_real = ((10f64.powi(6)).log2() * 2.0).floor();
-  assert_eq!(setup.entropy.real, expected_real as u32);
+  let expected_real = 10f64.powi(6).log2() * 2.0;
+  assert_eq!(setup.entropy.real, expected_real);
 
   Ok(())
 }
@@ -164,9 +157,8 @@ fn entropy_totp_hotp_8_digits() -> Result<(), mfkdf2::error::MFKDF2Error> {
     MFKDF2Options { threshold: Some(2), ..Default::default() },
   )?;
 
-  // Expected: floor(log2(10 ** 8) * 2)
-  let expected_real = ((10f64.powi(8)).log2() * 2.0).floor();
-  assert_eq!(setup.entropy.real, expected_real as u32);
+  let expected_real = 10f64.powi(8).log2() * 2.0;
+  assert_eq!(setup.entropy.real, expected_real);
 
   Ok(())
 }

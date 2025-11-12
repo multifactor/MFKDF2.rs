@@ -22,6 +22,101 @@ function toArrayBuffer(input: ArrayBuffer | Buffer | Uint8Array | undefined): Ar
   return view.buffer.slice(view.byteOffset, view.byteOffset + view.byteLength) as ArrayBuffer;
 }
 
+function deepParse(value: any): any {
+  if (typeof value === 'string') {
+    try {
+      return deepParse(JSON.parse(value));
+    } catch {
+      return value;
+    }
+  }
+
+  if (Array.isArray(value)) {
+    return value.map(deepParse);
+  }
+
+  if (value && typeof value === 'object') {
+    const parsed: any = {};
+    for (const [key, nested] of Object.entries(value)) {
+      parsed[key] = deepParse(nested);
+    }
+    return parsed;
+  }
+
+  return value;
+}
+// Deterministically stringify by sorting object keys at all depths
+function stableStringify(value: any): any {
+  function normalize(val: any): any {
+    if (val === undefined || val === null || typeof val === 'string') {
+      return val;
+    }
+    if (Array.isArray(val)) return val.map(normalize)
+    if (val && typeof val === 'object') {
+      const out = {}
+      for (const k of Object.keys(val).sort()) {
+        if (val[k] === undefined) continue
+        out[k] = k === 'params' && typeof val.params !== 'string'
+          ? JSON.stringify(normalize(val.params))
+          : normalize(val[k])
+      }
+      return out
+    }
+    return val
+  }
+  return JSON.stringify(normalize(value))
+}
+
+function stringifyFactorParams(value: any): any {
+  if (value === undefined || value === null || typeof value === 'string') {
+    return value;
+  }
+
+  const POLICY_ORDER = ['$id', '$schema', 'factors', 'key', 'memory', 'salt', 'threshold', 'time'];
+  const FACTOR_ORDER = ['id', 'pad', 'params', 'salt', 'secret', 'type', 'hint'];
+
+  const stringifyPolicy = (input: any): string => JSON.stringify(orderValue(input, 'policy'));
+
+  function orderValue(input: any, context?: 'policy' | 'factor'): any {
+    if (Array.isArray(input)) {
+      if (context === 'policy') {
+        return input.map((item) => orderValue(item, 'factor'));
+      }
+      return input.map((item) => orderValue(item));
+    }
+
+    if (input && typeof input === 'object') {
+      const baseOrder = context === 'policy' ? POLICY_ORDER : context === 'factor' ? FACTOR_ORDER : [];
+      const extras = Object.keys(input).filter((key) => !baseOrder.includes(key)).sort();
+      const keys = [...baseOrder, ...extras];
+      const ordered: any = {};
+
+      for (const key of keys) {
+        if (!(key in input)) continue;
+
+        if (context === 'factor' && key === 'params') {
+          const nested = input[key];
+          ordered.params = typeof nested === 'string' ? nested : stringifyPolicy(nested);
+          continue;
+        }
+
+        if (key === 'factors' && Array.isArray(input[key])) {
+          ordered.factors = input[key].map((item: any) => orderValue(item, 'factor'));
+          continue;
+        }
+
+        ordered[key] = orderValue(input[key]);
+      }
+
+      return ordered;
+    }
+
+    return input;
+  }
+
+  return stringifyPolicy(value);
+}
+
 // Wrap factor to add ergonomic API
 function wrapFactor(factor: raw.Mfkdf2Factor): any {
   const getKind = () => raw.factorTypeKind(factor.factorType);
@@ -73,7 +168,6 @@ function wrapDeriveFactor(factor: raw.Mfkdf2Factor): any {
   }
 }
 
-// Wrap policy to add $id property for JSON schema compatibility
 function wrapPolicy(policy: any): any {
   const wrapped = {
     ...policy,
@@ -86,31 +180,38 @@ function wrapPolicy(policy: any): any {
   for (const factor of wrapped.factors) {
     factor.type = factor.type ?? factor.kind;
     delete factor.kind;
-    factor.params = JSON.parse(factor.params);
+    factor.params = deepParse(factor.params);
   }
 
   return wrapped;
 }
 
 // TODO (@lonerapier): try to remove this
-// Unwrap policy to remove $id and $schema
+// Unwrap policy to remove $id and $schema (non-mutating)
 function unwrapPolicy(policy: any): raw.Policy {
-  for (const factor of policy.factors) {
-    factor.kind = factor.type ? factor.type : factor.kind;
-    delete factor.type;
-    factor.params = typeof factor.params === 'object' ? JSON.stringify(factor.params) : factor.params;
-  }
-  policy.id = policy.$id ?? policy.id;
-  policy.schema = policy.$schema ?? policy.schema;
-  delete policy.$id;
-  delete policy.$schema;
+  const unwrapped: any = {
+    ...policy,
+    factors: policy.factors.map((f: any) => {
+      const factor = { ...f };
+      factor.kind = factor.type ? factor.type : factor.kind;
+      delete factor.type;
+      const stringified = stringifyFactorParams(factor.params);
+      factor.params = stringified;
+      return factor;
+    })
+  };
 
-  policy.time = policy.time ?? 0;
-  policy.memory = policy.memory ?? 0;
+  unwrapped.id = unwrapped.$id ?? unwrapped.id;
+  unwrapped.schema = unwrapped.$schema ?? unwrapped.schema;
+  delete unwrapped.$id;
+  delete unwrapped.$schema;
 
-  delete policy.size;
+  unwrapped.time = unwrapped.time ?? 0;
+  unwrapped.memory = unwrapped.memory ?? 0;
 
-  return policy;
+  delete unwrapped.size;
+
+  return unwrapped;
 }
 
 // Wrap derived key to add $id to policy
@@ -127,6 +228,12 @@ function wrapDerivedKey(key: raw.Mfkdf2DerivedKey): any {
     key.entropy = updated.entropy;
 
     wrapped.policy = wrapPolicy(key.policy);
+    // refresh exposed buffers/objects to reflect latest state
+    wrapped.key = Buffer.from(key.key);
+    wrapped.secret = Buffer.from(key.secret);
+    wrapped.shares = key.shares.map(share => Buffer.from(share));
+    wrapped.entropyBits = key.entropy;
+    wrapped.outputs = outputsToObject();
   };
 
   const applyUpdate = (updated: raw.Mfkdf2DerivedKey) => {
@@ -136,7 +243,6 @@ function wrapDerivedKey(key: raw.Mfkdf2DerivedKey): any {
 
   const wrapped: any = {
     policy: wrapPolicy(key.policy),
-    // Add entropyBits alias for compatibility
     key: Buffer.from(key.key),
     secret: Buffer.from(key.secret),
     shares: key.shares.map(share => Buffer.from(share)),
@@ -193,10 +299,10 @@ function wrapDerivedKey(key: raw.Mfkdf2DerivedKey): any {
     },
     async strengthen(time: number, memory: number) {
       // check for integer otherwise uniffi will cast to integer
-      if (time && !Number.isInteger(time)) {
+      if (time && !Number.isInteger(time) || time < 0) {
         throw new TypeError('time must be a non-negative integer');
       }
-      if (memory && !Number.isInteger(memory)) {
+      if (memory && !Number.isInteger(memory) || memory < 0) {
         throw new TypeError('memory must be a non-negative integer');
       }
 
@@ -251,23 +357,23 @@ export const mfkdf = {
         });
         return wrapSetupFactor(factor);
       },
-      async hotp(options: { secret?: ArrayBuffer | Buffer, id?: string, digits?: number, hash?: raw.OtpHash, issuer?: string, label?: string } = {}) {
+      async hotp(options: { secret?: ArrayBuffer | Buffer, id?: string, digits?: number, hash?: raw.HashAlgorithm, issuer?: string, label?: string } = {}) {
         const factor = await raw.setupHotp({
           id: options.id,
           secret: toArrayBuffer(options.secret),
           digits: options.digits ?? 6,
-          hash: options.hash ?? raw.OtpHash.Sha1,
+          hash: options.hash ?? raw.HashAlgorithm.Sha1,
           issuer: options.issuer ?? 'MFKDF',
           label: options.label ?? 'mfkdf.com'
         });
         return wrapSetupFactor(factor);
       },
-      async totp(options: { secret?: ArrayBuffer | Buffer, id?: string, digits?: number, hash?: raw.OtpHash, issuer?: string, label?: string, window?: bigint, step?: bigint, time?: bigint | number, oracle?: Record<number, number> } = {}) {
+      async totp(options: { secret?: ArrayBuffer | Buffer, id?: string, digits?: number, hash?: raw.HashAlgorithm, issuer?: string, label?: string, window?: bigint, step?: bigint, time?: bigint | number, oracle?: Record<number, number> } = {}) {
         const factor = await raw.setupTotp({
           id: options.id,
           secret: toArrayBuffer(options.secret),
           digits: options.digits ?? 6,
-          hash: options.hash ?? raw.OtpHash.Sha1,
+          hash: options.hash ?? raw.HashAlgorithm.Sha1,
           issuer: options.issuer ?? 'MFKDF',
           label: options.label ?? 'mfkdf.com',
           time: options.time ? BigInt(options.time) : BigInt(Date.now()), // BUG: uniffi doesn't support optional integers
@@ -329,11 +435,11 @@ export const mfkdf = {
       options: { id?: string; threshold?: number; salt?: ArrayBuffer | Buffer | Uint8Array, stack?: boolean, integrity?: boolean, time?: number, memory?: number } = {}
     ) {
       // BUG (@lonerapier): uniffi casts float to integer automatically so we need to check here
-      if (options.time && !Number.isInteger(options.time)) {
-        throw new TypeError('time must be an integer');
+      if (options.time !== undefined && (!Number.isInteger(options.time) || options.time < 0)) {
+        throw new TypeError('time must be a non-negative integer');
       }
-      if (options.memory && !Number.isInteger(options.memory)) {
-        throw new TypeError('memory must be an integer');
+      if (options.memory !== undefined && (!Number.isInteger(options.memory) || options.memory < 0)) {
+        throw new TypeError('memory must be a non-negative integer');
       }
       const key = await raw.setupKey(factors, {
         id: options.id,

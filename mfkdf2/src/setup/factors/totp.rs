@@ -3,7 +3,6 @@ use std::collections::HashMap;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use base64::Engine;
-use rand::{RngCore, rngs::OsRng};
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 #[cfg(target_arch = "wasm32")]
@@ -13,10 +12,8 @@ use crate::{
   crypto::encrypt,
   definitions::{FactorMetadata, FactorType, Key, MFKDF2Factor},
   error::{MFKDF2Error, MFKDF2Result},
-  setup::{
-    FactorSetup,
-    factors::hotp::{OTPHash, generate_hotp_code},
-  },
+  otpauth::{self, HashAlgorithm, OtpauthUrlOptions, generate_hotp_code},
+  setup::FactorSetup,
 };
 
 #[cfg_attr(feature = "bindings", derive(uniffi::Record))]
@@ -25,7 +22,7 @@ pub struct TOTPOptions {
   pub id:     Option<String>,
   pub secret: Option<Vec<u8>>,
   pub digits: u8,
-  pub hash:   OTPHash,
+  pub hash:   HashAlgorithm,
   pub issuer: String,
   pub label:  String,
   pub time:   Option<u64>, // Unix epoch time in milliseconds
@@ -42,7 +39,7 @@ impl Default for TOTPOptions {
       id:     Some("totp".to_string()),
       secret: None,
       digits: 6,
-      hash:   OTPHash::Sha1,
+      hash:   HashAlgorithm::Sha1,
       issuer: "MFKDF".to_string(),
       label:  "mfkdf.com".to_string(),
       time:   Some(now_ms),
@@ -130,8 +127,19 @@ impl FactorSetup for TOTP {
       "algorithm": self.options.hash.to_string(),
       "digits": self.options.digits,
       "period": self.options.step,
-      // TODO (sambhav): either generate uri yourself or use an external lib
-      "uri": ""
+      "uri": otpauth::otpauth_url(&OtpauthUrlOptions {
+        secret: hex::encode(&self.options.secret.clone().unwrap()[..20]),
+        label: self.options.label.clone(),
+        kind: Some(otpauth::Kind::Totp),
+        counter: None,
+        issuer: Some(self.options.issuer.clone()),
+        digits: Some(self.options.digits),
+        period: Some(self.options.step),
+        shared: Some(otpauth::SharedOptions {
+          encoding: Some(otpauth::Encoding::Hex),
+          algorithm: Some(self.options.hash.clone()),
+        }),
+      }).unwrap()
     })
   }
 }
@@ -159,13 +167,9 @@ pub fn totp(options: TOTPOptions) -> MFKDF2Result<MFKDF2Factor> {
 
   let secret = options.secret.unwrap_or_else(|| {
     let mut secret = [0u8; 20];
-    OsRng.fill_bytes(&mut secret);
+    crate::rng::fill_bytes(&mut secret);
     secret.to_vec()
   });
-  let mut secret_pad = [0u8; 12];
-  OsRng.fill_bytes(&mut secret_pad);
-  let padded_secret = secret.iter().chain(secret_pad.iter()).cloned().collect();
-  options.secret = Some(padded_secret);
 
   if options.time.is_none() {
     let now_ms = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_millis() as u64;
@@ -173,10 +177,12 @@ pub fn totp(options: TOTPOptions) -> MFKDF2Result<MFKDF2Factor> {
   }
 
   // Generate random target
-  let target = OsRng.next_u32() % 10_u32.pow(u32::from(options.digits));
+  let target = crate::rng::gen_range_u32(10_u32.pow(u32::from(options.digits)) - 1);
 
-  let mut salt = [0u8; 32];
-  OsRng.fill_bytes(&mut salt);
+  let mut secret_pad = [0u8; 12];
+  crate::rng::fill_bytes(&mut secret_pad);
+  let padded_secret = secret.iter().chain(secret_pad.iter()).cloned().collect();
+  options.secret = Some(padded_secret);
 
   let entropy = Some(options.digits as f64 * 10.0_f64.log2());
 
@@ -188,7 +194,6 @@ pub fn totp(options: TOTPOptions) -> MFKDF2Result<MFKDF2Factor> {
       code: 0,
       target,
     }),
-    salt: salt.to_vec(),
     entropy,
   })
 }
@@ -221,7 +226,7 @@ mod tests {
     let options = TOTPOptions {
       id: Some("test".to_string()),
       digits: 8,
-      hash: OTPHash::Sha256,
+      hash: HashAlgorithm::Sha256,
       issuer: "TestCorp".to_string(),
       label: "tester@testcorp.com".to_string(),
       ..Default::default()
@@ -232,12 +237,12 @@ mod tests {
 
     let factor = result.unwrap();
     assert_eq!(factor.id, Some("test".to_string()));
-    assert_eq!(factor.salt.len(), 32);
+    // assert_eq!(factor.salt.len(), 32);
 
     assert!(matches!(factor.factor_type, FactorType::TOTP(_)));
     if let FactorType::TOTP(totp_factor) = factor.factor_type {
       assert_eq!(totp_factor.options.digits, 8);
-      assert_eq!(totp_factor.options.hash, OTPHash::Sha256);
+      assert_eq!(totp_factor.options.hash, HashAlgorithm::Sha256);
       assert_eq!(totp_factor.options.issuer, "TestCorp".to_string());
       assert_eq!(totp_factor.options.label, "tester@testcorp.com".to_string());
       assert!(totp_factor.options.secret.is_some());

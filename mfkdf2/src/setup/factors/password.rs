@@ -1,4 +1,3 @@
-use rand::{RngCore, rngs::OsRng};
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 use zxcvbn::zxcvbn;
@@ -55,15 +54,10 @@ pub fn password(
   }
   let strength = zxcvbn(&password, &[]);
 
-  // per-factor salt
-  let mut salt = [0u8; 32];
-  OsRng.fill_bytes(&mut salt);
-
   Ok(MFKDF2Factor {
     id:          Some(options.id.unwrap_or("password".to_string())),
     factor_type: FactorType::Password(Password { password }),
-    salt:        salt.to_vec(),
-    entropy:     Some(strength.guesses().ilog2() as f64),
+    entropy:     Some((strength.guesses() as f64).log2()),
   })
 }
 
@@ -87,11 +81,11 @@ mod tests {
   #[test]
   fn password_strength() {
     let factor = password("password", PasswordOptions { id: None }).unwrap();
-    assert_eq!(factor.entropy, Some(1.0));
+    assert_eq!(factor.entropy.unwrap().floor(), 1.0);
 
     let factor =
       password("98p23uijafjj--ah77yhfraklhjaza!?a3", PasswordOptions { id: None }).unwrap();
-    assert_eq!(factor.entropy, Some(63.0));
+    assert_eq!(factor.entropy, Some(64.0));
   }
 
   #[test]

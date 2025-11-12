@@ -46,7 +46,7 @@ suite('setup/factors/question', () => {
 
   test('valid - answer normalization', async () => {
     const factor = await mfkdf.setup.factors.question('  My Answer is... Test 123!  ')
-    factor.data.toString().should.equal('myansweristest123')
+    factor.data.toString().should.equal('my answer is test 123')
   })
 
   test('valid - with id', async () => {
