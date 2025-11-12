@@ -91,9 +91,59 @@ web-time    = { version = "1.1", default-features = false }
 
 [dev-dependencies]
 # itertools = "0.14"
-rstest = "0.25"
-tokio  = { version = "1.42", features = ["full"] }
+criterion = "0.7"
+rstest    = "0.25"
+tokio     = { version = "1.42", features = ["full"] }
 
+[[bench]]
+harness = false
+name    = "password"
+path    = "benches/password.rs"
+
+[[bench]]
+harness = false
+name    = "hmacsha1"
+path    = "benches/hmacsha1.rs"
+
+[[bench]]
+harness = false
+name    = "question"
+path    = "benches/question.rs"
+
+[[bench]]
+harness = false
+name    = "uuid"
+path    = "benches/uuid.rs"
+
+[[bench]]
+harness = false
+name    = "hotp"
+path    = "benches/hotp.rs"
+
+[[bench]]
+harness = false
+name    = "totp"
+path    = "benches/totp.rs"
+
+[[bench]]
+harness = false
+name    = "ooba"
+path    = "benches/ooba.rs"
+
+[[bench]]
+harness = false
+name    = "stack"
+path    = "benches/stack.rs"
+
+[[bench]]
+harness = false
+name    = "passkey"
+path    = "benches/passkey.rs"
+
+[[bench]]
+harness = false
+name    = "factor_combination"
+path    = "benches/factor_combination.rs"
 
 [features]
 default = []
