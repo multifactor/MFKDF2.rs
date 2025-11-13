@@ -30,6 +30,9 @@ cargo bench -p mfkdf2 --bench password -- single_setup
 
 # Multi-factor combinations (setup + derive)
 cargo bench -p mfkdf2 --bench factor_combination
+
+# Password derivation from derived keys
+cargo bench -p mfkdf2 --bench mfdpg
 ```
 
 ### Deterministic Benchmarks
@@ -53,6 +56,22 @@ The benchmarks are now organized by factor type. Each factor has its own benchma
 ### Available Factor Benchmarks
 
 The benchmarks cover all supported MFKDF2 factor types. Each factor type has its own dedicated benchmark suite that can be run individually using `cargo bench -p mfkdf2 --bench [factor_name]`.
+
+### Password Derivation Benchmark
+
+The `mfdpg` benchmark suite measures the performance of password derivation from already-derived MFKDF2 keys using regex patterns. This benchmarks the `derive_password` method on `MFKDF2DerivedKey` with different regex complexity levels:
+
+- `derive_password_simple`: Tests with `[a-zA-Z0-9]{8}` pattern (alphanumeric, fixed length)
+- `derive_password_medium`: Tests with `[a-zA-Z]{6,10}` pattern (alphabetic, variable length)
+- `derive_password_complex`: Tests with complex regex `([A-Za-z]+[0-9]|[0-9]+[A-Za-z])[A-Za-z0-9]*` (structured pattern)
+- `derive_password_digits_only`: Tests with `[0-9]{6}` pattern (digits only)
+- `derive_password_long`: Tests with `[a-zA-Z0-9]{16}` pattern (longer password)
+
+Run the password derivation benchmarks with:
+
+```bash
+cargo bench -p mfkdf2 --bench mfdpg
+```
 
 ## Viewing Results
 

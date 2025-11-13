@@ -145,6 +145,11 @@ harness = false
 name    = "factor_combination"
 path    = "benches/factor_combination.rs"
 
+[[bench]]
+harness = false
+name    = "mfdpg"
+path    = "benches/mfdpg.rs"
+
 [features]
 default = []
 # Enable UniFFI bindings (FFI exports, scaffolding, bin, etc.)
