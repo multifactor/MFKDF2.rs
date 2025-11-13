@@ -60,6 +60,8 @@ The benchmarks are now organized by factor type. Each factor has its own benchma
 
 The benchmarks cover all supported MFKDF2 factor types. Each factor type has its own dedicated benchmark suite that can be run individually using `cargo bench -p mfkdf2 --bench [factor_name]`.
 
+On an Apple M1-Pro:
+
 | factor   | single_setup | single_derive | multiple_setup | multiple_derive (3 of 3) | multiple_derive (2 of 3) |
 | -------- | ------------ | ------------- | -------------- | ------------------------ | ------------------------ |
 | hmacsha1 | 14.8ms       | 14.8ms        | 14.9ms         | 14.8ms                   | 14.9ms                   |

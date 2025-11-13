@@ -2,7 +2,6 @@ use std::{collections::HashMap, hint::black_box};
 
 use base64::Engine;
 use criterion::{Criterion, criterion_group, criterion_main};
-use hex;
 use mfkdf2::{
   derive,
   policy::Policy,
@@ -14,7 +13,6 @@ use mfkdf2::{
 };
 use rsa::{Oaep, RsaPrivateKey, traits::PublicKeyParts};
 use serde_json::json;
-use sha2;
 
 fn create_keypair(bits: usize) -> (serde_json::Value, RsaPrivateKey) {
   let private_key =

@@ -33,57 +33,39 @@ fn bench_mfdpg(c: &mut Criterion) {
   // Simple regex pattern: alphanumeric, fixed length
   group.bench_function("derive_password_simple", |b| {
     b.iter(|| {
-      let result = black_box(derived_key.derive_password(
-        Some("example.com"),
-        Some(b"salt"),
-        "[a-zA-Z0-9]{8}",
-      ));
-      result
+      black_box(derived_key.derive_password(Some("example.com"), Some(b"salt"), "[a-zA-Z0-9]{8}"));
     })
   });
 
   // Medium complexity: alphabetic, variable length
   group.bench_function("derive_password_medium", |b| {
     b.iter(|| {
-      let result = black_box(derived_key.derive_password(
-        Some("example.com"),
-        Some(b"salt"),
-        "[a-zA-Z]{6,10}",
-      ));
-      result
+      black_box(derived_key.derive_password(Some("example.com"), Some(b"salt"), "[a-zA-Z]{6,10}"));
     })
   });
 
   // Complex regex pattern: mixed alphanumeric with specific structure
   group.bench_function("derive_password_complex", |b| {
     b.iter(|| {
-      let result = black_box(derived_key.derive_password(
+      black_box(derived_key.derive_password(
         Some("example.com"),
         Some(b"salt"),
         "([A-Za-z]+[0-9]|[0-9]+[A-Za-z])[A-Za-z0-9]*",
       ));
-      result
     })
   });
 
   // Very simple pattern: just digits
   group.bench_function("derive_password_digits_only", |b| {
     b.iter(|| {
-      let result =
-        black_box(derived_key.derive_password(Some("example.com"), Some(b"salt"), "[0-9]{6}"));
-      result
+      black_box(derived_key.derive_password(Some("example.com"), Some(b"salt"), "[0-9]{6}"));
     })
   });
 
   // Long pattern: longer password
   group.bench_function("derive_password_long", |b| {
     b.iter(|| {
-      let result = black_box(derived_key.derive_password(
-        Some("example.com"),
-        Some(b"salt"),
-        "[a-zA-Z0-9]{16}",
-      ));
-      result
+      black_box(derived_key.derive_password(Some("example.com"), Some(b"salt"), "[a-zA-Z0-9]{16}"));
     })
   });
 }
