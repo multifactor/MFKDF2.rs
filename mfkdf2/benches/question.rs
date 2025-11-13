@@ -11,8 +11,9 @@ use mfkdf2::{
 };
 
 fn bench_question(c: &mut Criterion) {
+  let mut group = c.benchmark_group("question");
   // Single setup - 1 question
-  c.bench_function("single_setup", |b| {
+  group.bench_function("single_setup", |b| {
     b.iter(|| {
       let factor = black_box(
         setup_question("answer1", QuestionOptions {
@@ -39,7 +40,7 @@ fn bench_question(c: &mut Criterion) {
   )
   .unwrap();
 
-  c.bench_function("single_derive", |b| {
+  group.bench_function("single_derive", |b| {
     b.iter(|| {
       let factors_map = black_box(HashMap::from([(
         "question".to_string(),
@@ -52,7 +53,7 @@ fn bench_question(c: &mut Criterion) {
   });
 
   // Multiple setup - 3 questions with threshold 3 (all required)
-  c.bench_function("multiple_setup_3_threshold_3", |b| {
+  group.bench_function("multiple_setup_3_threshold_3", |b| {
     b.iter(|| {
       let factors = black_box(vec![
         setup_question("answer1", QuestionOptions {
@@ -100,7 +101,7 @@ fn bench_question(c: &mut Criterion) {
   )
   .unwrap();
 
-  c.bench_function("multiple_derive_3", |b| {
+  group.bench_function("multiple_derive_3", |b| {
     b.iter(|| {
       let factors_map = black_box(HashMap::from([
         ("q1".to_string(), derive::factors::question("answer1").unwrap()),
@@ -136,7 +137,7 @@ fn bench_question(c: &mut Criterion) {
   )
   .unwrap();
 
-  c.bench_function("threshold_derive_2_of_3", |b| {
+  group.bench_function("threshold_derive_2_of_3", |b| {
     b.iter(|| {
       let factors_map = black_box(HashMap::from([
         ("q1".to_string(), derive::factors::question("answer1").unwrap()),

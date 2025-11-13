@@ -150,6 +150,11 @@ harness = false
 name    = "mfdpg"
 path    = "benches/mfdpg.rs"
 
+[[bench]]
+harness = false
+name    = "reconstitution"
+path    = "benches/reconstitution.rs"
+
 [features]
 default = []
 # Enable UniFFI bindings (FFI exports, scaffolding, bin, etc.)

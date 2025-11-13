@@ -13,8 +13,9 @@ use mfkdf2::{
 const SECRET20: [u8; 20] = *b"abcdefghijklmnopqrst";
 
 fn bench_hmacsha1(c: &mut Criterion) {
+  let mut group = c.benchmark_group("hmacsha1");
   // Single setup - 1 HMACSHA1
-  c.bench_function("single_setup", |b| {
+  group.bench_function("single_setup", |b| {
     b.iter(|| {
       let factor = black_box(
         hmacsha1(HmacSha1Options {
@@ -41,7 +42,7 @@ fn bench_hmacsha1(c: &mut Criterion) {
   )
   .unwrap();
 
-  c.bench_function("single_derive", |b| {
+  group.bench_function("single_derive", |b| {
     b.iter(|| {
       let factors_map = black_box(HashMap::from([(
         "hmac".to_string(),
@@ -54,7 +55,7 @@ fn bench_hmacsha1(c: &mut Criterion) {
   });
 
   // Multiple setup - 3 HMACSHA1 with threshold 3 (all required)
-  c.bench_function("multiple_setup_3_threshold_3", |b| {
+  group.bench_function("multiple_setup_3_threshold_3", |b| {
     b.iter(|| {
       let factors = black_box(vec![
         hmacsha1(HmacSha1Options {
@@ -106,7 +107,7 @@ fn bench_hmacsha1(c: &mut Criterion) {
   )
   .unwrap();
 
-  c.bench_function("multiple_derive_3", |b| {
+  group.bench_function("multiple_derive_3", |b| {
     b.iter(|| {
       let factors_map = black_box(HashMap::from([
         ("hmac1".to_string(), derive::factors::hmacsha1(HmacSha1Response(SECRET20)).unwrap()),
@@ -156,7 +157,7 @@ fn bench_hmacsha1(c: &mut Criterion) {
   )
   .unwrap();
 
-  c.bench_function("threshold_derive_2_of_3", |b| {
+  group.bench_function("threshold_derive_2_of_3", |b| {
     b.iter(|| {
       let factors_map = black_box(HashMap::from([
         ("hmac1".to_string(), derive::factors::hmacsha1(HmacSha1Response(SECRET20)).unwrap()),

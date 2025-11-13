@@ -23,8 +23,9 @@ use uuid::Uuid;
 const SECRET20: [u8; 20] = *b"abcdefghijklmnopqrst";
 
 fn bench_factor_combination_setup(c: &mut Criterion) {
+  let mut group = c.benchmark_group("factor_combination");
   // Case A: 5-of-5 factors (password + hmacsha1 + hotp + totp + uuid)
-  c.bench_function("setup_5_factors", |b| {
+  group.bench_function("setup_5_factors", |b| {
     b.iter(|| {
       let factors = black_box(vec![
         password("password1", PasswordOptions::default()).unwrap(),
@@ -62,7 +63,7 @@ fn bench_factor_combination_setup(c: &mut Criterion) {
   });
 
   // Case B: 3-of-3 factors (password + hotp + totp)
-  c.bench_function("setup_3_factors", |b| {
+  group.bench_function("setup_3_factors", |b| {
     b.iter(|| {
       let factors = black_box(vec![
         password("password1", PasswordOptions::default()).unwrap(),
@@ -91,6 +92,7 @@ fn bench_factor_combination_setup(c: &mut Criterion) {
 }
 
 fn bench_factor_combination_derive(c: &mut Criterion) {
+  let mut group = c.benchmark_group("factor_combination");
   // Setup phase: password + hotp + totp with threshold 2
   let factor1 = password("password1", PasswordOptions { id: Some("pwd".to_string()) }).unwrap();
   let factor2 = hotp(HOTPOptions {
@@ -127,7 +129,7 @@ fn bench_factor_combination_derive(c: &mut Criterion) {
   let totp_code = generate_hotp_code(&SECRET20, totp_counter, &HashAlgorithm::Sha1, 6);
 
   // Benchmark derive with password + hotp (threshold 2 of 3)
-  c.bench_function("derive_password_hotp", |b| {
+  group.bench_function("derive_password_hotp", |b| {
     b.iter(|| {
       let factors_map = black_box(HashMap::from([
         ("pwd".to_string(), derive::factors::password("password1").unwrap()),
@@ -139,7 +141,7 @@ fn bench_factor_combination_derive(c: &mut Criterion) {
   });
 
   // Benchmark derive with password + totp (threshold 2 of 3)
-  c.bench_function("derive_password_totp", |b| {
+  group.bench_function("derive_password_totp", |b| {
     b.iter(|| {
       let factors_map = black_box(HashMap::from([
         ("pwd".to_string(), derive::factors::password("password1").unwrap()),

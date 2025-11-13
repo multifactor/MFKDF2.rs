@@ -11,8 +11,9 @@ use mfkdf2::{
 };
 
 fn bench_password(c: &mut Criterion) {
+  let mut group = c.benchmark_group("password");
   // Single setup - 1 password
-  c.bench_function("single_setup", |b| {
+  group.bench_function("single_setup", |b| {
     b.iter(|| {
       let factor = black_box(setup_password("password1", PasswordOptions::default()).unwrap());
       let result = black_box(setup::key::key(vec![factor], MFKDF2Options::default()));
@@ -27,7 +28,7 @@ fn bench_password(c: &mut Criterion) {
   )
   .unwrap();
 
-  c.bench_function("single_derive", |b| {
+  group.bench_function("single_derive", |b| {
     b.iter(|| {
       let factors_map = black_box(HashMap::from([(
         "pwd".to_string(),
@@ -40,7 +41,7 @@ fn bench_password(c: &mut Criterion) {
   });
 
   // Multiple setup - 3 passwords with threshold 3 (all required)
-  c.bench_function("multiple_setup_3_threshold_3", |b| {
+  group.bench_function("multiple_setup_3_threshold_3", |b| {
     b.iter(|| {
       let factors = black_box(vec![
         setup_password("password1", PasswordOptions { id: Some("pwd1".to_string()) }).unwrap(),
@@ -64,7 +65,7 @@ fn bench_password(c: &mut Criterion) {
   )
   .unwrap();
 
-  c.bench_function("multiple_derive_3", |b| {
+  group.bench_function("multiple_derive_3", |b| {
     b.iter(|| {
       let factors_map = black_box(HashMap::from([
         ("pwd1".to_string(), derive::factors::password("password1").unwrap()),
@@ -88,7 +89,7 @@ fn bench_password(c: &mut Criterion) {
   )
   .unwrap();
 
-  c.bench_function("threshold_derive_2_of_3", |b| {
+  group.bench_function("threshold_derive_2_of_3", |b| {
     b.iter(|| {
       let factors_map = black_box(HashMap::from([
         ("pwd1".to_string(), derive::factors::password("password1").unwrap()),

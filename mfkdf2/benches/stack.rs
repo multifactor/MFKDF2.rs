@@ -52,8 +52,9 @@ fn create_stack_derive_map(
 }
 
 fn bench_setup_stack(c: &mut Criterion) {
+  let mut group = c.benchmark_group("stack");
   // Single setup - 1 stack
-  c.bench_function("single_setup", |b| {
+  group.bench_function("single_setup", |b| {
     b.iter(|| {
       let factor = black_box(create_stack_factor("stack", "p1", "pw1", "p2", "pw2").unwrap());
       let result = black_box(setup::key::key(vec![factor], MFKDF2Options::default()));
@@ -68,7 +69,7 @@ fn bench_setup_stack(c: &mut Criterion) {
   )
   .unwrap();
 
-  c.bench_function("single_derive", |b| {
+  group.bench_function("single_derive", |b| {
     b.iter(|| {
       let factors_map = black_box(create_stack_derive_map("stack", "p1", "pw1", "p2", "pw2"));
       let result =
@@ -78,7 +79,7 @@ fn bench_setup_stack(c: &mut Criterion) {
   });
 
   // Multiple setup - 3 stacks with threshold 3 (all required)
-  c.bench_function("multiple_setup_3_threshold_3", |b| {
+  group.bench_function("multiple_setup_3_threshold_3", |b| {
     b.iter(|| {
       let factors = black_box(vec![
         create_stack_factor("s1", "s1p1", "s1p1", "s1p2", "s1p2").unwrap(),
@@ -102,7 +103,7 @@ fn bench_setup_stack(c: &mut Criterion) {
   )
   .unwrap();
 
-  c.bench_function("multiple_derive_3", |b| {
+  group.bench_function("multiple_derive_3", |b| {
     b.iter(|| {
       let factors_map = black_box(HashMap::from([
         (
@@ -147,7 +148,7 @@ fn bench_setup_stack(c: &mut Criterion) {
   )
   .unwrap();
 
-  c.bench_function("threshold_derive_2_of_3", |b| {
+  group.bench_function("threshold_derive_2_of_3", |b| {
     b.iter(|| {
       let factors_map = black_box(HashMap::from([
         (

@@ -14,8 +14,9 @@ use mfkdf2::{
 const SECRET20: [u8; 20] = *b"abcdefghijklmnopqrst";
 
 fn bench_hotp(c: &mut Criterion) {
+  let mut group = c.benchmark_group("hotp");
   // Single setup - 1 HOTP
-  c.bench_function("single_setup", |b| {
+  group.bench_function("single_setup", |b| {
     b.iter(|| {
       let factor = black_box(
         setup_hotp(HOTPOptions {
@@ -48,7 +49,7 @@ fn bench_hotp(c: &mut Criterion) {
   )
   .unwrap();
 
-  c.bench_function("single_derive", |b| {
+  group.bench_function("single_derive", |b| {
     b.iter(|| {
       let factors_map =
         black_box(HashMap::from([("hotp".to_string(), derive::factors::hotp(0).unwrap())]));
@@ -59,7 +60,7 @@ fn bench_hotp(c: &mut Criterion) {
   });
 
   // Multiple setup - 3 HOTPs with threshold 3 (all required)
-  c.bench_function("multiple_setup_3_threshold_3", |b| {
+  group.bench_function("multiple_setup_3_threshold_3", |b| {
     b.iter(|| {
       let factors = black_box(vec![
         setup_hotp(HOTPOptions {
@@ -129,7 +130,7 @@ fn bench_hotp(c: &mut Criterion) {
   )
   .unwrap();
 
-  c.bench_function("multiple_derive_3", |b| {
+  group.bench_function("multiple_derive_3", |b| {
     b.iter(|| {
       let factors_map = black_box(HashMap::from([
         ("hotp1".to_string(), derive::factors::hotp(0).unwrap()),
@@ -176,7 +177,7 @@ fn bench_hotp(c: &mut Criterion) {
   )
   .unwrap();
 
-  c.bench_function("threshold_derive_2_of_3", |b| {
+  group.bench_function("threshold_derive_2_of_3", |b| {
     b.iter(|| {
       let factors_map = black_box(HashMap::from([
         ("hotp1".to_string(), derive::factors::hotp(0).unwrap()),

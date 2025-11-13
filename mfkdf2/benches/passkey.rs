@@ -11,8 +11,9 @@ use mfkdf2::{
 };
 
 fn bench_setup_passkey(c: &mut Criterion) {
+  let mut group = c.benchmark_group("passkey");
   // Single setup - 1 passkey
-  c.bench_function("single_setup", |b| {
+  group.bench_function("single_setup", |b| {
     b.iter(|| {
       let secret = [42u8; 32];
       let factor = black_box(setup_passkey(secret, PasskeyOptions::default()).unwrap());
@@ -29,7 +30,7 @@ fn bench_setup_passkey(c: &mut Criterion) {
   )
   .unwrap();
 
-  c.bench_function("single_derive", |b| {
+  group.bench_function("single_derive", |b| {
     b.iter(|| {
       let factors_map = black_box(HashMap::from([(
         "passkey".to_string(),
@@ -42,7 +43,7 @@ fn bench_setup_passkey(c: &mut Criterion) {
   });
 
   // Multiple setup - 3 passkeys with threshold 3 (all required)
-  c.bench_function("multiple_setup_3_threshold_3", |b| {
+  group.bench_function("multiple_setup_3_threshold_3", |b| {
     b.iter(|| {
       let factors = black_box(vec![
         setup_passkey([1u8; 32], PasskeyOptions { id: Some("passkey1".to_string()) }).unwrap(),
@@ -66,7 +67,7 @@ fn bench_setup_passkey(c: &mut Criterion) {
   )
   .unwrap();
 
-  c.bench_function("multiple_derive_3", |b| {
+  group.bench_function("multiple_derive_3", |b| {
     b.iter(|| {
       let factors_map = black_box(HashMap::from([
         ("passkey1".to_string(), derive::factors::passkey([1u8; 32]).unwrap()),
@@ -90,7 +91,7 @@ fn bench_setup_passkey(c: &mut Criterion) {
   )
   .unwrap();
 
-  c.bench_function("threshold_derive_2_of_3", |b| {
+  group.bench_function("threshold_derive_2_of_3", |b| {
     b.iter(|| {
       let factors_map = black_box(HashMap::from([
         ("passkey1".to_string(), derive::factors::passkey([1u8; 32]).unwrap()),
