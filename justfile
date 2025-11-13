@@ -279,3 +279,40 @@ test-bindings-report:
     cd mfkdf2-web && npm run test:report
     @printf "{{success}}HTML report:{{reset}} %s\n" "mfkdf2-web/test-results/mochawesome/index.html"
     @printf "{{success}}JUnit report:{{reset}} %s\n" "mfkdf2-web/test-results/junit/junit.xml"
+
+# Generate benchmark data for all factor types
+benchmarks-generate:
+    @just header "Generating benchmark data for factors"
+    @printf "{{info}}Generating password benchmarks...{{reset}}\n"
+    cargo criterion --bench password --message-format=json > password.jsonl
+    @printf "{{info}}Generating hmacsha1 benchmarks...{{reset}}\n"
+    cargo criterion --bench hmacsha1 --message-format=json > hmacsha1.jsonl
+    @printf "{{info}}Generating hotp benchmarks...{{reset}}\n"
+    cargo criterion --bench hotp --message-format=json > hotp.jsonl
+    @printf "{{info}}Generating totp benchmarks...{{reset}}\n"
+    cargo criterion --bench totp --message-format=json > totp.jsonl
+    @printf "{{info}}Generating ooba benchmarks...{{reset}}\n"
+    cargo criterion --bench ooba --message-format=json > ooba.jsonl
+    @printf "{{info}}Generating passkey benchmarks...{{reset}}\n"
+    cargo criterion --bench passkey --message-format=json > passkey.jsonl
+    @printf "{{info}}Generating question benchmarks...{{reset}}\n"
+    cargo criterion --bench question --message-format=json > question.jsonl
+    @printf "{{info}}Generating uuid benchmarks...{{reset}}\n"
+    cargo criterion --bench uuid --message-format=json > uuid.jsonl
+    @printf "{{info}}Generating stack benchmarks...{{reset}}\n"
+    cargo criterion --bench stack --message-format=json > stack.jsonl
+    @printf "{{success}}✓ All benchmark data generated{{reset}}\n"
+
+# Generate benchmark table from JSONL files
+benchmarks-table:
+    @just header "Generating benchmark comparison table"
+    python3 scripts/generate_benchmark_table.py
+
+# Generate all benchmarks and create table
+benchmarks: benchmarks-generate benchmarks-table
+
+# Clean up generated benchmark files
+benchmarks-clean:
+    @just header "Cleaning up benchmark files"
+    rm -f *.jsonl
+    @printf "{{success}}✓ Benchmark files cleaned up{{reset}}\n"
