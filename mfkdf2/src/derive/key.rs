@@ -21,7 +21,7 @@ pub fn key(
 ) -> MFKDF2Result<MFKDF2DerivedKey> {
   let mut shares_bytes = Vec::new();
   let mut outputs = HashMap::new();
-  let mut factors = factors.clone(); // TODO (@lonerapier): fix this
+  let mut factors = factors;
   let mut new_policy = policy.clone();
 
   for factor in new_policy.factors.iter_mut() {
@@ -84,13 +84,10 @@ pub fn key(
     }
   }
 
-  // only first 33 bytes are needed from the share due to byte encoding (x=1 + y=32)
-  // TODO (@lonerapier): remove stupid clones by fixing ssskit fork
   let shares_vec: Vec<Option<Share<SECRET_SHARING_POLY>>> = shares_bytes
-    .iter()
+    .into_iter()
     .map(|opt| {
       opt
-        .clone()
         .map(|b| Share::try_from(b.as_slice()).map_err(|_| MFKDF2Error::TryFromVecError))
         .transpose()
     })
@@ -122,11 +119,11 @@ pub fn key(
     .hash_password_into(&secret_arr, &salt_bytes, &mut kek)?;
   }
 
-  let policy_key_bytes = general_purpose::STANDARD.decode(policy.key.clone())?;
+  let policy_key_bytes = general_purpose::STANDARD.decode(policy.key.as_bytes())?;
   let key = decrypt(policy_key_bytes, &kek);
 
   for factor in new_policy.factors.iter_mut() {
-    let material = match factors.get(factor.id.as_str()).cloned() {
+    let material = match factors.get(factor.id.as_str()) {
       Some(material) => material,
       None => continue,
     };

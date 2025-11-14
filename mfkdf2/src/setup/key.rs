@@ -140,55 +140,47 @@ pub fn key(factors: Vec<MFKDF2Factor>, options: MFKDF2Options) -> MFKDF2Result<M
   let mut theoretical_entropy: Vec<u32> = Vec::new();
   let mut real_entropy: Vec<f64> = Vec::new();
 
-  for (factor, share) in factors.iter().zip(shares.clone()) {
+  for (factor, share) in factors.iter().zip(shares.iter()) {
     // Factor id uniqueness
     let id = factor.id.clone();
     if !ids.insert(id.clone()) {
       return Err(MFKDF2Error::DuplicateFactorId);
     }
+    let id = id.unwrap();
 
     let mut salt = [0u8; 32];
     crate::rng::fill_bytes(&mut salt);
 
     // HKDF stretch & AES-encrypt share
-    let stretched = hkdf_sha256_with_info(
-      &factor.data(),
-      &salt,
-      format!("mfkdf2:factor:pad:{}", &factor.id.clone().unwrap()).as_bytes(),
-    );
+    let stretched =
+      hkdf_sha256_with_info(&factor.data(), &salt, format!("mfkdf2:factor:pad:{}", &id).as_bytes());
     let pad = encrypt(&share, &stretched);
 
     // Generate factor key
-    let params_key = hkdf_sha256_with_info(
-      &key,
-      &salt,
-      format!("mfkdf2:factor:params:{}", &factor.id.clone().unwrap()).as_bytes(),
-    );
+    let params_key =
+      hkdf_sha256_with_info(&key, &salt, format!("mfkdf2:factor:params:{}", &id).as_bytes());
 
     let params = factor.factor_type.setup().params(params_key.into())?;
     // TODO (autoparallel): This should not be an unwrap.
-    outputs.insert(factor.id.clone().unwrap(), factor.factor_type.output(key.into()));
+    outputs.insert(id.clone(), factor.factor_type.output(key.into()));
 
-    let secret_key = hkdf_sha256_with_info(
-      &key,
-      &salt,
-      format!("mfkdf2:factor:secret:{}", &factor.id.clone().unwrap()).as_bytes(),
-    );
+    let secret_key =
+      hkdf_sha256_with_info(&key, &salt, format!("mfkdf2:factor:secret:{}", &id).as_bytes());
     let factor_secret = encrypt(&stretched, &secret_key);
 
     // Record entropy statistics (in bits) for this factor.
-    theoretical_entropy.push(u32::try_from(factor.data().len() * 8).unwrap());
+    theoretical_entropy.push(factor.data().len() as u32 * 8);
     // TODO (autoparallel): This should not be an unwrap, should entropy really be optional?
     real_entropy.push(factor.entropy.unwrap());
 
     policy_factors.push(PolicyFactor {
-      id:     id.unwrap(),
-      kind:   factor.kind(),
-      pad:    general_purpose::STANDARD.encode(pad),
-      salt:   general_purpose::STANDARD.encode(salt),
+      id,
+      kind: factor.kind(),
+      pad: general_purpose::STANDARD.encode(pad),
+      salt: general_purpose::STANDARD.encode(salt),
       secret: general_purpose::STANDARD.encode(factor_secret),
-      params: serde_json::to_string(&params).unwrap(),
-      hint:   None,
+      params: serde_json::to_string(&params)?,
+      hint: None,
     });
   }
 
@@ -216,8 +208,8 @@ pub fn key(factors: Vec<MFKDF2Factor>, options: MFKDF2Options) -> MFKDF2Result<M
   theoretical_entropy.sort_unstable();
   real_entropy.sort_unstable_by(f64::total_cmp);
 
-  let theoretical_sum: u32 = theoretical_entropy.iter().take(threshold as usize).copied().sum();
-  let real_sum: f64 = real_entropy.iter().take(threshold as usize).copied().sum();
+  let theoretical_sum: u32 = theoretical_entropy.into_iter().take(threshold as usize).sum();
+  let real_sum: f64 = real_entropy.into_iter().take(threshold as usize).sum();
 
   let entropy_theoretical = theoretical_sum.min(256);
   let entropy_real = real_sum.min(256.0);
