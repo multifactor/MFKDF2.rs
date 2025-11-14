@@ -41,7 +41,7 @@ impl Default for HOTPOptions {
 pub struct HOTP {
   // TODO (sambhav): is it safe to add options in the factor struct here?
   pub options: HOTPOptions,
-  pub params:  String,
+  pub params:  Value,
   pub code:    u32,
   pub target:  u32,
 }
@@ -89,13 +89,13 @@ impl FactorSetup for HOTP {
       "scheme": "otpauth",
       "type": "hotp",
       "label": self.options.label,
-      "secret": &self.options.secret.clone().unwrap()[..20],
+      "secret": &self.options.secret.as_ref().unwrap()[..20],
       "issuer": self.options.issuer,
       "algorithm": self.options.hash.to_string(),
       "digits": self.options.digits,
       "counter": 1,
       "uri": otpauth::otpauth_url(&OtpauthUrlOptions {
-        secret: hex::encode(&self.options.secret.clone().unwrap()[..20]),
+        secret: hex::encode(&self.options.secret.as_ref().unwrap()[..20]),
         label: self.options.label.clone(),
         kind: Some(otpauth::Kind::Hotp),
         counter: Some(1),
@@ -134,7 +134,7 @@ pub fn hotp(options: HOTPOptions) -> MFKDF2Result<MFKDF2Factor> {
   if let Some(ref secret) = options.secret
     && secret.len() != 20
   {
-    return Err(crate::error::MFKDF2Error::InvalidSecretLength(id.clone()));
+    return Err(crate::error::MFKDF2Error::InvalidSecretLength(id));
   }
 
   let secret = options.secret.unwrap_or_else(|| {
@@ -158,12 +158,7 @@ pub fn hotp(options: HOTPOptions) -> MFKDF2Result<MFKDF2Factor> {
   // the password factor which stores the actual password in the struct.
   Ok(MFKDF2Factor {
     id: Some(id),
-    factor_type: FactorType::HOTP(HOTP {
-      options,
-      params: serde_json::to_string(&Value::Null).unwrap(),
-      code: 0,
-      target,
-    }),
+    factor_type: FactorType::HOTP(HOTP { options, params: Value::Null, code: 0, target }),
     entropy,
   })
 }

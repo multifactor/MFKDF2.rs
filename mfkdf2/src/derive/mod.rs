@@ -188,10 +188,7 @@ mod tests {
       .iter()
       .map(|v| v.as_u64().unwrap() as u8)
       .collect::<Vec<u8>>();
-    let params = serde_json::from_str::<serde_json::Value>(
-      &setup.policy.factors.iter().find(|f| f.id == "hmacsha1").unwrap().params,
-    )
-    .unwrap();
+    let params = &setup.policy.factors.iter().find(|f| f.id == "hmacsha1").unwrap().params;
     let challenge = hex::decode(params["challenge"].as_str().unwrap()).unwrap();
 
     let response = crate::crypto::hmacsha1(&secret, &challenge);
@@ -296,8 +293,7 @@ mod tests {
     )
     .unwrap();
 
-    let params =
-      serde_json::from_str::<serde_json::Value>(&setup.policy.factors[0].params).unwrap();
+    let params = &setup.policy.factors[0].params;
     let next = hex::decode(params["next"].as_str().unwrap()).unwrap();
 
     let decrypted = serde_json::from_slice::<serde_json::Value>(

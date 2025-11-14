@@ -90,12 +90,12 @@ impl MFKDF2DerivedKey {
       let params = factor.factor_type.setup().params(params_key.into())?;
 
       let new_factor = PolicyFactor {
-        id:     id.clone(),
-        kind:   factor.kind(),
-        salt:   general_purpose::STANDARD.encode(salt),
-        params: serde_json::to_string(&params)?,
-        hint:   None,
-        pad:    "".to_string(),
+        id: id.clone(),
+        kind: factor.kind(),
+        salt: general_purpose::STANDARD.encode(salt),
+        params,
+        hint: None,
+        pad: "".to_string(),
         secret: "".to_string(),
       };
 
@@ -130,7 +130,7 @@ impl MFKDF2DerivedKey {
 
     let mut new_factors = vec![];
 
-    for (id, factor) in factors.values_mut().enumerate() {
+    for (id, (_, mut factor)) in factors.into_iter().enumerate() {
       let salt = general_purpose::STANDARD.decode(&factor.salt)?;
 
       let stretched = if material.contains_key(factor.id.as_str()) {
@@ -154,7 +154,7 @@ impl MFKDF2DerivedKey {
       factor.pad = general_purpose::STANDARD.encode(encrypt(&shares[id], stretched));
       factor.secret = general_purpose::STANDARD.encode(encrypt(stretched, &secret_key));
 
-      new_factors.push(factor.clone());
+      new_factors.push(factor);
     }
 
     self.policy.factors = new_factors;

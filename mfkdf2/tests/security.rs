@@ -190,7 +190,7 @@ async fn factor_secret_encryption_hotp() -> Result<(), MFKDF2Error> {
   )?;
 
   // Get the pad from the first factor's params
-  let params: serde_json::Value = serde_json::from_str(&setup.policy.factors[0].params)?;
+  let params = &setup.policy.factors[0].params;
   let pad_b64 = params["pad"].as_str().unwrap();
   let pad = general_purpose::STANDARD.decode(pad_b64)?;
 
@@ -231,7 +231,7 @@ async fn factor_secret_encryption_totp() -> Result<(), MFKDF2Error> {
   )?;
 
   // Get the pad from the first factor's params
-  let params: serde_json::Value = serde_json::from_str(&setup.policy.factors[0].params)?;
+  let params = &setup.policy.factors[0].params;
   let pad_b64 = params["pad"].as_str().unwrap();
   let pad = general_purpose::STANDARD.decode(pad_b64)?;
 

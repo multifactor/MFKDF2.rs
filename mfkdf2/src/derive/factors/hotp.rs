@@ -16,18 +16,16 @@ impl FactorDerive for HOTP {
 
   fn include_params(&mut self, params: Self::Params) -> MFKDF2Result<()> {
     // Store the policy parameters for derive phase
-    self.params = serde_json::to_string(&params).unwrap();
+    self.params = params;
 
     // If this is a derive factor (has a code), calculate target and store in options.secret
     if self.code != 0 {
-      let offset = params
-        .get("offset")
-        .and_then(Value::as_u64)
+      let offset = self.params["offset"]
+        .as_u64()
         .ok_or(MFKDF2Error::MissingDeriveParams("offset".to_string()))?;
 
-      let digits = params
-        .get("digits")
-        .and_then(Value::as_u64)
+      let digits = self.params["digits"]
+        .as_u64()
         .ok_or(MFKDF2Error::MissingDeriveParams("digits".to_string()))?;
 
       let modulus = 10_u64.pow(digits as u32);
@@ -42,17 +40,17 @@ impl FactorDerive for HOTP {
 
   fn params(&self, key: Key) -> MFKDF2Result<Self::Params> {
     // Decrypt the secret using the factor key
-    let params: Value = serde_json::from_str(&self.params)?;
     let pad_b64 =
-      params["pad"].as_str().ok_or(MFKDF2Error::MissingDeriveParams("pad".to_string()))?;
+      self.params["pad"].as_str().ok_or(MFKDF2Error::MissingDeriveParams("pad".to_string()))?;
     let pad = base64::prelude::BASE64_STANDARD.decode(pad_b64)?;
     let padded_secret = decrypt(pad, &key.0);
 
     // Generate HOTP code with incremented counter
-    let counter =
-      params["counter"].as_u64().ok_or(MFKDF2Error::MissingDeriveParams("counter".to_string()))?
-        + 1;
-    let hash: HashAlgorithm = serde_json::from_value(params["hash"].clone())?;
+    let counter = self.params["counter"]
+      .as_u64()
+      .ok_or(MFKDF2Error::MissingDeriveParams("counter".to_string()))?
+      + 1;
+    let hash: HashAlgorithm = serde_json::from_value(self.params["hash"].clone())?;
     let generated_code =
       generate_hotp_code(&padded_secret[..20], counter, &hash, self.options.digits);
 
@@ -79,8 +77,7 @@ pub fn hotp(code: u32) -> MFKDF2Result<MFKDF2Factor> {
     id:          None,
     factor_type: FactorType::HOTP(HOTP {
       options: HOTPOptions::default(),
-      // TODO (autoparallel): This is confusing, should probably put an Option here.
-      params: serde_json::to_string(&Value::Null)?,
+      params: Value::Null,
       code,
       target: 0,
     }),

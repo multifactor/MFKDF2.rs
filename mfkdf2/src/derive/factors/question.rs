@@ -13,14 +13,11 @@ impl FactorDerive for Question {
   type Params = Value;
 
   fn include_params(&mut self, params: Self::Params) -> MFKDF2Result<()> {
-    self.params = serde_json::to_string(&params).unwrap();
+    self.params = params;
     Ok(())
   }
 
-  fn params(&self, _key: Key) -> MFKDF2Result<Self::Params> {
-    serde_json::from_str(&self.params)
-      .map_err(|_| MFKDF2Error::InvalidDeriveParams("params".to_string()))
-  }
+  fn params(&self, _key: Key) -> MFKDF2Result<Self::Params> { Ok(self.params.clone()) }
 
   fn output(&self) -> Self::Output { json!({"strength": zxcvbn(&self.answer, &[])}) }
 }
@@ -43,8 +40,8 @@ pub fn question(answer: impl Into<String>) -> MFKDF2Result<MFKDF2Factor> {
     // [`crate::derive::FactorDeriveTrait::include_params`]
     factor_type: FactorType::Question(Question {
       options: QuestionOptions::default(),
-      params:  serde_json::to_string(&Value::Null).unwrap(),
-      answer:  answer.clone(),
+      params: Value::Null,
+      answer,
     }),
     entropy:     Some((strength.guesses() as f64).log2()),
   })
@@ -120,7 +117,7 @@ mod tests {
     };
 
     // 5. Check that params were stored
-    let stored_params: Value = serde_json::from_str(&question_struct.params).unwrap();
+    let stored_params = question_struct.params.clone();
     assert_eq!(stored_params, setup_params);
 
     // 6. Call params_derive and check if it returns the same params

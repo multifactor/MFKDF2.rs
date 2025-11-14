@@ -37,7 +37,7 @@ impl FactorSetup for UUIDFactor {
 
   fn output(&self, _key: Key) -> Self::Output {
     json!({
-      "uuid": self.uuid.clone(),
+      "uuid": self.uuid,
     })
   }
 }

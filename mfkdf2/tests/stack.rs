@@ -104,12 +104,12 @@ fn stack_derive() {
   println!("Derived key: {}", derived_key);
   assert_eq!(derived_key.key, key.key);
 
-  let stack_factor_policy = serde_json::from_str::<Policy>(
-    derived_key.policy.factors.iter().find(|f| f.id == "stack_2").unwrap().params.as_str(),
+  let stack_factor_policy = serde_json::from_value::<Policy>(
+    derived_key.policy.factors.iter().find(|f| f.id == "stack_2").unwrap().params.clone(),
   )
   .unwrap();
   let factor_policy = stack_factor_policy.factors.iter().find(|f| f.id == "hmacsha1_1").unwrap();
-  let params: serde_json::Value = serde_json::from_str(&factor_policy.params).unwrap();
+  let params = &factor_policy.params;
   let challenge = hex::decode(params["challenge"].as_str().unwrap()).unwrap();
   let response = mfkdf2::crypto::hmacsha1(&HMACSHA1_SECRET, &challenge);
   let derived_key = mfkdf2::derive::key(

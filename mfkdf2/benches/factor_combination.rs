@@ -17,7 +17,6 @@ use mfkdf2::{
     key::MFKDF2Options,
   },
 };
-use serde_json::Value;
 use uuid::Uuid;
 
 const SECRET20: [u8; 20] = *b"abcdefghijklmnopqrst";
@@ -119,7 +118,7 @@ fn bench_factor_combination_derive(c: &mut Criterion) {
 
   // Pre-compute HOTP code for derive
   let policy_hotp_factor = setup_key.policy.factors.iter().find(|f| f.id == "hotp").unwrap();
-  let hotp_params: Value = serde_json::from_str(&policy_hotp_factor.params).unwrap();
+  let hotp_params = &policy_hotp_factor.params.clone();
   let counter = hotp_params["counter"].as_u64().unwrap();
   let hotp_code = generate_hotp_code(&SECRET20, counter, &HashAlgorithm::Sha1, 6);
 

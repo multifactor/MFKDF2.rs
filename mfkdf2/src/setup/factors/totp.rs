@@ -54,7 +54,7 @@ impl Default for TOTPOptions {
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct TOTP {
   pub options: TOTPOptions,
-  pub params:  String,
+  pub params:  Value,
   pub code:    u32,
   pub target:  u32,
 }
@@ -122,13 +122,13 @@ impl FactorSetup for TOTP {
       "scheme": "otpauth",
       "type": "totp",
       "label": self.options.label,
-      "secret": &self.options.secret.clone().unwrap()[..20],
+      "secret": &self.options.secret.as_ref().unwrap()[..20],
       "issuer": self.options.issuer,
       "algorithm": self.options.hash.to_string(),
       "digits": self.options.digits,
       "period": self.options.step,
       "uri": otpauth::otpauth_url(&OtpauthUrlOptions {
-        secret: hex::encode(&self.options.secret.clone().unwrap()[..20]),
+        secret: hex::encode(&self.options.secret.as_ref().unwrap()[..20]),
         label: self.options.label.clone(),
         kind: Some(otpauth::Kind::Totp),
         counter: None,
@@ -162,7 +162,7 @@ pub fn totp(options: TOTPOptions) -> MFKDF2Result<MFKDF2Factor> {
   if let Some(ref secret) = options.secret
     && secret.len() != 20
   {
-    return Err(crate::error::MFKDF2Error::InvalidSecretLength(id.clone()));
+    return Err(crate::error::MFKDF2Error::InvalidSecretLength(id));
   }
 
   let secret = options.secret.unwrap_or_else(|| {
@@ -181,19 +181,14 @@ pub fn totp(options: TOTPOptions) -> MFKDF2Result<MFKDF2Factor> {
 
   let mut secret_pad = [0u8; 12];
   crate::rng::fill_bytes(&mut secret_pad);
-  let padded_secret = secret.iter().chain(secret_pad.iter()).cloned().collect();
+  let padded_secret = secret.into_iter().chain(secret_pad.into_iter()).collect();
   options.secret = Some(padded_secret);
 
   let entropy = Some(options.digits as f64 * 10.0_f64.log2());
 
   Ok(MFKDF2Factor {
     id: Some(id),
-    factor_type: FactorType::TOTP(TOTP {
-      options,
-      params: serde_json::to_string(&Value::Null).unwrap(),
-      code: 0,
-      target,
-    }),
+    factor_type: FactorType::TOTP(TOTP { options, params: Value::Null, code: 0, target }),
     entropy,
   })
 }

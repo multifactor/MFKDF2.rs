@@ -55,7 +55,7 @@ fn create_policy_derive_factor(
       let policy_ids: Vec<_> = policy.factors.iter().map(|f| f.id.as_str()).collect();
       println!("[DEBUG] Looking for id '{}' in policy ids: {:?}", id, policy_ids);
       let factor_policy = policy.factors.iter().find(|f| f.id == id).unwrap();
-      let params: serde_json::Value = serde_json::from_str(&factor_policy.params).unwrap();
+      let params = &factor_policy.params;
       let counter = params["counter"].as_u64().unwrap();
       let digits = params["digits"].as_u64().unwrap() as u8;
       let hash = serde_json::from_value(params["hash"].clone()).unwrap();
@@ -67,7 +67,7 @@ fn create_policy_derive_factor(
       let policy_ids: Vec<_> = policy.factors.iter().map(|f| f.id.as_str()).collect();
       println!("[DEBUG] Looking for id '{}' in policy ids: {:?}", id, policy_ids);
       let factor_policy = policy.factors.iter().find(|f| f.id == id).unwrap();
-      let params: serde_json::Value = serde_json::from_str(&factor_policy.params).unwrap();
+      let params = &factor_policy.params;
       let time =
         std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_millis();
       let step = params["step"].as_u64().unwrap();
@@ -103,7 +103,7 @@ async fn policy_derivation_combinations(
   let setup = policy::setup::setup(policy_factor, PolicySetupOptions::default()).unwrap();
 
   let factors_policy: Policy =
-    serde_json::from_str(setup.policy.factors[0].params.clone().as_str()).unwrap();
+    serde_json::from_value(setup.policy.factors[0].params.clone()).unwrap();
 
   for combo in derive_combinations {
     for _ in 0..derivation_runs {

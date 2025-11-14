@@ -96,7 +96,7 @@ impl FactorSetup for Ooba {
     params["code"] = json!(code);
 
     let plaintext = serde_json::to_vec(&params)?;
-    let key = OobaPublicKey::try_from(&self.jwk.clone().ok_or(MFKDF2Error::MissingOobaKey)?)?;
+    let key = OobaPublicKey::try_from(self.jwk.as_ref().ok_or(MFKDF2Error::MissingOobaKey)?)?;
     let ciphertext = key.0.encrypt(&mut OsRng, Oaep::new::<Sha256>(), &plaintext)?;
 
     Ok(json!({

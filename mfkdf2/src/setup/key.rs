@@ -5,6 +5,7 @@ use std::collections::{HashMap, HashSet};
 use argon2::{Argon2, Params, Version};
 use base64::{Engine, engine::general_purpose};
 use serde::{Deserialize, Serialize};
+use serde_json::Value;
 use ssskit::{SecretSharing, Share};
 use uuid::Uuid;
 
@@ -28,7 +29,7 @@ pub struct PolicyFactor {
   pub salt:   String,
   pub secret: String,
   // TODO (@lonerapier): convert it into a factor based enum
-  pub params: String,
+  pub params: Value,
   #[serde(skip_serializing_if = "Option::is_none")]
   pub hint:   Option<String>,
 }
@@ -179,7 +180,7 @@ pub fn key(factors: Vec<MFKDF2Factor>, options: MFKDF2Options) -> MFKDF2Result<M
       pad: general_purpose::STANDARD.encode(pad),
       salt: general_purpose::STANDARD.encode(salt),
       secret: general_purpose::STANDARD.encode(factor_secret),
-      params: serde_json::to_string(&params)?,
+      params,
       hint: None,
     });
   }

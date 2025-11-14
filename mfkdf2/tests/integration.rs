@@ -121,8 +121,8 @@ fn key_derive_hmacsha1() -> Result<(), mfkdf2::error::MFKDF2Error> {
   println!("Setup key: {}", key);
 
   let challenge = hex::decode(
-    serde_json::from_str::<serde_json::Value>(
-      key.policy.factors.iter().find(|f| f.kind == "hmacsha1").unwrap().params.as_str(),
+    serde_json::from_value::<serde_json::Value>(
+      key.policy.factors.iter().find(|f| f.kind == "hmacsha1").unwrap().params.clone(),
     )
     .unwrap()["challenge"]
       .as_str()
@@ -195,7 +195,7 @@ fn key_derive_hotp() -> Result<(), mfkdf2::error::MFKDF2Error> {
 
   // Extract HOTP parameters from the policy
   let hotp_factor = key.policy.factors.iter().find(|f| f.kind == "hotp").unwrap();
-  let params: serde_json::Value = serde_json::from_str(&hotp_factor.params).unwrap();
+  let params = &hotp_factor.params;
   let counter = params["counter"].as_u64().unwrap();
   let digits = params["digits"].as_u64().unwrap() as u8;
   let hash = serde_json::from_value(params["hash"].clone()).unwrap();
@@ -242,7 +242,7 @@ fn key_derive_mixed_password_hotp() -> Result<(), mfkdf2::error::MFKDF2Error> {
 
   // Extract HOTP parameters
   let hotp_factor = key.policy.factors.iter().find(|f| f.kind == "hotp").unwrap();
-  let params: serde_json::Value = serde_json::from_str(&hotp_factor.params).unwrap();
+  let params = &hotp_factor.params;
   let counter = params["counter"].as_u64().unwrap();
   let digits = params["digits"].as_u64().unwrap() as u8;
   let hash = serde_json::from_value(params["hash"].clone()).unwrap();

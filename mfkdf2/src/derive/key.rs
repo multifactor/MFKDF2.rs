@@ -36,7 +36,7 @@ pub fn key(
     if material.kind() == "persisted" {
       shares_bytes.push(Some(material.data()));
     } else {
-      material.factor_type.include_params(serde_json::from_str(&factor.params).unwrap())?;
+      material.factor_type.include_params(factor.params.clone())?;
 
       // TODO (autoparallel): This should probably be done with a `MaybeUninit` array.
       let salt_bytes = general_purpose::STANDARD.decode(&factor.salt)?;
@@ -134,7 +134,7 @@ pub fn key(
       format!("mfkdf2:factor:params:{}", factor.id).as_bytes(),
     );
     let params = material.factor_type.params(params_key.into())?;
-    factor.params = serde_json::to_string(&params)?;
+    factor.params = params;
   }
 
   let integrity_key = hkdf_sha256_with_info(&key, &salt_bytes, "mfkdf2:integrity".as_bytes());
@@ -312,7 +312,7 @@ mod tests {
     // Hmac factor
     let policy_hmac_factor =
       setup_derived_key.policy.factors.iter().find(|f| f.id == "hmac").unwrap();
-    let params: Value = serde_json::from_str(&policy_hmac_factor.params).unwrap();
+    let params = &policy_hmac_factor.params;
     let challenge = hex::decode(params["challenge"].as_str().unwrap()).unwrap();
 
     let secret = if let FactorType::HmacSha1(h) = &setup_hmac_factor.factor_type {
@@ -365,7 +365,7 @@ mod tests {
     // HOTP factor
     let policy_hotp_factor =
       setup_derived_key.policy.factors.iter().find(|f| f.id == "hotp").unwrap();
-    let hotp_params: Value = serde_json::from_str(&policy_hotp_factor.params).unwrap();
+    let hotp_params = &policy_hotp_factor.params;
     let hotp_padded_secret = hotp.options.secret.as_ref().unwrap();
     let counter = hotp_params["counter"].as_u64().unwrap();
     let correct_code = generate_hotp_code(
@@ -395,7 +395,7 @@ mod tests {
     // OOBA factor
     let policy_ooba_factor =
       setup_derived_key.policy.factors.iter().find(|f| f.id == "ooba").unwrap();
-    let ooba_params: Value = serde_json::from_str(&policy_ooba_factor.params).unwrap();
+    let ooba_params = &policy_ooba_factor.params;
     let ciphertext = hex::decode(ooba_params["next"].as_str().unwrap()).unwrap();
     let decrypted = serde_json::from_slice::<Value>(
       &private_key.decrypt(Oaep::new::<Sha256>(), &ciphertext).unwrap(),
@@ -419,7 +419,7 @@ mod tests {
 
     // hotp factor
     let policy_hotp_factor = derived_key.policy.factors.iter().find(|f| f.id == "hotp").unwrap();
-    let hotp_params: Value = serde_json::from_str(&policy_hotp_factor.params).unwrap();
+    let hotp_params = &policy_hotp_factor.params;
     let hotp_padded_secret = hotp.options.secret.as_ref().unwrap();
     let counter = hotp_params["counter"].as_u64().unwrap();
     let correct_code = generate_hotp_code(
@@ -447,7 +447,7 @@ mod tests {
 
     // ooba factor
     let policy_ooba_factor = derived_key.policy.factors.iter().find(|f| f.id == "ooba").unwrap();
-    let ooba_params: Value = serde_json::from_str(&policy_ooba_factor.params).unwrap();
+    let ooba_params = &policy_ooba_factor.params;
     let ciphertext = hex::decode(ooba_params["next"].as_str().unwrap()).unwrap();
     let decrypted = serde_json::from_slice::<Value>(
       &private_key.decrypt(Oaep::new::<Sha256>(), &ciphertext).unwrap(),
@@ -498,7 +498,7 @@ mod tests {
     // HOTP factor
     let policy_hotp_factor =
       setup_derived_key.policy.factors.iter().find(|f| f.id == "hotp").unwrap();
-    let hotp_params: Value = serde_json::from_str(&policy_hotp_factor.params).unwrap();
+    let hotp_params = &policy_hotp_factor.params;
     let hotp_padded_secret = hotp.options.secret.as_ref().unwrap();
     let counter = hotp_params["counter"].as_u64().unwrap();
     let correct_code = generate_hotp_code(
@@ -573,7 +573,7 @@ mod tests {
     // Hmac factor
     let policy_hmac_factor =
       setup_derived_key.policy.factors.iter().find(|f| f.id == "hmac").unwrap();
-    let params: Value = serde_json::from_str(&policy_hmac_factor.params).unwrap();
+    let params = &policy_hmac_factor.params;
     let challenge = hex::decode(params["challenge"].as_str().unwrap()).unwrap();
     let secret = &hmac_setup.padded_secret[..20];
     let response = crate::crypto::hmacsha1(secret, &challenge);
@@ -584,7 +584,7 @@ mod tests {
     // HOTP factor
     let policy_hotp_factor =
       setup_derived_key.policy.factors.iter().find(|f| f.id == "hotp").unwrap();
-    let hotp_params: Value = serde_json::from_str(&policy_hotp_factor.params).unwrap();
+    let hotp_params = &policy_hotp_factor.params;
     let hotp_padded_secret = hotp.options.secret.as_ref().unwrap();
     let counter = hotp_params["counter"].as_u64().unwrap();
     let correct_code = generate_hotp_code(

@@ -36,7 +36,7 @@ impl Policy {
     for factor in &self.factors {
       list.push(factor.id.clone());
       if factor.kind == "stack"
-        && let Ok(nested) = json::from_str::<Policy>(&factor.params)
+        && let Ok(nested) = json::from_value::<Policy>(factor.params.clone())
       {
         list.extend(nested.ids());
       }

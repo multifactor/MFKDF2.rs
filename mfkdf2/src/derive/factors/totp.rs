@@ -38,29 +38,21 @@ impl FactorDerive for TOTP {
   type Params = Value;
 
   fn include_params(&mut self, params: Self::Params) -> MFKDF2Result<()> {
-    self.params = serde_json::to_string(&params)
-      .map_err(|e| MFKDF2Error::InvalidDeriveParams(format!("invalid params: {}", e)))?;
+    self.params = params;
 
     // TODO (@lonerapier): create a type for factor params and serialize/deser using that.
-    let step = params
-      .get("step")
-      .and_then(Value::as_u64)
-      .ok_or(MFKDF2Error::MissingDeriveParams("step".to_string()))?;
-    let window = params
-      .get("window")
-      .and_then(Value::as_u64)
+    let step =
+      self.params["step"].as_u64().ok_or(MFKDF2Error::MissingDeriveParams("step".to_string()))?;
+    let window = self.params["window"]
+      .as_u64()
       .ok_or(MFKDF2Error::MissingDeriveParams("window".to_string()))?;
-    let digits = params
-      .get("digits")
-      .and_then(Value::as_u64)
+    let digits = self.params["digits"]
+      .as_u64()
       .ok_or(MFKDF2Error::MissingDeriveParams("digits".to_string()))?;
-    let start = params
-      .get("start")
-      .and_then(Value::as_u64) // TODO (@lonerapier): time is u128, but is being serialized to u64
-      .ok_or(MFKDF2Error::MissingDeriveParams("start".to_string()))?;
-    let offsets_b64 = params
-      .get("offsets")
-      .and_then(Value::as_str)
+    let start =
+      self.params["start"].as_u64().ok_or(MFKDF2Error::MissingDeriveParams("start".to_string()))?;
+    let offsets_b64 = self.params["offsets"]
+      .as_str()
       .ok_or(MFKDF2Error::MissingDeriveParams("offsets".to_string()))?;
     let offsets = base64::prelude::BASE64_STANDARD.decode(offsets_b64).map_err(|e| {
       MFKDF2Error::InvalidDeriveParams(format!("invalid base64 for offsets: {}", e))
@@ -104,19 +96,21 @@ impl FactorDerive for TOTP {
 
   /// Note: `self.options` is only used for [`TOTPDeriveOptions`].
   fn params(&self, key: Key) -> MFKDF2Result<Self::Params> {
-    let params: Value = serde_json::from_str(&self.params)?;
-
-    let pad = params["pad"].as_str().ok_or(MFKDF2Error::MissingDeriveParams("pad".to_string()))?;
+    let pad =
+      self.params["pad"].as_str().ok_or(MFKDF2Error::MissingDeriveParams("pad".to_string()))?;
     let pad = base64::prelude::BASE64_STANDARD.decode(pad)?;
     let padded_secret = decrypt(pad.clone(), &key.0);
 
-    let window =
-      params["window"].as_u64().ok_or(MFKDF2Error::MissingDeriveParams("window".to_string()))?;
+    let window = self.params["window"]
+      .as_u64()
+      .ok_or(MFKDF2Error::MissingDeriveParams("window".to_string()))?;
     let step =
-      params["step"].as_u64().ok_or(MFKDF2Error::MissingDeriveParams("step".to_string()))?;
-    let digits =
-      params["digits"].as_u64().ok_or(MFKDF2Error::MissingDeriveParams("digits".to_string()))?;
-    let hash: HashAlgorithm = serde_json::from_value(params["hash"].clone())?;
+      self.params["step"].as_u64().ok_or(MFKDF2Error::MissingDeriveParams("step".to_string()))?;
+    let digits = self.params["digits"]
+      .as_u64()
+      .ok_or(MFKDF2Error::MissingDeriveParams("digits".to_string()))?;
+    let hash: HashAlgorithm = serde_json::from_value(self.params["hash"].clone())
+      .map_err(|e| MFKDF2Error::InvalidDeriveParams(format!("invalid hash: {}", e)))?;
 
     let time =
       self.options.time.ok_or(MFKDF2Error::MissingDeriveParams("time".to_string()))? as u128;
@@ -167,7 +161,7 @@ pub fn totp(code: u32, options: Option<TOTPDeriveOptions>) -> MFKDF2Result<MFKDF
     id:          Some("totp".to_string()),
     factor_type: FactorType::TOTP(TOTP {
       options: options.into(),
-      params: serde_json::to_string(&Value::Null).unwrap(),
+      params: Value::Null,
       code,
       target: 0,
     }),
@@ -237,7 +231,7 @@ mod tests {
     let factor = setup_totp::totp(setup_options).unwrap();
 
     let secret = if let FactorType::TOTP(f) = &factor.factor_type {
-      f.options.secret.as_ref().unwrap().clone()
+      f.options.secret.as_ref().unwrap()
     } else {
       panic!("wrong factor type");
     };

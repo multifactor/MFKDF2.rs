@@ -95,8 +95,7 @@ function stringifyFactorParams(value: any): any {
         if (!(key in input)) continue;
 
         if (context === 'factor' && key === 'params') {
-          const nested = input[key];
-          ordered.params = typeof nested === 'string' ? nested : stringifyPolicy(nested);
+          ordered.params = input[key];
           continue;
         }
 
@@ -195,8 +194,8 @@ function unwrapPolicy(policy: any): raw.Policy {
       const factor = { ...f };
       factor.kind = factor.type ? factor.type : factor.kind;
       delete factor.type;
-      const stringified = stringifyFactorParams(factor.params);
-      factor.params = stringified;
+      // params is a Value object, convert back to string for UniFFI transport
+      factor.params = stringifyFactorParams(factor.params);
       return factor;
     })
   };
@@ -336,6 +335,7 @@ function wrapDerivedKey(key: raw.Mfkdf2DerivedKey): any {
       return updated;
     },
     async derivePassword(purpose: string, salt: string, regex: RegExp) {
+      key.policy = unwrapPolicy(key.policy);
       // TODO (@lonerapier): fix this type
       let buffer = toArrayBuffer(Buffer.from(salt));
       const updated = raw.derivedKeyDerivePassword(key, purpose, buffer, regex.source);

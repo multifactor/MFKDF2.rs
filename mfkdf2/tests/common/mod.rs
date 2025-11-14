@@ -228,7 +228,7 @@ pub fn create_derive_factor(
       ("password_1".to_string(), mfkdf2::derive::factors::password("Tr0ubd4dour").unwrap()),
     "hotp" => {
       let factor_policy = policy.factors.iter().find(|f| f.id == "hotp_1").unwrap();
-      let params: serde_json::Value = serde_json::from_str(&factor_policy.params).unwrap();
+      let params = &factor_policy.params;
       let counter = params["counter"].as_u64().unwrap();
       let digits = params["digits"].as_u64().unwrap() as u8;
       let hash = serde_json::from_value(params["hash"].clone()).unwrap();
@@ -239,7 +239,7 @@ pub fn create_derive_factor(
     },
     "totp" => {
       let factor_policy = policy.factors.iter().find(|f| f.id == "totp_1").unwrap();
-      let params: serde_json::Value = serde_json::from_str(&factor_policy.params).unwrap();
+      let params = &factor_policy.params;
       let time =
         std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_millis();
       let step = params["step"].as_u64().unwrap();
@@ -252,7 +252,7 @@ pub fn create_derive_factor(
     },
     "hmacsha1" => {
       let factor_policy = policy.factors.iter().find(|f| f.id == "hmacsha1_1").unwrap();
-      let params: serde_json::Value = serde_json::from_str(&factor_policy.params).unwrap();
+      let params = &factor_policy.params;
       let challenge = hex::decode(params["challenge"].as_str().unwrap()).unwrap();
       let response = mfkdf2::crypto::hmacsha1(&HMACSHA1_SECRET, &challenge);
       ("hmacsha1_1".to_string(), mfkdf2::derive::factors::hmacsha1(response.into()).unwrap())
@@ -271,7 +271,7 @@ pub fn create_derive_factor(
         RsaPrivateKey::from_pkcs1_der(&hex::decode(RSA_PRIVATE_KEY).unwrap()).unwrap();
 
       let factor_policy = policy.factors.iter().find(|f| f.id == "ooba_1").unwrap();
-      let params: serde_json::Value = serde_json::from_str(&factor_policy.params).unwrap();
+      let params = &factor_policy.params;
       let ciphertext = hex::decode(params["next"].as_str().unwrap()).unwrap();
       let decrypted = serde_json::from_slice::<serde_json::Value>(
         &rsa_private_key.decrypt(rsa::Oaep::new::<sha2::Sha256>(), &ciphertext).unwrap(),

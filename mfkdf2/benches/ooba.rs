@@ -35,7 +35,7 @@ fn create_jwk(bits: usize) -> serde_json::Value { create_keypair(bits).0 }
 
 fn get_challenge_response(policy: &Policy, factor_id: &str, private_key: &RsaPrivateKey) -> String {
   let factor_policy = policy.factors.iter().find(|f| f.id == factor_id).unwrap();
-  let params: serde_json::Value = serde_json::from_str(&factor_policy.params).unwrap();
+  let params = &factor_policy.params;
   let ciphertext = hex::decode(params["next"].as_str().unwrap()).unwrap();
   let decrypted = serde_json::from_slice::<serde_json::Value>(
     &private_key.decrypt(Oaep::new::<sha2::Sha256>(), &ciphertext).unwrap(),

@@ -78,10 +78,12 @@ pub fn stack(factors: Vec<MFKDF2Factor>, options: StackOptions) -> MFKDF2Result<
     factor_map.insert(f.id.clone().unwrap(), f);
   });
 
+  let real_entropy = key.entropy.real;
+
   Ok(MFKDF2Factor {
     id,
-    factor_type: FactorType::Stack(Stack { factors: factor_map, key: key.clone() }),
-    entropy: Some(key.entropy.real as f64),
+    factor_type: FactorType::Stack(Stack { factors: factor_map, key }),
+    entropy: Some(real_entropy),
   })
 }
 
