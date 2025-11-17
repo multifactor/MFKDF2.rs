@@ -49,7 +49,6 @@ pub fn key(
 
       // TODO (autoparallel): This should probably be done with a `MaybeUninit` array.
       let pad = general_purpose::STANDARD.decode(&factor.pad)?;
-      // TODO (@lonerapier): unpadding of bytes is needed
       let plaintext = decrypt(pad, &stretched);
 
       if let Some(ref factor_hint) = factor.hint {
@@ -162,7 +161,7 @@ pub fn key(
 
   Ok(MFKDF2DerivedKey {
     policy: new_policy,
-    key: key.to_vec(),
+    key: key.try_into()?,
     secret: secret_arr.to_vec(),
     shares: original_shares.into_iter().map(|s| Vec::from(&s)).collect(),
     outputs,

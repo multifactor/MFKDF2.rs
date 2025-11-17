@@ -46,6 +46,16 @@ pub struct HOTP {
   pub target:  u32,
 }
 
+#[cfg_attr(feature = "bindings", derive(uniffi::Record))]
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct HOTPParams {
+  pub hash:    HashAlgorithm,
+  pub digits:  u8,
+  pub pad:     String,
+  pub counter: u64,
+  pub offset:  u32,
+}
+
 impl FactorMetadata for HOTP {
   fn kind(&self) -> String { "hotp".to_string() }
 
@@ -75,16 +85,18 @@ impl FactorSetup for HOTP {
 
     let pad = encrypt(&padded_secret, &key.0);
 
-    Ok(json!({
-      "hash": self.options.hash.to_string(),
-      "digits": self.options.digits,
-      "pad": base64::prelude::BASE64_STANDARD.encode(&pad),
-      "counter": 1,
-      "offset": offset
-    }))
+    let params = HOTPParams {
+      hash: self.options.hash.clone(),
+      digits: self.options.digits,
+      pad: base64::prelude::BASE64_STANDARD.encode(&pad),
+      counter: 1,
+      offset,
+    };
+
+    Ok(serde_json::to_value(params)?)
   }
 
-  fn output(&self, _key: Key) -> Self::Output {
+  fn output(&self) -> Self::Output {
     json!({
       "scheme": "otpauth",
       "type": "hotp",
@@ -211,7 +223,7 @@ mod tests {
     let params = factor.factor_type.setup().params(key.into()).unwrap();
     assert!(params.is_object());
 
-    let output = factor.factor_type.output(key.into());
+    let output = factor.factor_type.output();
     assert!(output.is_object());
   }
 

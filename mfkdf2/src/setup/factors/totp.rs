@@ -31,6 +31,18 @@ pub struct TOTPOptions {
   pub oracle: Option<HashMap<u64, u32>>,
 }
 
+#[cfg_attr(feature = "bindings", derive(uniffi::Record))]
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct TOTPParams {
+  pub start:   u64,
+  pub hash:    HashAlgorithm,
+  pub digits:  u8,
+  pub step:    u64,
+  pub window:  u64,
+  pub pad:     String,
+  pub offsets: String,
+}
+
 impl Default for TOTPOptions {
   fn default() -> Self {
     let now_ms = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_millis() as u64;
@@ -106,18 +118,20 @@ impl FactorSetup for TOTP {
 
     let pad = encrypt(padded_secret, &key.0);
 
-    Ok(json!({
-        "start": time,
-        "hash": self.options.hash.to_string(),
-        "digits": self.options.digits,
-        "step": self.options.step,
-        "window": self.options.window,
-        "pad": base64::prelude::BASE64_STANDARD.encode(&pad),
-        "offsets": base64::prelude::BASE64_STANDARD.encode(&offsets),
-    }))
+    let params = TOTPParams {
+      start:   time as u64,
+      hash:    self.options.hash.clone(),
+      digits:  self.options.digits,
+      step:    self.options.step,
+      window:  self.options.window,
+      pad:     base64::prelude::BASE64_STANDARD.encode(&pad),
+      offsets: base64::prelude::BASE64_STANDARD.encode(&offsets),
+    };
+
+    Ok(serde_json::to_value(params)?)
   }
 
-  fn output(&self, _key: Key) -> Self::Output {
+  fn output(&self) -> Self::Output {
     json!({
       "scheme": "otpauth",
       "type": "totp",
@@ -327,14 +341,13 @@ mod tests {
   #[test]
   fn output_setup() {
     let factor = mock_construction();
-    let key = [0u8; 32];
 
     let totp_factor = match factor.factor_type {
       FactorType::TOTP(ref f) => f,
       _ => panic!("Factor type should be TOTP"),
     };
 
-    let output = totp_factor.output(key.into());
+    let output = totp_factor.output();
     assert!(output.is_object());
 
     assert_eq!(output["scheme"], "otpauth");

@@ -3,7 +3,7 @@ use serde_json::{Value, json};
 pub use uuid::Uuid;
 
 use crate::{
-  definitions::{FactorMetadata, FactorType, Key, MFKDF2Factor},
+  definitions::{FactorMetadata, FactorType, MFKDF2Factor},
   error::MFKDF2Result,
   setup::FactorSetup,
 };
@@ -35,7 +35,7 @@ impl FactorSetup for UUIDFactor {
   type Output = Value;
   type Params = Value;
 
-  fn output(&self, _key: Key) -> Self::Output {
+  fn output(&self) -> Self::Output {
     json!({
       "uuid": self.uuid,
     })

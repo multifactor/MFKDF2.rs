@@ -46,7 +46,7 @@ pub struct Stack {
 impl FactorMetadata for Stack {
   fn kind(&self) -> String { "stack".to_string() }
 
-  fn bytes(&self) -> Vec<u8> { self.key.key.clone() }
+  fn bytes(&self) -> Vec<u8> { self.key.key.clone().into() }
 }
 
 impl FactorSetup for Stack {
@@ -57,7 +57,7 @@ impl FactorSetup for Stack {
     Ok(serde_json::to_value(&self.key.policy)?)
   }
 
-  fn output(&self, _key: Key) -> Self::Output { serde_json::to_value(&self.key).unwrap() }
+  fn output(&self) -> Self::Output { serde_json::to_value(&self.key).unwrap() }
 }
 
 pub fn stack(factors: Vec<MFKDF2Factor>, options: StackOptions) -> MFKDF2Result<MFKDF2Factor> {
@@ -147,7 +147,7 @@ mod tests {
     let key = [0u8; 32];
 
     let params = stack_factor.factor_type.setup().params(key.into()).unwrap();
-    let output = stack_factor.factor_type.output(key.into());
+    let output = stack_factor.factor_type.output();
 
     if let FactorType::Stack(stack) = stack_factor.factor_type {
       let expected_params = serde_json::to_value(&stack.key.policy).unwrap();

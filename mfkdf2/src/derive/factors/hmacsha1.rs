@@ -95,7 +95,7 @@ mod tests {
     let secret = setup_factor
       .factor_type
       .setup()
-      .output([0u8; 32].into())
+      .output()
       .get("secret")
       .unwrap()
       .as_array()

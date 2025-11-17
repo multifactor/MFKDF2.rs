@@ -70,7 +70,7 @@ pub fn key(factors: Vec<MFKDF2Factor>, options: MFKDF2Options) -> MFKDF2Result<M
 
   // Check threshold against number of factors
   // TODO (autoparallel): This should be compile-time checkable? Or at least an error.
-  if factors.is_empty() || !(1..=factors.len()).contains(&(threshold as usize)) {
+  if factors.is_empty() || threshold as usize == 0 || threshold as usize > factors.len() {
     return Err(MFKDF2Error::InvalidThreshold);
   }
 
@@ -163,7 +163,7 @@ pub fn key(factors: Vec<MFKDF2Factor>, options: MFKDF2Options) -> MFKDF2Result<M
 
     let params = factor.factor_type.setup().params(params_key.into())?;
     // TODO (autoparallel): This should not be an unwrap.
-    outputs.insert(id.clone(), factor.factor_type.output(key.into()));
+    outputs.insert(id.clone(), factor.factor_type.output());
 
     let secret_key =
       hkdf_sha256_with_info(&key, &salt, format!("mfkdf2:factor:secret:{}", &id).as_bytes());
@@ -217,7 +217,7 @@ pub fn key(factors: Vec<MFKDF2Factor>, options: MFKDF2Options) -> MFKDF2Result<M
 
   Ok(MFKDF2DerivedKey {
     policy,
-    key: key.to_vec(),
+    key: key.into(),
     secret: secret.to_vec(),
     shares,
     outputs,
@@ -358,7 +358,7 @@ mod tests {
     assert_eq!(derived_key.policy.time, options.time.unwrap());
     assert_eq!(derived_key.policy.memory, options.memory.unwrap());
 
-    assert_eq!(derived_key.key, key);
+    assert_eq!(derived_key.key, key.clone().try_into().unwrap());
 
     // verify factor secret is encrypted with key
     let mut shares = Vec::new();
@@ -420,7 +420,7 @@ mod tests {
 
     let policy_key = general_purpose::STANDARD.decode(derived_key.policy.key.clone()).unwrap();
     let key = decrypt(policy_key, &kek);
-    assert_eq!(derived_key.key, key);
+    assert_eq!(derived_key.key, key.clone().try_into().unwrap());
 
     let shares_to_recover: Vec<Vec<u8>> =
       derived_key.shares.iter().take(threshold as usize).cloned().collect();

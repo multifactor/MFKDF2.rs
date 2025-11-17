@@ -142,8 +142,8 @@ function wrapSetupFactor(factor: raw.Mfkdf2Factor): any {
       // Parse JSON string returned by UniFFI (Value is serialized as string)
       return typeof result === 'string' ? JSON.parse(result) : result;
     },
-    async output(key?: ArrayBuffer) {
-      const result = raw.setupFactorTypeOutput(factor.factorType, key);
+    async output() {
+      const result = raw.setupFactorTypeOutput(factor.factorType);
       // Parse JSON string returned by UniFFI (Value is serialized as string)
       return typeof result === 'string' ? JSON.parse(result) : result;
     }

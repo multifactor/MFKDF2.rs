@@ -100,7 +100,7 @@ impl MFKDF2DerivedKey {
       };
 
       factors.insert(id.clone(), new_factor);
-      outputs.insert(id.clone(), factor.factor_type.output(self.key.clone().try_into()?));
+      outputs.insert(id.clone(), factor.factor_type.output());
       data.insert(id.clone(), factor.data());
       if material.contains_key(&id) {
         material.remove(&id);
@@ -174,7 +174,6 @@ impl MFKDF2DerivedKey {
   }
 }
 
-// TODO (@lonerapier): this should take a mut reference to the derived key
 #[cfg_attr(feature = "bindings", uniffi::export)]
 pub fn derived_key_set_threshold(
   derived_key: MFKDF2DerivedKey,

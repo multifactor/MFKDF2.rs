@@ -25,7 +25,7 @@ impl MFKDF2DerivedKey {
     )
     .hash_password_into(&self.secret, &salt, &mut kek)?;
 
-    let policy_key = encrypt(&self.key, &kek);
+    let policy_key = encrypt(self.key.as_ref(), &kek);
     self.policy.key = general_purpose::STANDARD.encode(policy_key);
     Ok(())
   }

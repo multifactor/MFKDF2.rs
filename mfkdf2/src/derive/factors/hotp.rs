@@ -7,7 +7,7 @@ use crate::{
   derive::FactorDerive,
   error::{MFKDF2Error, MFKDF2Result},
   otpauth::{HashAlgorithm, generate_hotp_code},
-  setup::factors::hotp::{HOTP, HOTPOptions, mod_positive},
+  setup::factors::hotp::{HOTP, HOTPOptions, HOTPParams, mod_positive},
 };
 
 impl FactorDerive for HOTP {
@@ -16,20 +16,17 @@ impl FactorDerive for HOTP {
 
   fn include_params(&mut self, params: Self::Params) -> MFKDF2Result<()> {
     // Store the policy parameters for derive phase
-    self.params = params;
+    self.params = params.clone();
 
     // If this is a derive factor (has a code), calculate target and store in options.secret
     if self.code != 0 {
-      let offset = self.params["offset"]
-        .as_u64()
-        .ok_or(MFKDF2Error::MissingDeriveParams("offset".to_string()))?;
+      let params: HOTPParams = serde_json::from_value(params)?;
 
-      let digits = self.params["digits"]
-        .as_u64()
-        .ok_or(MFKDF2Error::MissingDeriveParams("digits".to_string()))?;
+      let offset = params.offset;
 
+      let digits = params.digits;
       let modulus = 10_u64.pow(digits as u32);
-      let target = (offset + self.code as u64) % modulus;
+      let target = (offset as u64 + self.code as u64) % modulus;
 
       // Store target as 4-byte big-endian (matches JS implementation)
       self.target = target as u32;
@@ -124,7 +121,7 @@ mod tests {
     let padded_secret = hotp.options.secret.as_ref().unwrap();
     let correct_code =
       generate_hotp_code(&padded_secret[..20], counter, &hotp.options.hash, hotp.options.digits);
-    let expected_target = u32::from_be_bytes(factor.data().clone().try_into().unwrap());
+    let expected_target = u32::from_be_bytes(factor.data().try_into().unwrap());
 
     // Verify the relationship: target = (offset + correct_code) % 10^digits
     let modulus = 10_u32.pow(u32::from(hotp.options.digits));
@@ -176,20 +173,12 @@ mod tests {
   }
 
   #[test]
-  fn include_params_missing_offset() {
+  fn include_params_missing_fields() {
     let mut derive_factor = derive_hotp(123456).unwrap();
     let params = json!({ "digits": 6 });
-    let result = derive_factor.factor_type.include_params(params);
-    assert!(matches!(result, Err(MFKDF2Error::MissingDeriveParams(s)) if s == "offset"));
+    let err = derive_factor.factor_type.include_params(params);
+    assert!(
+      matches!(err, Err(MFKDF2Error::SerializeError(e)) if e.to_string() == "missing field `hash`")
+    );
   }
-
-  #[test]
-  fn test_include_params_missing_digits() {
-    let mut derive_factor = derive_hotp(123456).unwrap();
-    let params = json!({ "offset": 123 });
-    let result = derive_factor.factor_type.include_params(params);
-    assert!(matches!(result, Err(MFKDF2Error::MissingDeriveParams(s)) if s == "digits"));
-  }
-
-  // TODO: test params_derive with an unsupported 'hash' value.
 }

@@ -58,7 +58,6 @@ pub fn derived_key_get_hint(
   derived_key.get_hint(factor_id, bits)
 }
 
-// TODO (@lonerapier): this should take a mut reference to the derived key
 #[cfg_attr(feature = "bindings", uniffi::export)]
 pub fn derived_key_add_hint(
   derived_key: MFKDF2DerivedKey,
