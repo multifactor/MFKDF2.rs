@@ -18,7 +18,6 @@ suite('setup/key', () => {
   });
 
   test('default', async () => {
-    // TODO: fix this
     const key = await mfkdf.setup.key([
       await mfkdf.setup.factors.password('hello')
     ])

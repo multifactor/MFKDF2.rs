@@ -39,7 +39,6 @@ impl Default for HOTPOptions {
 #[cfg_attr(feature = "bindings", derive(uniffi::Record))]
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct HOTP {
-  // TODO (sambhav): is it safe to add options in the factor struct here?
   pub options: HOTPOptions,
   pub params:  Value,
   pub code:    u32,

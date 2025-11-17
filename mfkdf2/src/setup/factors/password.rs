@@ -66,7 +66,6 @@ pub async fn setup_password(
   password: String,
   options: PasswordOptions,
 ) -> MFKDF2Result<MFKDF2Factor> {
-  // Reuse the existing constructor logic
   crate::setup::factors::password::password(password, options)
 }
 

@@ -57,10 +57,9 @@ mod tests {
         assert_eq!(p.password, "hello");
         assert_eq!(factor.data(), "hello".as_bytes());
         let params: Value = <Password as FactorSetup>::params(p, [0u8; 32].into()).unwrap();
-        // TODO: fix this
-        // let output = p.output_derive();
-        // let strength: Entropy = serde_json::from_value(output["strength"].clone()).unwrap();
-        // assert_eq!(strength.guesses().ilog2(), factor.entropy.unwrap());
+
+        let output = FactorDerive::output(&factor.factor_type);
+        assert_eq!(output["strength"]["guesses"].as_f64().unwrap().log2(), factor.entropy.unwrap());
         assert_eq!(params, json!({}));
       },
       _ => panic!("Wrong factor type"),

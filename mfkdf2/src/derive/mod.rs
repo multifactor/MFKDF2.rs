@@ -238,25 +238,34 @@ mod tests {
     assert_eq!(setup.outputs, derive.outputs);
   }
 
-  // TODO (@lonerapier): this fails because zxcvbn entropy is not deserializable
-  // #[test]
-  // fn derive_outputs_question() {
-  //   let setup = setup::key(
-  //     vec![setup::factors::question("Fido", QuestionOptions::default()).unwrap()],
-  //     MFKDF2Options::default(),
-  //   )
-  //   .unwrap();
+  #[test]
+  fn derive_outputs_question() {
+    let setup = setup::key(
+      vec![
+        setup::factors::question(
+          "Fido",
+          crate::setup::factors::question::QuestionOptions::default(),
+        )
+        .unwrap(),
+      ],
+      MFKDF2Options::default(),
+    )
+    .unwrap();
 
-  //   let derive = derive::key(
-  //     setup.policy,
-  //     HashMap::from([("question".to_string(), derive::factors::question("Fido").unwrap())]),
-  //     true,
-  //     false,
-  //   )
-  //   .unwrap();
+    let derive = derive::key(
+      setup.policy,
+      HashMap::from([("question".to_string(), derive::factors::question("Fido").unwrap())]),
+      true,
+      false,
+    )
+    .unwrap();
 
-  //   assert_eq!(setup.outputs, derive.outputs);
-  // }
+    let mut setup_output = setup.outputs["question"]["strength"].clone();
+    let mut derive_output = derive.outputs["question"]["strength"].clone();
+    setup_output.as_object_mut().unwrap().remove("calc_time");
+    derive_output.as_object_mut().unwrap().remove("calc_time");
+    assert_eq!(setup_output, derive_output);
+  }
 
   #[test]
   fn derive_outputs_ooba() {
@@ -313,25 +322,34 @@ mod tests {
     assert_eq!(setup.outputs, derive.outputs);
   }
 
-  // TODO (@lonerapier): this fails because zxcvbn entropy is not deserializable
-  // #[test]
-  // fn derive_outputs_password() {
-  //   let setup = setup::key(
-  //     vec![setup::factors::password("password", PasswordOptions::default()).unwrap()],
-  //     MFKDF2Options::default(),
-  //   )
-  //   .unwrap();
+  #[test]
+  fn derive_outputs_password() {
+    let setup = setup::key(
+      vec![
+        setup::factors::password(
+          "password",
+          crate::setup::factors::password::PasswordOptions::default(),
+        )
+        .unwrap(),
+      ],
+      MFKDF2Options::default(),
+    )
+    .unwrap();
 
-  //   let derive = derive::key(
-  //     setup.policy,
-  //     HashMap::from([("password".to_string(), derive::factors::password("password").unwrap())]),
-  //     true,
-  //     false,
-  //   )
-  //   .unwrap();
+    let derive = derive::key(
+      setup.policy,
+      HashMap::from([("password".to_string(), derive::factors::password("password").unwrap())]),
+      true,
+      false,
+    )
+    .unwrap();
 
-  //   assert_eq!(setup.outputs, derive.outputs);
-  // }
+    let mut setup_output = setup.outputs["password"]["strength"].clone();
+    let mut derive_output = derive.outputs["password"]["strength"].clone();
+    setup_output.as_object_mut().unwrap().remove("calc_time");
+    derive_output.as_object_mut().unwrap().remove("calc_time");
+    assert_eq!(setup_output, derive_output);
+  }
 
   #[test]
   fn derive_outputs_multiple() {
