@@ -93,7 +93,7 @@ fn share_indistinguishability_share_size() -> Result<(), MFKDF2Error> {
 fn share_encryption_correct() -> Result<(), MFKDF2Error> {
   // Setup with two password factors using direct key setup
   let setup = setup::key::key(
-    vec![
+    &[
       setup::factors::password("password1", PasswordOptions { id: Some("password1".to_string()) })?,
       setup::factors::password("password2", PasswordOptions { id: Some("password2".to_string()) })?,
     ],
@@ -180,7 +180,7 @@ fn factor_secret_encryption_hotp() -> Result<(), MFKDF2Error> {
   // Setup HOTP factor with specific secret
   let secret = b"abcdefghijklmnopqrst".to_vec();
   let setup = setup::key::key(
-    vec![setup::factors::hotp::hotp(HOTPOptions {
+    &[setup::factors::hotp::hotp(HOTPOptions {
       secret: Some(secret.clone()),
       ..Default::default()
     })?],
@@ -220,7 +220,7 @@ fn factor_secret_encryption_totp() -> Result<(), MFKDF2Error> {
   // Setup TOTP factor with specific secret and time
   let secret = b"abcdefghijklmnopqrst".to_vec();
   let setup = setup::key::key(
-    vec![setup::factors::totp::totp(TOTPOptions {
+    &[setup::factors::totp::totp(TOTPOptions {
       secret: Some(secret.clone()),
       time: Some(1),
       ..Default::default()
@@ -266,7 +266,7 @@ fn factor_secret_encryption_totp() -> Result<(), MFKDF2Error> {
 fn totp_dynamic_no_oracle() -> Result<(), MFKDF2Error> {
   // Setup TOTP factor with default options
   let setup = setup::key::key(
-    vec![setup::factors::totp::totp(TOTPOptions::default())?],
+    &[setup::factors::totp::totp(TOTPOptions::default())?],
     MFKDF2Options::default(),
   )?;
 
@@ -338,13 +338,11 @@ fn totp_dynamic_valid_fixed_oracle() {
 
   // Setup TOTP factor with oracle
   let setup = setup::key::key(
-    vec![
-      setup::factors::totp::totp(TOTPOptions {
-        oracle: Some(oracle.clone()),
-        ..Default::default()
-      })
-      .unwrap(),
-    ],
+    &[setup::factors::totp::totp(TOTPOptions {
+      oracle: Some(oracle.clone()),
+      ..Default::default()
+    })
+    .unwrap()],
     MFKDF2Options::default(),
   )
   .unwrap();
@@ -437,13 +435,11 @@ fn totp_dynamic_invalid_fixed_oracle() {
 
   // Setup TOTP factor with oracle
   let setup = setup::key::key(
-    vec![
-      setup::factors::totp::totp(TOTPOptions {
-        oracle: Some(oracle.clone()),
-        ..Default::default()
-      })
-      .unwrap(),
-    ],
+    &[setup::factors::totp::totp(TOTPOptions {
+      oracle: Some(oracle.clone()),
+      ..Default::default()
+    })
+    .unwrap()],
     MFKDF2Options::default(),
   )
   .unwrap();
@@ -545,13 +541,11 @@ fn totp_dynamic_valid_dynamic_oracle() {
 
   // Setup TOTP factor with oracle
   let setup = setup::key::key(
-    vec![
-      setup::factors::totp::totp(TOTPOptions {
-        oracle: Some(oracle.clone()),
-        ..Default::default()
-      })
-      .unwrap(),
-    ],
+    &[setup::factors::totp::totp(TOTPOptions {
+      oracle: Some(oracle.clone()),
+      ..Default::default()
+    })
+    .unwrap()],
     MFKDF2Options::default(),
   )
   .unwrap();
@@ -656,15 +650,13 @@ fn totp_dynamic_invalid_dynamic_oracle() {
 
   // Setup TOTP factor with specific secret and time
   let setup = setup::key::key(
-    vec![
-      setup::factors::totp::totp(TOTPOptions {
-        secret: Some(b"abcdefghijklmnopqrst".to_vec()),
-        time: Some(1650430806597),
-        oracle: Some(oracle.clone()),
-        ..Default::default()
-      })
-      .unwrap(),
-    ],
+    &[setup::factors::totp::totp(TOTPOptions {
+      secret: Some(b"abcdefghijklmnopqrst".to_vec()),
+      time: Some(1650430806597),
+      oracle: Some(oracle.clone()),
+      ..Default::default()
+    })
+    .unwrap()],
     MFKDF2Options::default(),
   )
   .unwrap();

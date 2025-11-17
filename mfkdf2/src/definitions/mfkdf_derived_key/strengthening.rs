@@ -59,7 +59,7 @@ mod tests {
       id: Some("password1".to_string()),
     })?];
 
-    let setup_key = setup::key(setup_factors, MFKDF2Options::default())?;
+    let setup_key = setup::key(&setup_factors, MFKDF2Options::default())?;
 
     assert_eq!(setup_key.policy.time, 0);
 
@@ -98,7 +98,7 @@ mod tests {
       id: Some("password1".to_string()),
     })?];
 
-    let setup_key = setup::key(setup_factors, MFKDF2Options::default())?;
+    let setup_key = setup::key(&setup_factors, MFKDF2Options::default())?;
 
     assert_eq!(setup_key.policy.memory, 0);
 
@@ -136,7 +136,7 @@ mod tests {
       id: Some("password1".to_string()),
     })?];
 
-    let setup_key = setup::key(setup_factors, MFKDF2Options::default())?;
+    let setup_key = setup::key(&setup_factors, MFKDF2Options::default())?;
 
     assert_eq!(setup_key.policy.time, 0);
     assert_eq!(setup_key.policy.memory, 0);
@@ -175,7 +175,7 @@ mod tests {
     let setup_factors = vec![crate::setup::factors::password("password1", PasswordOptions {
       id: Some("password1".to_string()),
     })?];
-    let setup_key = setup::key(setup_factors, MFKDF2Options::default())?;
+    let setup_key = setup::key(&setup_factors, MFKDF2Options::default())?;
 
     let mut derive_key = derive::key(
       setup_key.policy,
@@ -252,7 +252,7 @@ mod tests {
       })?,
     ];
 
-    let setup_key = setup::key(setup_factors, MFKDF2Options::default())?;
+    let setup_key = setup::key(&setup_factors, MFKDF2Options::default())?;
 
     let mut derive_key = derive::key(
       setup_key.policy,
@@ -315,7 +315,7 @@ mod tests {
       })?,
     ];
 
-    let setup_key = setup::key(setup_factors, MFKDF2Options::default())?;
+    let setup_key = setup::key(&setup_factors, MFKDF2Options::default())?;
 
     let mut derive_key = derive::key(
       setup_key.policy,

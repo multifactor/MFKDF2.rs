@@ -64,7 +64,7 @@ impl Default for MFKDF2Options {
   }
 }
 
-pub fn key(factors: Vec<MFKDF2Factor>, options: MFKDF2Options) -> MFKDF2Result<MFKDF2DerivedKey> {
+pub fn key(factors: &[MFKDF2Factor], options: MFKDF2Options) -> MFKDF2Result<MFKDF2DerivedKey> {
   // Sets the threshold to be the number of factors (n of n) if not provided.
   let threshold = options.threshold.unwrap_or(factors.len() as u8);
 
@@ -230,7 +230,7 @@ pub fn key(factors: Vec<MFKDF2Factor>, options: MFKDF2Options) -> MFKDF2Result<M
 
 #[cfg_attr(feature = "bindings", uniffi::export)]
 pub async fn setup_key(
-  factors: Vec<MFKDF2Factor>,
+  factors: &[MFKDF2Factor],
   options: MFKDF2Options,
 ) -> MFKDF2Result<MFKDF2DerivedKey> {
   key(factors, options)
@@ -331,7 +331,7 @@ mod tests {
   #[test]
   fn key_construction(#[case] factors: Vec<MFKDF2Factor>) {
     let options = MFKDF2Options::default();
-    let derived_key = key(factors.clone(), options.clone()).unwrap();
+    let derived_key = key(&factors, options.clone()).unwrap();
 
     let salt = general_purpose::STANDARD.decode(derived_key.policy.salt.clone()).unwrap();
     let mut kek = [0u8; 32];
@@ -398,7 +398,7 @@ mod tests {
     let factors = generate_factors(num_factors);
     let options = MFKDF2Options { threshold: Some(threshold), ..Default::default() };
 
-    let derived_key = key(factors.clone(), options.clone()).unwrap();
+    let derived_key = key(&factors, options.clone()).unwrap();
 
     assert_eq!(derived_key.policy.threshold, threshold);
 
@@ -442,7 +442,7 @@ mod tests {
   fn key_construction_with_invalid_threshold(#[case] num_factors: usize, #[case] threshold: u8) {
     let factors = generate_factors(num_factors);
     let options = MFKDF2Options { threshold: Some(threshold), ..Default::default() };
-    let derived_key_result = key(factors.clone(), options.clone());
+    let derived_key_result = key(&factors, options.clone());
 
     assert!(matches!(derived_key_result, Err(MFKDF2Error::InvalidThreshold)));
   }

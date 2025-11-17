@@ -57,14 +57,14 @@ fn bench_setup_stack(c: &mut Criterion) {
   group.bench_function("single_setup", |b| {
     b.iter(|| {
       let factor = black_box(create_stack_factor("stack", "p1", "pw1", "p2", "pw2").unwrap());
-      let result = black_box(setup::key::key(vec![factor], MFKDF2Options::default()));
+      let result = black_box(setup::key::key(&[factor], MFKDF2Options::default()));
       result.unwrap()
     })
   });
 
   // Single derive - 1 stack
   let single_setup_key = setup::key::key(
-    vec![create_stack_factor("stack", "p1", "pw1", "p2", "pw2").unwrap()],
+    &[create_stack_factor("stack", "p1", "pw1", "p2", "pw2").unwrap()],
     MFKDF2Options::default(),
   )
   .unwrap();
@@ -81,20 +81,22 @@ fn bench_setup_stack(c: &mut Criterion) {
   // Multiple setup - 3 stacks with threshold 3 (all required)
   group.bench_function("multiple_setup_3_threshold_3", |b| {
     b.iter(|| {
-      let factors = black_box(vec![
-        create_stack_factor("s1", "s1p1", "s1p1", "s1p2", "s1p2").unwrap(),
-        create_stack_factor("s2", "s2p1", "s2p1", "s2p2", "s2p2").unwrap(),
-        create_stack_factor("s3", "s3p1", "s3p1", "s3p2", "s3p2").unwrap(),
-      ]);
       let options = MFKDF2Options { threshold: Some(3), ..Default::default() };
-      let result = black_box(setup::key::key(factors, options));
+      let result = black_box(setup::key::key(
+        &[
+          create_stack_factor("s1", "s1p1", "s1p1", "s1p2", "s1p2").unwrap(),
+          create_stack_factor("s2", "s2p1", "s2p1", "s2p2", "s2p2").unwrap(),
+          create_stack_factor("s3", "s3p1", "s3p1", "s3p2", "s3p2").unwrap(),
+        ],
+        options,
+      ));
       result.unwrap()
     })
   });
 
   // Multiple derive - 3 stacks (all required)
   let multiple_setup_key_3 = setup::key::key(
-    vec![
+    &[
       create_stack_factor("s1", "s1p1", "s1p1", "s1p2", "s1p2").unwrap(),
       create_stack_factor("s2", "s2p1", "s2p1", "s2p2", "s2p2").unwrap(),
       create_stack_factor("s3", "s3p1", "s3p1", "s3p2", "s3p2").unwrap(),
@@ -139,7 +141,7 @@ fn bench_setup_stack(c: &mut Criterion) {
 
   // Threshold derive - 2 out of 3 stacks
   let threshold_setup_key = setup::key::key(
-    vec![
+    &[
       create_stack_factor("s1", "s1p1", "s1p1", "s1p2", "s1p2").unwrap(),
       create_stack_factor("s2", "s2p1", "s2p1", "s2p2", "s2p2").unwrap(),
       create_stack_factor("s3", "s3p1", "s3p1", "s3p2", "s3p2").unwrap(),

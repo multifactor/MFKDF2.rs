@@ -20,7 +20,7 @@ fn make_policy(setup_factor_names: &[&str], threshold: u8, integrity: bool) -> M
     ..Default::default()
   };
 
-  mfkdf2::setup::key(setup_factors, options).unwrap()
+  mfkdf2::setup::key(&setup_factors, options).unwrap()
 }
 
 fn derive_once(

@@ -38,7 +38,7 @@ fn mock_setup_stack() -> Result<mfkdf2::definitions::MFKDF2DerivedKey, mfkdf2::e
   .collect::<Result<Vec<_>, _>>()?;
 
   let key = mfkdf2::setup::key(
-    vec![
+    &[
       mfkdf2::setup::factors::stack(
         stacked_factors,
         mfkdf2::setup::factors::stack::StackOptions {

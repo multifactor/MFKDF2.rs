@@ -22,20 +22,18 @@ fn bench_question(c: &mut Criterion) {
         })
         .unwrap(),
       );
-      let result = black_box(setup::key::key(vec![factor], MFKDF2Options::default()));
+      let result = black_box(setup::key::key(&[factor], MFKDF2Options::default()));
       result.unwrap()
     })
   });
 
   // Single derive - 1 question
   let single_setup_key = setup::key::key(
-    vec![
-      setup_question("answer1", QuestionOptions {
-        id:       Some("question".to_string()),
-        question: Some("What is your favorite color?".to_string()),
-      })
-      .unwrap(),
-    ],
+    &[setup_question("answer1", QuestionOptions {
+      id:       Some("question".to_string()),
+      question: Some("What is your favorite color?".to_string()),
+    })
+    .unwrap()],
     MFKDF2Options::default(),
   )
   .unwrap();
@@ -55,32 +53,34 @@ fn bench_question(c: &mut Criterion) {
   // Multiple setup - 3 questions with threshold 3 (all required)
   group.bench_function("multiple_setup_3_threshold_3", |b| {
     b.iter(|| {
-      let factors = black_box(vec![
-        setup_question("answer1", QuestionOptions {
-          id:       Some("q1".to_string()),
-          question: Some("What is your favorite color?".to_string()),
-        })
-        .unwrap(),
-        setup_question("answer2", QuestionOptions {
-          id:       Some("q2".to_string()),
-          question: Some("What is your pet's name?".to_string()),
-        })
-        .unwrap(),
-        setup_question("answer3", QuestionOptions {
-          id:       Some("q3".to_string()),
-          question: Some("What is your mother's maiden name?".to_string()),
-        })
-        .unwrap(),
-      ]);
       let options = MFKDF2Options { threshold: Some(3), ..Default::default() };
-      let result = black_box(setup::key::key(factors, options));
+      let result = black_box(setup::key::key(
+        &[
+          setup_question("answer1", QuestionOptions {
+            id:       Some("q1".to_string()),
+            question: Some("What is your favorite color?".to_string()),
+          })
+          .unwrap(),
+          setup_question("answer2", QuestionOptions {
+            id:       Some("q2".to_string()),
+            question: Some("What is your pet's name?".to_string()),
+          })
+          .unwrap(),
+          setup_question("answer3", QuestionOptions {
+            id:       Some("q3".to_string()),
+            question: Some("What is your mother's maiden name?".to_string()),
+          })
+          .unwrap(),
+        ],
+        options,
+      ));
       result.unwrap()
     })
   });
 
   // Multiple derive - 3 questions (all required)
   let multiple_setup_key_3 = setup::key::key(
-    vec![
+    &[
       setup_question("answer1", QuestionOptions {
         id:       Some("q1".to_string()),
         question: Some("What is your favorite color?".to_string()),
@@ -116,7 +116,7 @@ fn bench_question(c: &mut Criterion) {
 
   // Threshold derive - 2 out of 3 questions
   let threshold_setup_key = setup::key::key(
-    vec![
+    &[
       setup_question("answer1", QuestionOptions {
         id:       Some("q1".to_string()),
         question: Some("What is your favorite color?".to_string()),

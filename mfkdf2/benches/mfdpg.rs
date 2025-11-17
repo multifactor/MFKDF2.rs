@@ -15,9 +15,7 @@ fn bench_mfdpg(c: &mut Criterion) {
 
   // Setup a derived key for password derivation benchmarks
   let setup_key = setup::key::key(
-    vec![
-      setup_password("password1", PasswordOptions { id: Some("password".to_string()) }).unwrap(),
-    ],
+    &[setup_password("password1", PasswordOptions { id: Some("password".to_string()) }).unwrap()],
     MFKDF2Options::default(),
   )
   .unwrap();

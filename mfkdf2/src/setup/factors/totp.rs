@@ -85,8 +85,8 @@ impl FactorSetup for TOTP {
 
   fn params(&self, key: Key) -> MFKDF2Result<Self::Params> {
     let time =
-      self.options.time.ok_or(MFKDF2Error::MissingSetupParams("time".to_string()))? as u128;
-    let mut offsets = Vec::with_capacity((4 * self.options.window) as usize);
+      u128::from(self.options.time.ok_or(MFKDF2Error::MissingSetupParams("time".to_string()))?);
+    let mut offsets = Vec::with_capacity(4 * self.options.window as usize);
     let padded_secret =
       self.options.secret.as_ref().ok_or(MFKDF2Error::MissingSetupParams("secret".to_string()))?;
 

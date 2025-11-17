@@ -49,7 +49,7 @@ pub fn mock_mfkdf2_password() -> Result<MFKDF2DerivedKey, mfkdf2::error::MFKDF2E
   .collect::<Result<Vec<_>, _>>()?;
 
   let options = mfkdf2::setup::key::MFKDF2Options::default();
-  let key = mfkdf2::setup::key(factors, options)?;
+  let key = mfkdf2::setup::key(&factors, options)?;
   Ok(key)
 }
 
@@ -68,7 +68,7 @@ pub fn mock_threshold_mfkdf2() -> Result<MFKDF2DerivedKey, mfkdf2::error::MFKDF2
   .collect::<Result<Vec<_>, _>>()?;
 
   let options = mfkdf2::setup::key::MFKDF2Options { threshold: Some(1), ..Default::default() };
-  let key = mfkdf2::setup::key(factors, options)?;
+  let key = mfkdf2::setup::key(&factors, options)?;
   Ok(key)
 }
 
@@ -88,7 +88,7 @@ pub fn mock_password_question_mfkdf2()
   .collect::<Result<Vec<_>, _>>()?;
 
   let options = mfkdf2::setup::key::MFKDF2Options::default();
-  let key = mfkdf2::setup::key(factors, options)?;
+  let key = mfkdf2::setup::key(&factors, options)?;
   Ok(key)
 }
 
@@ -100,7 +100,7 @@ pub fn mock_uuid_mfkdf2() -> Result<MFKDF2DerivedKey, mfkdf2::error::MFKDF2Error
   .into_iter()
   .collect::<Result<Vec<_>, _>>()?;
   let options = mfkdf2::setup::key::MFKDF2Options::default();
-  let key = mfkdf2::setup::key(factors, options)?;
+  let key = mfkdf2::setup::key(&factors, options)?;
   Ok(key)
 }
 
@@ -114,7 +114,7 @@ pub fn mock_hmacsha1_mfkdf2() -> Result<MFKDF2DerivedKey, mfkdf2::error::MFKDF2E
     .collect::<Result<Vec<_>, _>>()?;
 
   let options = mfkdf2::setup::key::MFKDF2Options::default();
-  let key = mfkdf2::setup::key(factors, options)?;
+  let key = mfkdf2::setup::key(&factors, options)?;
   Ok(key)
 }
 
@@ -131,7 +131,7 @@ pub fn mock_hotp_mfkdf2() -> Result<MFKDF2DerivedKey, mfkdf2::error::MFKDF2Error
   .collect::<Result<Vec<_>, _>>()?;
 
   let options = mfkdf2::setup::key::MFKDF2Options::default();
-  let key = mfkdf2::setup::key(factors, options)?;
+  let key = mfkdf2::setup::key(&factors, options)?;
   Ok(key)
 }
 
@@ -154,7 +154,7 @@ pub fn mock_mixed_factors_mfkdf2() -> Result<MFKDF2DerivedKey, mfkdf2::error::MF
   .collect::<Result<Vec<_>, _>>()?;
 
   let options = mfkdf2::setup::key::MFKDF2Options::default();
-  let key = mfkdf2::setup::key(factors, options)?;
+  let key = mfkdf2::setup::key(&factors, options)?;
   Ok(key)
 }
 

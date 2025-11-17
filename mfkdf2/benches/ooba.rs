@@ -60,7 +60,7 @@ fn bench_ooba(c: &mut Criterion) {
         })
         .unwrap(),
       );
-      let result = black_box(setup::key::key(vec![factor], MFKDF2Options::default()));
+      let result = black_box(setup::key::key(&[factor], MFKDF2Options::default()));
       result.unwrap()
     })
   });
@@ -68,15 +68,13 @@ fn bench_ooba(c: &mut Criterion) {
   // Single derive - 1 OOBA
   let (jwk, private_key) = create_keypair(2048);
   let single_setup_key = setup::key::key(
-    vec![
-      setup_ooba(OobaOptions {
-        id: Some("ooba".to_string()),
-        key: Some(serde_json::from_value(jwk).unwrap()),
-        params: Some(json!({"email": "user@example.com"})),
-        ..Default::default()
-      })
-      .unwrap(),
-    ],
+    &[setup_ooba(OobaOptions {
+      id: Some("ooba".to_string()),
+      key: Some(serde_json::from_value(jwk).unwrap()),
+      params: Some(json!({"email": "user@example.com"})),
+      ..Default::default()
+    })
+    .unwrap()],
     MFKDF2Options::default(),
   )
   .unwrap();
@@ -102,7 +100,7 @@ fn bench_ooba(c: &mut Criterion) {
       let jwk2 = create_jwk(2048);
       let jwk3 = create_jwk(2048);
 
-      let factors = black_box(vec![
+      let factors = black_box([
         setup_ooba(OobaOptions {
           id: Some("ooba1".to_string()),
           key: Some(serde_json::from_value(jwk1).unwrap()),
@@ -126,7 +124,7 @@ fn bench_ooba(c: &mut Criterion) {
         .unwrap(),
       ]);
       let options = MFKDF2Options { threshold: Some(3), ..Default::default() };
-      let result = black_box(setup::key::key(factors, options));
+      let result = black_box(setup::key::key(&factors, options));
       result.unwrap()
     })
   });
@@ -137,7 +135,7 @@ fn bench_ooba(c: &mut Criterion) {
   let (jwk3, private_key3) = create_keypair(2048);
 
   let multiple_setup_key_3 = setup::key::key(
-    vec![
+    &[
       setup_ooba(OobaOptions {
         id: Some("ooba1".to_string()),
         key: Some(serde_json::from_value(jwk1).unwrap()),
@@ -190,7 +188,7 @@ fn bench_ooba(c: &mut Criterion) {
   let (jwk3, _private_key3) = create_keypair(2048);
 
   let threshold_setup_key = setup::key::key(
-    vec![
+    &[
       setup_ooba(OobaOptions {
         id: Some("ooba1".to_string()),
         key: Some(serde_json::from_value(jwk1).unwrap()),

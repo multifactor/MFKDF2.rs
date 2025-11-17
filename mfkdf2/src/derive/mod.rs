@@ -101,29 +101,27 @@ mod tests {
   #[test]
   fn derive_outputs_stack() {
     let setup = setup::key(
-      vec![
-        setup::factors::stack(
-          vec![
-            setup::factors::uuid(UUIDOptions {
-              id:   Some("uuid1".to_string()),
-              uuid: Some(uuid::Uuid::parse_str("9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6d").unwrap()),
-            })
-            .unwrap(),
-            setup::factors::uuid(UUIDOptions {
-              id:   Some("uuid2".to_string()),
-              uuid: Some(uuid::Uuid::parse_str("1b9d6bcd-bbfd-4b2d-9b5d-ab8dfbbd4bed").unwrap()),
-            })
-            .unwrap(),
-            setup::factors::uuid(UUIDOptions {
-              id:   Some("uuid3".to_string()),
-              uuid: Some(uuid::Uuid::parse_str("6ec0bd7f-11c0-43da-975e-2a8ad9ebae0b").unwrap()),
-            })
-            .unwrap(),
-          ],
-          StackOptions::default(),
-        )
-        .unwrap(),
-      ],
+      &[setup::factors::stack(
+        vec![
+          setup::factors::uuid(UUIDOptions {
+            id:   Some("uuid1".to_string()),
+            uuid: Some(uuid::Uuid::parse_str("9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6d").unwrap()),
+          })
+          .unwrap(),
+          setup::factors::uuid(UUIDOptions {
+            id:   Some("uuid2".to_string()),
+            uuid: Some(uuid::Uuid::parse_str("1b9d6bcd-bbfd-4b2d-9b5d-ab8dfbbd4bed").unwrap()),
+          })
+          .unwrap(),
+          setup::factors::uuid(UUIDOptions {
+            id:   Some("uuid3".to_string()),
+            uuid: Some(uuid::Uuid::parse_str("6ec0bd7f-11c0-43da-975e-2a8ad9ebae0b").unwrap()),
+          })
+          .unwrap(),
+        ],
+        StackOptions::default(),
+      )
+      .unwrap()],
       MFKDF2Options::default(),
     )
     .unwrap();
@@ -176,7 +174,7 @@ mod tests {
   #[test]
   fn derive_outputs_hmacsha1() {
     let setup = setup::key(
-      vec![setup::factors::hmacsha1(HmacSha1Options::default()).unwrap()],
+      &[setup::factors::hmacsha1(HmacSha1Options::default()).unwrap()],
       MFKDF2Options::default(),
     )
     .unwrap();
@@ -210,13 +208,11 @@ mod tests {
   #[test]
   fn derive_outputs_uuid() {
     let setup = setup::key(
-      vec![
-        setup::factors::uuid(UUIDOptions {
-          uuid: Some(uuid::Uuid::parse_str("9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6d").unwrap()),
-          id:   None,
-        })
-        .unwrap(),
-      ],
+      &[setup::factors::uuid(UUIDOptions {
+        uuid: Some(uuid::Uuid::parse_str("9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6d").unwrap()),
+        id:   None,
+      })
+      .unwrap()],
       MFKDF2Options::default(),
     )
     .unwrap();
@@ -241,13 +237,11 @@ mod tests {
   #[test]
   fn derive_outputs_question() {
     let setup = setup::key(
-      vec![
-        setup::factors::question(
-          "Fido",
-          crate::setup::factors::question::QuestionOptions::default(),
-        )
-        .unwrap(),
-      ],
+      &[setup::factors::question(
+        "Fido",
+        crate::setup::factors::question::QuestionOptions::default(),
+      )
+      .unwrap()],
       MFKDF2Options::default(),
     )
     .unwrap();
@@ -290,14 +284,12 @@ mod tests {
     .unwrap();
 
     let setup = setup::key(
-      vec![
-        setup::factors::ooba::ooba(OobaOptions {
-          key: Some(jwk),
-          params: Some(json!({ "email": "test@mfkdf.com" })),
-          ..Default::default()
-        })
-        .unwrap(),
-      ],
+      &[setup::factors::ooba::ooba(OobaOptions {
+        key: Some(jwk),
+        params: Some(json!({ "email": "test@mfkdf.com" })),
+        ..Default::default()
+      })
+      .unwrap()],
       MFKDF2Options::default(),
     )
     .unwrap();
@@ -325,13 +317,11 @@ mod tests {
   #[test]
   fn derive_outputs_password() {
     let setup = setup::key(
-      vec![
-        setup::factors::password(
-          "password",
-          crate::setup::factors::password::PasswordOptions::default(),
-        )
-        .unwrap(),
-      ],
+      &[setup::factors::password(
+        "password",
+        crate::setup::factors::password::PasswordOptions::default(),
+      )
+      .unwrap()],
       MFKDF2Options::default(),
     )
     .unwrap();
@@ -354,7 +344,7 @@ mod tests {
   #[test]
   fn derive_outputs_multiple() {
     let setup = setup::key(
-      vec![
+      &[
         setup::factors::uuid(UUIDOptions {
           uuid: Some(uuid::Uuid::parse_str("9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6d").unwrap()),
           id:   Some("uuid1".to_string()),

@@ -284,7 +284,7 @@ fn key_derivation_combinations(
 
   let options =
     mfkdf2::setup::key::MFKDF2Options { threshold: Some(threshold), ..Default::default() };
-  let setup_key = mfkdf2::setup::key(setup_factors, options)?;
+  let setup_key = mfkdf2::setup::key(&setup_factors, options)?;
 
   // 2. Loop through derivation combinations
   for combo in derive_combinations {

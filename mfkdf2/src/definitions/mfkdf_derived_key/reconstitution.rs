@@ -286,7 +286,7 @@ mod tests {
       })?,
     ];
 
-    let mut setup = setup::key(setup_factors, setup::key::MFKDF2Options {
+    let mut setup = setup::key(&setup_factors, setup::key::MFKDF2Options {
       threshold: Some(3),
       integrity: Some(false),
       ..Default::default()
@@ -325,7 +325,7 @@ mod tests {
     ];
 
     let options = setup::key::MFKDF2Options { threshold: Some(2), ..Default::default() };
-    let mut setup_key = setup::key(setup_factors, options)?;
+    let mut setup_key = setup::key(&setup_factors, options)?;
     let key = setup_key.key.clone();
 
     let derive1 = derive::key(
@@ -410,7 +410,7 @@ mod tests {
     ];
 
     let options = setup::key::MFKDF2Options { threshold: Some(2), ..Default::default() };
-    let mut setup_key = setup::key(setup_factors, options)?;
+    let mut setup_key = setup::key(&setup_factors, options)?;
     let key = setup_key.key.clone();
 
     let derive1 = derive::key(
@@ -474,7 +474,7 @@ mod tests {
     ];
 
     let options = setup::key::MFKDF2Options { threshold: Some(2), ..Default::default() };
-    let mut setup_key = setup::key(setup_factors, options)?;
+    let mut setup_key = setup::key(&setup_factors, options)?;
     let key = setup_key.key.clone();
 
     setup_key.add_factor(crate::setup::factors::password("password3", PasswordOptions {
@@ -507,7 +507,7 @@ mod tests {
     ];
 
     let options = setup::key::MFKDF2Options { threshold: Some(2), ..Default::default() };
-    let mut setup_key = setup::key(setup_factors, options)?;
+    let mut setup_key = setup::key(&setup_factors, options)?;
     let key = setup_key.key.clone();
 
     setup_key.add_factors(&[
@@ -548,7 +548,7 @@ mod tests {
     ];
 
     let options = setup::key::MFKDF2Options { threshold: Some(2), ..Default::default() };
-    let mut setup_key = setup::key(setup_factors, options)?;
+    let mut setup_key = setup::key(&setup_factors, options)?;
     let key = setup_key.key.clone();
 
     setup_key
@@ -585,7 +585,7 @@ mod tests {
     ];
 
     let options = setup::key::MFKDF2Options { threshold: Some(2), ..Default::default() };
-    let mut setup_key = setup::key(setup_factors, options)?;
+    let mut setup_key = setup::key(&setup_factors, options)?;
     let key = setup_key.key.clone();
 
     setup_key.recover_factors(&[
@@ -626,7 +626,7 @@ mod tests {
     ];
 
     let options = setup::key::MFKDF2Options { threshold: Some(3), ..Default::default() };
-    let mut setup_key = setup::key(setup_factors, options)?;
+    let mut setup_key = setup::key(&setup_factors, options)?;
     let key = setup_key.key.clone();
 
     setup_key.reconstitute(
@@ -666,7 +666,7 @@ mod tests {
     ];
 
     let options = setup::key::MFKDF2Options { threshold: Some(2), ..Default::default() };
-    let mut setup_key = setup::key(setup_factors, options)?;
+    let mut setup_key = setup::key(&setup_factors, options)?;
     let key = setup_key.key.clone();
 
     setup_key.reconstitute(&[], &[], None)?;
@@ -700,7 +700,7 @@ mod tests {
     ];
 
     let options = setup::key::MFKDF2Options { threshold: Some(3), ..Default::default() };
-    let mut setup_key = setup::key(setup_factors, options)?;
+    let mut setup_key = setup::key(&setup_factors, options)?;
 
     let result = setup_key.reconstitute(
       &["password4"],
@@ -730,7 +730,7 @@ mod tests {
     ];
 
     let options = setup::key::MFKDF2Options { threshold: Some(3), ..Default::default() };
-    let mut setup_key = setup::key(setup_factors, options)?;
+    let mut setup_key = setup::key(&setup_factors, options)?;
 
     let result = setup_key.reconstitute(
       &["password3"],
@@ -765,7 +765,7 @@ mod tests {
     ];
 
     let options = setup::key::MFKDF2Options { threshold: Some(3), ..Default::default() };
-    let mut setup_key = setup::key(setup_factors, options)?;
+    let mut setup_key = setup::key(&setup_factors, options)?;
 
     let result = setup_key.reconstitute(&["password1", "password2", "password3"], &[], Some(4));
     assert!(matches!(result, Err(error::MFKDF2Error::InvalidThreshold)));

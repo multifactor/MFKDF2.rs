@@ -71,12 +71,12 @@ pub fn stack(factors: Vec<MFKDF2Factor>, options: StackOptions) -> MFKDF2Result<
     },
   };
 
-  let key = key::key(factors.clone(), options.into())?;
+  let key = key::key(&factors, options.into())?;
 
   let mut factor_map = HashMap::new();
-  factors.into_iter().for_each(|f| {
-    factor_map.insert(f.id.clone().unwrap(), f);
-  });
+  for factor in factors {
+    factor_map.insert(factor.id.clone().unwrap(), factor);
+  }
 
   let real_entropy = key.entropy.real;
 

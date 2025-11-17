@@ -24,20 +24,18 @@ fn bench_hmacsha1(c: &mut Criterion) {
         })
         .unwrap(),
       );
-      let result = black_box(setup::key::key(vec![factor], MFKDF2Options::default()));
+      let result = black_box(setup::key::key(&[factor], MFKDF2Options::default()));
       result.unwrap()
     })
   });
 
   // Single derive - 1 HMACSHA1
   let single_setup_key = setup::key::key(
-    vec![
-      hmacsha1(HmacSha1Options {
-        id:     Some("hmac".to_string()),
-        secret: Some(SECRET20.to_vec()),
-      })
-      .unwrap(),
-    ],
+    &[hmacsha1(HmacSha1Options {
+      id:     Some("hmac".to_string()),
+      secret: Some(SECRET20.to_vec()),
+    })
+    .unwrap()],
     MFKDF2Options::default(),
   )
   .unwrap();
@@ -57,7 +55,7 @@ fn bench_hmacsha1(c: &mut Criterion) {
   // Multiple setup - 3 HMACSHA1 with threshold 3 (all required)
   group.bench_function("multiple_setup_3_threshold_3", |b| {
     b.iter(|| {
-      let factors = black_box(vec![
+      let factors = black_box([
         hmacsha1(HmacSha1Options {
           id:     Some("hmac1".to_string()),
           secret: Some(SECRET20.to_vec()),
@@ -77,14 +75,14 @@ fn bench_hmacsha1(c: &mut Criterion) {
         .unwrap(),
       ]);
       let options = MFKDF2Options { threshold: Some(3), ..Default::default() };
-      let result = black_box(setup::key::key(factors, options));
+      let result = black_box(setup::key::key(&factors, options));
       result.unwrap()
     })
   });
 
   // Multiple derive - 3 HMACSHA1 (all required)
   let multiple_setup_key_3 = setup::key::key(
-    vec![
+    &[
       hmacsha1(HmacSha1Options {
         id:     Some("hmac1".to_string()),
         secret: Some(SECRET20.to_vec()),
@@ -134,7 +132,7 @@ fn bench_hmacsha1(c: &mut Criterion) {
 
   // Threshold derive - 2 out of 3 HMACSHA1
   let threshold_setup_key = setup::key::key(
-    vec![
+    &[
       hmacsha1(HmacSha1Options {
         id:     Some("hmac1".to_string()),
         secret: Some(SECRET20.to_vec()),

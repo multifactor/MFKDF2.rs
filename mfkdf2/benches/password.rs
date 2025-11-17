@@ -16,14 +16,14 @@ fn bench_password(c: &mut Criterion) {
   group.bench_function("single_setup", |b| {
     b.iter(|| {
       let factor = black_box(setup_password("password1", PasswordOptions::default()).unwrap());
-      let result = black_box(setup::key::key(vec![factor], MFKDF2Options::default()));
+      let result = black_box(setup::key::key(&[factor], MFKDF2Options::default()));
       result.unwrap()
     })
   });
 
   // Single derive - 1 password
   let single_setup_key = setup::key::key(
-    vec![setup_password("password1", PasswordOptions { id: Some("pwd".to_string()) }).unwrap()],
+    &[setup_password("password1", PasswordOptions { id: Some("pwd".to_string()) }).unwrap()],
     MFKDF2Options::default(),
   )
   .unwrap();
@@ -43,20 +43,22 @@ fn bench_password(c: &mut Criterion) {
   // Multiple setup - 3 passwords with threshold 3 (all required)
   group.bench_function("multiple_setup_3_threshold_3", |b| {
     b.iter(|| {
-      let factors = black_box(vec![
-        setup_password("password1", PasswordOptions { id: Some("pwd1".to_string()) }).unwrap(),
-        setup_password("password2", PasswordOptions { id: Some("pwd2".to_string()) }).unwrap(),
-        setup_password("password3", PasswordOptions { id: Some("pwd3".to_string()) }).unwrap(),
-      ]);
       let options = MFKDF2Options { threshold: Some(3), ..Default::default() };
-      let result = black_box(setup::key::key(factors, options));
+      let result = black_box(setup::key::key(
+        &[
+          setup_password("password1", PasswordOptions { id: Some("pwd1".to_string()) }).unwrap(),
+          setup_password("password2", PasswordOptions { id: Some("pwd2".to_string()) }).unwrap(),
+          setup_password("password3", PasswordOptions { id: Some("pwd3".to_string()) }).unwrap(),
+        ],
+        options,
+      ));
       result.unwrap()
     })
   });
 
   // Multiple derive - 3 passwords (all required)
   let multiple_setup_key_3 = setup::key::key(
-    vec![
+    &[
       setup_password("password1", PasswordOptions { id: Some("pwd1".to_string()) }).unwrap(),
       setup_password("password2", PasswordOptions { id: Some("pwd2".to_string()) }).unwrap(),
       setup_password("password3", PasswordOptions { id: Some("pwd3".to_string()) }).unwrap(),
@@ -80,7 +82,7 @@ fn bench_password(c: &mut Criterion) {
 
   // Threshold derive - 2 out of 3 passwords
   let threshold_setup_key = setup::key::key(
-    vec![
+    &[
       setup_password("password1", PasswordOptions { id: Some("pwd1".to_string()) }).unwrap(),
       setup_password("password2", PasswordOptions { id: Some("pwd2".to_string()) }).unwrap(),
       setup_password("password3", PasswordOptions { id: Some("pwd3".to_string()) }).unwrap(),

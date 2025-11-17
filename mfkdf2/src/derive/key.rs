@@ -261,9 +261,8 @@ mod tests {
     // Setup phase
     let mut setup_factor = setup_password("password123", PasswordOptions::default()).unwrap();
     setup_factor.id = Some("pwd".to_string());
-    let setup_factors = vec![setup_factor.clone()];
     let setup_derived_key =
-      setup::key::key(setup_factors, setup::key::MFKDF2Options::default()).unwrap();
+      setup::key::key(&[setup_factor.clone()], setup::key::MFKDF2Options::default()).unwrap();
 
     // Derivation phase
     let mut derive_factors_map = HashMap::new();
@@ -296,9 +295,11 @@ mod tests {
     .unwrap();
     setup_hmac_factor.id = Some("hmac".to_string());
 
-    let setup_factors = vec![setup_password_factor.clone(), setup_hmac_factor.clone()];
-    let setup_derived_key =
-      setup::key::key(setup_factors, setup::key::MFKDF2Options::default()).unwrap();
+    let setup_derived_key = setup::key::key(
+      &[setup_password_factor.clone(), setup_hmac_factor.clone()],
+      setup::key::MFKDF2Options::default(),
+    )
+    .unwrap();
 
     // Derivation phase
     let mut derive_factors_map = HashMap::new();
@@ -353,10 +354,11 @@ mod tests {
     let mut setup_ooba_factor = generate_ooba_setup_factor("ooba", &public_key);
     setup_ooba_factor.id = Some("ooba".to_string());
 
-    let setup_factors =
-      vec![setup_hotp_factor.clone(), setup_totp_factor.clone(), setup_ooba_factor.clone()];
-    let setup_derived_key =
-      setup::key::key(setup_factors, setup::key::MFKDF2Options::default()).unwrap();
+    let setup_derived_key = setup::key::key(
+      &[setup_hotp_factor.clone(), setup_totp_factor.clone(), setup_ooba_factor.clone()],
+      setup::key::MFKDF2Options::default(),
+    )
+    .unwrap();
 
     // Derivation phase
     let mut derive_factors_map = HashMap::new();
@@ -481,10 +483,12 @@ mod tests {
     let mut setup_totp_factor = setup_totp(TOTPOptions::default()).unwrap();
     setup_totp_factor.id = Some("totp".to_string());
 
-    let setup_factors =
-      vec![setup_password_factor.clone(), setup_hotp_factor.clone(), setup_totp_factor.clone()];
     let options = setup::key::MFKDF2Options { threshold: Some(2), ..Default::default() };
-    let setup_derived_key = setup::key::key(setup_factors, options).unwrap();
+    let setup_derived_key = setup::key::key(
+      &[setup_password_factor.clone(), setup_hotp_factor.clone(), setup_totp_factor.clone()],
+      options,
+    )
+    .unwrap();
 
     // Derivation phase
     let mut derive_factors_map = HashMap::new();
@@ -551,7 +555,7 @@ mod tests {
     let mut setup_ooba_factor = generate_ooba_setup_factor("ooba", &public_key);
     setup_ooba_factor.id = Some("ooba".to_string());
 
-    let setup_factors = vec![
+    let setup_factors = &[
       setup_password_factor.clone(),
       setup_hmac_factor.clone(),
       setup_hotp_factor.clone(),
@@ -608,7 +612,7 @@ mod tests {
   #[test]
   fn key_derivation_shares() {
     // Setup phase
-    let setup_factors = vec![
+    let setup_factors = &[
       setup_password("password123", PasswordOptions { id: Some("pwd1".to_string()) }).unwrap(),
       setup_password("password456", PasswordOptions { id: Some("pwd2".to_string()) }).unwrap(),
       setup_password("password789", PasswordOptions { id: Some("pwd3".to_string()) }).unwrap(),
@@ -658,7 +662,7 @@ mod tests {
   #[test]
   fn key_derivation_persisted() -> Result<(), MFKDF2Error> {
     // Setup phase
-    let setup_factors = vec![
+    let setup_factors = &[
       setup_hotp(HOTPOptions::default())?,
       setup_password("password", PasswordOptions::default())?,
     ];
@@ -684,10 +688,8 @@ mod tests {
   fn passkeys_liveness() -> Result<(), MFKDF2Error> {
     let mut prf = [0u8; 32];
     OsRng.fill_bytes(&mut prf);
-    let setup_derived_key = setup::key::key(
-      vec![setup_passkey(prf, PasskeyOptions::default())?],
-      MFKDF2Options::default(),
-    )?;
+    let setup_derived_key =
+      setup::key::key(&[setup_passkey(prf, PasskeyOptions::default())?], MFKDF2Options::default())?;
 
     let derive = derive::key(
       setup_derived_key.policy,
@@ -704,10 +706,8 @@ mod tests {
   fn passkeys_safety() -> Result<(), MFKDF2Error> {
     let mut prf = [0u8; 32];
     OsRng.fill_bytes(&mut prf);
-    let setup_derived_key = setup::key::key(
-      vec![setup_passkey(prf, PasskeyOptions::default())?],
-      MFKDF2Options::default(),
-    )?;
+    let setup_derived_key =
+      setup::key::key(&[setup_passkey(prf, PasskeyOptions::default())?], MFKDF2Options::default())?;
 
     let mut prf2 = [0u8; 32];
     OsRng.fill_bytes(&mut prf2);

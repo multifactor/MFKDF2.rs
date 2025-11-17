@@ -137,11 +137,11 @@ pub fn ooba(options: OobaOptions) -> MFKDF2Result<MFKDF2Factor> {
     factor_type: FactorType::OOBA(Ooba {
       target: target.to_vec(),
       length,
-      code: "".to_string(),
+      code: String::new(),
       jwk: Some(key),
       params,
     }),
-    entropy:     Some((36_f64.powf(length as f64)).log2()),
+    entropy:     Some((36_f64.powf(f64::from(length))).log2()),
   })
 }
 

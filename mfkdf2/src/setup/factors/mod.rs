@@ -36,7 +36,8 @@ impl FactorType {
       FactorType::OOBA(ooba) => ooba,
       FactorType::Passkey(passkey) => passkey,
       FactorType::Stack(stack) => stack,
-      _ => unreachable!("Persisted factor should not be used in this context"),
+      FactorType::Persisted(_) =>
+        unreachable!("Persisted factor should not be used in this context"),
     }
   }
 }

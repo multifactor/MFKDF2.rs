@@ -77,7 +77,7 @@ mod tests {
     let stack_factor = setup_stack(factors, options).unwrap();
     // let params = stack_factor.factor_type.params_setup([0; 32]);
 
-    crate::setup::key(vec![stack_factor], MFKDF2Options::default())
+    crate::setup::key(&[stack_factor], MFKDF2Options::default())
       .expect("derived key should be created")
   }
 

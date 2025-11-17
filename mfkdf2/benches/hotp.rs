@@ -28,23 +28,21 @@ fn bench_hotp(c: &mut Criterion) {
         })
         .unwrap(),
       );
-      let result = black_box(setup::key::key(vec![factor], MFKDF2Options::default()));
+      let result = black_box(setup::key::key(&[factor], MFKDF2Options::default()));
       result.unwrap()
     })
   });
 
   // Single derive - 1 HOTP
   let single_setup_key = setup::key::key(
-    vec![
-      setup_hotp(HOTPOptions {
-        id: Some("hotp".to_string()),
-        secret: Some(SECRET20.to_vec()),
-        digits: 6,
-        hash: HashAlgorithm::Sha1,
-        ..Default::default()
-      })
-      .unwrap(),
-    ],
+    &[setup_hotp(HOTPOptions {
+      id: Some("hotp".to_string()),
+      secret: Some(SECRET20.to_vec()),
+      digits: 6,
+      hash: HashAlgorithm::Sha1,
+      ..Default::default()
+    })
+    .unwrap()],
     MFKDF2Options::default(),
   )
   .unwrap();
@@ -91,14 +89,14 @@ fn bench_hotp(c: &mut Criterion) {
         .unwrap(),
       ]);
       let options = MFKDF2Options { threshold: Some(3), ..Default::default() };
-      let result = black_box(setup::key::key(factors, options));
+      let result = black_box(setup::key::key(&factors, options));
       result.unwrap()
     })
   });
 
   // Multiple derive - 3 HOTPs (all required)
   let multiple_setup_key_3 = setup::key::key(
-    vec![
+    &[
       setup_hotp(HOTPOptions {
         id: Some("hotp1".to_string()),
         secret: Some(SECRET20.to_vec()),
@@ -145,7 +143,7 @@ fn bench_hotp(c: &mut Criterion) {
 
   // Threshold derive - 2 out of 3 HOTPs
   let threshold_setup_key = setup::key::key(
-    vec![
+    &[
       setup_hotp(HOTPOptions {
         id: Some("hotp1".to_string()),
         secret: Some(SECRET20.to_vec()),

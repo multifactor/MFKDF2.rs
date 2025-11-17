@@ -82,11 +82,12 @@ mod tests {
 
   #[test]
   fn get_hint() -> Result<(), error::MFKDF2Error> {
-    let setup_factors = vec![crate::setup::factors::password("password1", PasswordOptions {
-      id: Some("password1".to_string()),
-    })?];
-
-    let setup_key = setup::key(setup_factors, MFKDF2Options::default())?;
+    let setup_key = setup::key(
+      &[crate::setup::factors::password("password1", PasswordOptions {
+        id: Some("password1".to_string()),
+      })?],
+      MFKDF2Options::default(),
+    )?;
 
     let hint = setup_key.get_hint("password1", 7)?;
     assert!(hint.len() == 7);
@@ -126,12 +127,12 @@ mod tests {
 
   #[test]
   fn add_hint() -> Result<(), error::MFKDF2Error> {
-    let setup_factors = vec![crate::setup::factors::password("password1", PasswordOptions {
-      id: Some("password1".to_string()),
-    })?];
-
-    let mut setup_key =
-      setup::key(setup_factors, MFKDF2Options { integrity: Some(false), ..Default::default() })?;
+    let mut setup_key = setup::key(
+      &[crate::setup::factors::password("password1", PasswordOptions {
+        id: Some("password1".to_string()),
+      })?],
+      MFKDF2Options { integrity: Some(false), ..Default::default() },
+    )?;
 
     setup_key.add_hint("password1", None)?; // Default to 7 bits 
     assert!(setup_key.policy.factors[0].hint.is_some());
@@ -167,12 +168,12 @@ mod tests {
 
   #[test]
   fn coverage() -> Result<(), error::MFKDF2Error> {
-    let setup_factors = vec![crate::setup::factors::password("password1", PasswordOptions {
-      id: Some("password1".to_string()),
-    })?];
-
-    let setup_key =
-      setup::key(setup_factors, MFKDF2Options { integrity: Some(false), ..Default::default() })?;
+    let setup_key = setup::key(
+      &[crate::setup::factors::password("password1", PasswordOptions {
+        id: Some("password1".to_string()),
+      })?],
+      MFKDF2Options { integrity: Some(false), ..Default::default() },
+    )?;
 
     let result = setup_key.get_hint("password1", 0);
     assert!(matches!(result, Err(error::MFKDF2Error::InvalidHintLength(_))));
