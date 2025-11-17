@@ -78,7 +78,7 @@ pub fn hotp(code: u32) -> MFKDF2Result<MFKDF2Factor> {
       code,
       target: 0,
     }),
-    entropy:     Some(6_f64 * 10.0_f64.log2()),
+    entropy:     None,
   })
 }
 

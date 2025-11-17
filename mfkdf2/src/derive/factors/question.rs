@@ -32,7 +32,6 @@ pub fn question(answer: impl Into<String>) -> MFKDF2Result<MFKDF2Factor> {
     .replace(|c: char| !c.is_alphanumeric() && !c.is_whitespace(), "")
     .trim()
     .to_string();
-  let strength = zxcvbn(&answer, &[]);
 
   Ok(MFKDF2Factor {
     id:          None,
@@ -43,7 +42,7 @@ pub fn question(answer: impl Into<String>) -> MFKDF2Result<MFKDF2Factor> {
       params: Value::Null,
       answer,
     }),
-    entropy:     Some((strength.guesses() as f64).log2()),
+    entropy:     None,
   })
 }
 

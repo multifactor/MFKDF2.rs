@@ -141,7 +141,7 @@ pub fn totp(code: u32, options: Option<TOTPDeriveOptions>) -> MFKDF2Result<MFKDF
       code,
       target: 0,
     }),
-    entropy:     Some(0.0), // TODO (@lonerapier): is entropy used anywhere after derive?
+    entropy:     None,
   })
 }
 
