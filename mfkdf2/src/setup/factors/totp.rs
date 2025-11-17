@@ -195,7 +195,7 @@ pub fn totp(options: TOTPOptions) -> MFKDF2Result<MFKDF2Factor> {
 
   let mut secret_pad = [0u8; 12];
   crate::rng::fill_bytes(&mut secret_pad);
-  let padded_secret = secret.into_iter().chain(secret_pad.into_iter()).collect();
+  let padded_secret = secret.into_iter().chain(secret_pad).collect();
   options.secret = Some(padded_secret);
 
   let entropy = Some(options.digits as f64 * 10.0_f64.log2());

@@ -155,7 +155,7 @@ pub fn key(factors: Vec<MFKDF2Factor>, options: MFKDF2Options) -> MFKDF2Result<M
     // HKDF stretch & AES-encrypt share
     let stretched =
       hkdf_sha256_with_info(&factor.data(), &salt, format!("mfkdf2:factor:pad:{}", &id).as_bytes());
-    let pad = encrypt(&share, &stretched);
+    let pad = encrypt(share, &stretched);
 
     // Generate factor key
     let params_key =
