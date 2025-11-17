@@ -76,8 +76,8 @@ fn entropy_1_of_3_passwords() -> Result<(), mfkdf2::error::MFKDF2Error> {
   Ok(())
 }
 
-#[tokio::test]
-async fn entropy_policy_combinators() -> Result<(), mfkdf2::error::MFKDF2Error> {
+#[test]
+fn entropy_policy_combinators() -> Result<(), mfkdf2::error::MFKDF2Error> {
   // Mirrors the complex AND/OR/ANY nesting from the JS test
   let policy = mfkdf2::policy::setup::setup(
     mfkdf2::policy::logic::and(
@@ -95,8 +95,7 @@ async fn entropy_policy_combinators() -> Result<(), mfkdf2::error::MFKDF2Error> 
           mfkdf2::setup::factors::password("12345678", PasswordOptions {
             id: Some("password2".to_string()),
           })?,
-        )
-        .await?,
+        )?,
         mfkdf2::policy::logic::and(
           mfkdf2::setup::factors::password("12345678", PasswordOptions {
             id: Some("password4".to_string()),
@@ -108,14 +107,10 @@ async fn entropy_policy_combinators() -> Result<(), mfkdf2::error::MFKDF2Error> 
             mfkdf2::setup::factors::password("12345678", PasswordOptions {
               id: Some("password6".to_string()),
             })?,
-          )
-          .await?,
-        )
-        .await?,
-      ])
-      .await?,
-    )
-    .await?,
+          )?,
+        )?,
+      ])?,
+    )?,
     PolicySetupOptions::default(),
   )?;
 

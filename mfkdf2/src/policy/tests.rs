@@ -88,8 +88,8 @@ fn create_policy_derive_factor(
 #[case(vec!["password", "hotp", "totp"], 3, vec![vec!["password", "hotp", "totp"]],
 1)]
 #[case(vec!["question", "password"], 2, vec![vec!["question", "password"]], 2)]
-#[tokio::test]
-async fn policy_derivation_combinations(
+#[test]
+fn policy_derivation_combinations(
   #[case] factor_names: Vec<&str>,
   #[case] threshold: usize,
   #[case] derive_combinations: Vec<Vec<&str>>,
@@ -99,7 +99,7 @@ async fn policy_derivation_combinations(
   let factors: Vec<_> = factor_names.iter().map(|n| create_policy_factor(n, n)).collect();
 
   // Use at_least logic for threshold policies
-  let policy_factor = at_least(threshold as u8, factors).await.unwrap();
+  let policy_factor = at_least(threshold as u8, factors).unwrap();
   let setup = policy::setup::setup(policy_factor, PolicySetupOptions::default()).unwrap();
 
   let factors_policy: Policy =
@@ -117,7 +117,7 @@ async fn policy_derivation_combinations(
 }
 
 // Helper function to reduce boilerplate
-async fn create_policy_basic_1() -> policy::Policy {
+fn create_policy_basic_1() -> policy::Policy {
   let p1 = factors::password("password", factors::password::PasswordOptions {
     id: Some("id1".to_string()),
   })
@@ -134,22 +134,22 @@ async fn create_policy_basic_1() -> policy::Policy {
     factors::totp(factors::totp::TOTPOptions { id: Some("id4".to_string()), ..Default::default() })
       .unwrap();
 
-  let or1 = or(p1, q1).await.unwrap();
-  let or2 = or(h1, t1).await.unwrap();
-  let policy_factor = and(or1, or2).await.unwrap();
+  let or1 = or(p1, q1).unwrap();
+  let or2 = or(h1, t1).unwrap();
+  let policy_factor = and(or1, or2).unwrap();
 
   policy::setup::setup(policy_factor, PolicySetupOptions::default()).unwrap().policy
 }
 
-#[tokio::test]
-async fn validate_valid() {
-  let policy = create_policy_basic_1().await;
+#[test]
+fn validate_valid() {
+  let policy = create_policy_basic_1();
   assert!(policy.validate());
 }
 
-#[tokio::test]
+#[test]
 #[should_panic(expected = "DuplicateFactorId")]
-async fn validate_invalid() {
+fn validate_invalid() {
   let p1 = factors::password("password", factors::password::PasswordOptions {
     id: Some("id1".to_string()),
   })
@@ -170,16 +170,16 @@ async fn validate_invalid() {
   })
   .unwrap();
 
-  let or1 = or(p1, q1).await.unwrap();
-  let or2 = or(h1, t1).await.unwrap();
-  let policy_factor = and(or1, or2).await.unwrap();
+  let or1 = or(p1, q1).unwrap();
+  let or2 = or(h1, t1).unwrap();
+  let policy_factor = and(or1, or2).unwrap();
 
   policy::setup::setup(policy_factor, PolicySetupOptions::default()).unwrap();
 }
 
-#[tokio::test]
-async fn evaluate_basic_1() {
-  let policy = create_policy_basic_1().await;
+#[test]
+fn evaluate_basic_1() {
+  let policy = create_policy_basic_1();
 
   assert!(!policy::evaluate::evaluate(&policy, vec!["id1".to_string(), "id2".to_string()]));
   assert!(!policy::evaluate::evaluate(&policy, vec!["id3".to_string(), "id4".to_string()]));
@@ -187,7 +187,7 @@ async fn evaluate_basic_1() {
   assert!(policy::evaluate::evaluate(&policy, vec!["id2".to_string(), "id3".to_string()]));
 }
 
-async fn create_policy_basic_2() -> policy::Policy {
+fn create_policy_basic_2() -> policy::Policy {
   let p1 = factors::password("password", factors::password::PasswordOptions {
     id: Some("id1".to_string()),
   })
@@ -204,16 +204,16 @@ async fn create_policy_basic_2() -> policy::Policy {
     factors::totp(factors::totp::TOTPOptions { id: Some("id4".to_string()), ..Default::default() })
       .unwrap();
 
-  let and1 = and(p1, q1).await.unwrap();
-  let and2 = and(h1, t1).await.unwrap();
-  let policy_factor = or(and1, and2).await.unwrap();
+  let and1 = and(p1, q1).unwrap();
+  let and2 = and(h1, t1).unwrap();
+  let policy_factor = or(and1, and2).unwrap();
 
   policy::setup::setup(policy_factor, PolicySetupOptions::default()).unwrap().policy
 }
 
-#[tokio::test]
-async fn evaluate_basic_2() {
-  let policy = create_policy_basic_2().await;
+#[test]
+fn evaluate_basic_2() {
+  let policy = create_policy_basic_2();
 
   assert!(policy::evaluate::evaluate(&policy, vec!["id1".to_string(), "id2".to_string()]));
   assert!(policy::evaluate::evaluate(&policy, vec!["id3".to_string(), "id4".to_string()]));
@@ -221,8 +221,8 @@ async fn evaluate_basic_2() {
   assert!(!policy::evaluate::evaluate(&policy, vec!["id2".to_string(), "id3".to_string()]));
 }
 
-#[tokio::test]
-async fn derive_all() {
+#[test]
+fn derive_all() {
   let setup = policy::setup::setup(
     all(vec![
       factors::password("password1", factors::password::PasswordOptions {
@@ -239,7 +239,6 @@ async fn derive_all() {
       })
       .unwrap(),
     ])
-    .await
     .unwrap(),
     PolicySetupOptions::default(),
   )
@@ -258,8 +257,8 @@ async fn derive_all() {
   assert_eq!(derived.key, setup.key);
 }
 
-#[tokio::test]
-async fn derive_any() {
+#[test]
+fn derive_any() {
   let setup = policy::setup::setup(
     any(vec![
       factors::password("password1", factors::password::PasswordOptions {
@@ -276,7 +275,6 @@ async fn derive_any() {
       })
       .unwrap(),
     ])
-    .await
     .unwrap(),
     PolicySetupOptions::default(),
   )
@@ -291,8 +289,8 @@ async fn derive_any() {
   assert_eq!(derived.key, setup.key);
 }
 
-#[tokio::test]
-async fn derive_at_least() {
+#[test]
+fn derive_at_least() {
   let setup = policy::setup::setup(
     at_least(2, vec![
       factors::password("password", factors::password::PasswordOptions {
@@ -310,7 +308,6 @@ async fn derive_at_least() {
       })
       .unwrap(),
     ])
-    .await
     .unwrap(),
     PolicySetupOptions::default(),
   )
@@ -328,8 +325,8 @@ async fn derive_at_least() {
   assert_eq!(derived.key, setup.key);
 }
 
-#[tokio::test]
-async fn derive_basic_1() {
+#[test]
+fn derive_basic_1() {
   let p1 = factors::password("password", factors::password::PasswordOptions {
     id: Some("id1".to_string()),
   })
@@ -348,9 +345,9 @@ async fn derive_basic_1() {
   })
   .unwrap();
 
-  let or1 = or(p1, q1).await.unwrap();
-  let or2 = or(p3, p4).await.unwrap();
-  let policy_factor = and(or1, or2).await.unwrap();
+  let or1 = or(p1, q1).unwrap();
+  let or2 = or(p3, p4).unwrap();
+  let policy_factor = and(or1, or2).unwrap();
 
   let setup = policy::setup::setup(policy_factor, PolicySetupOptions::default()).unwrap();
 
@@ -399,8 +396,8 @@ async fn derive_basic_1() {
   assert_eq!(derive4.key, setup.key);
 }
 
-#[tokio::test]
-async fn derive_basic_2() {
+#[test]
+fn derive_basic_2() {
   let p1 = factors::password("password", factors::password::PasswordOptions {
     id: Some("id1".to_string()),
   })
@@ -419,9 +416,9 @@ async fn derive_basic_2() {
   })
   .unwrap();
 
-  let and1 = and(p1, q1).await.unwrap();
-  let and2 = and(p3, p4).await.unwrap();
-  let policy_factor = or(and1, and2).await.unwrap();
+  let and1 = and(p1, q1).unwrap();
+  let and2 = and(p3, p4).unwrap();
+  let policy_factor = or(and1, and2).unwrap();
 
   let setup = policy::setup::setup(policy_factor, PolicySetupOptions::default()).unwrap();
 
@@ -448,8 +445,8 @@ async fn derive_basic_2() {
   assert_eq!(derive2.key, setup.key);
 }
 
-#[tokio::test]
-async fn derive_deep() {
+#[test]
+fn derive_deep() {
   let p1 = factors::password("password", factors::password::PasswordOptions {
     id: Some("id1".to_string()),
   })
@@ -477,11 +474,11 @@ async fn derive_deep() {
   })
   .unwrap();
 
-  let or1 = or(q2, q3).await.unwrap();
-  let or2 = or(p5, p6).await.unwrap();
-  let and1 = and(p4, or2).await.unwrap();
-  let and2 = and(or1, and1).await.unwrap();
-  let policy_factor = and(p1, and2).await.unwrap();
+  let or1 = or(q2, q3).unwrap();
+  let or2 = or(p5, p6).unwrap();
+  let and1 = and(p4, or2).unwrap();
+  let and2 = and(or1, and1).unwrap();
+  let policy_factor = and(p1, and2).unwrap();
 
   let setup = policy::setup::setup(policy_factor, PolicySetupOptions::default()).unwrap();
 
@@ -499,9 +496,9 @@ async fn derive_deep() {
   assert_eq!(derive.key, setup.key);
 }
 
-#[tokio::test]
+#[test]
 #[should_panic(expected = "DuplicateFactorId")]
-async fn errors_invalid_policy() {
+fn errors_invalid_policy() {
   let p1 = factors::password("password", factors::password::PasswordOptions {
     id: Some("id1".to_string()),
   })
@@ -516,8 +513,8 @@ async fn errors_invalid_policy() {
   })
   .unwrap();
 
-  let or1 = or(p1_dup, q2).await.unwrap();
-  let and1 = and(p1, or1).await.unwrap();
+  let or1 = or(p1_dup, q2).unwrap();
+  let and1 = and(p1, or1).unwrap();
 
   // This setup should fail because `derive` calls `policy.validate()`
   let setup = policy::setup::setup(and1, PolicySetupOptions::default()).unwrap();
@@ -525,9 +522,9 @@ async fn errors_invalid_policy() {
   policy::derive::derive(setup.policy.clone(), HashMap::new(), None).unwrap();
 }
 
-#[tokio::test]
+#[test]
 #[should_panic(expected = "InvalidThreshold")]
-async fn errors_invalid_factors() {
+fn errors_invalid_factors() {
   let p1 = factors::password("password", factors::password::PasswordOptions {
     id: Some("id1".to_string()),
   })
@@ -537,7 +534,7 @@ async fn errors_invalid_factors() {
     question: Some("?".to_string()),
   })
   .unwrap();
-  let policy_factor = and(p1, q2).await.unwrap();
+  let policy_factor = and(p1, q2).unwrap();
   let setup = policy::setup::setup(policy_factor, PolicySetupOptions::default()).unwrap();
 
   // Not enough factors to satisfy the policy

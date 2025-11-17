@@ -28,14 +28,13 @@ fn generate_totp_code(secret: &[u8], step: u64, hash: &HashAlgorithm, digits: u8
   generate_hotp_code(secret, counter, hash, digits)
 }
 
-#[tokio::test]
-async fn factor_fungibility_correct() -> Result<(), MFKDF2Error> {
+#[test]
+fn factor_fungibility_correct() -> Result<(), MFKDF2Error> {
   let setup = policy::setup::setup(
     policy::logic::and(
       setup::factors::password("password1", PasswordOptions { id: Some("password1".to_string()) })?,
       setup::factors::password("password2", PasswordOptions { id: Some("password2".to_string()) })?,
-    )
-    .await?,
+    )?,
     PolicySetupOptions::default(),
   )?;
 
@@ -53,8 +52,8 @@ async fn factor_fungibility_correct() -> Result<(), MFKDF2Error> {
   Ok(())
 }
 
-#[tokio::test]
-async fn factor_fungibility_incorrect() {
+#[test]
+fn factor_fungibility_incorrect() {
   let setup = policy::setup::setup(
     policy::logic::and(
       setup::factors::password("password1", PasswordOptions { id: Some("password1".to_string()) })
@@ -62,7 +61,6 @@ async fn factor_fungibility_incorrect() {
       setup::factors::password("password2", PasswordOptions { id: Some("password2".to_string()) })
         .unwrap(),
     )
-    .await
     .unwrap(),
     PolicySetupOptions::default(),
   )
@@ -81,8 +79,8 @@ async fn factor_fungibility_incorrect() {
   assert_ne!(derive.key, setup.key);
 }
 
-#[tokio::test]
-async fn share_indistinguishability_share_size() -> Result<(), MFKDF2Error> {
+#[test]
+fn share_indistinguishability_share_size() -> Result<(), MFKDF2Error> {
   let mut secret = [0u8; 32];
   mfkdf2::rng::fill_bytes(&mut secret);
 
@@ -91,8 +89,8 @@ async fn share_indistinguishability_share_size() -> Result<(), MFKDF2Error> {
   Ok(())
 }
 
-#[tokio::test]
-async fn share_encryption_correct() -> Result<(), MFKDF2Error> {
+#[test]
+fn share_encryption_correct() -> Result<(), MFKDF2Error> {
   // Setup with two password factors using direct key setup
   let setup = setup::key::key(
     vec![
@@ -177,8 +175,8 @@ async fn share_encryption_correct() -> Result<(), MFKDF2Error> {
   Ok(())
 }
 
-#[tokio::test]
-async fn factor_secret_encryption_hotp() -> Result<(), MFKDF2Error> {
+#[test]
+fn factor_secret_encryption_hotp() -> Result<(), MFKDF2Error> {
   // Setup HOTP factor with specific secret
   let secret = b"abcdefghijklmnopqrst".to_vec();
   let setup = setup::key::key(
@@ -217,8 +215,8 @@ async fn factor_secret_encryption_hotp() -> Result<(), MFKDF2Error> {
   Ok(())
 }
 
-#[tokio::test]
-async fn factor_secret_encryption_totp() -> Result<(), MFKDF2Error> {
+#[test]
+fn factor_secret_encryption_totp() -> Result<(), MFKDF2Error> {
   // Setup TOTP factor with specific secret and time
   let secret = b"abcdefghijklmnopqrst".to_vec();
   let setup = setup::key::key(
@@ -264,8 +262,8 @@ async fn factor_secret_encryption_totp() -> Result<(), MFKDF2Error> {
   Ok(())
 }
 
-#[tokio::test]
-async fn totp_dynamic_no_oracle() -> Result<(), MFKDF2Error> {
+#[test]
+fn totp_dynamic_no_oracle() -> Result<(), MFKDF2Error> {
   // Setup TOTP factor with default options
   let setup = setup::key::key(
     vec![setup::factors::totp::totp(TOTPOptions::default())?],
@@ -326,8 +324,8 @@ async fn totp_dynamic_no_oracle() -> Result<(), MFKDF2Error> {
   Ok(())
 }
 
-#[tokio::test]
-async fn totp_dynamic_valid_fixed_oracle() {
+#[test]
+fn totp_dynamic_valid_fixed_oracle() {
   // Create oracle with fixed values for 87600 steps (30 seconds each)
   let mut oracle = HashMap::new();
   let now = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_millis() as u64;
@@ -425,8 +423,8 @@ async fn totp_dynamic_valid_fixed_oracle() {
   assert_eq!(derive3.key, setup.key);
 }
 
-#[tokio::test]
-async fn totp_dynamic_invalid_fixed_oracle() {
+#[test]
+fn totp_dynamic_invalid_fixed_oracle() {
   // Create oracle with fixed values for 87600 steps (30 seconds each)
   let mut oracle = HashMap::new();
   let now = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_millis() as u64;
@@ -533,8 +531,8 @@ async fn totp_dynamic_invalid_fixed_oracle() {
   assert_ne!(derive3.key, setup.key);
 }
 
-#[tokio::test]
-async fn totp_dynamic_valid_dynamic_oracle() {
+#[test]
+fn totp_dynamic_valid_dynamic_oracle() {
   // Create oracle with dynamic values for 87600 steps (30 seconds each)
   let mut oracle = HashMap::new();
   let now = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_millis() as u64;
@@ -634,8 +632,8 @@ async fn totp_dynamic_valid_dynamic_oracle() {
   assert_eq!(derive3.key, setup.key);
 }
 
-#[tokio::test]
-async fn totp_dynamic_invalid_dynamic_oracle() {
+#[test]
+fn totp_dynamic_invalid_dynamic_oracle() {
   // Create oracle with dynamic values for 87600 steps (30 seconds each)
   let mut oracle = HashMap::new();
   let mut date = 1650430806597u64;
