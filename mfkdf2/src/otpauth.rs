@@ -282,7 +282,7 @@ mod tests {
     let digits = 6;
 
     let code = generate_hotp_code(secret, counter, &hash, digits);
-    assert!(code < 10_u32.pow(digits as u32));
+    assert!(code < 10_u32.pow(digits));
 
     // Same inputs should produce same output
     let code2 = generate_hotp_code(secret, counter, &hash, digits);

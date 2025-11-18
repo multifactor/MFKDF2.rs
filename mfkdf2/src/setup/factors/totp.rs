@@ -149,10 +149,8 @@ impl FactorSetup for TOTP {
         self.config.digits,
       );
 
-      let mut offset = mod_positive(
-        i64::from(self.target) - i64::from(code),
-        10_i64.pow(u32::from(self.config.digits)),
-      );
+      let mut offset =
+        mod_positive(i64::from(self.target) - i64::from(code), 10_i64.pow(self.config.digits));
 
       let oracle_time = counter * self.config.step * 1000;
       if self.config.oracle.is_some()
@@ -161,7 +159,7 @@ impl FactorSetup for TOTP {
         offset = mod_positive(
           i64::from(offset)
             + i64::from(*self.config.oracle.as_ref().unwrap().get(&oracle_time).unwrap()),
-          10_i64.pow(u32::from(self.config.digits)),
+          10_i64.pow(self.config.digits),
         );
       }
 
@@ -222,7 +220,7 @@ pub fn totp(options: TOTPOptions) -> MFKDF2Result<MFKDF2Factor> {
   let id = options.id.clone().unwrap_or("totp".to_string());
 
   if let Some(digits) = options.digits
-    && (digits < 6 || digits > 8)
+    && !(6..=8).contains(&digits)
   {
     return Err(crate::error::MFKDF2Error::InvalidTOTPDigits);
   }
@@ -246,7 +244,7 @@ pub fn totp(options: TOTPOptions) -> MFKDF2Result<MFKDF2Factor> {
   }
 
   // Generate random target
-  let target = crate::rng::gen_range_u32(10_u32.pow(u32::from(options.digits.unwrap())) - 1);
+  let target = crate::rng::gen_range_u32(10_u32.pow(options.digits.unwrap()) - 1);
 
   let mut secret_pad = [0u8; 12];
   crate::rng::fill_bytes(&mut secret_pad);

@@ -76,13 +76,11 @@ impl FactorDerive for TOTP {
       offset = mod_positive(
         i64::from(offset)
           - i64::from(*self.config.oracle.as_ref().unwrap().get(&oracle_time).unwrap()),
-        10_i64.pow(u32::from(params.digits)),
+        10_i64.pow(params.digits),
       );
     }
-    self.target = mod_positive(
-      i64::from(offset) + i64::from(self.code),
-      10_i64.pow(u32::from(self.config.digits)),
-    );
+    self.target =
+      mod_positive(i64::from(offset) + i64::from(self.code), 10_i64.pow(self.config.digits));
 
     Ok(())
   }

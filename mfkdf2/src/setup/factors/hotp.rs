@@ -111,10 +111,8 @@ impl FactorSetup for HOTP {
       generate_hotp_code(&self.config.secret[..20], 1, &self.config.hash, self.config.digits);
 
     // Calculate offset
-    let offset = mod_positive(
-      i64::from(self.target) - i64::from(code),
-      10_i64.pow(u32::from(self.config.digits)),
-    );
+    let offset =
+      mod_positive(i64::from(self.target) - i64::from(code), 10_i64.pow(self.config.digits));
 
     let pad = encrypt(&self.config.secret, &key.0);
 
@@ -172,7 +170,7 @@ pub fn hotp(options: HOTPOptions) -> MFKDF2Result<MFKDF2Factor> {
   let id = options.id.clone().unwrap_or("hotp".to_string());
 
   if let Some(digits) = options.digits
-    && (digits < 6 || digits > 8)
+    && !(6..=8).contains(&digits)
   {
     return Err(crate::error::MFKDF2Error::InvalidHOTPDigits);
   }
@@ -192,7 +190,7 @@ pub fn hotp(options: HOTPOptions) -> MFKDF2Result<MFKDF2Factor> {
   });
 
   // Generate random target
-  let target = crate::rng::gen_range_u32(10_u32.pow(u32::from(options.digits.unwrap())) - 1);
+  let target = crate::rng::gen_range_u32(10_u32.pow(options.digits.unwrap()) - 1);
 
   // Pad secret to 32 bytes
   let mut secret_pad = [0u8; 12];
@@ -368,7 +366,7 @@ mod tests {
 
     let expected_offset = mod_positive(
       i64::from(hotp_factor.target) - i64::from(code),
-      10_i64.pow(u32::from(hotp_factor.config.digits)),
+      10_i64.pow(hotp_factor.config.digits),
     );
 
     assert_eq!(offset, expected_offset);

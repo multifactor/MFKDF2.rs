@@ -138,8 +138,8 @@ fn share_encryption_correct() -> Result<(), MFKDF2Error> {
 
   // Get the first factor's material and compute the share manually
   let materialp1 = derive::factors::password("password1")?;
-  let padp1 = general_purpose::STANDARD.decode(&&setup.policy.factors[0].pad)?;
-  let salt_bytes = general_purpose::STANDARD.decode(&&setup.policy.factors[0].salt)?;
+  let padp1 = general_purpose::STANDARD.decode(&setup.policy.factors[0].pad)?;
+  let salt_bytes = general_purpose::STANDARD.decode(&setup.policy.factors[0].salt)?;
   let stretchedp1 = hkdf_sha256_with_info(&materialp1.data(), &salt_bytes, &[]);
   let sharep1 = xor(&padp1, &stretchedp1);
 

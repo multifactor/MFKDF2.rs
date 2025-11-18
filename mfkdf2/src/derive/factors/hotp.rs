@@ -25,7 +25,7 @@ impl FactorDerive for HOTP {
       let offset = params.offset;
 
       let digits = params.digits;
-      let modulus = 10_u64.pow(u32::from(digits));
+      let modulus = 10_u64.pow(digits);
       let target = (u64::from(offset) + u64::from(self.code)) % modulus;
 
       // Store target as 4-byte big-endian (matches JS implementation)
@@ -48,10 +48,8 @@ impl FactorDerive for HOTP {
       generate_hotp_code(&padded_secret[..20], counter, &params.hash, params.digits);
 
     // Calculate new offset
-    let new_offset = mod_positive(
-      i64::from(self.target) - i64::from(generated_code),
-      10_i64.pow(u32::from(params.digits)),
-    );
+    let new_offset =
+      mod_positive(i64::from(self.target) - i64::from(generated_code), 10_i64.pow(params.digits));
 
     Ok(json!({
       "hash": params.hash.to_string(),
@@ -120,7 +118,7 @@ mod tests {
     let expected_target = u32::from_be_bytes(factor.data().try_into().unwrap());
 
     // Verify the relationship: target = (offset + correct_code) % 10^digits
-    let modulus = 10_u32.pow(u32::from(hotp.config.digits));
+    let modulus = 10_u32.pow(hotp.config.digits);
     assert_eq!(expected_target, (offset + correct_code) % modulus);
 
     // Derive phase - user provides the correct HOTP code
