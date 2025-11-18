@@ -132,7 +132,7 @@ mod tests {
     setup_key.entropy.theoretical = 0;
 
     let derive = derive::key(
-      setup.policy,
+      &setup.policy,
       HashMap::from([(
         "stack".to_string(),
         derive::factors::stack(HashMap::from([
@@ -192,7 +192,7 @@ mod tests {
     let response = crate::crypto::hmacsha1(&secret, &challenge);
 
     let derive = derive::key(
-      setup.policy.clone(),
+      &setup.policy,
       HashMap::from([(
         "hmacsha1".to_string(),
         derive::factors::hmacsha1(HmacSha1Response::from(response)).unwrap(),
@@ -218,7 +218,7 @@ mod tests {
     .unwrap();
 
     let derive = derive::key(
-      setup.policy,
+      &setup.policy,
       HashMap::from([(
         "uuid".to_string(),
         derive::factors::uuid(
@@ -247,7 +247,7 @@ mod tests {
     .unwrap();
 
     let derive = derive::key(
-      setup.policy,
+      &setup.policy,
       HashMap::from([("question".to_string(), derive::factors::question("Fido").unwrap())]),
       true,
       false,
@@ -304,7 +304,7 @@ mod tests {
     let code = decrypted["code"].as_str().unwrap();
 
     let derive = derive::key(
-      setup.policy,
+      &setup.policy,
       HashMap::from([("ooba".to_string(), derive::factors::ooba::ooba(code.to_string()).unwrap())]),
       true,
       false,
@@ -327,7 +327,7 @@ mod tests {
     .unwrap();
 
     let derive = derive::key(
-      setup.policy,
+      &setup.policy,
       HashMap::from([("password".to_string(), derive::factors::password("password").unwrap())]),
       true,
       false,
@@ -375,7 +375,7 @@ mod tests {
     );
 
     let derive = derive::key(
-      setup.policy,
+      &setup.policy,
       HashMap::from([
         (
           "uuid1".to_string(),

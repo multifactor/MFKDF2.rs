@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, fmt::Write};
 
 use argon2::{Argon2, Params, Version};
 use base64::{Engine, engine::general_purpose};
@@ -14,7 +14,7 @@ use crate::{
 };
 
 pub fn key(
-  policy: Policy,
+  policy: &Policy,
   factors: HashMap<String, MFKDF2Factor>,
   verify: bool,
   stack: bool,
@@ -24,13 +24,10 @@ pub fn key(
   let mut factors = factors;
   let mut new_policy = policy.clone();
 
-  for factor in new_policy.factors.iter_mut() {
-    let material = match factors.get_mut(factor.id.as_str()) {
-      Some(material) => material,
-      None => {
-        shares_bytes.push(None);
-        continue;
-      },
+  for factor in &mut new_policy.factors {
+    let Some(material) = factors.get_mut(factor.id.as_str()) else {
+      shares_bytes.push(None);
+      continue;
     };
 
     if material.kind() == "persisted" {
@@ -58,8 +55,10 @@ pub fn key(
           format!("mfkdf2:factor:hint:{}", factor.id).as_bytes(),
         );
 
-        let binary_string: String =
-          buffer.iter().map(|byte| format!("{:08b}", byte)).collect::<Vec<_>>().join("");
+        let binary_string = buffer.iter().fold(String::new(), |mut acc, byte| {
+          write!(&mut acc, "{:08b}", byte).unwrap();
+          acc
+        });
 
         // Take the last `hint_len` characters
         let hint = binary_string
@@ -121,10 +120,9 @@ pub fn key(
   let policy_key_bytes = general_purpose::STANDARD.decode(policy.key.as_bytes())?;
   let key = decrypt(policy_key_bytes, &kek);
 
-  for factor in new_policy.factors.iter_mut() {
-    let material = match factors.get(factor.id.as_str()) {
-      Some(material) => material,
-      None => continue,
+  for factor in &mut new_policy.factors {
+    let Some(material) = factors.get(factor.id.as_str()) else {
+      continue;
     };
 
     let params_key = hkdf_sha256_with_info(
@@ -171,7 +169,7 @@ pub fn key(
 
 #[cfg_attr(feature = "bindings", uniffi::export(default(verify = true, stack = false)))]
 pub async fn derive_key(
-  policy: Policy,
+  policy: &Policy,
   factors: HashMap<String, MFKDF2Factor>,
   verify: bool,
   stack: bool,
@@ -271,9 +269,9 @@ mod tests {
     derive_factors_map.insert("pwd".to_string(), derive_factor);
 
     let derived_key =
-      key(setup_derived_key.policy.clone(), derive_factors_map.clone(), false, false).unwrap();
+      key(&setup_derived_key.policy, derive_factors_map.clone(), false, false).unwrap();
 
-    let derived_key2 = key(derived_key.policy, derive_factors_map, false, false).unwrap();
+    let derived_key2 = key(&derived_key.policy, derive_factors_map, false, false).unwrap();
 
     // Assertions
     assert_eq!(derived_key.secret, setup_derived_key.secret);
@@ -325,8 +323,7 @@ mod tests {
     derive_hmac_factor.id = Some("hmac".to_string());
     derive_factors_map.insert("hmac".to_string(), derive_hmac_factor);
 
-    let derived_key =
-      key(setup_derived_key.policy.clone(), derive_factors_map, false, false).unwrap();
+    let derived_key = key(&setup_derived_key.policy, derive_factors_map, false, false).unwrap();
 
     // Assertions
     assert_eq!(derived_key.key, setup_derived_key.key);
@@ -407,8 +404,7 @@ mod tests {
     derive_ooba_factor.id = Some("ooba".to_string());
     derive_factors_map.insert("ooba".to_string(), derive_ooba_factor);
 
-    let derived_key =
-      key(setup_derived_key.policy.clone(), derive_factors_map, true, false).unwrap();
+    let derived_key = key(&setup_derived_key.policy, derive_factors_map, true, false).unwrap();
 
     // Assertions
     assert_eq!(derived_key.key, setup_derived_key.key);
@@ -459,7 +455,7 @@ mod tests {
     derive_ooba_factor.id = Some("ooba".to_string());
     derive_factors_map.insert("ooba".to_string(), derive_ooba_factor);
 
-    let derived_key2 = key(derived_key.policy, derive_factors_map, true, false).unwrap();
+    let derived_key2 = key(&derived_key.policy, derive_factors_map, true, false).unwrap();
 
     // Assertions
     assert_eq!(derived_key.key, derived_key2.key);
@@ -515,8 +511,7 @@ mod tests {
     derive_factors_map.insert("hotp".to_string(), derive_hotp_factor);
 
     // We are only providing 2 out of 3 factors
-    let derived_key =
-      key(setup_derived_key.policy.clone(), derive_factors_map, false, false).unwrap();
+    let derived_key = key(&setup_derived_key.policy, derive_factors_map, false, false).unwrap();
 
     // Assertions
     assert_eq!(derived_key.key, setup_derived_key.key);
@@ -601,8 +596,7 @@ mod tests {
     derive_factors_map.insert("hotp".to_string(), derive_hotp_factor);
 
     // We are only providing 3 out of 5 factors
-    let derived_key =
-      key(setup_derived_key.policy.clone(), derive_factors_map, false, false).unwrap();
+    let derived_key = key(&setup_derived_key.policy, derive_factors_map, false, false).unwrap();
 
     // Assertions
     assert_eq!(derived_key.key, setup_derived_key.key);
@@ -634,8 +628,7 @@ mod tests {
     derive_password_factor.id = Some("pwd2".to_string());
     derive_factors_map.insert("pwd2".to_string(), derive_password_factor);
 
-    let derived_key =
-      key(setup_derived_key.policy.clone(), derive_factors_map, true, false).unwrap();
+    let derived_key = key(&setup_derived_key.policy, derive_factors_map, true, false).unwrap();
 
     // Assertions
     assert_eq!(derived_key.shares, setup_derived_key.shares);
@@ -652,8 +645,7 @@ mod tests {
     derive_password_factor.id = Some("pwd2".to_string());
     derive_factors_map.insert("pwd2".to_string(), derive_password_factor);
 
-    let derived_key =
-      key(setup_derived_key.policy.clone(), derive_factors_map, true, false).unwrap();
+    let derived_key = key(&setup_derived_key.policy, derive_factors_map, true, false).unwrap();
 
     // Assertions
     assert_eq!(derived_key.shares, setup_derived_key.shares);
@@ -671,7 +663,7 @@ mod tests {
     let hotp = setup_derived_key.persist_factor("hotp");
 
     let derive = derive::key(
-      setup_derived_key.policy,
+      &setup_derived_key.policy,
       HashMap::from([
         ("hotp".to_string(), persisted(hotp)?),
         ("password".to_string(), derive_password("password")?),
@@ -692,7 +684,7 @@ mod tests {
       setup::key::key(&[setup_passkey(prf, PasskeyOptions::default())?], MFKDF2Options::default())?;
 
     let derive = derive::key(
-      setup_derived_key.policy,
+      &setup_derived_key.policy,
       HashMap::from([("passkey".to_string(), derive_passkey(prf)?)]),
       true,
       false,
@@ -713,7 +705,7 @@ mod tests {
     OsRng.fill_bytes(&mut prf2);
 
     let derive = derive::key(
-      setup_derived_key.policy,
+      &setup_derived_key.policy,
       HashMap::from([("passkey".to_string(), derive_passkey(prf2)?)]),
       false,
       false,

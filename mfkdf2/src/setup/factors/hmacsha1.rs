@@ -88,7 +88,7 @@ pub fn hmacsha1(options: HmacSha1Options) -> MFKDF2Result<MFKDF2Factor> {
   }
   let mut secret_pad = [0u8; 12];
   rng::fill_bytes(&mut secret_pad);
-  let padded_secret = secret.iter().chain(secret_pad.iter()).cloned().collect();
+  let padded_secret = secret.into_iter().chain(secret_pad).collect();
 
   Ok(MFKDF2Factor {
     id:          Some(id),

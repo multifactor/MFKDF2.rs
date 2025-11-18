@@ -79,7 +79,7 @@ pub fn question(answer: impl Into<String>, options: QuestionOptions) -> MFKDF2Re
 
   let mut options = options;
   options.question = Some(question);
-  options.id = id.clone();
+  options.id.clone_from(&id);
 
   Ok(MFKDF2Factor {
     id,

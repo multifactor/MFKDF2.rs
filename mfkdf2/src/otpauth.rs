@@ -1,3 +1,5 @@
+use std::fmt::Write;
+
 use data_encoding::{BASE32_NOPAD, HEXLOWER};
 use hmac::{Hmac, Mac};
 use serde::{Deserialize, Serialize};
@@ -125,13 +127,13 @@ pub fn otpauth_url(options: &OtpauthUrlOptions) -> Result<String, MFKDF2Error> {
   let mut url = format!("otpauth://{kind}/{label}?secret={secret}");
 
   if let Some(issuer) = issuer {
-    url.push_str(&format!("&issuer={issuer}"));
+    write!(&mut url, "&issuer={issuer}")?;
   }
 
-  url.push_str(&format!("&algorithm={alg}&digits={digits}"));
+  write!(&mut url, "&algorithm={alg}&digits={digits}")?;
 
   if matches!(kind, Kind::Totp) {
-    url.push_str(&format!("&period={period}"));
+    write!(&mut url, "&period={period}")?;
   }
   // TODO (@lonerapier): speakeasy doesn't add counter to the url for hotp
   // else {
@@ -165,12 +167,12 @@ pub fn generate_hotp_code(secret: &[u8], counter: u64, hash: &HashAlgorithm, dig
 
   // Dynamic truncation as per RFC 4226
   let offset = (digest[digest.len() - 1] & 0xf) as usize;
-  let code = ((digest[offset] & 0x7f) as u32) << 24
-    | (digest[offset + 1] as u32) << 16
-    | (digest[offset + 2] as u32) << 8
-    | (digest[offset + 3] as u32);
+  let code = (u32::from(digest[offset] & 0x7f) << 24)
+    | (u32::from(digest[offset + 1]) << 16)
+    | (u32::from(digest[offset + 2]) << 8)
+    | u32::from(digest[offset + 3]);
 
-  code % (10_u32.pow(digits as u32))
+  code % 10_u32.pow(u32::from(digits))
 }
 
 #[cfg(test)]

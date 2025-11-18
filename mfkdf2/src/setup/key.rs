@@ -75,13 +75,12 @@ pub fn key(factors: &[MFKDF2Factor], options: MFKDF2Options) -> MFKDF2Result<MFK
   }
 
   // Generate salt & secret if not provided
-  let salt: Vec<u8> = match options.salt {
-    Some(salt) => salt,
-    None => {
-      let mut salt = [0u8; 32];
-      crate::rng::fill_bytes(&mut salt);
-      salt.to_vec()
-    },
+  let salt: Vec<u8> = if let Some(salt) = options.salt {
+    salt
+  } else {
+    let mut salt = [0u8; 32];
+    crate::rng::fill_bytes(&mut salt);
+    salt.to_vec()
   };
 
   let policy_id = if let Some(id) = options.id.clone() {
@@ -110,7 +109,7 @@ pub fn key(factors: &[MFKDF2Factor], options: MFKDF2Options) -> MFKDF2Result<MFK
   let mut kek = [0u8; 32];
   if options.stack.unwrap_or(false) {
     // stack key
-    kek = hkdf_sha256_with_info(&secret, &salt, format!("mfkdf2:stack:{}", policy_id).as_bytes());
+    kek = hkdf_sha256_with_info(&secret, &salt, format!("mfkdf2:stack:{policy_id}").as_bytes());
   } else {
     // default key
     Argon2::new(
@@ -154,19 +153,19 @@ pub fn key(factors: &[MFKDF2Factor], options: MFKDF2Options) -> MFKDF2Result<MFK
 
     // HKDF stretch & AES-encrypt share
     let stretched =
-      hkdf_sha256_with_info(&factor.data(), &salt, format!("mfkdf2:factor:pad:{}", &id).as_bytes());
+      hkdf_sha256_with_info(&factor.data(), &salt, format!("mfkdf2:factor:pad:{id}").as_bytes());
     let pad = encrypt(share, &stretched);
 
     // Generate factor key
     let params_key =
-      hkdf_sha256_with_info(&key, &salt, format!("mfkdf2:factor:params:{}", &id).as_bytes());
+      hkdf_sha256_with_info(&key, &salt, format!("mfkdf2:factor:params:{id}").as_bytes());
 
     let params = factor.factor_type.setup().params(params_key.into())?;
     // TODO (autoparallel): This should not be an unwrap.
     outputs.insert(id.clone(), factor.factor_type.output());
 
     let secret_key =
-      hkdf_sha256_with_info(&key, &salt, format!("mfkdf2:factor:secret:{}", &id).as_bytes());
+      hkdf_sha256_with_info(&key, &salt, format!("mfkdf2:factor:secret:{id}").as_bytes());
     let factor_secret = encrypt(&stretched, &secret_key);
 
     // Record entropy statistics (in bits) for this factor.
@@ -191,7 +190,7 @@ pub fn key(factors: &[MFKDF2Factor], options: MFKDF2Options) -> MFKDF2Result<MFK
     threshold,
     salt: general_purpose::STANDARD.encode(&salt),
     factors: policy_factors,
-    hmac: "".to_string(),
+    hmac: String::new(),
     time,
     memory,
     key: general_purpose::STANDARD.encode(policy_key),

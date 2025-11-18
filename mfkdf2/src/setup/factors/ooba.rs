@@ -14,11 +14,12 @@ use crate::{
 };
 
 #[inline]
+#[must_use]
 pub fn generate_alphanumeric_characters(length: u32) -> String {
   (0..length)
     .map(|_| {
       let n: u8 = crate::rng::gen_range_u8(36); // 0–35
-      char::from_digit(n as u32, 36).unwrap() // base-36 => 0–9, a–z
+      char::from_digit(u32::from(n), 36).unwrap() // base-36 => 0–9, a–z
     })
     .collect()
 }

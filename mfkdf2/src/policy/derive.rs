@@ -34,7 +34,7 @@ fn expand(
 }
 
 pub fn derive(
-  policy: Policy,
+  policy: &Policy,
   factors: &HashMap<String, MFKDF2Factor>,
   verify: Option<bool>,
 ) -> MFKDF2Result<MFKDF2DerivedKey> {
@@ -43,18 +43,18 @@ pub fn derive(
   }
 
   let factor_set: HashSet<String> = factors.keys().cloned().collect();
-  if !evaluate_internal(&policy, &factor_set) {
+  if !evaluate_internal(policy, &factor_set) {
     return Err(MFKDF2Error::InvalidThreshold);
   }
 
-  let expanded_factors = expand(&policy, &factors, &factor_set)?;
+  let expanded_factors = expand(policy, factors, &factor_set)?;
 
-  crate::derive::key::key(&policy, expanded_factors, verify.unwrap_or(true), false)
+  crate::derive::key::key(policy, expanded_factors, verify.unwrap_or(true), false)
 }
 
 #[cfg_attr(feature = "bindings", uniffi::export)]
 pub async fn policy_derive(
-  policy: Policy,
+  policy: &Policy,
   factors: &HashMap<String, MFKDF2Factor>,
   verify: Option<bool>,
 ) -> MFKDF2Result<MFKDF2DerivedKey> {

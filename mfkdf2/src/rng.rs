@@ -53,7 +53,9 @@ mod rng_impl {
   pub fn fill_bytes(dst: &mut [u8]) { OsRng.fill_bytes(dst); }
   pub fn next_u32() -> u32 { OsRng.next_u32() }
   pub fn gen_range_u32(max: u32) -> u32 { if max == 0 { 0 } else { next_u32() % max } }
-  pub fn gen_range_u8(max: u8) -> u8 { if max == 0 { 0 } else { (next_u32() % max as u32) as u8 } }
+  pub fn gen_range_u8(max: u8) -> u8 {
+    if max == 0 { 0 } else { (next_u32() % u32::from(max)) as u8 }
+  }
 }
 
 pub use rng_impl::*;

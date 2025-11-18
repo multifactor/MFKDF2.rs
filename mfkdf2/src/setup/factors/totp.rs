@@ -13,7 +13,7 @@ use crate::{
   definitions::{FactorMetadata, FactorType, Key, MFKDF2Factor},
   error::{MFKDF2Error, MFKDF2Result},
   otpauth::{self, HashAlgorithm, OtpauthUrlOptions, generate_hotp_code},
-  setup::FactorSetup,
+  setup::{FactorSetup, factors::hotp::mod_positive},
 };
 
 #[cfg_attr(feature = "bindings", derive(uniffi::Record))]
@@ -71,8 +71,6 @@ pub struct TOTP {
   pub target:  u32,
 }
 
-fn mod_positive(n: i64, m: i64) -> i64 { ((n % m) + m) % m }
-
 impl FactorMetadata for TOTP {
   fn kind(&self) -> String { "totp".to_string() }
 
@@ -99,18 +97,20 @@ impl FactorSetup for TOTP {
       let code =
         generate_hotp_code(&padded_secret[..20], counter, &self.options.hash, self.options.digits);
 
-      let mut offset =
-        mod_positive(self.target as i64 - code as i64, 10_i64.pow(self.options.digits as u32))
-          as u32;
+      let mut offset = mod_positive(
+        i64::from(self.target) - i64::from(code),
+        10_i64.pow(u32::from(self.options.digits)),
+      );
 
       let oracle_time = counter * self.options.step * 1000;
       if self.options.oracle.is_some()
         && self.options.oracle.as_ref().unwrap().contains_key(&oracle_time)
       {
         offset = mod_positive(
-          offset as i64 + *self.options.oracle.as_ref().unwrap().get(&oracle_time).unwrap() as i64,
-          10_i64.pow(self.options.digits as u32),
-        ) as u32;
+          i64::from(offset)
+            + i64::from(*self.options.oracle.as_ref().unwrap().get(&oracle_time).unwrap()),
+          10_i64.pow(u32::from(self.options.digits)),
+        );
       }
 
       offsets.extend_from_slice(&offset.to_be_bytes());
@@ -198,7 +198,7 @@ pub fn totp(options: TOTPOptions) -> MFKDF2Result<MFKDF2Factor> {
   let padded_secret = secret.into_iter().chain(secret_pad).collect();
   options.secret = Some(padded_secret);
 
-  let entropy = Some(options.digits as f64 * 10.0_f64.log2());
+  let entropy = Some(f64::from(options.digits) * 10.0_f64.log2());
 
   Ok(MFKDF2Factor {
     id: Some(id),

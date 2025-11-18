@@ -39,7 +39,7 @@ fn factor_fungibility_correct() -> Result<(), MFKDF2Error> {
   )?;
 
   let derive = policy::derive::derive(
-    setup.policy,
+    &setup.policy,
     &HashMap::from([
       ("password1".to_string(), derive::factors::password("password1")?),
       ("password2".to_string(), derive::factors::password("password2")?),
@@ -67,7 +67,7 @@ fn factor_fungibility_incorrect() {
   .unwrap();
 
   let derive = policy::derive::derive(
-    setup.policy,
+    &setup.policy,
     &HashMap::from([
       ("password1".to_string(), derive::factors::password("password2").unwrap()),
       ("password2".to_string(), derive::factors::password("password1").unwrap()),
@@ -102,14 +102,14 @@ fn share_encryption_correct() -> Result<(), MFKDF2Error> {
 
   // Get the first factor's material and compute the share manually
   let materialp1 = derive::factors::password("password1")?;
-  let padp1 = general_purpose::STANDARD.decode(&setup.policy.factors[0].pad)?;
-  let salt_bytes = general_purpose::STANDARD.decode(&setup.policy.factors[0].salt)?;
+  let padp1 = general_purpose::STANDARD.decode(&&setup.policy.factors[0].pad)?;
+  let salt_bytes = general_purpose::STANDARD.decode(&&setup.policy.factors[0].salt)?;
   let stretchedp1 = hkdf_sha256_with_info(&materialp1.data(), &salt_bytes, &[]);
   let sharep1 = xor(&padp1, &stretchedp1);
 
   // Derive the key normally
   let mut derive = policy::derive::derive(
-    setup.policy.clone(),
+    &setup.policy.clone(),
     &HashMap::from([
       ("password1".to_string(), derive::factors::password("password1")?),
       ("password2".to_string(), derive::factors::password("password2")?),
@@ -126,7 +126,7 @@ fn share_encryption_correct() -> Result<(), MFKDF2Error> {
 
   // Try to derive with old password - should fail
   let derive2f = policy::derive::derive(
-    derive.policy.clone(),
+    &derive.policy,
     &HashMap::from([
       ("password1".to_string(), derive::factors::password("password1")?),
       ("password2".to_string(), derive::factors::password("password2")?),
@@ -137,7 +137,7 @@ fn share_encryption_correct() -> Result<(), MFKDF2Error> {
 
   // Derive with new password - should succeed
   let mut derive2 = policy::derive::derive(
-    derive.policy.clone(),
+    &derive.policy,
     &HashMap::from([
       ("password1".to_string(), derive::factors::password("newPassword1")?),
       ("password2".to_string(), derive::factors::password("password2")?),
@@ -160,7 +160,7 @@ fn share_encryption_correct() -> Result<(), MFKDF2Error> {
 
   // Derive with the second new password - should succeed
   let derive3 = policy::derive::derive(
-    derive2.policy,
+    &derive2.policy,
     &HashMap::from([
       ("password1".to_string(), derive::factors::password("newPassword2")?),
       ("password2".to_string(), derive::factors::password("password2")?),
@@ -188,7 +188,7 @@ fn factor_secret_encryption_hotp() -> Result<(), MFKDF2Error> {
   )?;
 
   // Get the pad from the first factor's params
-  let params = &setup.policy.factors[0].params;
+  let params = &&setup.policy.factors[0].params;
   let pad_b64 = params["pad"].as_str().unwrap();
   let pad = general_purpose::STANDARD.decode(pad_b64)?;
 
@@ -205,7 +205,7 @@ fn factor_secret_encryption_hotp() -> Result<(), MFKDF2Error> {
 
   // Derive with the correct HOTP code
   let derive1 = policy::derive::derive(
-    setup.policy,
+    &setup.policy,
     &HashMap::from([("hotp".to_string(), derive::factors::hotp::hotp(241063)?)]),
     None,
   )?;
@@ -229,7 +229,7 @@ fn factor_secret_encryption_totp() -> Result<(), MFKDF2Error> {
   )?;
 
   // Get the pad from the first factor's params
-  let params = &setup.policy.factors[0].params;
+  let params = &&setup.policy.factors[0].params;
   let pad_b64 = params["pad"].as_str().unwrap();
   let pad = general_purpose::STANDARD.decode(pad_b64)?;
 
@@ -246,7 +246,7 @@ fn factor_secret_encryption_totp() -> Result<(), MFKDF2Error> {
 
   // Derive with the correct TOTP code
   let derive1 = policy::derive::derive(
-    setup.policy,
+    &setup.policy,
     &HashMap::from([(
       "totp".to_string(),
       derive::factors::totp::totp(
@@ -290,7 +290,7 @@ fn totp_dynamic_no_oracle() -> Result<(), MFKDF2Error> {
 
   // Derive multiple times with the same oracle
   let derive1 = policy::derive::derive(
-    setup.policy.clone(),
+    &setup.policy.clone(),
     &HashMap::from([(
       "totp".to_string(),
       derive::factors::totp::totp(generate_totp_code(&secret, step, &hash, digits), None)?,
@@ -299,7 +299,7 @@ fn totp_dynamic_no_oracle() -> Result<(), MFKDF2Error> {
   )?;
 
   let derive2 = policy::derive::derive(
-    derive1.policy.clone(),
+    &derive1.policy,
     &HashMap::from([(
       "totp".to_string(),
       derive::factors::totp::totp(generate_totp_code(&secret, step, &hash, digits), None)?,
@@ -308,7 +308,7 @@ fn totp_dynamic_no_oracle() -> Result<(), MFKDF2Error> {
   )?;
 
   let derive3 = policy::derive::derive(
-    derive2.policy,
+    &derive2.policy,
     &HashMap::from([(
       "totp".to_string(),
       derive::factors::totp::totp(generate_totp_code(&secret, step, &hash, digits), None)?,
@@ -366,7 +366,7 @@ fn totp_dynamic_valid_fixed_oracle() {
   let digits = outputs["digits"].as_u64().unwrap() as u8;
 
   let derive1 = policy::derive::derive(
-    setup.policy,
+    &setup.policy,
     &HashMap::from([(
       "totp".to_string(),
       derive::factors::totp::totp(
@@ -383,7 +383,7 @@ fn totp_dynamic_valid_fixed_oracle() {
   .unwrap();
 
   let derive2 = policy::derive::derive(
-    derive1.policy,
+    &derive1.policy,
     &HashMap::from([(
       "totp".to_string(),
       derive::factors::totp::totp(
@@ -400,7 +400,7 @@ fn totp_dynamic_valid_fixed_oracle() {
   .unwrap();
 
   let derive3 = policy::derive::derive(
-    derive2.policy,
+    &derive2.policy,
     &HashMap::from([(
       "totp".to_string(),
       derive::factors::totp::totp(
@@ -472,7 +472,7 @@ fn totp_dynamic_invalid_fixed_oracle() {
 
   // Derive with the different oracle - this should produce different keys
   let derive1 = policy::derive::derive(
-    setup.policy.clone(),
+    &setup.policy,
     &HashMap::from([(
       "totp".to_string(),
       derive::factors::totp::totp(
@@ -489,7 +489,7 @@ fn totp_dynamic_invalid_fixed_oracle() {
   .unwrap();
 
   let derive2 = policy::derive::derive(
-    derive1.policy.clone(),
+    &derive1.policy,
     &HashMap::from([(
       "totp".to_string(),
       derive::factors::totp::totp(
@@ -506,7 +506,7 @@ fn totp_dynamic_invalid_fixed_oracle() {
   .unwrap();
 
   let derive3 = policy::derive::derive(
-    derive2.policy,
+    &derive2.policy,
     &HashMap::from([(
       "totp".to_string(),
       derive::factors::totp::totp(
@@ -570,7 +570,7 @@ fn totp_dynamic_valid_dynamic_oracle() {
 
   // Derive multiple times with the same oracle (should succeed)
   let derive1 = policy::derive::derive(
-    setup.policy.clone(),
+    &setup.policy,
     &HashMap::from([(
       "totp".to_string(),
       derive::factors::totp::totp(
@@ -587,7 +587,7 @@ fn totp_dynamic_valid_dynamic_oracle() {
   .unwrap();
 
   let derive2 = policy::derive::derive(
-    derive1.policy.clone(),
+    &derive1.policy,
     &HashMap::from([(
       "totp".to_string(),
       derive::factors::totp::totp(
@@ -604,7 +604,7 @@ fn totp_dynamic_valid_dynamic_oracle() {
   .unwrap();
 
   let derive3 = policy::derive::derive(
-    derive2.policy,
+    &derive2.policy,
     &HashMap::from([(
       "totp".to_string(),
       derive::factors::totp::totp(
@@ -663,7 +663,7 @@ fn totp_dynamic_invalid_dynamic_oracle() {
 
   // Derive with different oracle and different times/codes
   let derive1 = policy::derive::derive(
-    setup.policy.clone(),
+    &setup.policy,
     &HashMap::from([(
       "totp".to_string(),
       derive::factors::totp::totp(
@@ -680,7 +680,7 @@ fn totp_dynamic_invalid_dynamic_oracle() {
   .unwrap();
 
   let derive2 = policy::derive::derive(
-    derive1.policy.clone(),
+    &derive1.policy,
     &HashMap::from([(
       "totp".to_string(),
       derive::factors::totp::totp(
@@ -697,7 +697,7 @@ fn totp_dynamic_invalid_dynamic_oracle() {
   .unwrap();
 
   let derive3 = policy::derive::derive(
-    derive1.policy,
+    &derive1.policy,
     &HashMap::from([(
       "totp".to_string(),
       derive::factors::totp::totp(

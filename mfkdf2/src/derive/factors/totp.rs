@@ -69,12 +69,15 @@ impl FactorDerive for TOTP {
       && self.options.oracle.as_ref().unwrap().contains_key(&oracle_time)
     {
       offset = mod_positive(
-        offset as i64 - *self.options.oracle.as_ref().unwrap().get(&oracle_time).unwrap() as i64,
+        i64::from(offset)
+          - i64::from(*self.options.oracle.as_ref().unwrap().get(&oracle_time).unwrap()),
         10_i64.pow(params.digits as u32),
-      ) as u32;
+      );
     }
-    self.target =
-      mod_positive(offset as i64 + self.code as i64, 10_i64.pow(self.options.digits as u32)) as u32;
+    self.target = mod_positive(
+      i64::from(offset) + i64::from(self.code),
+      10_i64.pow(u32::from(self.options.digits)),
+    );
 
     Ok(())
   }
@@ -94,8 +97,10 @@ impl FactorDerive for TOTP {
       let code =
         generate_hotp_code(&padded_secret[..20], counter, &params.hash, params.digits as u8);
 
-      let mut offset =
-        mod_positive(self.target as i64 - code as i64, 10_i64.pow(params.digits as u32)) as u32;
+      let mut offset = mod_positive(
+        i64::from(self.target) - i64::from(code),
+        10_i64.pow(u32::from(params.digits)),
+      );
 
       let oracle_time = counter * params.step * 1000;
       if self.options.oracle.is_some()
@@ -104,7 +109,7 @@ impl FactorDerive for TOTP {
         offset = mod_positive(
           offset as i64 + *self.options.oracle.as_ref().unwrap().get(&oracle_time).unwrap() as i64,
           10_i64.pow(params.digits as u32),
-        ) as u32;
+        );
       }
 
       new_offsets.extend_from_slice(&offset.to_be_bytes());

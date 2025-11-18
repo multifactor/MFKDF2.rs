@@ -53,9 +53,9 @@ impl FactorDerive for HOTP {
 
     // Calculate new offset
     let new_offset = mod_positive(
-      self.target as i64 - generated_code as i64,
+      i64::from(self.target) - i64::from(generated_code),
       10_i64.pow(self.options.digits as u32),
-    ) as u32;
+    );
 
     Ok(json!({
       "hash": hash.to_string(),
