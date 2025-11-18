@@ -69,8 +69,7 @@ suite('factors/stack', () => {
       { threshold: 1 }
     );
 
-    // TODO (@lonerapier): fix this
-    // setup.policy.factors[0].params.should.not.have.property('hmac');
+    setup.policy.factors[0].params.should.not.have.property('hmac');
 
     const derive1 = await mfkdf.derive.key(setup.policy, {
       stack1: await mfkdf.derive.factors.stack({

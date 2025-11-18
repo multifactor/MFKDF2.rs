@@ -23,20 +23,18 @@ fn bench_uuid(c: &mut Criterion) {
         })
         .unwrap(),
       );
-      let result = black_box(setup::key::key(vec![factor], MFKDF2Options::default()));
+      let result = black_box(setup::key::key(&[factor], MFKDF2Options::default()));
       result.unwrap()
     })
   });
 
   // Single derive - 1 UUID
   let single_setup_key = setup::key::key(
-    vec![
-      setup_uuid(UUIDOptions {
-        id:   Some("uuid".to_string()),
-        uuid: Some(Uuid::parse_str("9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6d").unwrap()),
-      })
-      .unwrap(),
-    ],
+    &[setup_uuid(UUIDOptions {
+      id:   Some("uuid".to_string()),
+      uuid: Some(Uuid::parse_str("9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6d").unwrap()),
+    })
+    .unwrap()],
     MFKDF2Options::default(),
   )
   .unwrap();
@@ -48,8 +46,7 @@ fn bench_uuid(c: &mut Criterion) {
         derive::factors::uuid(Uuid::parse_str("9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6d").unwrap())
           .unwrap(),
       )]));
-      let result =
-        black_box(derive::key(single_setup_key.policy.clone(), factors_map, false, false));
+      let result = black_box(derive::key(&single_setup_key.policy, factors_map, false, false));
       result.unwrap()
     })
   });
@@ -57,32 +54,34 @@ fn bench_uuid(c: &mut Criterion) {
   // Multiple setup - 3 UUIDs with threshold 3 (all required)
   group.bench_function("multiple_setup_3_threshold_3", |b| {
     b.iter(|| {
-      let factors = black_box(vec![
-        setup_uuid(UUIDOptions {
-          id:   Some("uuid1".to_string()),
-          uuid: Some(Uuid::parse_str("9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6d").unwrap()),
-        })
-        .unwrap(),
-        setup_uuid(UUIDOptions {
-          id:   Some("uuid2".to_string()),
-          uuid: Some(Uuid::parse_str("550e8400-e29b-41d4-a716-446655440000").unwrap()),
-        })
-        .unwrap(),
-        setup_uuid(UUIDOptions {
-          id:   Some("uuid3".to_string()),
-          uuid: Some(Uuid::parse_str("123e4567-e89b-12d3-a456-426614174000").unwrap()),
-        })
-        .unwrap(),
-      ]);
       let options = MFKDF2Options { threshold: Some(3), ..Default::default() };
-      let result = black_box(setup::key::key(factors, options));
+      let result = black_box(setup::key::key(
+        &[
+          setup_uuid(UUIDOptions {
+            id:   Some("uuid1".to_string()),
+            uuid: Some(Uuid::parse_str("9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6d").unwrap()),
+          })
+          .unwrap(),
+          setup_uuid(UUIDOptions {
+            id:   Some("uuid2".to_string()),
+            uuid: Some(Uuid::parse_str("550e8400-e29b-41d4-a716-446655440000").unwrap()),
+          })
+          .unwrap(),
+          setup_uuid(UUIDOptions {
+            id:   Some("uuid3".to_string()),
+            uuid: Some(Uuid::parse_str("123e4567-e89b-12d3-a456-426614174000").unwrap()),
+          })
+          .unwrap(),
+        ],
+        options,
+      ));
       result.unwrap()
     })
   });
 
   // Multiple derive - 3 UUIDs (all required)
   let multiple_setup_key_3 = setup::key::key(
-    vec![
+    &[
       setup_uuid(UUIDOptions {
         id:   Some("uuid1".to_string()),
         uuid: Some(Uuid::parse_str("9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6d").unwrap()),
@@ -122,15 +121,14 @@ fn bench_uuid(c: &mut Criterion) {
             .unwrap(),
         ),
       ]));
-      let result =
-        black_box(derive::key(multiple_setup_key_3.policy.clone(), factors_map, false, false));
+      let result = black_box(derive::key(&multiple_setup_key_3.policy, factors_map, false, false));
       result.unwrap()
     })
   });
 
   // Threshold derive - 2 out of 3 UUIDs
   let threshold_setup_key = setup::key::key(
-    vec![
+    &[
       setup_uuid(UUIDOptions {
         id:   Some("uuid1".to_string()),
         uuid: Some(Uuid::parse_str("9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6d").unwrap()),
@@ -165,8 +163,7 @@ fn bench_uuid(c: &mut Criterion) {
             .unwrap(),
         ),
       ]));
-      let result =
-        black_box(derive::key(threshold_setup_key.policy.clone(), factors_map, false, false));
+      let result = black_box(derive::key(&threshold_setup_key.policy, factors_map, false, false));
       result.unwrap()
     })
   });

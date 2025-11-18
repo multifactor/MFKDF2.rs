@@ -21,10 +21,6 @@ suite('setup/factors/uuid', () => {
     await mfkdf.setup.factors
       .uuid({ uuid: 'hello' })
       .should.be.rejectedWith("Failed to convert arg")
-    // TODO: recheck this
-    // await mfkdf.setup.factors
-    //   .uuid({ id: 12345 as any })
-    //   .should.be.rejectedWith(TypeError)
   })
 
   test('invalid/range', async () => {

@@ -40,7 +40,7 @@ impl From<PolicySetupOptions> for MFKDF2Options {
 }
 
 pub fn setup(factor: MFKDF2Factor, options: PolicySetupOptions) -> MFKDF2Result<MFKDF2DerivedKey> {
-  let derived_key = setup_key(vec![factor], options.into())?;
+  let derived_key = setup_key(&[factor], options.into())?;
 
   if !derived_key.policy.validate() {
     return Err(MFKDF2Error::DuplicateFactorId);

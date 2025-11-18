@@ -40,7 +40,7 @@ pub fn passkey(secret: [u8; 32], options: PasskeyOptions) -> MFKDF2Result<MFKDF2
   {
     return Err(crate::error::MFKDF2Error::MissingFactorId);
   }
-  let id = options.id.clone().unwrap_or("passkey".to_string());
+  let id = options.id.unwrap_or("passkey".to_string());
 
   Ok(MFKDF2Factor {
     id:          Some(id),

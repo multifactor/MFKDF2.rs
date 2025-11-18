@@ -5,6 +5,7 @@ use std::{
 
 use base64::{Engine, engine::general_purpose};
 use mfkdf2::{
+  constants::SECRET_SHARING_POLY,
   crypto::hkdf_sha256_with_info,
   derive,
   error::MFKDF2Error,
@@ -22,26 +23,25 @@ use mfkdf2::{
 fn xor(a: &[u8], b: &[u8]) -> Vec<u8> { a.iter().zip(b.iter()).map(|(x, y)| x ^ y).collect() }
 
 // Helper function to generate TOTP code from secret and current time
-fn generate_totp_code(secret: &[u8], step: u64, hash: &HashAlgorithm, digits: u8) -> u32 {
+fn generate_totp_code(secret: &[u8], step: u64, hash: &HashAlgorithm, digits: u32) -> u32 {
   let now = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs();
   let counter = now / step;
   generate_hotp_code(secret, counter, hash, digits)
 }
 
-#[tokio::test]
-async fn factor_fungibility_correct() -> Result<(), MFKDF2Error> {
+#[test]
+fn factor_fungibility_correct() -> Result<(), MFKDF2Error> {
   let setup = policy::setup::setup(
     policy::logic::and(
       setup::factors::password("password1", PasswordOptions { id: Some("password1".to_string()) })?,
       setup::factors::password("password2", PasswordOptions { id: Some("password2".to_string()) })?,
-    )
-    .await?,
+    )?,
     PolicySetupOptions::default(),
   )?;
 
   let derive = policy::derive::derive(
-    setup.policy,
-    HashMap::from([
+    &setup.policy,
+    &HashMap::from([
       ("password1".to_string(), derive::factors::password("password1")?),
       ("password2".to_string(), derive::factors::password("password2")?),
     ]),
@@ -53,8 +53,8 @@ async fn factor_fungibility_correct() -> Result<(), MFKDF2Error> {
   Ok(())
 }
 
-#[tokio::test]
-async fn factor_fungibility_incorrect() {
+#[test]
+fn factor_fungibility_incorrect() {
   let setup = policy::setup::setup(
     policy::logic::and(
       setup::factors::password("password1", PasswordOptions { id: Some("password1".to_string()) })
@@ -62,15 +62,14 @@ async fn factor_fungibility_incorrect() {
       setup::factors::password("password2", PasswordOptions { id: Some("password2".to_string()) })
         .unwrap(),
     )
-    .await
     .unwrap(),
     PolicySetupOptions::default(),
   )
   .unwrap();
 
   let derive = policy::derive::derive(
-    setup.policy,
-    HashMap::from([
+    &setup.policy,
+    &HashMap::from([
       ("password1".to_string(), derive::factors::password("password2").unwrap()),
       ("password2".to_string(), derive::factors::password("password1").unwrap()),
     ]),
@@ -81,21 +80,56 @@ async fn factor_fungibility_incorrect() {
   assert_ne!(derive.key, setup.key);
 }
 
-#[tokio::test]
-async fn share_indistinguishability_share_size() -> Result<(), MFKDF2Error> {
+#[test]
+fn share_indistinguishability_share_size() -> Result<(), MFKDF2Error> {
   let mut secret = [0u8; 32];
   mfkdf2::rng::fill_bytes(&mut secret);
 
-  // TODO (@lonerapier): Implement this test after ssskit repo is updated
+  let sss = ssskit::SecretSharing::<SECRET_SHARING_POLY>(1);
+  let shares1 = sss.dealer_rng(&secret, &mut mfkdf2::rng::GlobalRng).take(3).collect::<Vec<_>>();
+  assert_eq!(shares1.len(), 3);
+  for share in shares1.iter() {
+    assert_eq!(share.y.len(), 32);
+  }
+
+  let combined1 = sss.recover([&Some(shares1[0].clone()), &None, &None]).unwrap();
+  assert_eq!(combined1, secret);
+
+  let combined2 = sss.recover([&None, &None, &Some(shares1[2].clone())]).unwrap();
+  assert_eq!(combined2, secret);
+
+  let sss = ssskit::SecretSharing::<SECRET_SHARING_POLY>(2);
+  let shares2 = sss.dealer_rng(&secret, &mut mfkdf2::rng::GlobalRng).take(3).collect::<Vec<_>>();
+  assert_eq!(shares2.len(), 3);
+  for share in shares2.iter() {
+    assert_eq!(share.y.len(), 32);
+  }
+  let combined3 =
+    sss.recover([&Some(shares2[0].clone()), &Some(shares2[1].clone()), &None]).unwrap();
+  assert_eq!(combined3, secret);
+  let combined4 =
+    sss.recover([&None, &Some(shares2[1].clone()), &Some(shares2[2].clone())]).unwrap();
+  assert_eq!(combined4, secret);
+
+  let sss = ssskit::SecretSharing::<SECRET_SHARING_POLY>(3);
+  let shares3 = sss.dealer_rng(&secret, &mut mfkdf2::rng::GlobalRng).take(3).collect::<Vec<_>>();
+  assert_eq!(shares3.len(), 3);
+  for share in shares3.iter() {
+    assert_eq!(share.y.len(), 32);
+  }
+  let combined5 = sss
+    .recover([&Some(shares3[0].clone()), &Some(shares3[1].clone()), &Some(shares3[2].clone())])
+    .unwrap();
+  assert_eq!(combined5, secret);
 
   Ok(())
 }
 
-#[tokio::test]
-async fn share_encryption_correct() -> Result<(), MFKDF2Error> {
+#[test]
+fn share_encryption_correct() -> Result<(), MFKDF2Error> {
   // Setup with two password factors using direct key setup
   let setup = setup::key::key(
-    vec![
+    &[
       setup::factors::password("password1", PasswordOptions { id: Some("password1".to_string()) })?,
       setup::factors::password("password2", PasswordOptions { id: Some("password2".to_string()) })?,
     ],
@@ -111,8 +145,8 @@ async fn share_encryption_correct() -> Result<(), MFKDF2Error> {
 
   // Derive the key normally
   let mut derive = policy::derive::derive(
-    setup.policy.clone(),
-    HashMap::from([
+    &setup.policy.clone(),
+    &HashMap::from([
       ("password1".to_string(), derive::factors::password("password1")?),
       ("password2".to_string(), derive::factors::password("password2")?),
     ]),
@@ -128,8 +162,8 @@ async fn share_encryption_correct() -> Result<(), MFKDF2Error> {
 
   // Try to derive with old password - should fail
   let derive2f = policy::derive::derive(
-    derive.policy.clone(),
-    HashMap::from([
+    &derive.policy,
+    &HashMap::from([
       ("password1".to_string(), derive::factors::password("password1")?),
       ("password2".to_string(), derive::factors::password("password2")?),
     ]),
@@ -139,8 +173,8 @@ async fn share_encryption_correct() -> Result<(), MFKDF2Error> {
 
   // Derive with new password - should succeed
   let mut derive2 = policy::derive::derive(
-    derive.policy.clone(),
-    HashMap::from([
+    &derive.policy,
+    &HashMap::from([
       ("password1".to_string(), derive::factors::password("newPassword1")?),
       ("password2".to_string(), derive::factors::password("password2")?),
     ]),
@@ -162,8 +196,8 @@ async fn share_encryption_correct() -> Result<(), MFKDF2Error> {
 
   // Derive with the second new password - should succeed
   let derive3 = policy::derive::derive(
-    derive2.policy,
-    HashMap::from([
+    &derive2.policy,
+    &HashMap::from([
       ("password1".to_string(), derive::factors::password("newPassword2")?),
       ("password2".to_string(), derive::factors::password("password2")?),
     ]),
@@ -177,12 +211,12 @@ async fn share_encryption_correct() -> Result<(), MFKDF2Error> {
   Ok(())
 }
 
-#[tokio::test]
-async fn factor_secret_encryption_hotp() -> Result<(), MFKDF2Error> {
+#[test]
+fn factor_secret_encryption_hotp() -> Result<(), MFKDF2Error> {
   // Setup HOTP factor with specific secret
   let secret = b"abcdefghijklmnopqrst".to_vec();
   let setup = setup::key::key(
-    vec![setup::factors::hotp::hotp(HOTPOptions {
+    &[setup::factors::hotp::hotp(HOTPOptions {
       secret: Some(secret.clone()),
       ..Default::default()
     })?],
@@ -190,7 +224,7 @@ async fn factor_secret_encryption_hotp() -> Result<(), MFKDF2Error> {
   )?;
 
   // Get the pad from the first factor's params
-  let params: serde_json::Value = serde_json::from_str(&setup.policy.factors[0].params)?;
+  let params = &&setup.policy.factors[0].params;
   let pad_b64 = params["pad"].as_str().unwrap();
   let pad = general_purpose::STANDARD.decode(pad_b64)?;
 
@@ -207,8 +241,8 @@ async fn factor_secret_encryption_hotp() -> Result<(), MFKDF2Error> {
 
   // Derive with the correct HOTP code
   let derive1 = policy::derive::derive(
-    setup.policy,
-    HashMap::from([("hotp".to_string(), derive::factors::hotp::hotp(241063)?)]),
+    &setup.policy,
+    &HashMap::from([("hotp".to_string(), derive::factors::hotp::hotp(241063)?)]),
     None,
   )?;
 
@@ -217,12 +251,12 @@ async fn factor_secret_encryption_hotp() -> Result<(), MFKDF2Error> {
   Ok(())
 }
 
-#[tokio::test]
-async fn factor_secret_encryption_totp() -> Result<(), MFKDF2Error> {
+#[test]
+fn factor_secret_encryption_totp() -> Result<(), MFKDF2Error> {
   // Setup TOTP factor with specific secret and time
   let secret = b"abcdefghijklmnopqrst".to_vec();
   let setup = setup::key::key(
-    vec![setup::factors::totp::totp(TOTPOptions {
+    &[setup::factors::totp::totp(TOTPOptions {
       secret: Some(secret.clone()),
       time: Some(1),
       ..Default::default()
@@ -231,7 +265,7 @@ async fn factor_secret_encryption_totp() -> Result<(), MFKDF2Error> {
   )?;
 
   // Get the pad from the first factor's params
-  let params: serde_json::Value = serde_json::from_str(&setup.policy.factors[0].params)?;
+  let params = &&setup.policy.factors[0].params;
   let pad_b64 = params["pad"].as_str().unwrap();
   let pad = general_purpose::STANDARD.decode(pad_b64)?;
 
@@ -248,8 +282,8 @@ async fn factor_secret_encryption_totp() -> Result<(), MFKDF2Error> {
 
   // Derive with the correct TOTP code
   let derive1 = policy::derive::derive(
-    setup.policy,
-    HashMap::from([(
+    &setup.policy,
+    &HashMap::from([(
       "totp".to_string(),
       derive::factors::totp::totp(
         953265,
@@ -264,11 +298,11 @@ async fn factor_secret_encryption_totp() -> Result<(), MFKDF2Error> {
   Ok(())
 }
 
-#[tokio::test]
-async fn totp_dynamic_no_oracle() -> Result<(), MFKDF2Error> {
+#[test]
+fn totp_dynamic_no_oracle() -> Result<(), MFKDF2Error> {
   // Setup TOTP factor with default options
   let setup = setup::key::key(
-    vec![setup::factors::totp::totp(TOTPOptions::default())?],
+    &[setup::factors::totp::totp(TOTPOptions::default())?],
     MFKDF2Options::default(),
   )?;
 
@@ -288,12 +322,12 @@ async fn totp_dynamic_no_oracle() -> Result<(), MFKDF2Error> {
     "sha512" => HashAlgorithm::Sha512,
     _ => HashAlgorithm::Sha1,
   };
-  let digits = outputs["digits"].as_u64().unwrap() as u8;
+  let digits = outputs["digits"].as_u64().unwrap() as u32;
 
   // Derive multiple times with the same oracle
   let derive1 = policy::derive::derive(
-    setup.policy.clone(),
-    HashMap::from([(
+    &setup.policy.clone(),
+    &HashMap::from([(
       "totp".to_string(),
       derive::factors::totp::totp(generate_totp_code(&secret, step, &hash, digits), None)?,
     )]),
@@ -301,8 +335,8 @@ async fn totp_dynamic_no_oracle() -> Result<(), MFKDF2Error> {
   )?;
 
   let derive2 = policy::derive::derive(
-    derive1.policy.clone(),
-    HashMap::from([(
+    &derive1.policy,
+    &HashMap::from([(
       "totp".to_string(),
       derive::factors::totp::totp(generate_totp_code(&secret, step, &hash, digits), None)?,
     )]),
@@ -310,8 +344,8 @@ async fn totp_dynamic_no_oracle() -> Result<(), MFKDF2Error> {
   )?;
 
   let derive3 = policy::derive::derive(
-    derive2.policy,
-    HashMap::from([(
+    &derive2.policy,
+    &HashMap::from([(
       "totp".to_string(),
       derive::factors::totp::totp(generate_totp_code(&secret, step, &hash, digits), None)?,
     )]),
@@ -326,8 +360,8 @@ async fn totp_dynamic_no_oracle() -> Result<(), MFKDF2Error> {
   Ok(())
 }
 
-#[tokio::test]
-async fn totp_dynamic_valid_fixed_oracle() {
+#[test]
+fn totp_dynamic_valid_fixed_oracle() {
   // Create oracle with fixed values for 87600 steps (30 seconds each)
   let mut oracle = HashMap::new();
   let now = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_millis() as u64;
@@ -340,13 +374,11 @@ async fn totp_dynamic_valid_fixed_oracle() {
 
   // Setup TOTP factor with oracle
   let setup = setup::key::key(
-    vec![
-      setup::factors::totp::totp(TOTPOptions {
-        oracle: Some(oracle.clone()),
-        ..Default::default()
-      })
-      .unwrap(),
-    ],
+    &[setup::factors::totp::totp(TOTPOptions {
+      oracle: Some(oracle.clone()),
+      ..Default::default()
+    })
+    .unwrap()],
     MFKDF2Options::default(),
   )
   .unwrap();
@@ -367,11 +399,11 @@ async fn totp_dynamic_valid_fixed_oracle() {
     "sha512" => HashAlgorithm::Sha512,
     _ => HashAlgorithm::Sha1,
   };
-  let digits = outputs["digits"].as_u64().unwrap() as u8;
+  let digits = outputs["digits"].as_u64().unwrap() as u32;
 
   let derive1 = policy::derive::derive(
-    setup.policy,
-    HashMap::from([(
+    &setup.policy,
+    &HashMap::from([(
       "totp".to_string(),
       derive::factors::totp::totp(
         generate_totp_code(&secret, step, &hash, digits),
@@ -387,8 +419,8 @@ async fn totp_dynamic_valid_fixed_oracle() {
   .unwrap();
 
   let derive2 = policy::derive::derive(
-    derive1.policy,
-    HashMap::from([(
+    &derive1.policy,
+    &HashMap::from([(
       "totp".to_string(),
       derive::factors::totp::totp(
         generate_totp_code(&secret, step, &hash, digits),
@@ -404,8 +436,8 @@ async fn totp_dynamic_valid_fixed_oracle() {
   .unwrap();
 
   let derive3 = policy::derive::derive(
-    derive2.policy,
-    HashMap::from([(
+    &derive2.policy,
+    &HashMap::from([(
       "totp".to_string(),
       derive::factors::totp::totp(
         generate_totp_code(&secret, step, &hash, digits),
@@ -425,8 +457,8 @@ async fn totp_dynamic_valid_fixed_oracle() {
   assert_eq!(derive3.key, setup.key);
 }
 
-#[tokio::test]
-async fn totp_dynamic_invalid_fixed_oracle() {
+#[test]
+fn totp_dynamic_invalid_fixed_oracle() {
   // Create oracle with fixed values for 87600 steps (30 seconds each)
   let mut oracle = HashMap::new();
   let now = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_millis() as u64;
@@ -439,13 +471,11 @@ async fn totp_dynamic_invalid_fixed_oracle() {
 
   // Setup TOTP factor with oracle
   let setup = setup::key::key(
-    vec![
-      setup::factors::totp::totp(TOTPOptions {
-        oracle: Some(oracle.clone()),
-        ..Default::default()
-      })
-      .unwrap(),
-    ],
+    &[setup::factors::totp::totp(TOTPOptions {
+      oracle: Some(oracle.clone()),
+      ..Default::default()
+    })
+    .unwrap()],
     MFKDF2Options::default(),
   )
   .unwrap();
@@ -466,7 +496,7 @@ async fn totp_dynamic_invalid_fixed_oracle() {
     "sha512" => HashAlgorithm::Sha512,
     _ => HashAlgorithm::Sha1,
   };
-  let digits = outputs["digits"].as_u64().unwrap() as u8;
+  let digits = outputs["digits"].as_u64().unwrap() as u32;
 
   // Create a different oracle with different values
   let mut oracle2 = HashMap::new();
@@ -478,8 +508,8 @@ async fn totp_dynamic_invalid_fixed_oracle() {
 
   // Derive with the different oracle - this should produce different keys
   let derive1 = policy::derive::derive(
-    setup.policy.clone(),
-    HashMap::from([(
+    &setup.policy,
+    &HashMap::from([(
       "totp".to_string(),
       derive::factors::totp::totp(
         generate_totp_code(&secret, step, &hash, digits),
@@ -495,8 +525,8 @@ async fn totp_dynamic_invalid_fixed_oracle() {
   .unwrap();
 
   let derive2 = policy::derive::derive(
-    derive1.policy.clone(),
-    HashMap::from([(
+    &derive1.policy,
+    &HashMap::from([(
       "totp".to_string(),
       derive::factors::totp::totp(
         generate_totp_code(&secret, step, &hash, digits),
@@ -512,8 +542,8 @@ async fn totp_dynamic_invalid_fixed_oracle() {
   .unwrap();
 
   let derive3 = policy::derive::derive(
-    derive2.policy,
-    HashMap::from([(
+    &derive2.policy,
+    &HashMap::from([(
       "totp".to_string(),
       derive::factors::totp::totp(
         generate_totp_code(&secret, step, &hash, digits),
@@ -533,8 +563,8 @@ async fn totp_dynamic_invalid_fixed_oracle() {
   assert_ne!(derive3.key, setup.key);
 }
 
-#[tokio::test]
-async fn totp_dynamic_valid_dynamic_oracle() {
+#[test]
+fn totp_dynamic_valid_dynamic_oracle() {
   // Create oracle with dynamic values for 87600 steps (30 seconds each)
   let mut oracle = HashMap::new();
   let now = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_millis() as u64;
@@ -547,13 +577,11 @@ async fn totp_dynamic_valid_dynamic_oracle() {
 
   // Setup TOTP factor with oracle
   let setup = setup::key::key(
-    vec![
-      setup::factors::totp::totp(TOTPOptions {
-        oracle: Some(oracle.clone()),
-        ..Default::default()
-      })
-      .unwrap(),
-    ],
+    &[setup::factors::totp::totp(TOTPOptions {
+      oracle: Some(oracle.clone()),
+      ..Default::default()
+    })
+    .unwrap()],
     MFKDF2Options::default(),
   )
   .unwrap();
@@ -574,12 +602,12 @@ async fn totp_dynamic_valid_dynamic_oracle() {
     "sha512" => HashAlgorithm::Sha512,
     _ => HashAlgorithm::Sha1,
   };
-  let digits = outputs["digits"].as_u64().unwrap() as u8;
+  let digits = outputs["digits"].as_u64().unwrap() as u32;
 
   // Derive multiple times with the same oracle (should succeed)
   let derive1 = policy::derive::derive(
-    setup.policy.clone(),
-    HashMap::from([(
+    &setup.policy,
+    &HashMap::from([(
       "totp".to_string(),
       derive::factors::totp::totp(
         generate_totp_code(&secret, step, &hash, digits),
@@ -595,8 +623,8 @@ async fn totp_dynamic_valid_dynamic_oracle() {
   .unwrap();
 
   let derive2 = policy::derive::derive(
-    derive1.policy.clone(),
-    HashMap::from([(
+    &derive1.policy,
+    &HashMap::from([(
       "totp".to_string(),
       derive::factors::totp::totp(
         generate_totp_code(&secret, step, &hash, digits),
@@ -612,8 +640,8 @@ async fn totp_dynamic_valid_dynamic_oracle() {
   .unwrap();
 
   let derive3 = policy::derive::derive(
-    derive2.policy,
-    HashMap::from([(
+    &derive2.policy,
+    &HashMap::from([(
       "totp".to_string(),
       derive::factors::totp::totp(
         generate_totp_code(&secret, step, &hash, digits),
@@ -634,8 +662,8 @@ async fn totp_dynamic_valid_dynamic_oracle() {
   assert_eq!(derive3.key, setup.key);
 }
 
-#[tokio::test]
-async fn totp_dynamic_invalid_dynamic_oracle() {
+#[test]
+fn totp_dynamic_invalid_dynamic_oracle() {
   // Create oracle with dynamic values for 87600 steps (30 seconds each)
   let mut oracle = HashMap::new();
   let mut date = 1650430806597u64;
@@ -658,23 +686,21 @@ async fn totp_dynamic_invalid_dynamic_oracle() {
 
   // Setup TOTP factor with specific secret and time
   let setup = setup::key::key(
-    vec![
-      setup::factors::totp::totp(TOTPOptions {
-        secret: Some(b"abcdefghijklmnopqrst".to_vec()),
-        time: Some(1650430806597),
-        oracle: Some(oracle.clone()),
-        ..Default::default()
-      })
-      .unwrap(),
-    ],
+    &[setup::factors::totp::totp(TOTPOptions {
+      secret: Some(b"abcdefghijklmnopqrst".to_vec()),
+      time: Some(1650430806597),
+      oracle: Some(oracle.clone()),
+      ..Default::default()
+    })
+    .unwrap()],
     MFKDF2Options::default(),
   )
   .unwrap();
 
   // Derive with different oracle and different times/codes
   let derive1 = policy::derive::derive(
-    setup.policy.clone(),
-    HashMap::from([(
+    &setup.policy,
+    &HashMap::from([(
       "totp".to_string(),
       derive::factors::totp::totp(
         528258,
@@ -690,8 +716,8 @@ async fn totp_dynamic_invalid_dynamic_oracle() {
   .unwrap();
 
   let derive2 = policy::derive::derive(
-    derive1.policy.clone(),
-    HashMap::from([(
+    &derive1.policy,
+    &HashMap::from([(
       "totp".to_string(),
       derive::factors::totp::totp(
         99922,
@@ -707,8 +733,8 @@ async fn totp_dynamic_invalid_dynamic_oracle() {
   .unwrap();
 
   let derive3 = policy::derive::derive(
-    derive1.policy,
-    HashMap::from([(
+    &derive1.policy,
+    &HashMap::from([(
       "totp".to_string(),
       derive::factors::totp::totp(
         398884,

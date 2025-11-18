@@ -245,8 +245,7 @@ suite('integrity', () => {
       .should.be.rejectedWith(Mfkdf2Error.PolicyIntegrityCheckFailed);
   });
 
-  test.skip('reconstitution', async () => {
-    // TODO (@lonerapier): recoverFactor functionality not yet implemented
+  test('reconstitution', async () => {
     const setup = await mfkdf.setup.key(
       [
         await mfkdf.setup.factors.password('password1', { id: 'password1' }),

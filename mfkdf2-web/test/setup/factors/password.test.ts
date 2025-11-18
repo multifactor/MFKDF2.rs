@@ -39,7 +39,6 @@ suite('setup/factors/password', () => {
   })
 })
 
-// TODO (@lonerapier): remove later
 suite('setup/factors/password - with key parameter', () => {
   // Initialize UniFFI once before all tests
   before(async () => {

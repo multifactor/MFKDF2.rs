@@ -67,7 +67,7 @@ impl FactorDerive for Ooba {
   }
 }
 
-pub fn ooba(code: String) -> MFKDF2Result<MFKDF2Factor> {
+pub fn ooba(code: &str) -> MFKDF2Result<MFKDF2Factor> {
   if code.is_empty() {
     return Err(MFKDF2Error::InvalidOobaCode);
   }
@@ -86,7 +86,7 @@ pub fn ooba(code: String) -> MFKDF2Result<MFKDF2Factor> {
 }
 
 #[cfg_attr(feature = "bindings", uniffi::export)]
-pub async fn derive_ooba(code: String) -> MFKDF2Result<MFKDF2Factor> { ooba(code) }
+pub async fn derive_ooba(code: &str) -> MFKDF2Result<MFKDF2Factor> { ooba(code) }
 
 #[cfg(test)]
 mod tests {
@@ -144,7 +144,7 @@ mod tests {
     .unwrap();
     let code = decrypted["code"].as_str().unwrap();
 
-    let result = ooba(code.to_string());
+    let result = ooba(code);
     assert!(result.is_ok());
 
     let factor = result.unwrap();
@@ -174,7 +174,7 @@ mod tests {
   #[test]
 
   fn invalid_code() {
-    let result = ooba(String::from(""));
+    let result = ooba("");
     assert!(matches!(result, Err(MFKDF2Error::InvalidOobaCode)));
   }
 
@@ -191,7 +191,7 @@ mod tests {
     .unwrap();
     let code = decrypted["code"].as_str().unwrap();
 
-    let result = ooba(code.to_string());
+    let result = ooba(code);
     assert!(result.is_ok());
 
     let factor = result.unwrap();
@@ -247,7 +247,7 @@ mod tests {
     )
     .unwrap();
     let code = decrypted_params["code"].as_str().unwrap();
-    let mut ooba: Ooba = match ooba(code.to_string()).unwrap().factor_type {
+    let mut ooba: Ooba = match ooba(code).unwrap().factor_type {
       FactorType::OOBA(ooba) => ooba,
       _ => panic!("wrong type"),
     };
@@ -274,7 +274,7 @@ mod tests {
   }
 
   fn get_ooba_for_test() -> Ooba {
-    let result = ooba("some-code".to_string());
+    let result = ooba("some-code");
     assert!(result.is_ok());
     let factor = result.unwrap();
     match factor.factor_type {

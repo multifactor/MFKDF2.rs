@@ -31,32 +31,30 @@ fn bench_totp(c: &mut Criterion) {
         setup_totp(TOTPOptions {
           id: Some("totp".to_string()),
           secret: Some(SECRET20.to_vec()),
-          digits: 6,
-          hash: HashAlgorithm::Sha1,
+          digits: Some(6),
+          hash: Some(HashAlgorithm::Sha1),
           time: Some(current_time),
-          window: 3600, // 1 hour window
+          window: Some(3600), // 1 hour window
           ..Default::default()
         })
         .unwrap(),
       );
-      let result = black_box(setup::key::key(vec![factor], MFKDF2Options::default()));
+      let result = black_box(setup::key::key(&[factor], MFKDF2Options::default()));
       result.unwrap()
     })
   });
 
   // Single derive - 1 TOTP
   let single_setup_key = setup::key::key(
-    vec![
-      setup_totp(TOTPOptions {
-        id: Some("totp".to_string()),
-        secret: Some(SECRET20.to_vec()),
-        digits: 6,
-        hash: HashAlgorithm::Sha1,
-        time: Some(current_time),
-        ..Default::default()
-      })
-      .unwrap(),
-    ],
+    &[setup_totp(TOTPOptions {
+      id: Some("totp".to_string()),
+      secret: Some(SECRET20.to_vec()),
+      digits: Some(6),
+      hash: Some(HashAlgorithm::Sha1),
+      time: Some(current_time),
+      ..Default::default()
+    })
+    .unwrap()],
     MFKDF2Options::default(),
   )
   .unwrap();
@@ -78,8 +76,7 @@ fn bench_totp(c: &mut Criterion) {
         )
         .unwrap(),
       )]));
-      let result =
-        black_box(derive::key(single_setup_key.policy.clone(), factors_map, false, false));
+      let result = black_box(derive::key(&single_setup_key.policy, factors_map, false, false));
       result.unwrap()
     })
   });
@@ -89,42 +86,46 @@ fn bench_totp(c: &mut Criterion) {
   // Multiple setup - 3 TOTPs with threshold 3 (all required)
   group.bench_function("multiple_setup_3_threshold_3", |b| {
     b.iter(|| {
-      let factors = black_box(vec![
-        setup_totp(TOTPOptions {
-          id: Some("totp1".to_string()),
-          secret: Some(SECRET20.to_vec()),
-          digits: 6,
-          hash: HashAlgorithm::Sha1,
-          time: Some(current_time),
-          window: 3600, // 1 hour window
-          ..Default::default()
-        })
-        .unwrap(),
-        setup_totp(TOTPOptions {
-          id: Some("totp2".to_string()),
-          secret: Some(vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20]),
-          digits: 6,
-          hash: HashAlgorithm::Sha1,
-          time: Some(current_time),
-          window: 3600, // 1 hour window
-          ..Default::default()
-        })
-        .unwrap(),
-        setup_totp(TOTPOptions {
-          id: Some("totp3".to_string()),
-          secret: Some(vec![
-            21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40,
-          ]),
-          digits: 6,
-          hash: HashAlgorithm::Sha1,
-          time: Some(current_time),
-          window: 3600, // 1 hour window
-          ..Default::default()
-        })
-        .unwrap(),
-      ]);
       let options = MFKDF2Options { threshold: Some(3), ..Default::default() };
-      let result = black_box(setup::key::key(factors, options));
+      let result = black_box(setup::key::key(
+        &[
+          setup_totp(TOTPOptions {
+            id: Some("totp1".to_string()),
+            secret: Some(SECRET20.to_vec()),
+            digits: Some(6),
+            hash: Some(HashAlgorithm::Sha1),
+            time: Some(current_time),
+            window: Some(3600), // 1 hour window
+            ..Default::default()
+          })
+          .unwrap(),
+          setup_totp(TOTPOptions {
+            id: Some("totp2".to_string()),
+            secret: Some(vec![
+              1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20,
+            ]),
+            digits: Some(6),
+            hash: Some(HashAlgorithm::Sha1),
+            time: Some(current_time),
+            window: Some(3600), // 1 hour window
+            ..Default::default()
+          })
+          .unwrap(),
+          setup_totp(TOTPOptions {
+            id: Some("totp3".to_string()),
+            secret: Some(vec![
+              21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40,
+            ]),
+            digits: Some(6),
+            hash: Some(HashAlgorithm::Sha1),
+            time: Some(current_time),
+            window: Some(3600), // 1 hour window
+            ..Default::default()
+          })
+          .unwrap(),
+        ],
+        options,
+      ));
       result.unwrap()
     })
   });
@@ -132,24 +133,24 @@ fn bench_totp(c: &mut Criterion) {
   // Multiple derive - 3 TOTPs (all required)
   current_time = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_millis() as u64;
   let multiple_setup_key_3 = setup::key::key(
-    vec![
+    &[
       setup_totp(TOTPOptions {
         id: Some("totp1".to_string()),
         secret: Some(SECRET20.to_vec()),
-        digits: 6,
-        hash: HashAlgorithm::Sha1,
+        digits: Some(6),
+        hash: Some(HashAlgorithm::Sha1),
         time: Some(current_time),
-        window: 3600, // 1 hour window
+        window: Some(3600), // 1 hour window
         ..Default::default()
       })
       .unwrap(),
       setup_totp(TOTPOptions {
         id: Some("totp2".to_string()),
         secret: Some(vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20]),
-        digits: 6,
-        hash: HashAlgorithm::Sha1,
+        digits: Some(6),
+        hash: Some(HashAlgorithm::Sha1),
         time: Some(current_time),
-        window: 3600, // 1 hour window
+        window: Some(3600), // 1 hour window
         ..Default::default()
       })
       .unwrap(),
@@ -158,10 +159,10 @@ fn bench_totp(c: &mut Criterion) {
         secret: Some(vec![
           21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40,
         ]),
-        digits: 6,
-        hash: HashAlgorithm::Sha1,
+        digits: Some(6),
+        hash: Some(HashAlgorithm::Sha1),
         time: Some(current_time),
-        window: 3600, // 1 hour window
+        window: Some(3600), // 1 hour window
         ..Default::default()
       })
       .unwrap(),
@@ -209,8 +210,7 @@ fn bench_totp(c: &mut Criterion) {
           .unwrap(),
         ),
       ]));
-      let result =
-        black_box(derive::key(multiple_setup_key_3.policy.clone(), factors_map, false, false));
+      let result = black_box(derive::key(&multiple_setup_key_3.policy, factors_map, false, false));
       result.unwrap()
     })
   });
@@ -218,24 +218,24 @@ fn bench_totp(c: &mut Criterion) {
   // Threshold derive - 2 out of 3 TOTPs
   current_time = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_millis() as u64;
   let threshold_setup_key = setup::key::key(
-    vec![
+    &[
       setup_totp(TOTPOptions {
         id: Some("totp1".to_string()),
         secret: Some(SECRET20.to_vec()),
-        digits: 6,
-        hash: HashAlgorithm::Sha1,
+        digits: Some(6),
+        hash: Some(HashAlgorithm::Sha1),
         time: Some(current_time),
-        window: 3600, // 1 hour window
+        window: Some(3600), // 1 hour window
         ..Default::default()
       })
       .unwrap(),
       setup_totp(TOTPOptions {
         id: Some("totp2".to_string()),
         secret: Some(vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20]),
-        digits: 6,
-        hash: HashAlgorithm::Sha1,
+        digits: Some(6),
+        hash: Some(HashAlgorithm::Sha1),
         time: Some(current_time),
-        window: 3600, // 1 hour window
+        window: Some(3600), // 1 hour window
         ..Default::default()
       })
       .unwrap(),
@@ -244,10 +244,10 @@ fn bench_totp(c: &mut Criterion) {
         secret: Some(vec![
           21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40,
         ]),
-        digits: 6,
-        hash: HashAlgorithm::Sha1,
+        digits: Some(6),
+        hash: Some(HashAlgorithm::Sha1),
         time: Some(current_time),
-        window: 3600, // 1 hour window
+        window: Some(3600), // 1 hour window
         ..Default::default()
       })
       .unwrap(),
@@ -282,8 +282,7 @@ fn bench_totp(c: &mut Criterion) {
           .unwrap(),
         ),
       ]));
-      let result =
-        black_box(derive::key(threshold_setup_key.policy.clone(), factors_map, false, false));
+      let result = black_box(derive::key(&threshold_setup_key.policy, factors_map, false, false));
       result.unwrap()
     })
   });

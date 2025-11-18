@@ -46,13 +46,13 @@ impl MFKDF2DerivedKey {
     threshold: Option<u8>,
   ) -> MFKDF2Result<()> {
     let mut factors = BTreeMap::new();
-    let mut material: BTreeMap<String, [u8; 32]> = BTreeMap::new();
+    let mut material: BTreeMap<&str, [u8; 32]> = BTreeMap::new();
     let mut outputs = BTreeMap::new();
     let mut data = BTreeMap::new();
 
     let threshold = threshold.unwrap_or(self.policy.threshold);
 
-    for factor in self.policy.factors.iter() {
+    for factor in &self.policy.factors {
       factors.insert(factor.id.clone(), factor.clone());
 
       let pad = general_purpose::STANDARD.decode(&factor.secret)?;
@@ -65,7 +65,7 @@ impl MFKDF2DerivedKey {
       let factor_material = crate::crypto::decrypt(pad, &secret_key);
 
       material.insert(
-        factor.id.clone(),
+        factor.id.as_str(),
         factor_material.try_into().map_err(|_| MFKDF2Error::TryFromVecError)?,
       );
     }
@@ -86,24 +86,24 @@ impl MFKDF2DerivedKey {
       let id = factor.id.clone().ok_or(MFKDF2Error::MissingFactorId)?;
 
       let params_key =
-        hkdf_sha256_with_info(&self.key, &salt, format!("mfkdf2:factor:params:{}", id).as_bytes());
+        hkdf_sha256_with_info(&self.key, &salt, format!("mfkdf2:factor:params:{id}").as_bytes());
       let params = factor.factor_type.setup().params(params_key.into())?;
 
       let new_factor = PolicyFactor {
-        id:     id.clone(),
-        kind:   factor.kind(),
-        salt:   general_purpose::STANDARD.encode(salt),
-        params: serde_json::to_string(&params)?,
-        hint:   None,
-        pad:    "".to_string(),
-        secret: "".to_string(),
+        id: id.clone(),
+        kind: factor.kind(),
+        salt: general_purpose::STANDARD.encode(salt),
+        params,
+        hint: None,
+        pad: String::new(),
+        secret: String::new(),
       };
 
       factors.insert(id.clone(), new_factor);
-      outputs.insert(id.clone(), factor.factor_type.output(self.key.clone().try_into()?));
+      outputs.insert(id.clone(), factor.factor_type.output());
       data.insert(id.clone(), factor.data());
-      if material.contains_key(&id) {
-        material.remove(&id);
+      if material.contains_key(id.as_str()) {
+        material.remove(id.as_str());
       }
     }
 
@@ -130,7 +130,7 @@ impl MFKDF2DerivedKey {
 
     let mut new_factors = vec![];
 
-    for (id, factor) in factors.values_mut().enumerate() {
+    for (id, (_, mut factor)) in factors.into_iter().enumerate() {
       let salt = general_purpose::STANDARD.decode(&factor.salt)?;
 
       let stretched = if material.contains_key(factor.id.as_str()) {
@@ -154,7 +154,7 @@ impl MFKDF2DerivedKey {
       factor.pad = general_purpose::STANDARD.encode(encrypt(&shares[id], stretched));
       factor.secret = general_purpose::STANDARD.encode(encrypt(stretched, &secret_key));
 
-      new_factors.push(factor.clone());
+      new_factors.push(factor);
     }
 
     self.policy.factors = new_factors;
@@ -174,7 +174,6 @@ impl MFKDF2DerivedKey {
   }
 }
 
-// TODO (@lonerapier): this should take a mut reference to the derived key
 #[cfg_attr(feature = "bindings", uniffi::export)]
 pub fn derived_key_set_threshold(
   derived_key: MFKDF2DerivedKey,
@@ -201,7 +200,7 @@ pub fn derived_key_remove_factors(
   factors: &[String],
 ) -> MFKDF2Result<MFKDF2DerivedKey> {
   let mut derived_key = derived_key;
-  derived_key.remove_factors(factors.iter().map(|f| f.as_str()).collect::<Vec<&str>>().as_ref())?;
+  derived_key.remove_factors(factors.iter().map(String::as_str).collect::<Vec<&str>>().as_ref())?;
   Ok(derived_key)
 }
 
@@ -254,7 +253,7 @@ pub fn derived_key_reconstitute(
 ) -> MFKDF2Result<MFKDF2DerivedKey> {
   let mut derived_key = derived_key;
   derived_key.reconstitute(
-    remove_factor.iter().map(|f| f.as_str()).collect::<Vec<&str>>().as_ref(),
+    remove_factor.iter().map(String::as_str).collect::<Vec<&str>>().as_ref(),
     add_factor,
     threshold,
   )?;
@@ -287,7 +286,7 @@ mod tests {
       })?,
     ];
 
-    let mut setup = setup::key(setup_factors, setup::key::MFKDF2Options {
+    let mut setup = setup::key(&setup_factors, setup::key::MFKDF2Options {
       threshold: Some(3),
       integrity: Some(false),
       ..Default::default()
@@ -299,12 +298,12 @@ mod tests {
       ("password2".to_string(), derive_factors::password("password2")?),
     ]);
 
-    let result = derive::key(setup.policy.clone(), derive_factors.clone(), false, false);
+    let result = derive::key(&setup.policy, derive_factors.clone(), false, false);
     assert!(result.is_err(), "Derivation should fail with threshold 3 and only 2 factors provided");
 
     setup.set_threshold(2)?;
 
-    let derive = derive::key(setup.policy, derive_factors, false, false)?;
+    let derive = derive::key(&setup.policy, derive_factors, false, false)?;
 
     assert_eq!(derive.key, setup_key);
 
@@ -326,11 +325,11 @@ mod tests {
     ];
 
     let options = setup::key::MFKDF2Options { threshold: Some(2), ..Default::default() };
-    let mut setup_key = setup::key(setup_factors, options)?;
+    let mut setup_key = setup::key(&setup_factors, options)?;
     let key = setup_key.key.clone();
 
     let derive1 = derive::key(
-      setup_key.policy.clone(),
+      &setup_key.policy,
       HashMap::from([
         ("password1".to_string(), derive_factors::password("password1")?),
         ("password2".to_string(), derive_factors::password("password2")?),
@@ -343,7 +342,7 @@ mod tests {
     setup_key.remove_factor("password1")?;
 
     let mut derive2 = derive::key(
-      setup_key.policy.clone(),
+      &setup_key.policy,
       HashMap::from([
         ("password2".to_string(), derive_factors::password("password2")?),
         ("password3".to_string(), derive_factors::password("password3")?),
@@ -354,7 +353,7 @@ mod tests {
     assert_eq!(derive2.key, key);
 
     let result = derive::key(
-      setup_key.policy.clone(),
+      &setup_key.policy,
       HashMap::from([
         ("password1".to_string(), derive_factors::password("password1")?),
         ("password2".to_string(), derive_factors::password("password2")?),
@@ -365,7 +364,7 @@ mod tests {
     assert!(result.is_err(), "Derivation should fail after removing password1");
 
     let result = derive::key(
-      derive2.policy.clone(),
+      &derive2.policy,
       HashMap::from([("password2".to_string(), derive_factors::password("password2")?)]),
       false,
       false,
@@ -379,11 +378,11 @@ mod tests {
     let mut derive_factors3 = HashMap::new();
     derive_factors3.insert("password3".to_string(), derive_factors::password("password3")?);
 
-    let derive3 = derive::key(derive2.policy.clone(), derive_factors3, false, false)?;
+    let derive3 = derive::key(&derive2.policy, derive_factors3, false, false)?;
     assert_eq!(derive3.key, key);
 
     let result = derive::key(
-      derive2.policy,
+      &derive2.policy,
       HashMap::from([("password2".to_string(), derive_factors::password("password2")?)]),
       false,
       false,
@@ -411,11 +410,11 @@ mod tests {
     ];
 
     let options = setup::key::MFKDF2Options { threshold: Some(2), ..Default::default() };
-    let mut setup_key = setup::key(setup_factors, options)?;
+    let mut setup_key = setup::key(&setup_factors, options)?;
     let key = setup_key.key.clone();
 
     let derive1 = derive::key(
-      setup_key.policy.clone(),
+      &setup_key.policy,
       HashMap::from([
         ("password1".to_string(), derive_factors::password("password1")?),
         ("password4".to_string(), derive_factors::password("password4")?),
@@ -426,7 +425,7 @@ mod tests {
     assert_eq!(derive1.key, key);
 
     let derive2 = derive::key(
-      setup_key.policy.clone(),
+      &setup_key.policy,
       HashMap::from([
         ("password2".to_string(), derive_factors::password("password2")?),
         ("password3".to_string(), derive_factors::password("password3")?),
@@ -439,7 +438,7 @@ mod tests {
     setup_key.remove_factors(&["password1", "password4"])?;
 
     let result = derive::key(
-      setup_key.policy.clone(),
+      &setup_key.policy,
       HashMap::from([
         ("password1".to_string(), derive_factors::password("password1")?),
         ("password4".to_string(), derive_factors::password("password4")?),
@@ -450,7 +449,7 @@ mod tests {
     assert!(result.is_err(), "Derivation should fail after removing password1 and password4");
 
     let derive3 = derive::key(
-      setup_key.policy,
+      &setup_key.policy,
       HashMap::from([
         ("password2".to_string(), derive_factors::password("password2")?),
         ("password3".to_string(), derive_factors::password("password3")?),
@@ -475,7 +474,7 @@ mod tests {
     ];
 
     let options = setup::key::MFKDF2Options { threshold: Some(2), ..Default::default() };
-    let mut setup_key = setup::key(setup_factors, options)?;
+    let mut setup_key = setup::key(&setup_factors, options)?;
     let key = setup_key.key.clone();
 
     setup_key.add_factor(crate::setup::factors::password("password3", PasswordOptions {
@@ -483,7 +482,7 @@ mod tests {
     })?)?;
 
     let derive = derive::key(
-      setup_key.policy.clone(),
+      &setup_key.policy,
       HashMap::from([
         ("password2".to_string(), derive_factors::password("password2")?),
         ("password3".to_string(), derive_factors::password("password3")?),
@@ -508,7 +507,7 @@ mod tests {
     ];
 
     let options = setup::key::MFKDF2Options { threshold: Some(2), ..Default::default() };
-    let mut setup_key = setup::key(setup_factors, options)?;
+    let mut setup_key = setup::key(&setup_factors, options)?;
     let key = setup_key.key.clone();
 
     setup_key.add_factors(&[
@@ -521,7 +520,7 @@ mod tests {
     ])?;
 
     let derive = derive::key(
-      setup_key.policy.clone(),
+      &setup_key.policy,
       HashMap::from([
         ("password3".to_string(), derive_factors::password("password3")?),
         ("password4".to_string(), derive_factors::password("password4")?),
@@ -549,7 +548,7 @@ mod tests {
     ];
 
     let options = setup::key::MFKDF2Options { threshold: Some(2), ..Default::default() };
-    let mut setup_key = setup::key(setup_factors, options)?;
+    let mut setup_key = setup::key(&setup_factors, options)?;
     let key = setup_key.key.clone();
 
     setup_key
@@ -558,7 +557,7 @@ mod tests {
       })?)?;
 
     let derive = derive::key(
-      setup_key.policy.clone(),
+      &setup_key.policy,
       HashMap::from([
         ("password1".to_string(), derive_factors::password("password1")?),
         ("password3".to_string(), derive_factors::password("differentPassword3")?),
@@ -586,7 +585,7 @@ mod tests {
     ];
 
     let options = setup::key::MFKDF2Options { threshold: Some(2), ..Default::default() };
-    let mut setup_key = setup::key(setup_factors, options)?;
+    let mut setup_key = setup::key(&setup_factors, options)?;
     let key = setup_key.key.clone();
 
     setup_key.recover_factors(&[
@@ -599,7 +598,7 @@ mod tests {
     ])?;
 
     let derive = derive::key(
-      setup_key.policy.clone(),
+      &setup_key.policy,
       HashMap::from([
         ("password1".to_string(), derive_factors::password("otherPassword1")?),
         ("password3".to_string(), derive_factors::password("differentPassword3")?),
@@ -627,7 +626,7 @@ mod tests {
     ];
 
     let options = setup::key::MFKDF2Options { threshold: Some(3), ..Default::default() };
-    let mut setup_key = setup::key(setup_factors, options)?;
+    let mut setup_key = setup::key(&setup_factors, options)?;
     let key = setup_key.key.clone();
 
     setup_key.reconstitute(
@@ -639,7 +638,7 @@ mod tests {
     )?;
 
     let derive = derive::key(
-      setup_key.policy.clone(),
+      &setup_key.policy,
       HashMap::from([
         ("password2".to_string(), derive_factors::password("otherPassword2")?),
         ("password3".to_string(), derive_factors::password("password3")?),
@@ -667,13 +666,13 @@ mod tests {
     ];
 
     let options = setup::key::MFKDF2Options { threshold: Some(2), ..Default::default() };
-    let mut setup_key = setup::key(setup_factors, options)?;
+    let mut setup_key = setup::key(&setup_factors, options)?;
     let key = setup_key.key.clone();
 
     setup_key.reconstitute(&[], &[], None)?;
 
     let derive = derive::key(
-      setup_key.policy.clone(),
+      &setup_key.policy,
       HashMap::from([
         ("password2".to_string(), derive_factors::password("password2")?),
         ("password3".to_string(), derive_factors::password("password3")?),
@@ -701,7 +700,7 @@ mod tests {
     ];
 
     let options = setup::key::MFKDF2Options { threshold: Some(3), ..Default::default() };
-    let mut setup_key = setup::key(setup_factors, options)?;
+    let mut setup_key = setup::key(&setup_factors, options)?;
 
     let result = setup_key.reconstitute(
       &["password4"],
@@ -731,7 +730,7 @@ mod tests {
     ];
 
     let options = setup::key::MFKDF2Options { threshold: Some(3), ..Default::default() };
-    let mut setup_key = setup::key(setup_factors, options)?;
+    let mut setup_key = setup::key(&setup_factors, options)?;
 
     let result = setup_key.reconstitute(
       &["password3"],
@@ -766,7 +765,7 @@ mod tests {
     ];
 
     let options = setup::key::MFKDF2Options { threshold: Some(3), ..Default::default() };
-    let mut setup_key = setup::key(setup_factors, options)?;
+    let mut setup_key = setup::key(&setup_factors, options)?;
 
     let result = setup_key.reconstitute(&["password1", "password2", "password3"], &[], Some(4));
     assert!(matches!(result, Err(error::MFKDF2Error::InvalidThreshold)));

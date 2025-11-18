@@ -78,6 +78,68 @@ suite('mfkdf2/strengthening', () => {
       derive.key.toString('hex').should.equal(setup.key.toString('hex'))
     })
 
+    test('stack', async () => {
+      const setup = await mfkdf.setup.key(
+        [
+          await mfkdf.setup.factors.stack(
+            [
+              await mfkdf.setup.factors.password('password1', {
+                id: 'password1'
+              }),
+              await mfkdf.setup.factors.password('password2', {
+                id: 'password2'
+              })
+            ],
+            { id: 'stack1' }
+          ),
+          await mfkdf.setup.factors.stack(
+            [
+              await mfkdf.setup.factors.password('password3', {
+                id: 'password3'
+              }),
+              await mfkdf.setup.factors.password('password4', {
+                id: 'password4'
+              })
+            ],
+            { id: 'stack2' }
+          )
+        ],
+        { threshold: 1, time: 3, memory: 16384 }
+      );
+
+      setup.policy.time.should.equal(3)
+      setup.policy.memory.should.equal(16384)
+
+      const derive = await mfkdf.derive.key(setup.policy, {
+        stack1: await mfkdf.derive.factors.stack({
+          password1: await mfkdf.derive.factors.password('password1'),
+          password2: await mfkdf.derive.factors.password('password2')
+        })
+      });
+
+      derive.policy.time.should.equal(3)
+      derive.policy.memory.should.equal(16384)
+
+      derive.key.toString('hex').should.equal(setup.key.toString('hex'))
+
+      await derive.strengthen(5, 0)
+
+      derive.policy.time.should.equal(5)
+      derive.policy.memory.should.equal(0)
+
+      const derive2 = await mfkdf.derive.key(derive.policy, {
+        stack1: await mfkdf.derive.factors.stack({
+          password1: await mfkdf.derive.factors.password('password1'),
+          password2: await mfkdf.derive.factors.password('password2')
+        })
+      });
+
+      derive2.policy.time.should.equal(5)
+      derive2.policy.memory.should.equal(0)
+
+      derive2.key.toString('hex').should.equal(setup.key.toString('hex'))
+    })
+
     // /* invalid test
     test('throws', async () => {
       await mfkdf.setup

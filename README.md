@@ -135,7 +135,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
       "hotp".to_string(), derive::factors::hotp("123456")?),
     ]);
     // 3. Derive the key using user inputs
-    let derived_key = derive::key(key.policy, factors, true, false)?;
+    let derived_key = derive::key(&key.policy, factors, true, false)?;
 
     println!("Derived Key: {:?}", derived_key);
 

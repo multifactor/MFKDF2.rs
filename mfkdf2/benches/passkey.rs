@@ -17,7 +17,7 @@ fn bench_setup_passkey(c: &mut Criterion) {
     b.iter(|| {
       let secret = [42u8; 32];
       let factor = black_box(setup_passkey(secret, PasskeyOptions::default()).unwrap());
-      let result = black_box(setup::key::key(vec![factor], MFKDF2Options::default()));
+      let result = black_box(setup::key::key(&[factor], MFKDF2Options::default()));
       result.unwrap()
     })
   });
@@ -25,7 +25,7 @@ fn bench_setup_passkey(c: &mut Criterion) {
   // Single derive - 1 passkey
   let secret = [42u8; 32];
   let single_setup_key = setup::key::key(
-    vec![setup_passkey(secret, PasskeyOptions { id: Some("passkey".to_string()) }).unwrap()],
+    &[setup_passkey(secret, PasskeyOptions { id: Some("passkey".to_string()) }).unwrap()],
     MFKDF2Options::default(),
   )
   .unwrap();
@@ -36,8 +36,7 @@ fn bench_setup_passkey(c: &mut Criterion) {
         "passkey".to_string(),
         derive::factors::passkey(secret).unwrap(),
       )]));
-      let result =
-        black_box(derive::key(single_setup_key.policy.clone(), factors_map, false, false));
+      let result = black_box(derive::key(&single_setup_key.policy, factors_map, false, false));
       result.unwrap()
     })
   });
@@ -45,20 +44,22 @@ fn bench_setup_passkey(c: &mut Criterion) {
   // Multiple setup - 3 passkeys with threshold 3 (all required)
   group.bench_function("multiple_setup_3_threshold_3", |b| {
     b.iter(|| {
-      let factors = black_box(vec![
-        setup_passkey([1u8; 32], PasskeyOptions { id: Some("passkey1".to_string()) }).unwrap(),
-        setup_passkey([2u8; 32], PasskeyOptions { id: Some("passkey2".to_string()) }).unwrap(),
-        setup_passkey([3u8; 32], PasskeyOptions { id: Some("passkey3".to_string()) }).unwrap(),
-      ]);
       let options = MFKDF2Options { threshold: Some(3), ..Default::default() };
-      let result = black_box(setup::key::key(factors, options));
+      let result = black_box(setup::key::key(
+        &[
+          setup_passkey([1u8; 32], PasskeyOptions { id: Some("passkey1".to_string()) }).unwrap(),
+          setup_passkey([2u8; 32], PasskeyOptions { id: Some("passkey2".to_string()) }).unwrap(),
+          setup_passkey([3u8; 32], PasskeyOptions { id: Some("passkey3".to_string()) }).unwrap(),
+        ],
+        options,
+      ));
       result.unwrap()
     })
   });
 
   // Multiple derive - 3 passkeys (all required)
   let multiple_setup_key_3 = setup::key::key(
-    vec![
+    &[
       setup_passkey([1u8; 32], PasskeyOptions { id: Some("passkey1".to_string()) }).unwrap(),
       setup_passkey([2u8; 32], PasskeyOptions { id: Some("passkey2".to_string()) }).unwrap(),
       setup_passkey([3u8; 32], PasskeyOptions { id: Some("passkey3".to_string()) }).unwrap(),
@@ -74,15 +75,14 @@ fn bench_setup_passkey(c: &mut Criterion) {
         ("passkey2".to_string(), derive::factors::passkey([2u8; 32]).unwrap()),
         ("passkey3".to_string(), derive::factors::passkey([3u8; 32]).unwrap()),
       ]));
-      let result =
-        black_box(derive::key(multiple_setup_key_3.policy.clone(), factors_map, false, false));
+      let result = black_box(derive::key(&multiple_setup_key_3.policy, factors_map, false, false));
       result.unwrap()
     })
   });
 
   // Threshold derive - 2 out of 3 passkeys
   let threshold_setup_key = setup::key::key(
-    vec![
+    &[
       setup_passkey([1u8; 32], PasskeyOptions { id: Some("passkey1".to_string()) }).unwrap(),
       setup_passkey([2u8; 32], PasskeyOptions { id: Some("passkey2".to_string()) }).unwrap(),
       setup_passkey([3u8; 32], PasskeyOptions { id: Some("passkey3".to_string()) }).unwrap(),
@@ -97,8 +97,7 @@ fn bench_setup_passkey(c: &mut Criterion) {
         ("passkey1".to_string(), derive::factors::passkey([1u8; 32]).unwrap()),
         ("passkey2".to_string(), derive::factors::passkey([2u8; 32]).unwrap()),
       ]));
-      let result =
-        black_box(derive::key(threshold_setup_key.policy.clone(), factors_map, false, false));
+      let result = black_box(derive::key(&threshold_setup_key.policy, factors_map, false, false));
       result.unwrap()
     })
   });

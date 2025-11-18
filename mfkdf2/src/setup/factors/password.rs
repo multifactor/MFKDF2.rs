@@ -3,7 +3,7 @@ use serde_json::{Value, json};
 use zxcvbn::zxcvbn;
 
 use crate::{
-  definitions::{FactorMetadata, FactorType, Key, MFKDF2Factor},
+  definitions::{FactorMetadata, FactorType, MFKDF2Factor},
   error::{MFKDF2Error, MFKDF2Result},
   setup::FactorSetup,
 };
@@ -24,7 +24,7 @@ impl FactorSetup for Password {
   type Output = Value;
   type Params = Value;
 
-  fn output(&self, _key: Key) -> Self::Output {
+  fn output(&self) -> Self::Output {
     json!({
       "strength": zxcvbn(&self.password, &[]),
     })
@@ -66,7 +66,6 @@ pub async fn setup_password(
   password: String,
   options: PasswordOptions,
 ) -> MFKDF2Result<MFKDF2Factor> {
-  // Reuse the existing constructor logic
   crate::setup::factors::password::password(password, options)
 }
 

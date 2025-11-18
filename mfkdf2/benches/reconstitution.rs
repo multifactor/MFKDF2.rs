@@ -11,17 +11,15 @@ fn bench_reconstitution(c: &mut Criterion) {
   let mut group = c.benchmark_group("reconstitution");
 
   // Create initial setup with 3 factors, threshold 3
-  let initial_factors = vec![
-    setup_password("password1", PasswordOptions { id: Some("password1".to_string()) }).unwrap(),
-    setup_password("password2", PasswordOptions { id: Some("password2".to_string()) }).unwrap(),
-    setup_password("password3", PasswordOptions { id: Some("password3".to_string()) }).unwrap(),
-  ];
 
-  let mut base_setup_key = setup::key(initial_factors, MFKDF2Options {
-    threshold: Some(3),
-    integrity: Some(false),
-    ..Default::default()
-  })
+  let mut base_setup_key = setup::key(
+    &[
+      setup_password("password1", PasswordOptions { id: Some("password1".to_string()) }).unwrap(),
+      setup_password("password2", PasswordOptions { id: Some("password2".to_string()) }).unwrap(),
+      setup_password("password3", PasswordOptions { id: Some("password3".to_string()) }).unwrap(),
+    ],
+    MFKDF2Options { threshold: Some(3), integrity: Some(false), ..Default::default() },
+  )
   .unwrap();
 
   // Benchmark threshold change (3 -> 2)

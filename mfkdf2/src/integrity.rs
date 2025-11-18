@@ -54,7 +54,7 @@ pub fn extract_factor_core(factor: &PolicyFactor) -> [u8; 32] {
 pub fn extract_factor_params(factor: &PolicyFactor) -> [u8; 32] {
   let mut hasher = Sha256::new();
 
-  hasher.update(factor.params.as_bytes());
+  hasher.update(serde_json::to_string(&factor.params).unwrap().as_bytes());
 
   hasher.finalize().into()
 }

@@ -1,5 +1,7 @@
-/// 32 byte HKDF key
-#[derive(Debug, Clone)]
+use serde::{Deserialize, Serialize};
+
+/// 32 byte key
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub struct Key(pub [u8; 32]);
 
 impl TryFrom<Vec<u8>> for Key {
@@ -18,4 +20,14 @@ impl From<Key> for Vec<u8> {
 }
 impl From<[u8; 32]> for Key {
   fn from(value: [u8; 32]) -> Self { Key(value) }
+}
+
+impl AsRef<[u8]> for Key {
+  fn as_ref(&self) -> &[u8] { &self.0 }
+}
+
+impl std::ops::Deref for Key {
+  type Target = [u8];
+
+  fn deref(&self) -> &Self::Target { &self.0 }
 }
