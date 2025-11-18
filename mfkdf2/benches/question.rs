@@ -44,8 +44,7 @@ fn bench_question(c: &mut Criterion) {
         "question".to_string(),
         derive::factors::question("answer1").unwrap(),
       )]));
-      let result =
-        black_box(derive::key(single_setup_key.policy.clone(), factors_map, false, false));
+      let result = black_box(derive::key(&single_setup_key.policy, factors_map, false, false));
       result.unwrap()
     })
   });
@@ -108,8 +107,7 @@ fn bench_question(c: &mut Criterion) {
         ("q2".to_string(), derive::factors::question("answer2").unwrap()),
         ("q3".to_string(), derive::factors::question("answer3").unwrap()),
       ]));
-      let result =
-        black_box(derive::key(multiple_setup_key_3.policy.clone(), factors_map, false, false));
+      let result = black_box(derive::key(&multiple_setup_key_3.policy, factors_map, false, false));
       result.unwrap()
     })
   });
@@ -143,8 +141,7 @@ fn bench_question(c: &mut Criterion) {
         ("q1".to_string(), derive::factors::question("answer1").unwrap()),
         ("q2".to_string(), derive::factors::question("answer2").unwrap()),
       ]));
-      let result =
-        black_box(derive::key(threshold_setup_key.policy.clone(), factors_map, false, false));
+      let result = black_box(derive::key(&threshold_setup_key.policy, factors_map, false, false));
       result.unwrap()
     })
   });

@@ -36,8 +36,7 @@ fn bench_setup_passkey(c: &mut Criterion) {
         "passkey".to_string(),
         derive::factors::passkey(secret).unwrap(),
       )]));
-      let result =
-        black_box(derive::key(single_setup_key.policy.clone(), factors_map, false, false));
+      let result = black_box(derive::key(&single_setup_key.policy, factors_map, false, false));
       result.unwrap()
     })
   });
@@ -76,8 +75,7 @@ fn bench_setup_passkey(c: &mut Criterion) {
         ("passkey2".to_string(), derive::factors::passkey([2u8; 32]).unwrap()),
         ("passkey3".to_string(), derive::factors::passkey([3u8; 32]).unwrap()),
       ]));
-      let result =
-        black_box(derive::key(multiple_setup_key_3.policy.clone(), factors_map, false, false));
+      let result = black_box(derive::key(&multiple_setup_key_3.policy, factors_map, false, false));
       result.unwrap()
     })
   });
@@ -99,8 +97,7 @@ fn bench_setup_passkey(c: &mut Criterion) {
         ("passkey1".to_string(), derive::factors::passkey([1u8; 32]).unwrap()),
         ("passkey2".to_string(), derive::factors::passkey([2u8; 32]).unwrap()),
       ]));
-      let result =
-        black_box(derive::key(threshold_setup_key.policy.clone(), factors_map, false, false));
+      let result = black_box(derive::key(&threshold_setup_key.policy, factors_map, false, false));
       result.unwrap()
     })
   });

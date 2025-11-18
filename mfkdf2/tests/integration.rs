@@ -21,7 +21,7 @@ fn key_derive() -> Result<(), mfkdf2::error::MFKDF2Error> {
 
   let factors = HashMap::from([factor]);
 
-  let derived_key = mfkdf2::derive::key(key.policy, factors, false, false)?;
+  let derived_key = mfkdf2::derive::key(&key.policy, factors, false, false)?;
   println!("Derived key: {}", derived_key);
 
   assert_eq!(derived_key.key, key.key);
@@ -40,7 +40,7 @@ fn key_derive_fail() {
 
   let factors = HashMap::from([factor]);
 
-  let derived_key = mfkdf2::derive::key(key.policy, factors, false, false).unwrap();
+  let derived_key = mfkdf2::derive::key(&key.policy, factors, false, false).unwrap();
   println!("Derived key: {}", derived_key);
 
   assert_eq!(derived_key.key, key.key);
@@ -59,7 +59,7 @@ fn key_derive_threshold() {
 
   let factors = HashMap::from([factor]);
 
-  let derived_key = mfkdf2::derive::key(key.policy.clone(), factors, false, false).unwrap();
+  let derived_key = mfkdf2::derive::key(&key.policy, factors, false, false).unwrap();
   println!("Derived key: {}", derived_key);
 
   assert_eq!(derived_key.key, key.key);
@@ -68,7 +68,7 @@ fn key_derive_threshold() {
 
   let factors = HashMap::from([factor]);
 
-  let derived_key = mfkdf2::derive::key(key.policy, factors, false, false).unwrap();
+  let derived_key = mfkdf2::derive::key(&key.policy, factors, false, false).unwrap();
   println!("Derived key: {}", derived_key);
 
   assert_eq!(derived_key.key, key.key);
@@ -92,7 +92,7 @@ fn key_derive_password_question() {
 
   let factors = HashMap::from([factor_password, factor_question]);
 
-  let derived_key = mfkdf2::derive::key(key.policy.clone(), factors, false, false).unwrap();
+  let derived_key = mfkdf2::derive::key(&key.policy, factors, false, false).unwrap();
   println!("Derived key: {}", derived_key);
 
   assert_eq!(derived_key.key, key.key);
@@ -110,7 +110,7 @@ fn key_derive_uuid() {
 
   let factors = HashMap::from([factor]);
 
-  let derived_key = mfkdf2::derive::key(key.policy.clone(), factors, false, false).unwrap();
+  let derived_key = mfkdf2::derive::key(&key.policy, factors, false, false).unwrap();
 
   assert_eq!(derived_key.key, key.key);
 }
@@ -136,7 +136,7 @@ fn key_derive_hmacsha1() -> Result<(), mfkdf2::error::MFKDF2Error> {
     ("hmacsha1_1".to_string(), mfkdf2::derive::factors::hmacsha1(response.into()).unwrap());
   let factors = HashMap::from([factor]);
 
-  let derived_key = mfkdf2::derive::key(key.policy, factors, false, false)?;
+  let derived_key = mfkdf2::derive::key(&key.policy, factors, false, false)?;
   println!("Derived key: {}", derived_key);
 
   assert_eq!(derived_key.key, key.key);
@@ -210,7 +210,7 @@ fn key_derive_hotp() -> Result<(), mfkdf2::error::MFKDF2Error> {
   let factor = ("hotp_1".to_string(), mfkdf2::derive::factors::hotp(generated_code).unwrap());
   let factors = HashMap::from([factor]);
 
-  let derived_key = mfkdf2::derive::key(key.policy, factors, false, false)?;
+  let derived_key = mfkdf2::derive::key(&key.policy, factors, false, false)?;
   println!("Derived key: {}", derived_key);
 
   assert_eq!(derived_key.key, key.key);
@@ -228,7 +228,7 @@ fn key_derive_hotp_wrong_code() {
   let factor = ("hotp_1".to_string(), mfkdf2::derive::factors::hotp(wrong_code).unwrap());
   let factors = HashMap::from([factor]);
 
-  let derived_key = mfkdf2::derive::key(key.policy, factors, false, false).unwrap();
+  let derived_key = mfkdf2::derive::key(&key.policy, factors, false, false).unwrap();
   println!("Derived key: {}", derived_key);
 
   // This should fail because the wrong code will produce a different target
@@ -258,7 +258,7 @@ fn key_derive_mixed_password_hotp() -> Result<(), mfkdf2::error::MFKDF2Error> {
   let factor_hotp = ("hotp_1".to_string(), mfkdf2::derive::factors::hotp(generated_code).unwrap());
   let factors = HashMap::from([factor_password, factor_hotp]);
 
-  let derived_key = mfkdf2::derive::key(key.policy, factors, false, false)?;
+  let derived_key = mfkdf2::derive::key(&key.policy, factors, false, false)?;
   println!("Derived key: {}", derived_key);
 
   assert_eq!(derived_key.key, key.key);
@@ -293,7 +293,7 @@ fn key_derivation_combinations(
       let derive_factors: HashMap<_, _> =
         combo.iter().map(|name| create_derive_factor(name, &policy_for_run)).collect();
 
-      let derived_key = mfkdf2::derive::key(policy_for_run.clone(), derive_factors, false, false)?;
+      let derived_key = mfkdf2::derive::key(&policy_for_run, derive_factors, false, false)?;
 
       assert_eq!(
         derived_key.key, setup_key.key,

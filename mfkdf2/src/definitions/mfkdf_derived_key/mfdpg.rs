@@ -50,7 +50,7 @@ mod tests {
 
     let derive_factors =
       HashMap::from([("password1".to_string(), derive::factors::password("password1")?)]);
-    let derive_key = derive::key(setup_key.policy, derive_factors, false, false)?;
+    let derive_key = derive::key(&setup_key.policy, derive_factors, false, false)?;
     assert_eq!(derive_key.key, setup_key.key);
 
     let password3 =
@@ -78,7 +78,7 @@ mod tests {
 
     let derive_factors =
       HashMap::from([("password1".to_string(), derive::factors::password("password1")?)]);
-    let derive_key = derive::key(setup_key.policy, derive_factors, false, false)?;
+    let derive_key = derive::key(&setup_key.policy, derive_factors, false, false)?;
 
     let password3 = derive_key.derive_password(
       Some("example.com"),
@@ -122,7 +122,7 @@ mod tests {
 
     let derive_factors =
       HashMap::from([("password1".to_string(), derive::factors::password("password1")?)]);
-    let derive_key = derive::key(setup_key.policy, derive_factors, false, false)?;
+    let derive_key = derive::key(&setup_key.policy, derive_factors, false, false)?;
 
     let password2 =
       derive_key.derive_password(Some("example.com"), Some(b"salt"), "[a-zA-Z]{6,10}");
@@ -173,7 +173,7 @@ mod tests {
     let policy = setup_key.policy.clone();
     let derive_factors1 =
       HashMap::from([("password1".to_string(), derive::factors::password("password1")?)]);
-    let derive_key1 = derive::key(policy.clone(), derive_factors1, false, false)?;
+    let derive_key1 = derive::key(&policy, derive_factors1, false, false)?;
 
     let password2 =
       derive_key1.derive_password(Some("example.com"), Some(b"salt"), "[a-zA-Z]{6,10}");
@@ -183,7 +183,7 @@ mod tests {
 
     let derive_factors2 =
       HashMap::from([("password1".to_string(), derive::factors::password("password2")?)]);
-    let derive_key2 = derive::key(policy, derive_factors2, false, false)?;
+    let derive_key2 = derive::key(&policy, derive_factors2, false, false)?;
 
     let password3 =
       derive_key2.derive_password(Some("example.com"), Some(b"salt"), "[a-zA-Z]{6,10}");

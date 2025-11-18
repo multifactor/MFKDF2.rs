@@ -298,12 +298,12 @@ mod tests {
       ("password2".to_string(), derive_factors::password("password2")?),
     ]);
 
-    let result = derive::key(setup.policy.clone(), derive_factors.clone(), false, false);
+    let result = derive::key(&setup.policy, derive_factors.clone(), false, false);
     assert!(result.is_err(), "Derivation should fail with threshold 3 and only 2 factors provided");
 
     setup.set_threshold(2)?;
 
-    let derive = derive::key(setup.policy, derive_factors, false, false)?;
+    let derive = derive::key(&setup.policy, derive_factors, false, false)?;
 
     assert_eq!(derive.key, setup_key);
 
@@ -329,7 +329,7 @@ mod tests {
     let key = setup_key.key.clone();
 
     let derive1 = derive::key(
-      setup_key.policy.clone(),
+      &setup_key.policy,
       HashMap::from([
         ("password1".to_string(), derive_factors::password("password1")?),
         ("password2".to_string(), derive_factors::password("password2")?),
@@ -342,7 +342,7 @@ mod tests {
     setup_key.remove_factor("password1")?;
 
     let mut derive2 = derive::key(
-      setup_key.policy.clone(),
+      &setup_key.policy,
       HashMap::from([
         ("password2".to_string(), derive_factors::password("password2")?),
         ("password3".to_string(), derive_factors::password("password3")?),
@@ -353,7 +353,7 @@ mod tests {
     assert_eq!(derive2.key, key);
 
     let result = derive::key(
-      setup_key.policy.clone(),
+      &setup_key.policy,
       HashMap::from([
         ("password1".to_string(), derive_factors::password("password1")?),
         ("password2".to_string(), derive_factors::password("password2")?),
@@ -364,7 +364,7 @@ mod tests {
     assert!(result.is_err(), "Derivation should fail after removing password1");
 
     let result = derive::key(
-      derive2.policy.clone(),
+      &derive2.policy,
       HashMap::from([("password2".to_string(), derive_factors::password("password2")?)]),
       false,
       false,
@@ -378,11 +378,11 @@ mod tests {
     let mut derive_factors3 = HashMap::new();
     derive_factors3.insert("password3".to_string(), derive_factors::password("password3")?);
 
-    let derive3 = derive::key(derive2.policy.clone(), derive_factors3, false, false)?;
+    let derive3 = derive::key(&derive2.policy, derive_factors3, false, false)?;
     assert_eq!(derive3.key, key);
 
     let result = derive::key(
-      derive2.policy,
+      &derive2.policy,
       HashMap::from([("password2".to_string(), derive_factors::password("password2")?)]),
       false,
       false,
@@ -414,7 +414,7 @@ mod tests {
     let key = setup_key.key.clone();
 
     let derive1 = derive::key(
-      setup_key.policy.clone(),
+      &setup_key.policy,
       HashMap::from([
         ("password1".to_string(), derive_factors::password("password1")?),
         ("password4".to_string(), derive_factors::password("password4")?),
@@ -425,7 +425,7 @@ mod tests {
     assert_eq!(derive1.key, key);
 
     let derive2 = derive::key(
-      setup_key.policy.clone(),
+      &setup_key.policy,
       HashMap::from([
         ("password2".to_string(), derive_factors::password("password2")?),
         ("password3".to_string(), derive_factors::password("password3")?),
@@ -438,7 +438,7 @@ mod tests {
     setup_key.remove_factors(&["password1", "password4"])?;
 
     let result = derive::key(
-      setup_key.policy.clone(),
+      &setup_key.policy,
       HashMap::from([
         ("password1".to_string(), derive_factors::password("password1")?),
         ("password4".to_string(), derive_factors::password("password4")?),
@@ -449,7 +449,7 @@ mod tests {
     assert!(result.is_err(), "Derivation should fail after removing password1 and password4");
 
     let derive3 = derive::key(
-      setup_key.policy,
+      &setup_key.policy,
       HashMap::from([
         ("password2".to_string(), derive_factors::password("password2")?),
         ("password3".to_string(), derive_factors::password("password3")?),
@@ -482,7 +482,7 @@ mod tests {
     })?)?;
 
     let derive = derive::key(
-      setup_key.policy.clone(),
+      &setup_key.policy,
       HashMap::from([
         ("password2".to_string(), derive_factors::password("password2")?),
         ("password3".to_string(), derive_factors::password("password3")?),
@@ -520,7 +520,7 @@ mod tests {
     ])?;
 
     let derive = derive::key(
-      setup_key.policy.clone(),
+      &setup_key.policy,
       HashMap::from([
         ("password3".to_string(), derive_factors::password("password3")?),
         ("password4".to_string(), derive_factors::password("password4")?),
@@ -557,7 +557,7 @@ mod tests {
       })?)?;
 
     let derive = derive::key(
-      setup_key.policy.clone(),
+      &setup_key.policy,
       HashMap::from([
         ("password1".to_string(), derive_factors::password("password1")?),
         ("password3".to_string(), derive_factors::password("differentPassword3")?),
@@ -598,7 +598,7 @@ mod tests {
     ])?;
 
     let derive = derive::key(
-      setup_key.policy.clone(),
+      &setup_key.policy,
       HashMap::from([
         ("password1".to_string(), derive_factors::password("otherPassword1")?),
         ("password3".to_string(), derive_factors::password("differentPassword3")?),
@@ -638,7 +638,7 @@ mod tests {
     )?;
 
     let derive = derive::key(
-      setup_key.policy.clone(),
+      &setup_key.policy,
       HashMap::from([
         ("password2".to_string(), derive_factors::password("otherPassword2")?),
         ("password3".to_string(), derive_factors::password("password3")?),
@@ -672,7 +672,7 @@ mod tests {
     setup_key.reconstitute(&[], &[], None)?;
 
     let derive = derive::key(
-      setup_key.policy.clone(),
+      &setup_key.policy,
       HashMap::from([
         ("password2".to_string(), derive_factors::password("password2")?),
         ("password3".to_string(), derive_factors::password("password3")?),

@@ -64,7 +64,7 @@ mod tests {
     assert_eq!(setup_key.policy.time, 0);
 
     let mut derive_key = derive::key(
-      setup_key.policy,
+      &setup_key.policy,
       HashMap::from([("password1".to_string(), derive_factors::password("password1")?)]),
       true,
       false,
@@ -79,7 +79,7 @@ mod tests {
     assert_eq!(derive_key.policy.memory, 0);
 
     let derive_key2 = derive::key(
-      derive_key.policy,
+      &derive_key.policy,
       HashMap::from([("password1".to_string(), derive_factors::password("password1")?)]),
       false,
       false,
@@ -103,7 +103,7 @@ mod tests {
     assert_eq!(setup_key.policy.memory, 0);
 
     let mut derive_key = derive::key(
-      setup_key.policy,
+      &setup_key.policy,
       HashMap::from([("password1".to_string(), derive_factors::password("password1")?)]),
       true,
       false,
@@ -117,7 +117,7 @@ mod tests {
     assert_eq!(derive_key.policy.memory, 32768);
 
     let derive_key2 = derive::key(
-      derive_key.policy,
+      &derive_key.policy,
       HashMap::from([("password1".to_string(), derive_factors::password("password1")?)]),
       true,
       false,
@@ -142,7 +142,7 @@ mod tests {
     assert_eq!(setup_key.policy.memory, 0);
 
     let mut derive_key = derive::key(
-      setup_key.policy,
+      &setup_key.policy,
       HashMap::from([("password1".to_string(), derive_factors::password("password1")?)]),
       true,
       false,
@@ -157,7 +157,7 @@ mod tests {
     assert_eq!(derive_key.policy.memory, 16384);
 
     let derive_key2 = derive::key(
-      derive_key.policy,
+      &derive_key.policy,
       HashMap::from([("password1".to_string(), derive_factors::password("password1")?)]),
       true,
       false,
@@ -178,7 +178,7 @@ mod tests {
     let setup_key = setup::key(&setup_factors, MFKDF2Options::default())?;
 
     let mut derive_key = derive::key(
-      setup_key.policy,
+      &setup_key.policy,
       HashMap::from([("password1".to_string(), derive_factors::password("password1")?)]),
       true,
       false,
@@ -191,7 +191,7 @@ mod tests {
     assert_eq!(derive_key.policy.memory, 8192);
 
     let mut derive_key2 = derive::key(
-      derive_key.policy.clone(),
+      &derive_key.policy,
       HashMap::from([("password1".to_string(), derive_factors::password("password1")?)]),
       true,
       false,
@@ -204,7 +204,7 @@ mod tests {
     derive_policy.memory = 0;
 
     let derive_key3 = derive::key(
-      derive_policy,
+      &derive_policy,
       HashMap::from([("password1".to_string(), derive_factors::password("password1")?)]),
       true,
       false,
@@ -216,7 +216,7 @@ mod tests {
     assert_eq!(derive_key2.policy.memory, 16384);
 
     let derive_key3 = derive::key(
-      derive_key2.policy.clone(),
+      &derive_key2.policy,
       HashMap::from([("password1".to_string(), derive_factors::password("password1")?)]),
       true,
       false,
@@ -231,7 +231,7 @@ mod tests {
     derive_key2_policy.memory = 0;
 
     let derive_key4 = derive::key(
-      derive_key2_policy,
+      &derive_key2_policy,
       HashMap::from([("password1".to_string(), derive_factors::password("password1")?)]),
       true,
       false,
@@ -255,7 +255,7 @@ mod tests {
     let setup_key = setup::key(&setup_factors, MFKDF2Options::default())?;
 
     let mut derive_key = derive::key(
-      setup_key.policy,
+      &setup_key.policy,
       HashMap::from([
         ("password1".to_string(), derive_factors::password("password1")?),
         ("password2".to_string(), derive_factors::password("password2")?),
@@ -271,7 +271,7 @@ mod tests {
     assert_eq!(derive_key.policy.memory, 8192);
 
     let derive_key2 = derive::key(
-      derive_key.policy,
+      &derive_key.policy,
       HashMap::from([
         ("password1".to_string(), derive_factors::password("password1")?),
         ("password2".to_string(), derive_factors::password("password2")?),
@@ -288,7 +288,7 @@ mod tests {
     assert_eq!(derive_key2.policy.memory, 0);
 
     let derive_key3 = derive::key(
-      derive_key2.policy,
+      &derive_key2.policy,
       HashMap::from([
         ("password1".to_string(), derive_factors::password("password1")?),
         ("password2".to_string(), derive_factors::password("password2")?),
@@ -318,7 +318,7 @@ mod tests {
     let setup_key = setup::key(&setup_factors, MFKDF2Options::default())?;
 
     let mut derive_key = derive::key(
-      setup_key.policy,
+      &setup_key.policy,
       HashMap::from([
         ("password1".to_string(), derive_factors::password("password1")?),
         ("password2".to_string(), derive_factors::password("password2")?),
@@ -337,7 +337,7 @@ mod tests {
     derive_key.remove_factor("password2")?;
 
     let derive_key2 = derive::key(
-      derive_key.policy,
+      &derive_key.policy,
       HashMap::from([("password1".to_string(), derive_factors::password("password1")?)]),
       true,
       false,

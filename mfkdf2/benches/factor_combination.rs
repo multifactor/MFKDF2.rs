@@ -133,7 +133,7 @@ fn bench_factor_combination_derive(c: &mut Criterion) {
         ("pwd".to_string(), derive::factors::password("password1").unwrap()),
         ("hotp".to_string(), derive::factors::hotp(hotp_code as u32).unwrap()),
       ]));
-      let result = black_box(derive::key(setup_key.policy.clone(), factors_map, false, false));
+      let result = black_box(derive::key(&setup_key.policy, factors_map, false, false));
       result.unwrap()
     })
   });
@@ -152,7 +152,7 @@ fn bench_factor_combination_derive(c: &mut Criterion) {
           .unwrap(),
         ),
       ]));
-      let result = black_box(derive::key(setup_key.policy.clone(), factors_map, false, false));
+      let result = black_box(derive::key(&setup_key.policy, factors_map, false, false));
       result.unwrap()
     })
   });

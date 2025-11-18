@@ -21,7 +21,7 @@ fn bench_mfdpg(c: &mut Criterion) {
   .unwrap();
 
   let derived_key = derive::key(
-    setup_key.policy.clone(),
+    &setup_key.policy,
     HashMap::from([("password".to_string(), derive::factors::password("password1").unwrap())]),
     false,
     false,

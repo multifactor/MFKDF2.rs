@@ -75,7 +75,7 @@ fn stack_derive() {
   println!("Setup key: {}", key);
 
   let derived_key = mfkdf2::derive::key(
-    key.policy.clone(),
+    &key.policy,
     HashMap::from([(
       "stack_1".to_string(),
       mfkdf2::derive::factors::stack(HashMap::from([
@@ -92,7 +92,7 @@ fn stack_derive() {
   assert_eq!(derived_key.key, key.key);
 
   let derived_key = mfkdf2::derive::key(
-    key.policy,
+    &key.policy,
     HashMap::from([(
       "password_3".to_string(),
       mfkdf2::derive::factors::password("my-secure-password").unwrap(),
@@ -113,7 +113,7 @@ fn stack_derive() {
   let challenge = hex::decode(params["challenge"].as_str().unwrap()).unwrap();
   let response = mfkdf2::crypto::hmacsha1(&HMACSHA1_SECRET, &challenge);
   let derived_key = mfkdf2::derive::key(
-    derived_key.policy,
+    &derived_key.policy,
     HashMap::from([(
       "stack_2".to_string(),
       mfkdf2::derive::factors::stack(HashMap::from([
@@ -146,7 +146,7 @@ fn stack_derive_fail() {
   println!("Setup key: {}", key);
 
   let derived_key = mfkdf2::derive::key(
-    key.policy,
+    &key.policy,
     HashMap::from([(
       "password_3".to_string(),
       mfkdf2::derive::factors::password("wrong_password").unwrap(),
@@ -166,7 +166,7 @@ fn stack_derive_fail_second() {
   println!("Setup key: {}", key);
 
   let derived_key = mfkdf2::derive::key(
-    key.policy.clone(),
+    &key.policy,
     HashMap::from([(
       "stack".to_string(),
       mfkdf2::derive::factors::stack(HashMap::from([(

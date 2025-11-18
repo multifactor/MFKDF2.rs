@@ -110,7 +110,7 @@ fn policy_derivation_combinations(
       let derive_factors: HashMap<_, _> =
         combo.iter().map(|name| create_policy_derive_factor(name, name, &factors_policy)).collect();
 
-      let derived = policy::derive::derive(setup.policy.clone(), derive_factors, None).unwrap();
+      let derived = policy::derive::derive(setup.policy.clone(), &derive_factors, None).unwrap();
       assert_eq!(derived.key, setup.key, "Failed for combination: {:?}", combo);
     }
   }
@@ -246,7 +246,7 @@ fn derive_all() {
 
   let derived = policy::derive::derive(
     setup.policy,
-    HashMap::from([
+    &HashMap::from([
       ("id1".to_string(), derive::factors::password("password1").unwrap()),
       ("id2".to_string(), derive::factors::password("password2").unwrap()),
       ("id3".to_string(), derive::factors::question("question").unwrap()),
@@ -282,7 +282,7 @@ fn derive_any() {
 
   let derived = policy::derive::derive(
     setup.policy.clone(),
-    HashMap::from([("id1".to_string(), derive::factors::password("password1").unwrap())]),
+    &HashMap::from([("id1".to_string(), derive::factors::password("password1").unwrap())]),
     None,
   )
   .unwrap();
@@ -315,7 +315,7 @@ fn derive_at_least() {
 
   let derived = policy::derive::derive(
     setup.policy.clone(),
-    HashMap::from([
+    &HashMap::from([
       ("id1".to_string(), derive::factors::password("password").unwrap()),
       ("id2".to_string(), derive::factors::question("question").unwrap()),
     ]),
@@ -353,7 +353,7 @@ fn derive_basic_1() {
 
   let derive1 = policy::derive::derive(
     setup.policy.clone(),
-    HashMap::from([
+    &HashMap::from([
       ("id1".to_string(), derive::factors::password("password").unwrap()),
       ("id3".to_string(), derive::factors::password("password3").unwrap()),
     ]),
@@ -364,7 +364,7 @@ fn derive_basic_1() {
 
   let derive2 = policy::derive::derive(
     setup.policy.clone(),
-    HashMap::from([
+    &HashMap::from([
       ("id1".to_string(), derive::factors::password("password").unwrap()),
       ("id4".to_string(), derive::factors::password("password4").unwrap()),
     ]),
@@ -375,7 +375,7 @@ fn derive_basic_1() {
 
   let derive3 = policy::derive::derive(
     setup.policy.clone(),
-    HashMap::from([
+    &HashMap::from([
       ("id2".to_string(), derive::factors::question("question").unwrap()),
       ("id3".to_string(), derive::factors::password("password3").unwrap()),
     ]),
@@ -386,7 +386,7 @@ fn derive_basic_1() {
 
   let derive4 = policy::derive::derive(
     setup.policy.clone(),
-    HashMap::from([
+    &HashMap::from([
       ("id2".to_string(), derive::factors::question("question").unwrap()),
       ("id4".to_string(), derive::factors::password("password4").unwrap()),
     ]),
@@ -424,7 +424,7 @@ fn derive_basic_2() {
 
   let derive1 = policy::derive::derive(
     setup.policy.clone(),
-    HashMap::from([
+    &HashMap::from([
       ("id1".to_string(), derive::factors::password("password").unwrap()),
       ("id2".to_string(), derive::factors::question("question").unwrap()),
     ]),
@@ -435,7 +435,7 @@ fn derive_basic_2() {
 
   let derive2 = policy::derive::derive(
     setup.policy.clone(),
-    HashMap::from([
+    &HashMap::from([
       ("id3".to_string(), derive::factors::password("password3").unwrap()),
       ("id4".to_string(), derive::factors::password("password4").unwrap()),
     ]),
@@ -484,7 +484,7 @@ fn derive_deep() {
 
   let derive = policy::derive::derive(
     setup.policy.clone(),
-    HashMap::from([
+    &HashMap::from([
       ("id1".to_string(), derive::factors::password("password").unwrap()),
       ("id2".to_string(), derive::factors::question("question2").unwrap()),
       ("id4".to_string(), derive::factors::password("password4").unwrap()),
@@ -519,7 +519,7 @@ fn errors_invalid_policy() {
   // This setup should fail because `derive` calls `policy.validate()`
   let setup = policy::setup::setup(and1, PolicySetupOptions::default()).unwrap();
 
-  policy::derive::derive(setup.policy.clone(), HashMap::new(), None).unwrap();
+  policy::derive::derive(setup.policy.clone(), &HashMap::new(), None).unwrap();
 }
 
 #[test]
@@ -540,7 +540,7 @@ fn errors_invalid_factors() {
   // Not enough factors to satisfy the policy
   policy::derive::derive(
     setup.policy.clone(),
-    HashMap::from([("id1".to_string(), derive::factors::password("password").unwrap())]),
+    &HashMap::from([("id1".to_string(), derive::factors::password("password").unwrap())]),
     None,
   )
   .unwrap();

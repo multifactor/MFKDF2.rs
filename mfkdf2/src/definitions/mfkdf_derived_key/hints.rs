@@ -98,7 +98,7 @@ mod tests {
     assert!(hinta.chars().all(|c| c == '0' || c == '1'));
 
     let derive_key = derive::key(
-      setup_key.policy.clone(),
+      &setup_key.policy,
       HashMap::from([("password1".to_string(), derive_factors::password("password1")?)]),
       true,
       false,
@@ -113,7 +113,7 @@ mod tests {
     assert_eq!(hinta2, hinta);
 
     let derive_key2 = derive::key(
-      setup_key.policy,
+      &setup_key.policy,
       HashMap::from([("password1".to_string(), derive_factors::password("wrongpassword")?)]),
       false,
       false,
@@ -143,7 +143,7 @@ mod tests {
     assert_eq!(setup_key.policy.factors[0].hint.as_ref().unwrap().len(), 24);
 
     let derive_key = derive::key(
-      setup_key.policy.clone(),
+      &setup_key.policy,
       HashMap::from([("password1".to_string(), derive_factors::password("password1")?)]),
       false,
       false,
@@ -153,7 +153,7 @@ mod tests {
 
     let wrong_password = derive_factors::password("password2")?;
     let derive_result = derive::key(
-      setup_key.policy,
+      &setup_key.policy,
       HashMap::from([("password1".to_string(), wrong_password)]),
       false,
       false,

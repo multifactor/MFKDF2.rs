@@ -72,8 +72,7 @@ fn bench_setup_stack(c: &mut Criterion) {
   group.bench_function("single_derive", |b| {
     b.iter(|| {
       let factors_map = black_box(create_stack_derive_map("stack", "p1", "pw1", "p2", "pw2"));
-      let result =
-        black_box(derive::key(single_setup_key.policy.clone(), factors_map, false, false));
+      let result = black_box(derive::key(&single_setup_key.policy, factors_map, false, false));
       result.unwrap()
     })
   });
@@ -133,8 +132,7 @@ fn bench_setup_stack(c: &mut Criterion) {
           .unwrap(),
         ),
       ]));
-      let result =
-        black_box(derive::key(multiple_setup_key_3.policy.clone(), factors_map, false, false));
+      let result = black_box(derive::key(&multiple_setup_key_3.policy, factors_map, false, false));
       result.unwrap()
     })
   });
@@ -170,8 +168,7 @@ fn bench_setup_stack(c: &mut Criterion) {
           .unwrap(),
         ),
       ]));
-      let result =
-        black_box(derive::key(threshold_setup_key.policy.clone(), factors_map, false, false));
+      let result = black_box(derive::key(&threshold_setup_key.policy, factors_map, false, false));
       result.unwrap()
     })
   });

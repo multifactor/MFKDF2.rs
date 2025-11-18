@@ -51,8 +51,7 @@ fn bench_hotp(c: &mut Criterion) {
     b.iter(|| {
       let factors_map =
         black_box(HashMap::from([("hotp".to_string(), derive::factors::hotp(0).unwrap())]));
-      let result =
-        black_box(derive::key(single_setup_key.policy.clone(), factors_map, false, false));
+      let result = black_box(derive::key(&single_setup_key.policy, factors_map, false, false));
       result.unwrap()
     })
   });
@@ -135,8 +134,7 @@ fn bench_hotp(c: &mut Criterion) {
         ("hotp2".to_string(), derive::factors::hotp(0).unwrap()),
         ("hotp3".to_string(), derive::factors::hotp(0).unwrap()),
       ]));
-      let result =
-        black_box(derive::key(multiple_setup_key_3.policy.clone(), factors_map, false, false));
+      let result = black_box(derive::key(&multiple_setup_key_3.policy, factors_map, false, false));
       result.unwrap()
     })
   });
@@ -181,8 +179,7 @@ fn bench_hotp(c: &mut Criterion) {
         ("hotp1".to_string(), derive::factors::hotp(0).unwrap()),
         ("hotp2".to_string(), derive::factors::hotp(0).unwrap()),
       ]));
-      let result =
-        black_box(derive::key(threshold_setup_key.policy.clone(), factors_map, false, false));
+      let result = black_box(derive::key(&threshold_setup_key.policy, factors_map, false, false));
       result.unwrap()
     })
   });
