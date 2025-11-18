@@ -371,10 +371,10 @@ export const mfkdf = {
         const factor = await raw.setupHotp({
           id: options.id,
           secret: toArrayBuffer(options.secret),
-          digits: options.digits ?? 6,
-          hash: options.hash ?? raw.HashAlgorithm.Sha1,
-          issuer: options.issuer ?? 'MFKDF',
-          label: options.label ?? 'mfkdf.com'
+          digits: options.digits,
+          hash: options.hash,
+          issuer: options.issuer,
+          label: options.label
         });
         return wrapSetupFactor(factor);
       },
@@ -382,13 +382,13 @@ export const mfkdf = {
         const factor = await raw.setupTotp({
           id: options.id,
           secret: toArrayBuffer(options.secret),
-          digits: options.digits ?? 6,
-          hash: options.hash ?? raw.HashAlgorithm.Sha1,
-          issuer: options.issuer ?? 'MFKDF',
-          label: options.label ?? 'mfkdf.com',
-          time: options.time ? BigInt(options.time) : BigInt(Date.now()), // BUG: uniffi doesn't support optional integers
-          window: options.window ?? 87600n,
-          step: options.step ?? 30n,
+          digits: options.digits,
+          hash: options.hash,
+          issuer: options.issuer,
+          label: options.label,
+          time: options?.time ? BigInt(options.time) : undefined,
+          window: options.window,
+          step: options.step,
           oracle: options?.oracle ? new Map(Object.entries(options.oracle).map(([key, value]) => [BigInt(key), value])) : undefined,
         });
         return wrapSetupFactor(factor);

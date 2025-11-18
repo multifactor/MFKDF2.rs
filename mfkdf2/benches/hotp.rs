@@ -3,7 +3,6 @@ use std::{collections::HashMap, hint::black_box};
 use criterion::{Criterion, criterion_group, criterion_main};
 use mfkdf2::{
   derive,
-  otpauth::HashAlgorithm,
   setup::{
     self,
     factors::hotp::{HOTPOptions, hotp as setup_hotp},
@@ -22,8 +21,6 @@ fn bench_hotp(c: &mut Criterion) {
         setup_hotp(HOTPOptions {
           id: Some("hotp".to_string()),
           secret: Some(SECRET20.to_vec()),
-          digits: 6,
-          hash: HashAlgorithm::Sha1,
           ..Default::default()
         })
         .unwrap(),
@@ -38,8 +35,6 @@ fn bench_hotp(c: &mut Criterion) {
     &[setup_hotp(HOTPOptions {
       id: Some("hotp".to_string()),
       secret: Some(SECRET20.to_vec()),
-      digits: 6,
-      hash: HashAlgorithm::Sha1,
       ..Default::default()
     })
     .unwrap()],
@@ -63,16 +58,12 @@ fn bench_hotp(c: &mut Criterion) {
         setup_hotp(HOTPOptions {
           id: Some("hotp1".to_string()),
           secret: Some(SECRET20.to_vec()),
-          digits: 6,
-          hash: HashAlgorithm::Sha1,
           ..Default::default()
         })
         .unwrap(),
         setup_hotp(HOTPOptions {
           id: Some("hotp2".to_string()),
           secret: Some(vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20]),
-          digits: 6,
-          hash: HashAlgorithm::Sha1,
           ..Default::default()
         })
         .unwrap(),
@@ -81,8 +72,6 @@ fn bench_hotp(c: &mut Criterion) {
           secret: Some(vec![
             21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40,
           ]),
-          digits: 6,
-          hash: HashAlgorithm::Sha1,
           ..Default::default()
         })
         .unwrap(),
@@ -99,16 +88,12 @@ fn bench_hotp(c: &mut Criterion) {
       setup_hotp(HOTPOptions {
         id: Some("hotp1".to_string()),
         secret: Some(SECRET20.to_vec()),
-        digits: 6,
-        hash: HashAlgorithm::Sha1,
         ..Default::default()
       })
       .unwrap(),
       setup_hotp(HOTPOptions {
         id: Some("hotp2".to_string()),
         secret: Some(vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20]),
-        digits: 6,
-        hash: HashAlgorithm::Sha1,
         ..Default::default()
       })
       .unwrap(),
@@ -117,8 +102,6 @@ fn bench_hotp(c: &mut Criterion) {
         secret: Some(vec![
           21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40,
         ]),
-        digits: 6,
-        hash: HashAlgorithm::Sha1,
         ..Default::default()
       })
       .unwrap(),
@@ -145,16 +128,12 @@ fn bench_hotp(c: &mut Criterion) {
       setup_hotp(HOTPOptions {
         id: Some("hotp1".to_string()),
         secret: Some(SECRET20.to_vec()),
-        digits: 6,
-        hash: HashAlgorithm::Sha1,
         ..Default::default()
       })
       .unwrap(),
       setup_hotp(HOTPOptions {
         id: Some("hotp2".to_string()),
         secret: Some(vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20]),
-        digits: 6,
-        hash: HashAlgorithm::Sha1,
         ..Default::default()
       })
       .unwrap(),
@@ -163,8 +142,6 @@ fn bench_hotp(c: &mut Criterion) {
         secret: Some(vec![
           21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40,
         ]),
-        digits: 6,
-        hash: HashAlgorithm::Sha1,
         ..Default::default()
       })
       .unwrap(),

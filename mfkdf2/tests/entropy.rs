@@ -145,7 +145,7 @@ fn entropy_totp_hotp_8_digits() -> Result<(), mfkdf2::error::MFKDF2Error> {
         ..Default::default()
       })?,
       mfkdf2::setup::factors::hotp(mfkdf2::setup::factors::hotp::HOTPOptions {
-        digits: 8,
+        digits: Some(8),
         ..Default::default()
       })?,
     ],

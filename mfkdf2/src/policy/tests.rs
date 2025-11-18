@@ -19,12 +19,9 @@ fn create_policy_factor(name: &str, id: &str) -> crate::definitions::MFKDF2Facto
       factors::password("password", factors::password::PasswordOptions { id: Some(id.to_string()) })
         .unwrap(),
     "hotp" => factors::hotp(factors::hotp::HOTPOptions {
-      id:     Some("hotp".to_string()),
+      id: Some(id.to_string()),
       secret: Some(vec![0u8; 20]),
-      digits: 6,
-      hash:   otpauth::HashAlgorithm::Sha256,
-      issuer: "MFKDF".to_string(),
-      label:  "test".to_string(),
+      ..Default::default()
     })
     .unwrap(),
     "totp" => factors::totp(factors::totp::TOTPOptions {
@@ -57,7 +54,7 @@ fn create_policy_derive_factor(
       let factor_policy = policy.factors.iter().find(|f| f.id == id).unwrap();
       let params = &factor_policy.params;
       let counter = params["counter"].as_u64().unwrap();
-      let digits = params["digits"].as_u64().unwrap() as u8;
+      let digits = params["digits"].as_u64().unwrap() as u32;
       let hash = serde_json::from_value(params["hash"].clone()).unwrap();
       let secret = vec![0u8; 20];
       let code = otpauth::generate_hotp_code(&secret, counter, &hash, digits);
@@ -72,7 +69,7 @@ fn create_policy_derive_factor(
         std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_millis();
       let step = params["step"].as_u64().unwrap();
       let hash = serde_json::from_value(params["hash"].clone()).unwrap();
-      let digits = params["digits"].as_u64().unwrap() as u8;
+      let digits = params["digits"].as_u64().unwrap() as u32;
       let counter = time as u64 / (step * 1000);
       let secret = vec![0u8; 20];
       let code = otpauth::generate_hotp_code(&secret, counter, &hash, digits);
