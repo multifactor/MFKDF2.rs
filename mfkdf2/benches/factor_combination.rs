@@ -44,8 +44,8 @@ fn bench_factor_combination_setup(c: &mut Criterion) {
         totp(TOTPOptions {
           id: Some("totp".to_string()),
           secret: Some(SECRET20.to_vec()),
-          digits: 6,
-          hash: HashAlgorithm::Sha1,
+          digits: Some(6),
+          hash: Some(HashAlgorithm::Sha1),
           time: Some(1),
           ..Default::default()
         })
@@ -77,8 +77,8 @@ fn bench_factor_combination_setup(c: &mut Criterion) {
         totp(TOTPOptions {
           id: Some("totp".to_string()),
           secret: Some(SECRET20.to_vec()),
-          digits: 6,
-          hash: HashAlgorithm::Sha1,
+          digits: Some(6),
+          hash: Some(HashAlgorithm::Sha1),
           time: Some(1),
           ..Default::default()
         })
@@ -105,8 +105,8 @@ fn bench_factor_combination_derive(c: &mut Criterion) {
   let factor3 = totp(TOTPOptions {
     id: Some("totp".to_string()),
     secret: Some(SECRET20.to_vec()),
-    digits: 6,
-    hash: HashAlgorithm::Sha1,
+    digits: Some(6),
+    hash: Some(HashAlgorithm::Sha1),
     time: Some(1),
     ..Default::default()
   })

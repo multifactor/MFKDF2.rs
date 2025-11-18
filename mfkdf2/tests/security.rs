@@ -5,6 +5,7 @@ use std::{
 
 use base64::{Engine, engine::general_purpose};
 use mfkdf2::{
+  constants::SECRET_SHARING_POLY,
   crypto::hkdf_sha256_with_info,
   derive,
   error::MFKDF2Error,
@@ -84,7 +85,42 @@ fn share_indistinguishability_share_size() -> Result<(), MFKDF2Error> {
   let mut secret = [0u8; 32];
   mfkdf2::rng::fill_bytes(&mut secret);
 
-  // TODO (@lonerapier): Implement this test after ssskit repo is updated
+  let sss = ssskit::SecretSharing::<SECRET_SHARING_POLY>(1);
+  let shares1 = sss.dealer_rng(&secret, &mut mfkdf2::rng::GlobalRng).take(3).collect::<Vec<_>>();
+  assert_eq!(shares1.len(), 3);
+  for share in shares1.iter() {
+    assert_eq!(share.y.len(), 32);
+  }
+
+  let combined1 = sss.recover([&Some(shares1[0].clone()), &None, &None]).unwrap();
+  assert_eq!(combined1, secret);
+
+  let combined2 = sss.recover([&None, &None, &Some(shares1[2].clone())]).unwrap();
+  assert_eq!(combined2, secret);
+
+  let sss = ssskit::SecretSharing::<SECRET_SHARING_POLY>(2);
+  let shares2 = sss.dealer_rng(&secret, &mut mfkdf2::rng::GlobalRng).take(3).collect::<Vec<_>>();
+  assert_eq!(shares2.len(), 3);
+  for share in shares2.iter() {
+    assert_eq!(share.y.len(), 32);
+  }
+  let combined3 =
+    sss.recover([&Some(shares2[0].clone()), &Some(shares2[1].clone()), &None]).unwrap();
+  assert_eq!(combined3, secret);
+  let combined4 =
+    sss.recover([&None, &Some(shares2[1].clone()), &Some(shares2[2].clone())]).unwrap();
+  assert_eq!(combined4, secret);
+
+  let sss = ssskit::SecretSharing::<SECRET_SHARING_POLY>(3);
+  let shares3 = sss.dealer_rng(&secret, &mut mfkdf2::rng::GlobalRng).take(3).collect::<Vec<_>>();
+  assert_eq!(shares3.len(), 3);
+  for share in shares3.iter() {
+    assert_eq!(share.y.len(), 32);
+  }
+  let combined5 = sss
+    .recover([&Some(shares3[0].clone()), &Some(shares3[1].clone()), &Some(shares3[2].clone())])
+    .unwrap();
+  assert_eq!(combined5, secret);
 
   Ok(())
 }

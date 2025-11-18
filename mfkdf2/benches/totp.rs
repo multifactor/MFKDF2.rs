@@ -31,10 +31,10 @@ fn bench_totp(c: &mut Criterion) {
         setup_totp(TOTPOptions {
           id: Some("totp".to_string()),
           secret: Some(SECRET20.to_vec()),
-          digits: 6,
-          hash: HashAlgorithm::Sha1,
+          digits: Some(6),
+          hash: Some(HashAlgorithm::Sha1),
           time: Some(current_time),
-          window: 3600, // 1 hour window
+          window: Some(3600), // 1 hour window
           ..Default::default()
         })
         .unwrap(),
@@ -49,8 +49,8 @@ fn bench_totp(c: &mut Criterion) {
     &[setup_totp(TOTPOptions {
       id: Some("totp".to_string()),
       secret: Some(SECRET20.to_vec()),
-      digits: 6,
-      hash: HashAlgorithm::Sha1,
+      digits: Some(6),
+      hash: Some(HashAlgorithm::Sha1),
       time: Some(current_time),
       ..Default::default()
     })
@@ -92,10 +92,10 @@ fn bench_totp(c: &mut Criterion) {
           setup_totp(TOTPOptions {
             id: Some("totp1".to_string()),
             secret: Some(SECRET20.to_vec()),
-            digits: 6,
-            hash: HashAlgorithm::Sha1,
+            digits: Some(6),
+            hash: Some(HashAlgorithm::Sha1),
             time: Some(current_time),
-            window: 3600, // 1 hour window
+            window: Some(3600), // 1 hour window
             ..Default::default()
           })
           .unwrap(),
@@ -104,10 +104,10 @@ fn bench_totp(c: &mut Criterion) {
             secret: Some(vec![
               1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20,
             ]),
-            digits: 6,
-            hash: HashAlgorithm::Sha1,
+            digits: Some(6),
+            hash: Some(HashAlgorithm::Sha1),
             time: Some(current_time),
-            window: 3600, // 1 hour window
+            window: Some(3600), // 1 hour window
             ..Default::default()
           })
           .unwrap(),
@@ -116,10 +116,10 @@ fn bench_totp(c: &mut Criterion) {
             secret: Some(vec![
               21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40,
             ]),
-            digits: 6,
-            hash: HashAlgorithm::Sha1,
+            digits: Some(6),
+            hash: Some(HashAlgorithm::Sha1),
             time: Some(current_time),
-            window: 3600, // 1 hour window
+            window: Some(3600), // 1 hour window
             ..Default::default()
           })
           .unwrap(),
@@ -137,20 +137,20 @@ fn bench_totp(c: &mut Criterion) {
       setup_totp(TOTPOptions {
         id: Some("totp1".to_string()),
         secret: Some(SECRET20.to_vec()),
-        digits: 6,
-        hash: HashAlgorithm::Sha1,
+        digits: Some(6),
+        hash: Some(HashAlgorithm::Sha1),
         time: Some(current_time),
-        window: 3600, // 1 hour window
+        window: Some(3600), // 1 hour window
         ..Default::default()
       })
       .unwrap(),
       setup_totp(TOTPOptions {
         id: Some("totp2".to_string()),
         secret: Some(vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20]),
-        digits: 6,
-        hash: HashAlgorithm::Sha1,
+        digits: Some(6),
+        hash: Some(HashAlgorithm::Sha1),
         time: Some(current_time),
-        window: 3600, // 1 hour window
+        window: Some(3600), // 1 hour window
         ..Default::default()
       })
       .unwrap(),
@@ -159,10 +159,10 @@ fn bench_totp(c: &mut Criterion) {
         secret: Some(vec![
           21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40,
         ]),
-        digits: 6,
-        hash: HashAlgorithm::Sha1,
+        digits: Some(6),
+        hash: Some(HashAlgorithm::Sha1),
         time: Some(current_time),
-        window: 3600, // 1 hour window
+        window: Some(3600), // 1 hour window
         ..Default::default()
       })
       .unwrap(),
@@ -222,20 +222,20 @@ fn bench_totp(c: &mut Criterion) {
       setup_totp(TOTPOptions {
         id: Some("totp1".to_string()),
         secret: Some(SECRET20.to_vec()),
-        digits: 6,
-        hash: HashAlgorithm::Sha1,
+        digits: Some(6),
+        hash: Some(HashAlgorithm::Sha1),
         time: Some(current_time),
-        window: 3600, // 1 hour window
+        window: Some(3600), // 1 hour window
         ..Default::default()
       })
       .unwrap(),
       setup_totp(TOTPOptions {
         id: Some("totp2".to_string()),
         secret: Some(vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20]),
-        digits: 6,
-        hash: HashAlgorithm::Sha1,
+        digits: Some(6),
+        hash: Some(HashAlgorithm::Sha1),
         time: Some(current_time),
-        window: 3600, // 1 hour window
+        window: Some(3600), // 1 hour window
         ..Default::default()
       })
       .unwrap(),
@@ -244,10 +244,10 @@ fn bench_totp(c: &mut Criterion) {
         secret: Some(vec![
           21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40,
         ]),
-        digits: 6,
-        hash: HashAlgorithm::Sha1,
+        digits: Some(6),
+        hash: Some(HashAlgorithm::Sha1),
         time: Some(current_time),
-        window: 3600, // 1 hour window
+        window: Some(3600), // 1 hour window
         ..Default::default()
       })
       .unwrap(),

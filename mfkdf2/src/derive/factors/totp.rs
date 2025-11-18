@@ -16,7 +16,7 @@ use crate::{
   otpauth::generate_hotp_code,
   setup::factors::{
     hotp::mod_positive,
-    totp::{TOTP, TOTPOptions, TOTPParams},
+    totp::{TOTP, TOTPConfig, TOTPParams},
   },
 };
 
@@ -27,9 +27,15 @@ pub struct TOTPDeriveOptions {
   pub oracle: Option<HashMap<u64, u32>>,
 }
 
-impl From<TOTPDeriveOptions> for TOTPOptions {
-  fn from(options: TOTPDeriveOptions) -> Self {
-    TOTPOptions { time: options.time, oracle: options.oracle, ..Default::default() }
+impl TryFrom<TOTPDeriveOptions> for TOTPConfig {
+  type Error = MFKDF2Error;
+
+  fn try_from(options: TOTPDeriveOptions) -> Result<Self, MFKDF2Error> {
+    Ok(TOTPConfig {
+      time: options.time.ok_or(MFKDF2Error::MissingDeriveParams("time".to_string()))?,
+      oracle: options.oracle,
+      ..Default::default()
+    })
   }
 }
 
@@ -43,8 +49,7 @@ impl FactorDerive for TOTP {
     let params: TOTPParams = serde_json::from_value(params)?;
 
     let start_counter = params.start / (params.step * 1000);
-    let time_ms = self.options.time.ok_or(MFKDF2Error::MissingDeriveParams("time".to_string()))?;
-    let now_counter = time_ms / (params.step * 1000);
+    let now_counter = self.config.time / (params.step * 1000);
 
     let index = (now_counter - start_counter) as usize;
     if index >= params.window as usize {
@@ -65,18 +70,18 @@ impl FactorDerive for TOTP {
       })?);
 
     let oracle_time = now_counter * params.step * 1000;
-    if self.options.oracle.is_some()
-      && self.options.oracle.as_ref().unwrap().contains_key(&oracle_time)
+    if self.config.oracle.is_some()
+      && self.config.oracle.as_ref().unwrap().contains_key(&oracle_time)
     {
       offset = mod_positive(
         i64::from(offset)
-          - i64::from(*self.options.oracle.as_ref().unwrap().get(&oracle_time).unwrap()),
+          - i64::from(*self.config.oracle.as_ref().unwrap().get(&oracle_time).unwrap()),
         10_i64.pow(u32::from(params.digits)),
       );
     }
     self.target = mod_positive(
       i64::from(offset) + i64::from(self.code),
-      10_i64.pow(u32::from(self.options.digits)),
+      10_i64.pow(u32::from(self.config.digits)),
     );
 
     Ok(())
@@ -103,12 +108,12 @@ impl FactorDerive for TOTP {
       );
 
       let oracle_time = counter * params.step * 1000;
-      if self.options.oracle.is_some()
-        && self.options.oracle.as_ref().unwrap().contains_key(&oracle_time)
+      if self.config.oracle.is_some()
+        && self.config.oracle.as_ref().unwrap().contains_key(&oracle_time)
       {
         offset = mod_positive(
           i64::from(offset)
-            + i64::from(*self.options.oracle.as_ref().unwrap().get(&oracle_time).unwrap()),
+            + i64::from(*self.config.oracle.as_ref().unwrap().get(&oracle_time).unwrap()),
           10_i64.pow(u32::from(params.digits)),
         );
       }
@@ -142,7 +147,7 @@ pub fn totp(code: u32, options: Option<TOTPDeriveOptions>) -> MFKDF2Result<MFKDF
   Ok(MFKDF2Factor {
     id:          Some("totp".to_string()),
     factor_type: FactorType::TOTP(TOTP {
-      options: options.into(),
+      config: TOTPConfig::try_from(options)?,
       params: Value::Null,
       code,
       target: 0,
@@ -166,7 +171,10 @@ mod tests {
   use serde_json::json;
 
   use super::*;
-  use crate::{otpauth::HashAlgorithm, setup::factors::totp as setup_totp};
+  use crate::{
+    otpauth::HashAlgorithm,
+    setup::factors::{totp as setup_totp, totp::TOTPOptions},
+  };
 
   fn get_test_derive_totp_options(time: Option<u64>) -> TOTPDeriveOptions {
     TOTPDeriveOptions { time, oracle: None }
@@ -178,14 +186,14 @@ mod tests {
     setup_totp::TOTPOptions {
       id:     Some("totp-test".to_string()),
       secret: Some(b"hello world mfkdf2!!".to_vec()),
-      digits: 6,
-      hash:   HashAlgorithm::Sha1,
-      step:   30,
-      window: 5,
+      digits: Some(6),
+      hash:   Some(HashAlgorithm::Sha1),
+      step:   Some(30),
+      window: Some(5),
       time:   Some(now_ms),
       oracle: None,
-      issuer: "MFKDF".to_string(),
-      label:  "test".to_string(),
+      issuer: Some("MFKDF".to_string()),
+      label:  Some("test".to_string()),
     }
   }
 
@@ -207,15 +215,15 @@ mod tests {
   fn totp_round_trip() {
     let setup_options = get_test_totp_options();
     // can't get secret here, because it will be padded inside totp()
-    let step = setup_options.step;
-    let digits = setup_options.digits;
-    let hash = setup_options.hash.clone();
+    let step = setup_options.step.unwrap();
+    let digits = setup_options.digits.unwrap();
+    let hash = setup_options.hash.clone().unwrap();
     let time = setup_options.time.unwrap();
 
     let factor = setup_totp::totp(setup_options).unwrap();
 
     let secret = if let FactorType::TOTP(f) = &factor.factor_type {
-      f.options.secret.as_ref().unwrap()
+      f.config.secret.clone()
     } else {
       panic!("wrong factor type");
     };

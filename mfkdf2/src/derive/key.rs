@@ -377,15 +377,10 @@ mod tests {
     derive_factors_map.insert("hotp".to_string(), derive_hotp_factor);
 
     // TOTP factor
-    let totp_padded_secret = totp.options.secret.as_ref().unwrap();
     let time = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_millis();
-    let counter = time as u64 / (totp.options.step * 1000);
-    let totp_code = generate_hotp_code(
-      &totp_padded_secret[..20],
-      counter,
-      &totp.options.hash,
-      totp.options.digits,
-    );
+    let counter = time as u64 / (totp.config.step * 1000);
+    let totp_code =
+      generate_hotp_code(&totp.config.secret[..20], counter, &totp.config.hash, totp.config.digits);
     let mut derive_totp_factor = derive_totp(totp_code as u32, None).unwrap();
     derive_totp_factor.id = Some("totp".to_string());
     derive_factors_map.insert("totp".to_string(), derive_totp_factor);
@@ -431,13 +426,9 @@ mod tests {
 
     // totp factor
     let time = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_millis();
-    let counter = time as u64 / (totp.options.step * 1000);
-    let totp_code = generate_hotp_code(
-      &totp_padded_secret[..20],
-      counter,
-      &totp.options.hash,
-      totp.options.digits,
-    );
+    let counter = time as u64 / (totp.config.step * 1000);
+    let totp_code =
+      generate_hotp_code(&totp.config.secret[..20], counter, &totp.config.hash, totp.config.digits);
     let mut derive_totp_factor = derive_totp(totp_code as u32, None).unwrap();
     derive_totp_factor.id = Some("totp".to_string());
     derive_factors_map.insert("totp".to_string(), derive_totp_factor);

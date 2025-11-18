@@ -159,9 +159,8 @@ pub fn key(factors: &[MFKDF2Factor], options: MFKDF2Options) -> MFKDF2Result<MFK
     // Generate factor key
     let params_key =
       hkdf_sha256_with_info(&key, &salt, format!("mfkdf2:factor:params:{id}").as_bytes());
-
     let params = factor.factor_type.setup().params(params_key.into())?;
-    // TODO (autoparallel): This should not be an unwrap.
+
     outputs.insert(id.clone(), factor.factor_type.output());
 
     let secret_key =
