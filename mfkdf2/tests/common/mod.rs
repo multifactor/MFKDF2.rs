@@ -279,7 +279,7 @@ pub fn create_derive_factor(
       .unwrap();
       let code = decrypted["code"].as_str().unwrap();
 
-      ("ooba_1".to_string(), mfkdf2::derive::factors::ooba(code.to_string()).unwrap())
+      ("ooba_1".to_string(), mfkdf2::derive::factors::ooba(code).unwrap())
     },
     "passkey" =>
       ("passkey_1".to_string(), mfkdf2::derive::factors::passkey::passkey(PASSKEY_SECRET).unwrap()),

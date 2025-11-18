@@ -13,7 +13,7 @@ impl crate::definitions::MFKDF2DerivedKey {
 
 #[cfg_attr(feature = "bindings", uniffi::export)]
 pub fn derived_key_derive_password(
-  derived_key: crate::definitions::MFKDF2DerivedKey,
+  derived_key: &crate::definitions::MFKDF2DerivedKey,
   purpose: Option<String>,
   salt: Option<Vec<u8>>,
   regex: &str,

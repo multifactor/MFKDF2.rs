@@ -56,7 +56,7 @@ pub fn key(
         );
 
         let binary_string = buffer.iter().fold(String::new(), |mut acc, byte| {
-          write!(&mut acc, "{:08b}", byte).unwrap();
+          write!(&mut acc, "{byte:08b}").unwrap();
           acc
         });
 
@@ -400,7 +400,7 @@ mod tests {
     )
     .unwrap();
     let code = decrypted["code"].as_str().unwrap();
-    let mut derive_ooba_factor = derive_ooba(code.to_string()).unwrap();
+    let mut derive_ooba_factor = derive_ooba(code).unwrap();
     derive_ooba_factor.id = Some("ooba".to_string());
     derive_factors_map.insert("ooba".to_string(), derive_ooba_factor);
 
@@ -451,7 +451,7 @@ mod tests {
     )
     .unwrap();
     let code = decrypted["code"].as_str().unwrap();
-    let mut derive_ooba_factor = derive_ooba(code.to_string()).unwrap();
+    let mut derive_ooba_factor = derive_ooba(code).unwrap();
     derive_ooba_factor.id = Some("ooba".to_string());
     derive_factors_map.insert("ooba".to_string(), derive_ooba_factor);
 

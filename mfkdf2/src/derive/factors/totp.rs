@@ -71,7 +71,7 @@ impl FactorDerive for TOTP {
       offset = mod_positive(
         i64::from(offset)
           - i64::from(*self.options.oracle.as_ref().unwrap().get(&oracle_time).unwrap()),
-        10_i64.pow(params.digits as u32),
+        10_i64.pow(u32::from(params.digits)),
       );
     }
     self.target = mod_positive(
@@ -107,8 +107,9 @@ impl FactorDerive for TOTP {
         && self.options.oracle.as_ref().unwrap().contains_key(&oracle_time)
       {
         offset = mod_positive(
-          offset as i64 + *self.options.oracle.as_ref().unwrap().get(&oracle_time).unwrap() as i64,
-          10_i64.pow(params.digits as u32),
+          i64::from(offset)
+            + i64::from(*self.options.oracle.as_ref().unwrap().get(&oracle_time).unwrap()),
+          10_i64.pow(u32::from(params.digits)),
         );
       }
 

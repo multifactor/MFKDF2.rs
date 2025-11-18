@@ -46,13 +46,13 @@ impl MFKDF2DerivedKey {
     threshold: Option<u8>,
   ) -> MFKDF2Result<()> {
     let mut factors = BTreeMap::new();
-    let mut material: BTreeMap<String, [u8; 32]> = BTreeMap::new();
+    let mut material: BTreeMap<&str, [u8; 32]> = BTreeMap::new();
     let mut outputs = BTreeMap::new();
     let mut data = BTreeMap::new();
 
     let threshold = threshold.unwrap_or(self.policy.threshold);
 
-    for factor in self.policy.factors.iter() {
+    for factor in &self.policy.factors {
       factors.insert(factor.id.clone(), factor.clone());
 
       let pad = general_purpose::STANDARD.decode(&factor.secret)?;
@@ -65,7 +65,7 @@ impl MFKDF2DerivedKey {
       let factor_material = crate::crypto::decrypt(pad, &secret_key);
 
       material.insert(
-        factor.id.clone(),
+        factor.id.as_str(),
         factor_material.try_into().map_err(|_| MFKDF2Error::TryFromVecError)?,
       );
     }
@@ -86,7 +86,7 @@ impl MFKDF2DerivedKey {
       let id = factor.id.clone().ok_or(MFKDF2Error::MissingFactorId)?;
 
       let params_key =
-        hkdf_sha256_with_info(&self.key, &salt, format!("mfkdf2:factor:params:{}", id).as_bytes());
+        hkdf_sha256_with_info(&self.key, &salt, format!("mfkdf2:factor:params:{id}").as_bytes());
       let params = factor.factor_type.setup().params(params_key.into())?;
 
       let new_factor = PolicyFactor {
@@ -95,15 +95,15 @@ impl MFKDF2DerivedKey {
         salt: general_purpose::STANDARD.encode(salt),
         params,
         hint: None,
-        pad: "".to_string(),
-        secret: "".to_string(),
+        pad: String::new(),
+        secret: String::new(),
       };
 
       factors.insert(id.clone(), new_factor);
       outputs.insert(id.clone(), factor.factor_type.output());
       data.insert(id.clone(), factor.data());
-      if material.contains_key(&id) {
-        material.remove(&id);
+      if material.contains_key(id.as_str()) {
+        material.remove(id.as_str());
       }
     }
 
@@ -200,7 +200,7 @@ pub fn derived_key_remove_factors(
   factors: &[String],
 ) -> MFKDF2Result<MFKDF2DerivedKey> {
   let mut derived_key = derived_key;
-  derived_key.remove_factors(factors.iter().map(|f| f.as_str()).collect::<Vec<&str>>().as_ref())?;
+  derived_key.remove_factors(factors.iter().map(String::as_str).collect::<Vec<&str>>().as_ref())?;
   Ok(derived_key)
 }
 
@@ -253,7 +253,7 @@ pub fn derived_key_reconstitute(
 ) -> MFKDF2Result<MFKDF2DerivedKey> {
   let mut derived_key = derived_key;
   derived_key.reconstitute(
-    remove_factor.iter().map(|f| f.as_str()).collect::<Vec<&str>>().as_ref(),
+    remove_factor.iter().map(String::as_str).collect::<Vec<&str>>().as_ref(),
     add_factor,
     threshold,
   )?;

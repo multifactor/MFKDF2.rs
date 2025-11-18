@@ -25,8 +25,8 @@ impl FactorDerive for HOTP {
       let offset = params.offset;
 
       let digits = params.digits;
-      let modulus = 10_u64.pow(digits as u32);
-      let target = (offset as u64 + self.code as u64) % modulus;
+      let modulus = 10_u64.pow(u32::from(digits));
+      let target = (u64::from(offset) + u64::from(self.code)) % modulus;
 
       // Store target as 4-byte big-endian (matches JS implementation)
       self.target = target as u32;
@@ -54,7 +54,7 @@ impl FactorDerive for HOTP {
     // Calculate new offset
     let new_offset = mod_positive(
       i64::from(self.target) - i64::from(generated_code),
-      10_i64.pow(self.options.digits as u32),
+      10_i64.pow(u32::from(self.options.digits)),
     );
 
     Ok(json!({

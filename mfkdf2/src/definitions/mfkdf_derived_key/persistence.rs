@@ -7,7 +7,7 @@ impl crate::definitions::MFKDF2DerivedKey {
 
 #[cfg_attr(feature = "bindings", uniffi::export)]
 pub fn derived_key_persist_factor(
-  derived_key: crate::definitions::MFKDF2DerivedKey,
+  derived_key: &crate::definitions::MFKDF2DerivedKey,
   id: &str,
 ) -> Vec<u8> {
   derived_key.persist_factor(id)

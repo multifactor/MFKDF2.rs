@@ -305,7 +305,7 @@ mod tests {
 
     let derive = derive::key(
       &setup.policy,
-      HashMap::from([("ooba".to_string(), derive::factors::ooba::ooba(code.to_string()).unwrap())]),
+      HashMap::from([("ooba".to_string(), derive::factors::ooba::ooba(code).unwrap())]),
       true,
       false,
     )

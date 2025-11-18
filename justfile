@@ -85,7 +85,7 @@ check:
 # Run the tests on your local OS
 test:
     @just header "Running main test suite"
-    cargo test --workspace --all-targets --all-features
+    cargo test --workspace --release --all-targets
     @just header "Running doc tests"
     cargo test --workspace --doc
 

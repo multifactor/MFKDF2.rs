@@ -8,11 +8,11 @@ impl crate::definitions::MFKDF2DerivedKey {
 
 #[cfg_attr(feature = "bindings", uniffi::export)]
 pub fn derived_key_get_subkey(
-  derived_key: crate::definitions::MFKDF2DerivedKey,
+  derived_key: &crate::definitions::MFKDF2DerivedKey,
   purpose: Option<String>,
   salt: Option<Vec<u8>>,
 ) -> Vec<u8> {
   let purpose = purpose.as_deref();
-  let salts = salt.as_deref();
-  derived_key.get_subkey(purpose, salts).to_vec()
+  let salt = salt.as_deref();
+  derived_key.get_subkey(purpose, salt).to_vec()
 }

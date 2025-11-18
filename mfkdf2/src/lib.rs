@@ -41,7 +41,6 @@ pub async fn init_rust_logging(level: Option<LogLevel>) {
     match env_level.to_lowercase().as_str() {
       "trace" => log::Level::Trace,
       "debug" => log::Level::Debug,
-      "info" => log::Level::Info,
       "warn" => log::Level::Warn,
       "error" => log::Level::Error,
       _ => log::Level::Info,
