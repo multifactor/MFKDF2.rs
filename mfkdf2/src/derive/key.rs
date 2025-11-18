@@ -24,7 +24,7 @@ pub fn key(
   let mut factors = factors;
   let mut new_policy = policy.clone();
 
-  for factor in &mut new_policy.factors {
+  for factor in &new_policy.factors {
     let Some(material) = factors.get_mut(factor.id.as_str()) else {
       shares_bytes.push(None);
       continue;

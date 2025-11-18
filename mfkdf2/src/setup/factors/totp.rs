@@ -33,8 +33,6 @@ pub struct TOTPOptions {
 
 impl Default for TOTPOptions {
   fn default() -> Self {
-    let now_ms = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_millis() as u64;
-
     Self {
       id:     Some("totp".to_string()),
       secret: None,
@@ -42,7 +40,7 @@ impl Default for TOTPOptions {
       hash:   Some(HashAlgorithm::Sha1),
       issuer: Some("MFKDF".to_string()),
       label:  Some("mfkdf.com".to_string()),
-      time:   Some(now_ms), // TODO: see if this can be None
+      time:   None,
       window: Some(87600),
       step:   Some(30),
       oracle: None,

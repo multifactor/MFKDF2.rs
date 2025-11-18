@@ -12,7 +12,6 @@ impl MFKDF2DerivedKey {
 
     let salt = general_purpose::STANDARD.decode(&self.policy.salt).unwrap();
 
-    // TODO (@lonerapier): what if the policy has a stack key?
     Argon2::new(
       argon2::Algorithm::Argon2id,
       Version::default(),
