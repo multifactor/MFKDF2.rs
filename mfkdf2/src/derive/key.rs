@@ -364,14 +364,9 @@ mod tests {
     let policy_hotp_factor =
       setup_derived_key.policy.factors.iter().find(|f| f.id == "hotp").unwrap();
     let hotp_params = &policy_hotp_factor.params;
-    let hotp_padded_secret = hotp.options.secret.as_ref().unwrap();
     let counter = hotp_params["counter"].as_u64().unwrap();
-    let correct_code = generate_hotp_code(
-      &hotp_padded_secret[..20],
-      counter,
-      &hotp.options.hash,
-      hotp.options.digits,
-    );
+    let correct_code =
+      generate_hotp_code(&hotp.config.secret[..20], counter, &hotp.config.hash, hotp.config.digits);
     let mut derive_hotp_factor = derive_hotp(correct_code as u32).unwrap();
     derive_hotp_factor.id = Some("hotp".to_string());
     derive_factors_map.insert("hotp".to_string(), derive_hotp_factor);
@@ -412,14 +407,9 @@ mod tests {
     // hotp factor
     let policy_hotp_factor = derived_key.policy.factors.iter().find(|f| f.id == "hotp").unwrap();
     let hotp_params = &policy_hotp_factor.params;
-    let hotp_padded_secret = hotp.options.secret.as_ref().unwrap();
     let counter = hotp_params["counter"].as_u64().unwrap();
-    let correct_code = generate_hotp_code(
-      &hotp_padded_secret[..20],
-      counter,
-      &hotp.options.hash,
-      hotp.options.digits,
-    );
+    let correct_code =
+      generate_hotp_code(&hotp.config.secret[..20], counter, &hotp.config.hash, hotp.config.digits);
     let mut derive_hotp_factor = derive_hotp(correct_code as u32).unwrap();
     derive_hotp_factor.id = Some("hotp".to_string());
     derive_factors_map.insert("hotp".to_string(), derive_hotp_factor);
@@ -489,14 +479,9 @@ mod tests {
     let policy_hotp_factor =
       setup_derived_key.policy.factors.iter().find(|f| f.id == "hotp").unwrap();
     let hotp_params = &policy_hotp_factor.params;
-    let hotp_padded_secret = hotp.options.secret.as_ref().unwrap();
     let counter = hotp_params["counter"].as_u64().unwrap();
-    let correct_code = generate_hotp_code(
-      &hotp_padded_secret[..20],
-      counter,
-      &hotp.options.hash,
-      hotp.options.digits,
-    );
+    let correct_code =
+      generate_hotp_code(&hotp.config.secret[..20], counter, &hotp.config.hash, hotp.config.digits);
     let mut derive_hotp_factor = derive_hotp(correct_code as u32).unwrap();
     derive_hotp_factor.id = Some("hotp".to_string());
     derive_factors_map.insert("hotp".to_string(), derive_hotp_factor);
@@ -574,14 +559,9 @@ mod tests {
     let policy_hotp_factor =
       setup_derived_key.policy.factors.iter().find(|f| f.id == "hotp").unwrap();
     let hotp_params = &policy_hotp_factor.params;
-    let hotp_padded_secret = hotp.options.secret.as_ref().unwrap();
     let counter = hotp_params["counter"].as_u64().unwrap();
-    let correct_code = generate_hotp_code(
-      &hotp_padded_secret[..20],
-      counter,
-      &hotp.options.hash,
-      hotp.options.digits,
-    );
+    let correct_code =
+      generate_hotp_code(&hotp.config.secret[..20], counter, &hotp.config.hash, hotp.config.digits);
     let mut derive_hotp_factor = derive_hotp(correct_code as u32).unwrap();
     derive_hotp_factor.id = Some("hotp".to_string());
     derive_factors_map.insert("hotp".to_string(), derive_hotp_factor);

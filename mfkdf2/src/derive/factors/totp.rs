@@ -99,13 +99,10 @@ impl FactorDerive for TOTP {
 
     for i in 0..params.window {
       let counter = (time / 1000) as u64 / params.step + i;
-      let code =
-        generate_hotp_code(&padded_secret[..20], counter, &params.hash, params.digits as u8);
+      let code = generate_hotp_code(&padded_secret[..20], counter, &params.hash, params.digits);
 
-      let mut offset = mod_positive(
-        i64::from(self.target) - i64::from(code),
-        10_i64.pow(u32::from(params.digits)),
-      );
+      let mut offset =
+        mod_positive(i64::from(self.target) - i64::from(code), 10_i64.pow(params.digits));
 
       let oracle_time = counter * params.step * 1000;
       if self.config.oracle.is_some()
@@ -114,7 +111,7 @@ impl FactorDerive for TOTP {
         offset = mod_positive(
           i64::from(offset)
             + i64::from(*self.config.oracle.as_ref().unwrap().get(&oracle_time).unwrap()),
-          10_i64.pow(u32::from(params.digits)),
+          10_i64.pow(params.digits),
         );
       }
 

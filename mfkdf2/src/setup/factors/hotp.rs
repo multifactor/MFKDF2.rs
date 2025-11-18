@@ -55,9 +55,9 @@ impl TryFrom<HOTPOptions> for HOTPConfig {
       id:     value.id.ok_or(MFKDF2Error::MissingFactorId)?,
       secret: value.secret.ok_or(MFKDF2Error::MissingSetupParams("secret".to_string()))?,
       digits: value.digits.ok_or(MFKDF2Error::InvalidHOTPDigits)?,
-      hash:   value.hash.ok_or(MFKDF2Error::MissingSetupParams("hash".to_string()))?,
-      issuer: value.issuer.ok_or(MFKDF2Error::MissingSetupParams("issuer".to_string()))?,
-      label:  value.label.ok_or(MFKDF2Error::MissingSetupParams("label".to_string()))?,
+      hash:   value.hash.unwrap_or(HashAlgorithm::Sha1),
+      issuer: value.issuer.unwrap_or("MFKDF".to_string()),
+      label:  value.label.unwrap_or("mfkdf.com".to_string()),
     })
   }
 }
@@ -176,7 +176,7 @@ pub fn hotp(options: HOTPOptions) -> MFKDF2Result<MFKDF2Factor> {
   {
     return Err(crate::error::MFKDF2Error::InvalidHOTPDigits);
   }
-  let digits = options.digits.unwrap_or(6);
+  options.digits = Some(options.digits.unwrap_or(6));
 
   // TODO (@lonerapier); remove this validation later using static secret type
   // secret length validation
@@ -192,7 +192,7 @@ pub fn hotp(options: HOTPOptions) -> MFKDF2Result<MFKDF2Factor> {
   });
 
   // Generate random target
-  let target = crate::rng::gen_range_u32(10_u32.pow(u32::from(digits)) - 1);
+  let target = crate::rng::gen_range_u32(10_u32.pow(u32::from(options.digits.unwrap())) - 1);
 
   // Pad secret to 32 bytes
   let mut secret_pad = [0u8; 12];
@@ -200,7 +200,9 @@ pub fn hotp(options: HOTPOptions) -> MFKDF2Result<MFKDF2Factor> {
   let padded_secret = secret.into_iter().chain(secret_pad).collect();
   options.secret = Some(padded_secret);
 
-  let entropy = Some(f64::from(digits) * 10.0_f64.log2());
+  let entropy = Some(f64::from(options.digits.unwrap()) * 10.0_f64.log2());
+
+  options.id = Some(id.clone());
 
   // TODO (autoparallel): Code should possibly be an option, though this follows the same pattern as
   // the password factor which stores the actual password in the struct.

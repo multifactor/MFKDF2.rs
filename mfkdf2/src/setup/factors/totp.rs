@@ -21,7 +21,7 @@ use crate::{
 pub struct TOTPOptions {
   pub id:     Option<String>,
   pub secret: Option<Vec<u8>>,
-  pub digits: Option<u8>,
+  pub digits: Option<u32>,
   pub hash:   Option<HashAlgorithm>,
   pub issuer: Option<String>,
   pub label:  Option<String>,
@@ -55,7 +55,7 @@ impl Default for TOTPOptions {
 pub struct TOTPConfig {
   pub id:     String,
   pub secret: Vec<u8>,
-  pub digits: u8,
+  pub digits: u32,
   pub hash:   HashAlgorithm,
   pub issuer: String,
   pub label:  String,
@@ -73,12 +73,12 @@ impl TryFrom<TOTPOptions> for TOTPConfig {
       id:     value.id.ok_or(MFKDF2Error::MissingFactorId)?,
       secret: value.secret.ok_or(MFKDF2Error::MissingSetupParams("secret".to_string()))?,
       digits: value.digits.ok_or(MFKDF2Error::InvalidTOTPDigits)?,
-      hash:   value.hash.ok_or(MFKDF2Error::MissingSetupParams("hash".to_string()))?,
-      issuer: value.issuer.ok_or(MFKDF2Error::MissingSetupParams("issuer".to_string()))?,
-      label:  value.label.ok_or(MFKDF2Error::MissingSetupParams("label".to_string()))?,
+      hash:   value.hash.unwrap_or(HashAlgorithm::Sha1),
+      issuer: value.issuer.unwrap_or("MFKDF".to_string()),
+      label:  value.label.unwrap_or("mfkdf.com".to_string()),
       time:   value.time.ok_or(MFKDF2Error::MissingSetupParams("time".to_string()))?,
-      window: value.window.ok_or(MFKDF2Error::MissingSetupParams("window".to_string()))?,
-      step:   value.step.ok_or(MFKDF2Error::MissingSetupParams("step".to_string()))?,
+      window: value.window.unwrap_or(87600),
+      step:   value.step.unwrap_or(30),
       oracle: value.oracle,
     })
   }
@@ -108,7 +108,7 @@ impl Default for TOTPConfig {
 pub struct TOTPParams {
   pub start:   u64,
   pub hash:    HashAlgorithm,
-  pub digits:  u8,
+  pub digits:  u32,
   pub step:    u64,
   pub window:  u64,
   pub pad:     String,
@@ -228,7 +228,7 @@ pub fn totp(options: TOTPOptions) -> MFKDF2Result<MFKDF2Factor> {
   {
     return Err(crate::error::MFKDF2Error::InvalidTOTPDigits);
   }
-  let digits = options.digits.unwrap_or(6);
+  options.digits = Some(options.digits.unwrap_or(6));
 
   // secret length validation
   if let Some(ref secret) = options.secret
@@ -248,14 +248,16 @@ pub fn totp(options: TOTPOptions) -> MFKDF2Result<MFKDF2Factor> {
   }
 
   // Generate random target
-  let target = crate::rng::gen_range_u32(10_u32.pow(u32::from(digits)) - 1);
+  let target = crate::rng::gen_range_u32(10_u32.pow(u32::from(options.digits.unwrap())) - 1);
 
   let mut secret_pad = [0u8; 12];
   crate::rng::fill_bytes(&mut secret_pad);
   let padded_secret = secret.into_iter().chain(secret_pad).collect();
   options.secret = Some(padded_secret);
 
-  let entropy = Some(f64::from(digits) * 10.0_f64.log2());
+  let entropy = Some(f64::from(options.digits.unwrap()) * 10.0_f64.log2());
+
+  options.id = Some(id.clone());
 
   Ok(MFKDF2Factor {
     id: Some(id),

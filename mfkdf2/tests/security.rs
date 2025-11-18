@@ -23,7 +23,7 @@ use mfkdf2::{
 fn xor(a: &[u8], b: &[u8]) -> Vec<u8> { a.iter().zip(b.iter()).map(|(x, y)| x ^ y).collect() }
 
 // Helper function to generate TOTP code from secret and current time
-fn generate_totp_code(secret: &[u8], step: u64, hash: &HashAlgorithm, digits: u8) -> u32 {
+fn generate_totp_code(secret: &[u8], step: u64, hash: &HashAlgorithm, digits: u32) -> u32 {
   let now = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs();
   let counter = now / step;
   generate_hotp_code(secret, counter, hash, digits)
@@ -322,7 +322,7 @@ fn totp_dynamic_no_oracle() -> Result<(), MFKDF2Error> {
     "sha512" => HashAlgorithm::Sha512,
     _ => HashAlgorithm::Sha1,
   };
-  let digits = outputs["digits"].as_u64().unwrap() as u8;
+  let digits = outputs["digits"].as_u64().unwrap() as u32;
 
   // Derive multiple times with the same oracle
   let derive1 = policy::derive::derive(
@@ -399,7 +399,7 @@ fn totp_dynamic_valid_fixed_oracle() {
     "sha512" => HashAlgorithm::Sha512,
     _ => HashAlgorithm::Sha1,
   };
-  let digits = outputs["digits"].as_u64().unwrap() as u8;
+  let digits = outputs["digits"].as_u64().unwrap() as u32;
 
   let derive1 = policy::derive::derive(
     &setup.policy,
@@ -496,7 +496,7 @@ fn totp_dynamic_invalid_fixed_oracle() {
     "sha512" => HashAlgorithm::Sha512,
     _ => HashAlgorithm::Sha1,
   };
-  let digits = outputs["digits"].as_u64().unwrap() as u8;
+  let digits = outputs["digits"].as_u64().unwrap() as u32;
 
   // Create a different oracle with different values
   let mut oracle2 = HashMap::new();
@@ -602,7 +602,7 @@ fn totp_dynamic_valid_dynamic_oracle() {
     "sha512" => HashAlgorithm::Sha512,
     _ => HashAlgorithm::Sha1,
   };
-  let digits = outputs["digits"].as_u64().unwrap() as u8;
+  let digits = outputs["digits"].as_u64().unwrap() as u32;
 
   // Derive multiple times with the same oracle (should succeed)
   let derive1 = policy::derive::derive(

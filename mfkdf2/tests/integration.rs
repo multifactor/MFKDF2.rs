@@ -197,7 +197,7 @@ fn key_derive_hotp() -> Result<(), mfkdf2::error::MFKDF2Error> {
   let hotp_factor = key.policy.factors.iter().find(|f| f.kind == "hotp").unwrap();
   let params = &hotp_factor.params;
   let counter = params["counter"].as_u64().unwrap();
-  let digits = params["digits"].as_u64().unwrap() as u8;
+  let digits = params["digits"].as_u64().unwrap() as u32;
   let hash = serde_json::from_value(params["hash"].clone()).unwrap();
 
   // Generate the HOTP code that the user would need to provide
@@ -244,7 +244,7 @@ fn key_derive_mixed_password_hotp() -> Result<(), mfkdf2::error::MFKDF2Error> {
   let hotp_factor = key.policy.factors.iter().find(|f| f.kind == "hotp").unwrap();
   let params = &hotp_factor.params;
   let counter = params["counter"].as_u64().unwrap();
-  let digits = params["digits"].as_u64().unwrap() as u8;
+  let digits = params["digits"].as_u64().unwrap() as u32;
   let hash = serde_json::from_value(params["hash"].clone()).unwrap();
 
   // Generate the correct HOTP code using SHA256 (different from previous test)

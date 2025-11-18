@@ -73,7 +73,7 @@ pub struct OtpauthUrlOptions {
   /// Issuer (provider name)
   pub issuer:  Option<String>,
   /// Digits (default 6)
-  pub digits:  Option<u8>,
+  pub digits:  Option<u32>,
   /// Period seconds (default 30; TOTP-only)
   pub period:  Option<u64>,
   /// Shared (encoding + algorithm)
@@ -144,7 +144,7 @@ pub fn otpauth_url(options: &OtpauthUrlOptions) -> Result<String, MFKDF2Error> {
   Ok(url)
 }
 
-pub fn generate_hotp_code(secret: &[u8], counter: u64, hash: &HashAlgorithm, digits: u8) -> u32 {
+pub fn generate_hotp_code(secret: &[u8], counter: u64, hash: &HashAlgorithm, digits: u32) -> u32 {
   let counter_bytes = counter.to_be_bytes();
 
   let digest = match hash {
@@ -172,7 +172,7 @@ pub fn generate_hotp_code(secret: &[u8], counter: u64, hash: &HashAlgorithm, dig
     | (u32::from(digest[offset + 2]) << 8)
     | u32::from(digest[offset + 3]);
 
-  code % 10_u32.pow(u32::from(digits))
+  code % 10_u32.pow(digits)
 }
 
 #[cfg(test)]
