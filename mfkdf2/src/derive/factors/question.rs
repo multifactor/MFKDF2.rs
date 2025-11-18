@@ -5,7 +5,7 @@ use crate::{
   definitions::{FactorType, Key, MFKDF2Factor},
   derive::FactorDerive,
   error::{MFKDF2Error, MFKDF2Result},
-  setup::factors::question::{Question, QuestionOptions},
+  setup::factors::question::Question,
 };
 
 impl FactorDerive for Question {
@@ -38,7 +38,7 @@ pub fn question(answer: impl Into<String>) -> MFKDF2Result<MFKDF2Factor> {
     // TODO (@lonerapier): MaybeUninit is a better type here that is initialised at
     // [`crate::derive::FactorDeriveTrait::include_params`]
     factor_type: FactorType::Question(Question {
-      options: QuestionOptions::default(),
+      question: String::new(),
       params: Value::Null,
       answer,
     }),
