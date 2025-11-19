@@ -1,3 +1,5 @@
+//! OTP Auth URL generation for TOTP and HOTP credentials compatible with Google Authenticator and
+//! other OTP authenticators.
 use std::fmt::Write;
 
 use data_encoding::{BASE32_NOPAD, HEXLOWER};
@@ -8,6 +10,8 @@ use sha2::{Sha256, Sha512};
 
 use crate::error::MFKDF2Error;
 
+/// An OATH credential can be a TOTP (Time-based One-time Password) or a HOTP (HMAC-based One-time
+/// Password).
 #[derive(Debug, Clone, Copy)]
 pub enum Kind {
   Totp,
@@ -23,7 +27,8 @@ impl std::fmt::Display for Kind {
   }
 }
 
-#[derive(Debug, Clone, Copy)]
+/// Encoding for the secret used.
+#[derive(Debug, Clone)]
 pub enum Encoding {
   /// Treat `secret` as raw ASCII bytes (e.g., "mysecret")
   Ascii,
@@ -33,6 +38,7 @@ pub enum Encoding {
   Hex,
 }
 
+/// The hash algorithm used by the credential
 #[cfg_attr(feature = "bindings", derive(uniffi::Enum))]
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
 pub enum HashAlgorithm {
@@ -54,35 +60,37 @@ impl std::fmt::Display for HashAlgorithm {
   }
 }
 
+/// Options for generating an OTP Auth URI as per RFC
 #[derive(Debug, Clone)]
-pub struct SharedOptions {
-  pub encoding:  Option<Encoding>,      // default: Ascii
-  pub algorithm: Option<HashAlgorithm>, // default: Sha1
-}
-
-#[derive(Debug, Clone)]
-pub struct OtpauthUrlOptions {
-  /// Shared secret (format depends on `encoding`)
-  pub secret:  String,
-  /// Label: usually account email/username
-  pub label:   String,
-  /// "totp" (default) or "hotp"
-  pub kind:    Option<Kind>,
-  /// Required for HOTP
-  pub counter: Option<u64>,
-  /// Issuer (provider name)
-  pub issuer:  Option<String>,
-  /// Digits (default 6)
-  pub digits:  Option<u32>,
-  /// Period seconds (default 30; TOTP-only)
-  pub period:  Option<u32>,
-  /// Shared (encoding + algorithm)
-  pub shared:  Option<SharedOptions>,
+pub struct OtpAuthUrlOptions {
+  /// The shared secret is the secret key that is used to generate the OTP. The format depends on
+  /// the encoding specified in the [`Encoding`] field.
+  pub secret:    String,
+  /// The label is used to identify which account a credential is associated with. It also serves
+  /// as the unique identifier for the credential itself.
+  pub label:     String,
+  /// Credential type, either [`Kind::Totp`] or [`Kind::Hotp`].
+  pub kind:      Option<Kind>,
+  /// The issuer parameter is an optional string value indicating the provider or service the
+  /// credential is associated with.
+  pub issuer:    Option<String>,
+  /// The number of digits in the OTP. Allowed values are 6, 7, and 8. Defaults to 6.
+  pub digits:    Option<u32>,
+  /// The optional counter parameter is required when provisioning HOTP credentials. It will set
+  /// the initial counter value.
+  pub counter:   Option<u64>,
+  /// The period parameter defines a validity period in seconds for the TOTP code. It is only
+  /// applicable for TOTP credentials and defaults to 30 seconds.
+  pub period:    Option<u64>,
+  /// The encoding of the secret.
+  pub encoding:  Option<Encoding>,
+  /// The hash algorithm to use for the credential.
+  pub algorithm: Option<HashAlgorithm>,
 }
 
 /// Convert an input secret (with a declared encoding) into Base32 (no padding),
 /// removing spaces and normalizing case where needed.
-fn secret_to_base32_no_pad(secret: &str, enc: Encoding) -> Result<String, String> {
+fn secret_to_base32_no_pad(secret: &str, enc: &Encoding) -> Result<String, String> {
   match enc {
     Encoding::Ascii => {
       // Interpret characters literally as bytes, then Base32 encode
@@ -106,15 +114,25 @@ fn secret_to_base32_no_pad(secret: &str, enc: Encoding) -> Result<String, String
   }
 }
 
-pub fn otpauth_url(options: &OtpauthUrlOptions) -> Result<String, MFKDF2Error> {
-  let enc = options.shared.as_ref().and_then(|s| s.encoding).unwrap_or(Encoding::Ascii);
-  let alg = options
-    .shared
-    .as_ref()
-    .and_then(|s| s.algorithm.clone())
-    .unwrap_or(HashAlgorithm::Sha1)
-    .to_string()
-    .to_ascii_uppercase();
+/// Generates an OTP Auth URI compatible with Google Authenticator and other OTP authenticators.
+/// The otpauth:// URI scheme is used to encode one-time password (OTP) secrets for use with
+/// authenticator applications, typically encoded in QR codes for easy provisioning.
+///
+/// # Arguments
+///
+/// * `options` - The options for generating the OTP Auth URI.
+///
+/// # Returns
+///
+/// A string representing the OTP Auth URI.
+///
+/// # Errors
+///
+/// Returns an error if the secret is invalid or the options are missing required fields.
+pub fn otpauth_url(options: &OtpAuthUrlOptions) -> Result<String, MFKDF2Error> {
+  let enc = options.encoding.as_ref().unwrap_or(&Encoding::Ascii);
+  let alg =
+    options.algorithm.as_ref().unwrap_or(&HashAlgorithm::Sha1).to_string().to_ascii_uppercase();
   let digits = options.digits.unwrap_or(6);
   let period = options.period.unwrap_or(30);
   let kind = options.kind.unwrap_or(Kind::Totp);
@@ -144,7 +162,15 @@ pub fn otpauth_url(options: &OtpauthUrlOptions) -> Result<String, MFKDF2Error> {
   Ok(url)
 }
 
-pub fn generate_hotp_code(secret: &[u8], counter: u64, hash: &HashAlgorithm, digits: u32) -> u32 {
+/// Generate a counter-based one-time token of the given length.
+///
+/// # Arguments
+///
+/// * `secret` - The shared secret is the secret key that is used to generate the OTP
+/// * `counter` - The counter value to use for the OTP.
+/// * `hash` - The hash algorithm to use for the OTP.
+/// * `digits` - The number of digits in the OTP.
+pub fn generate_otp_token(secret: &[u8], counter: u64, hash: &HashAlgorithm, digits: u32) -> u32 {
   let counter_bytes = counter.to_be_bytes();
 
   let digest = match hash {
@@ -183,18 +209,16 @@ mod tests {
 
   #[test]
   fn otpauth_url_totp() {
-    let options = OtpauthUrlOptions {
-      secret:  "mysecret".to_string(),
-      label:   "mylabel".to_string(),
-      kind:    Some(Kind::Totp),
-      counter: Some(1),
-      issuer:  Some("myissuer".to_string()),
-      digits:  Some(6),
-      period:  Some(30),
-      shared:  Some(SharedOptions {
-        encoding:  Some(Encoding::Ascii),
-        algorithm: Some(HashAlgorithm::Sha1),
-      }),
+    let options = OtpAuthUrlOptions {
+      secret:    "mysecret".to_string(),
+      label:     "mylabel".to_string(),
+      kind:      Some(Kind::Totp),
+      counter:   Some(1),
+      issuer:    Some("myissuer".to_string()),
+      digits:    Some(6),
+      period:    Some(30),
+      encoding:  Some(Encoding::Ascii),
+      algorithm: Some(HashAlgorithm::Sha1),
     };
 
     let url = otpauth_url(&options).unwrap();
@@ -207,18 +231,16 @@ mod tests {
 
   #[test]
   fn otpauth_url_hotp() {
-    let options = OtpauthUrlOptions {
-      secret:  "mysecret".to_string(),
-      label:   "mylabel".to_string(),
-      kind:    Some(Kind::Hotp),
-      counter: Some(1),
-      issuer:  Some("myissuer".to_string()),
-      digits:  Some(6),
-      period:  None,
-      shared:  Some(SharedOptions {
-        encoding:  Some(Encoding::Ascii),
-        algorithm: Some(HashAlgorithm::Sha1),
-      }),
+    let options = OtpAuthUrlOptions {
+      secret:    "mysecret".to_string(),
+      label:     "mylabel".to_string(),
+      kind:      Some(Kind::Hotp),
+      counter:   Some(1),
+      issuer:    Some("myissuer".to_string()),
+      digits:    Some(6),
+      period:    None,
+      encoding:  Some(Encoding::Ascii),
+      algorithm: Some(HashAlgorithm::Sha1),
     };
 
     let url = otpauth_url(&options).unwrap();
@@ -230,18 +252,16 @@ mod tests {
 
   #[test]
   fn otpauth_url_base32() {
-    let options = OtpauthUrlOptions {
-      secret:  BASE32_NOPAD.encode(b"mysecret"),
-      label:   "mylabel".to_string(),
-      kind:    Some(Kind::Totp),
-      counter: Some(1),
-      issuer:  Some("myissuer".to_string()),
-      digits:  Some(6),
-      period:  Some(30),
-      shared:  Some(SharedOptions {
-        encoding:  Some(Encoding::Base32),
-        algorithm: Some(HashAlgorithm::Sha1),
-      }),
+    let options = OtpAuthUrlOptions {
+      secret:    BASE32_NOPAD.encode(b"mysecret"),
+      label:     "mylabel".to_string(),
+      kind:      Some(Kind::Totp),
+      counter:   Some(1),
+      issuer:    Some("myissuer".to_string()),
+      digits:    Some(6),
+      period:    Some(30),
+      encoding:  Some(Encoding::Base32),
+      algorithm: Some(HashAlgorithm::Sha1),
     };
 
     let url = otpauth_url(&options).unwrap();
@@ -254,18 +274,16 @@ mod tests {
 
   #[test]
   fn otpauth_url_hex() {
-    let options = OtpauthUrlOptions {
-      secret:  hex::encode("mysecret"),
-      label:   "mylabel".to_string(),
-      kind:    Some(Kind::Totp),
-      counter: Some(1),
-      issuer:  Some("myissuer".to_string()),
-      digits:  Some(6),
-      period:  Some(30),
-      shared:  Some(SharedOptions {
-        encoding:  Some(Encoding::Hex),
-        algorithm: Some(HashAlgorithm::Sha1),
-      }),
+    let options = OtpAuthUrlOptions {
+      secret:    hex::encode("mysecret"),
+      label:     "mylabel".to_string(),
+      kind:      Some(Kind::Totp),
+      counter:   Some(1),
+      issuer:    Some("myissuer".to_string()),
+      digits:    Some(6),
+      period:    Some(30),
+      encoding:  Some(Encoding::Hex),
+      algorithm: Some(HashAlgorithm::Sha1),
     };
 
     let url = otpauth_url(&options).unwrap();
@@ -283,15 +301,15 @@ mod tests {
     let hash = HashAlgorithm::Sha1;
     let digits = 6;
 
-    let code = generate_hotp_code(secret, counter, &hash, digits);
+    let code = generate_otp_token(secret, counter, &hash, digits);
     assert!(code < 10_u32.pow(digits));
 
     // Same inputs should produce same output
-    let code2 = generate_hotp_code(secret, counter, &hash, digits);
+    let code2 = generate_otp_token(secret, counter, &hash, digits);
     assert_eq!(code, code2);
 
     // Different counter should produce different output
-    let code3 = generate_hotp_code(secret, counter + 1, &hash, digits);
+    let code3 = generate_otp_token(secret, counter + 1, &hash, digits);
     assert_ne!(code, code3);
   }
 }
