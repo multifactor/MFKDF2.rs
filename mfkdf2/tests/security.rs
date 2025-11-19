@@ -1,3 +1,4 @@
+mod common;
 use std::{
   collections::HashMap,
   time::{SystemTime, UNIX_EPOCH},
@@ -6,10 +7,9 @@ use std::{
 use base64::{Engine, engine::general_purpose};
 use mfkdf2::{
   constants::SECRET_SHARING_POLY,
-  crypto::hkdf_sha256_with_info,
   derive,
   error::MFKDF2Error,
-  otpauth::{HashAlgorithm, generate_hotp_code},
+  otpauth::{HashAlgorithm, generate_otp_token},
   policy,
   policy::setup::PolicySetupOptions,
   setup::{
@@ -18,6 +18,7 @@ use mfkdf2::{
     key::MFKDF2Options,
   },
 };
+use rand_chacha::rand_core::{RngCore, SeedableRng};
 
 // Helper function to perform XOR operation on two byte arrays
 fn xor(a: &[u8], b: &[u8]) -> Vec<u8> { a.iter().zip(b.iter()).map(|(x, y)| x ^ y).collect() }
@@ -26,7 +27,7 @@ fn xor(a: &[u8], b: &[u8]) -> Vec<u8> { a.iter().zip(b.iter()).map(|(x, y)| x ^ 
 fn generate_totp_code(secret: &[u8], step: u64, hash: &HashAlgorithm, digits: u32) -> u32 {
   let now = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs();
   let counter = now / step;
-  generate_hotp_code(secret, counter, hash, digits)
+  generate_otp_token(secret, counter, hash, digits)
 }
 
 #[test]
@@ -82,11 +83,13 @@ fn factor_fungibility_incorrect() {
 
 #[test]
 fn share_indistinguishability_share_size() -> Result<(), MFKDF2Error> {
+  let mut rng = rand_chacha::ChaCha20Rng::from_seed([10u8; 32]);
+
   let mut secret = [0u8; 32];
-  mfkdf2::rng::fill_bytes(&mut secret);
+  rng.fill_bytes(&mut secret);
 
   let sss = ssskit::SecretSharing::<SECRET_SHARING_POLY>(1);
-  let shares1 = sss.dealer_rng(&secret, &mut mfkdf2::rng::GlobalRng).take(3).collect::<Vec<_>>();
+  let shares1 = sss.dealer_rng(&secret, &mut rng).take(3).collect::<Vec<_>>();
   assert_eq!(shares1.len(), 3);
   for share in shares1.iter() {
     assert_eq!(share.y.len(), 32);
@@ -99,7 +102,7 @@ fn share_indistinguishability_share_size() -> Result<(), MFKDF2Error> {
   assert_eq!(combined2, secret);
 
   let sss = ssskit::SecretSharing::<SECRET_SHARING_POLY>(2);
-  let shares2 = sss.dealer_rng(&secret, &mut mfkdf2::rng::GlobalRng).take(3).collect::<Vec<_>>();
+  let shares2 = sss.dealer_rng(&secret, &mut rng).take(3).collect::<Vec<_>>();
   assert_eq!(shares2.len(), 3);
   for share in shares2.iter() {
     assert_eq!(share.y.len(), 32);
@@ -112,7 +115,7 @@ fn share_indistinguishability_share_size() -> Result<(), MFKDF2Error> {
   assert_eq!(combined4, secret);
 
   let sss = ssskit::SecretSharing::<SECRET_SHARING_POLY>(3);
-  let shares3 = sss.dealer_rng(&secret, &mut mfkdf2::rng::GlobalRng).take(3).collect::<Vec<_>>();
+  let shares3 = sss.dealer_rng(&secret, &mut rng).take(3).collect::<Vec<_>>();
   assert_eq!(shares3.len(), 3);
   for share in shares3.iter() {
     assert_eq!(share.y.len(), 32);
@@ -140,7 +143,7 @@ fn share_encryption_correct() -> Result<(), MFKDF2Error> {
   let materialp1 = derive::factors::password("password1")?;
   let padp1 = general_purpose::STANDARD.decode(&setup.policy.factors[0].pad)?;
   let salt_bytes = general_purpose::STANDARD.decode(&setup.policy.factors[0].salt)?;
-  let stretchedp1 = hkdf_sha256_with_info(&materialp1.data(), &salt_bytes, &[]);
+  let stretchedp1 = crate::common::hkdf_sha256_with_info(&materialp1.data(), &salt_bytes, &[]);
   let sharep1 = xor(&padp1, &stretchedp1);
 
   // Derive the key normally
@@ -186,7 +189,7 @@ fn share_encryption_correct() -> Result<(), MFKDF2Error> {
   let materialp3 = derive::factors::password("newPassword1")?;
   let padp3 = general_purpose::STANDARD.decode(&derive.policy.factors[0].pad)?;
   let salt_bytes3 = general_purpose::STANDARD.decode(&derive.policy.factors[0].salt)?;
-  let stretchedp3 = hkdf_sha256_with_info(&materialp3.data(), &salt_bytes3, &[]);
+  let stretchedp3 = crate::common::hkdf_sha256_with_info(&materialp3.data(), &salt_bytes3, &[]);
   let sharep3 = xor(&padp3, &stretchedp3);
 
   // Recover factor again with another new password
