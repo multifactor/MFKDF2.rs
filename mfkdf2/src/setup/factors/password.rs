@@ -1,3 +1,9 @@
+//! Password-based factor setup.
+//!
+//! This factor turns a user-chosen password into MFKDF2 factor material.  The
+//! factor also records an entropy estimate derived from Dropbox's `zxcvbn` estimator,
+//! which can be used to enforce password strength policies.
+
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 use zxcvbn::zxcvbn;
@@ -8,9 +14,11 @@ use crate::{
   setup::FactorSetup,
 };
 
+/// Password factor
 #[cfg_attr(feature = "bindings", derive(uniffi::Record))]
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Password {
+  /// User-chosen password string.
   pub password: String,
 }
 
@@ -31,12 +39,46 @@ impl FactorSetup for Password {
   }
 }
 
+/// Options for setting up a password factor.
 #[cfg_attr(feature = "bindings", derive(uniffi::Record))]
 #[derive(Clone, Debug, Default, Serialize, Deserialize)]
 pub struct PasswordOptions {
+  /// Optional application-defined identifier for the factor. Defaults to `"password"`. If
+  /// provided, it must be non-empty.
   pub id: Option<String>,
 }
 
+/// Creates a password factor.
+///
+/// This helper normalizes and validates the password, computes its entropy using
+/// `zxcvbn`, and wraps it in an [`MFKDF2Factor`]. The resulting factor can be used
+/// directly in `setup_stack` or in single-factor keys.
+///
+/// # Errors
+/// - [`MFKDF2Error::PasswordEmpty`] if `password` is empty.
+/// - [`MFKDF2Error::MissingFactorId`] if `options.id` is present but empty.
+///
+/// # Examples
+///
+/// Basic usage with a default id:
+///
+/// ```rust
+/// # use mfkdf2::setup::factors::password::{password, PasswordOptions};
+/// let factor = password("correct horse battery staple", PasswordOptions::default())?;
+/// assert_eq!(factor.id.as_deref(), Some("password"));
+/// assert!(factor.entropy.unwrap() > 40.0);
+/// # Ok::<(), mfkdf2::error::MFKDF2Error>(())
+/// ```
+///
+/// Using a custom id so you can distinguish multiple password factors:
+///
+/// ```rust
+/// # use mfkdf2::setup::factors::password::{password, PasswordOptions};
+/// let options = PasswordOptions { id: Some("login-password".to_string()) };
+/// let factor = password("my login secret", options)?;
+/// assert_eq!(factor.id.as_deref(), Some("login-password"));
+/// # Ok::<(), mfkdf2::error::MFKDF2Error>(())
+/// ```
 pub fn password(
   password: impl Into<String>,
   options: PasswordOptions,
@@ -103,14 +145,13 @@ mod tests {
   fn password_valid() {
     let factor = password("hello", PasswordOptions { id: None }).unwrap();
     assert_eq!(factor.id, Some("password".to_string()));
-    match &factor.factor_type {
-      FactorType::Password(p) => {
-        assert_eq!(p.password, "hello");
-        assert_eq!(p.bytes(), "hello".as_bytes());
-        let params = p.params([0; 32].into()).unwrap();
-        assert_eq!(params, json!({}));
-      },
+    let p = match &factor.factor_type {
+      FactorType::Password(p) => p,
       _ => panic!("Wrong factor type"),
-    }
+    };
+    assert_eq!(p.password, "hello");
+    assert_eq!(p.bytes(), "hello".as_bytes());
+    let params = p.params([0; 32].into()).unwrap();
+    assert_eq!(params, json!({}));
   }
 }
