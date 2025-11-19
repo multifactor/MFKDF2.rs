@@ -4,6 +4,89 @@ use base64::{Engine, engine::general_purpose};
 use crate::{crypto::encrypt, definitions::MFKDF2DerivedKey, error::MFKDF2Result};
 
 impl MFKDF2DerivedKey {
+  /// Increase the Argon2 work factor for an already derived key **without** changing the key.
+  ///
+  /// Strengthening is useful when you want to upgrade the KDF parameters over time (e.g. as
+  /// hardware gets faster) but you cannot afford to re-encrypt all application data. The
+  /// [`MFKDF2DerivedKey`] already contains the user-derived key and an authenticated copy of
+  /// the public policy; calling this method:
+  ///
+  /// - derives a new key-encapsulation key (KEK) from `self.secret` and the policy salt using
+  ///   stronger Argon2 parameters, and
+  /// - re-encrypts the policy key with that KEK and updates `policy.time` / `policy.memory`.
+  ///
+  /// Clients should persist the updated `policy` back to their storage (e.g. user database)
+  /// and discard the old one. Any attempt to reuse or roll back the previous policy will fail
+  /// the integrity check during the next derive (`PolicyIntegrityCheckFailed`), ensuring that
+  /// only a user who can compute the correct key can authorize an increase in cost.
+  ///
+  /// The `time` and `memory` arguments are additive deltas over the library defaults used at
+  /// setup time. Internally they are applied as `DEFAULT_T_COST + time` and
+  /// `DEFAULT_M_COST + memory`, which allows you to express "make this policy 3 steps slower
+  /// and 16 MiB more memory hungry than it was originally", rather than hard-coding
+  /// absolute Argon2 parameters.
+  ///
+  /// # Example
+  ///
+  /// ```rust
+  /// # use std::collections::HashMap;
+  /// # use mfkdf2::{
+  /// # derive,
+  /// # derive::factors as derive_factors,
+  /// # error::MFKDF2Error,
+  /// # setup::{self, factors::password::PasswordOptions, key::MFKDF2Options},
+  /// # };
+  ///
+  /// // 1. Create a simple single-password policy
+  /// let setup_factors = vec![
+  ///   mfkdf2::setup::factors::password("password1", PasswordOptions::default())?,
+  /// ];
+  ///
+  /// let setup_key =
+  ///   setup::key(&setup_factors, MFKDF2Options::default())?;
+  ///
+  /// // 2. User logs in with the same password and we derive the current key.
+  /// let mut derived_key = derive::key(
+  ///   &setup_key.policy,
+  ///   HashMap::from([(
+  ///     "password".to_string(),
+  ///     derive_factors::password("password1").expect("Failed to derive password factor"),
+  ///   )]),
+  ///   true, // use integrity check
+  ///   false, // use stack key
+  /// )?;
+  ///
+  /// // 3. bump the Argon2 time and memory costs. These values are *deltas* over the defaults from setup.
+  /// derived_key.strengthen(3, 16 * 1024)?;
+  ///
+  /// // 4. Persist `derived_key.policy` as the new policy for this user.
+  /// //    Future derives must use the strengthened policy.
+  /// let derived_key2 = derive::key(
+  ///   &derived_key.policy,
+  ///   HashMap::from([(
+  ///     "password".to_string(),
+  ///     derive_factors::password("password1")?,
+  ///   )]),
+  ///   true,
+  ///   false,
+  /// )?;
+  ///
+  /// assert_eq!(derived_key2.key, setup_key.key);
+  /// # Ok::<(), mfkdf2::error::MFKDF2Error>(())
+  /// ```
+  ///
+  /// # Errors
+  ///
+  /// This function returns an [`MFKDF2Result`] whose error is typically:
+  ///
+  /// - [`crate::error::MFKDF2Error::Argon2Error`] if the chosen `time` / `memory` values cannot be
+  ///   represented as valid Argon2 parameters.
+  /// - [`crate::error::MFKDF2Error::DecodeError`] if the policy salt has been corrupted or tampered
+  ///   with and can no longer be base64-decoded.
+  ///
+  /// Note that downstream operations that use the upgraded policy may return
+  /// [`crate::error::MFKDF2Error::PolicyIntegrityCheckFailed`] if an attacker attempts to
+  /// weaken or roll back the policy, as that invalidates the integrity MAC.
   pub fn strengthen(&mut self, time: u32, memory: u32) -> MFKDF2Result<()> {
     self.policy.time = time;
     self.policy.memory = memory;
