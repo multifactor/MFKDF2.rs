@@ -7,7 +7,8 @@ use crate::{
   crypto::{encrypt, hkdf_sha256_with_info, hmacsha256},
   definitions::{MFKDF2DerivedKey, MFKDF2Factor},
   error::{MFKDF2Error, MFKDF2Result},
-  setup::{FactorSetup, key::PolicyFactor},
+  policy::PolicyFactor,
+  setup::FactorSetup,
 };
 
 impl MFKDF2DerivedKey {

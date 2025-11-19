@@ -6,7 +6,7 @@ use crate::{
   crypto::encrypt,
   definitions::{FactorMetadata, FactorType, Key, MFKDF2Factor},
   error::{MFKDF2Error, MFKDF2Result},
-  otpauth::{self, HashAlgorithm, OtpauthUrlOptions, generate_hotp_code},
+  otpauth::{self, HashAlgorithm, OtpAuthUrlOptions, generate_otp_token},
   setup::FactorSetup,
 };
 
@@ -108,7 +108,7 @@ impl FactorSetup for HOTP {
   fn params(&self, key: Key) -> MFKDF2Result<Self::Params> {
     // Generate HOTP code with counter = 1
     let code =
-      generate_hotp_code(&self.config.secret[..20], 1, &self.config.hash, self.config.digits);
+      generate_otp_token(&self.config.secret[..20], 1, &self.config.hash, self.config.digits);
 
     // Calculate offset
     let offset =
@@ -137,7 +137,7 @@ impl FactorSetup for HOTP {
       "algorithm": self.config.hash.to_string(),
       "digits": self.config.digits,
       "counter": 1,
-      "uri": otpauth::otpauth_url(&OtpauthUrlOptions {
+      "uri": otpauth::otpauth_url(&OtpAuthUrlOptions {
         secret: hex::encode(&self.config.secret[..20]),
         label: self.config.label.clone(),
         kind: Some(otpauth::Kind::Hotp),
@@ -145,10 +145,8 @@ impl FactorSetup for HOTP {
         issuer: Some(self.config.issuer.clone()),
         digits: Some(self.config.digits),
         period: None,
-        shared: Some(otpauth::SharedOptions {
-          encoding: Some(otpauth::Encoding::Hex),
-          algorithm: Some(self.config.hash.clone()),
-        }),
+        encoding: Some(otpauth::Encoding::Hex),
+        algorithm: Some(self.config.hash.clone()),
       }).unwrap()
     })
   }
@@ -357,7 +355,7 @@ mod tests {
 
     let offset = params["offset"].as_u64().unwrap() as u32;
 
-    let code = generate_hotp_code(
+    let code = generate_otp_token(
       &hotp_factor.config.secret[..20],
       1,
       &hotp_factor.config.hash,

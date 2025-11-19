@@ -57,7 +57,7 @@ fn create_policy_derive_factor(
       let digits = params["digits"].as_u64().unwrap() as u32;
       let hash = serde_json::from_value(params["hash"].clone()).unwrap();
       let secret = vec![0u8; 20];
-      let code = otpauth::generate_hotp_code(&secret, counter, &hash, digits);
+      let code = otpauth::generate_otp_token(&secret, counter, &hash, digits);
       (id.to_string(), derive::factors::hotp(code).unwrap())
     },
     "totp" => {
@@ -72,7 +72,7 @@ fn create_policy_derive_factor(
       let digits = params["digits"].as_u64().unwrap() as u32;
       let counter = time as u64 / (step * 1000);
       let secret = vec![0u8; 20];
-      let code = otpauth::generate_hotp_code(&secret, counter, &hash, digits);
+      let code = otpauth::generate_otp_token(&secret, counter, &hash, digits);
       (id.to_string(), derive::factors::totp(code, None).unwrap())
     },
     _ => panic!("Unknown factor type: {}", name),

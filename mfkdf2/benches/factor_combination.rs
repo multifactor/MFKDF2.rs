@@ -4,7 +4,7 @@ use criterion::{Criterion, criterion_group, criterion_main};
 use mfkdf2::{
   derive,
   derive::factors::totp::TOTPDeriveOptions,
-  otpauth::{HashAlgorithm, generate_hotp_code},
+  otpauth::{HashAlgorithm, generate_otp_token},
   setup::{
     self,
     factors::{
@@ -107,12 +107,12 @@ fn bench_factor_combination_derive(c: &mut Criterion) {
   let policy_hotp_factor = setup_key.policy.factors.iter().find(|f| f.id == "hotp").unwrap();
   let hotp_params = &policy_hotp_factor.params;
   let counter = hotp_params["counter"].as_u64().unwrap();
-  let hotp_code = generate_hotp_code(&SECRET20, counter, &HashAlgorithm::Sha1, 6);
+  let hotp_code = generate_otp_token(&SECRET20, counter, &HashAlgorithm::Sha1, 6);
 
   // Pre-compute TOTP code for derive
   let time = 1;
   let totp_counter = time / 30;
-  let totp_code = generate_hotp_code(&SECRET20, totp_counter, &HashAlgorithm::Sha1, 6);
+  let totp_code = generate_otp_token(&SECRET20, totp_counter, &HashAlgorithm::Sha1, 6);
 
   // Benchmark derive with password + hotp (threshold 2 of 3)
   group.bench_function("derive_password_hotp", |b| {
