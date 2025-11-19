@@ -8,7 +8,7 @@ use criterion::{Criterion, criterion_group, criterion_main};
 use mfkdf2::{
   derive,
   derive::factors::totp::TOTPDeriveOptions,
-  otpauth::{HashAlgorithm, generate_hotp_code},
+  otpauth::{HashAlgorithm, generate_otp_token},
   setup::{
     self,
     factors::totp::{TOTPOptions, totp as setup_totp},
@@ -65,7 +65,7 @@ fn bench_totp(c: &mut Criterion) {
     b.iter(|| {
       // Create an oracle that provides the correct TOTP code for any time
       let mut oracle = HashMap::new();
-      let totp_code = generate_hotp_code(&SECRET20, current_time / 30, &HashAlgorithm::Sha1, 6);
+      let totp_code = generate_otp_token(&SECRET20, current_time / 30, &HashAlgorithm::Sha1, 6);
       oracle.insert(current_time / 30, totp_code);
 
       let factors_map = black_box(HashMap::from([(
@@ -178,7 +178,7 @@ fn bench_totp(c: &mut Criterion) {
         (
           "totp1".to_string(),
           derive::factors::totp(
-            generate_hotp_code(&SECRET20, current_time / 30, &HashAlgorithm::Sha1, 6),
+            generate_otp_token(&SECRET20, current_time / 30, &HashAlgorithm::Sha1, 6),
             None,
           )
           .unwrap(),
@@ -186,7 +186,7 @@ fn bench_totp(c: &mut Criterion) {
         (
           "totp2".to_string(),
           derive::factors::totp(
-            generate_hotp_code(
+            generate_otp_token(
               &[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20],
               current_time / 30,
               &HashAlgorithm::Sha1,
@@ -199,7 +199,7 @@ fn bench_totp(c: &mut Criterion) {
         (
           "totp3".to_string(),
           derive::factors::totp(
-            generate_hotp_code(
+            generate_otp_token(
               &[21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40],
               current_time / 30,
               &HashAlgorithm::Sha1,
@@ -263,7 +263,7 @@ fn bench_totp(c: &mut Criterion) {
         (
           "totp1".to_string(),
           derive::factors::totp(
-            generate_hotp_code(&SECRET20, current_time / 30, &HashAlgorithm::Sha1, 6),
+            generate_otp_token(&SECRET20, current_time / 30, &HashAlgorithm::Sha1, 6),
             None,
           )
           .unwrap(),
@@ -271,7 +271,7 @@ fn bench_totp(c: &mut Criterion) {
         (
           "totp2".to_string(),
           derive::factors::totp(
-            generate_hotp_code(
+            generate_otp_token(
               &[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20],
               current_time / 30,
               &HashAlgorithm::Sha1,

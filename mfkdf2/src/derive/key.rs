@@ -203,7 +203,7 @@ mod tests {
         password::password as derive_password, persisted, totp::totp as derive_totp,
       },
     },
-    otpauth::generate_hotp_code,
+    otpauth::generate_otp_token,
     setup::{
       self,
       factors::{
@@ -259,10 +259,11 @@ mod tests {
   #[test]
   fn key_derivation_round_trip_password_only() {
     // Setup phase
-    let mut setup_factor = setup_password("password123", PasswordOptions::default()).unwrap();
-    setup_factor.id = Some("pwd".to_string());
-    let setup_derived_key =
-      setup::key::key(&[setup_factor.clone()], setup::key::MFKDF2Options::default()).unwrap();
+    let setup_derived_key = setup::key::key(
+      &[setup_password("password123", PasswordOptions { id: Some("pwd".to_string()) }).unwrap()],
+      setup::key::MFKDF2Options::default(),
+    )
+    .unwrap();
 
     // Derivation phase
     let mut derive_factors_map = HashMap::new();
@@ -284,19 +285,17 @@ mod tests {
   #[test]
   fn key_derivation_round_trip_password_and_hmac() {
     // Setup phase
-    let mut setup_password_factor =
-      setup_password("password123", PasswordOptions::default()).unwrap();
-    setup_password_factor.id = Some("pwd".to_string());
+    let setup_password_factor =
+      setup_password("password123", PasswordOptions { id: Some("pwd".to_string()) }).unwrap();
 
-    let mut setup_hmac_factor = setup_hmacsha1(HmacSha1Options {
+    let setup_hmac_factor = setup_hmacsha1(HmacSha1Options {
       id:     Some("hmac".to_string()),
       secret: Some(HMACSHA1_SECRET.to_vec()),
     })
     .unwrap();
-    setup_hmac_factor.id = Some("hmac".to_string());
 
     let setup_derived_key = setup::key::key(
-      &[setup_password_factor.clone(), setup_hmac_factor.clone()],
+      &[setup_password_factor, setup_hmac_factor.clone()],
       setup::key::MFKDF2Options::default(),
     )
     .unwrap();
@@ -368,7 +367,7 @@ mod tests {
     let hotp_params = &policy_hotp_factor.params;
     let counter = hotp_params["counter"].as_u64().unwrap();
     let correct_code =
-      generate_hotp_code(&hotp.config.secret[..20], counter, &hotp.config.hash, hotp.config.digits);
+      generate_otp_token(&hotp.config.secret[..20], counter, &hotp.config.hash, hotp.config.digits);
     let mut derive_hotp_factor = derive_hotp(correct_code as u32).unwrap();
     derive_hotp_factor.id = Some("hotp".to_string());
     derive_factors_map.insert("hotp".to_string(), derive_hotp_factor);
@@ -377,7 +376,7 @@ mod tests {
     let time = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_millis();
     let counter = time as u64 / (totp.config.step as u64 * 1000);
     let totp_code =
-      generate_hotp_code(&totp.config.secret[..20], counter, &totp.config.hash, totp.config.digits);
+      generate_otp_token(&totp.config.secret[..20], counter, &totp.config.hash, totp.config.digits);
     let mut derive_totp_factor = derive_totp(totp_code as u32, None).unwrap();
     derive_totp_factor.id = Some("totp".to_string());
     derive_factors_map.insert("totp".to_string(), derive_totp_factor);
@@ -411,7 +410,7 @@ mod tests {
     let hotp_params = &policy_hotp_factor.params;
     let counter = hotp_params["counter"].as_u64().unwrap();
     let correct_code =
-      generate_hotp_code(&hotp.config.secret[..20], counter, &hotp.config.hash, hotp.config.digits);
+      generate_otp_token(&hotp.config.secret[..20], counter, &hotp.config.hash, hotp.config.digits);
     let mut derive_hotp_factor = derive_hotp(correct_code as u32).unwrap();
     derive_hotp_factor.id = Some("hotp".to_string());
     derive_factors_map.insert("hotp".to_string(), derive_hotp_factor);
@@ -420,7 +419,7 @@ mod tests {
     let time = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_millis();
     let counter = time as u64 / (u64::from(totp.config.step) * 1000);
     let totp_code =
-      generate_hotp_code(&totp.config.secret[..20], counter, &totp.config.hash, totp.config.digits);
+      generate_otp_token(&totp.config.secret[..20], counter, &totp.config.hash, totp.config.digits);
     let mut derive_totp_factor = derive_totp(totp_code as u32, None).unwrap();
     derive_totp_factor.id = Some("totp".to_string());
     derive_factors_map.insert("totp".to_string(), derive_totp_factor);
@@ -483,7 +482,7 @@ mod tests {
     let hotp_params = &policy_hotp_factor.params;
     let counter = hotp_params["counter"].as_u64().unwrap();
     let correct_code =
-      generate_hotp_code(&hotp.config.secret[..20], counter, &hotp.config.hash, hotp.config.digits);
+      generate_otp_token(&hotp.config.secret[..20], counter, &hotp.config.hash, hotp.config.digits);
     let mut derive_hotp_factor = derive_hotp(correct_code as u32).unwrap();
     derive_hotp_factor.id = Some("hotp".to_string());
     derive_factors_map.insert("hotp".to_string(), derive_hotp_factor);
@@ -563,7 +562,7 @@ mod tests {
     let hotp_params = &policy_hotp_factor.params;
     let counter = hotp_params["counter"].as_u64().unwrap();
     let correct_code =
-      generate_hotp_code(&hotp.config.secret[..20], counter, &hotp.config.hash, hotp.config.digits);
+      generate_otp_token(&hotp.config.secret[..20], counter, &hotp.config.hash, hotp.config.digits);
     let mut derive_hotp_factor = derive_hotp(correct_code as u32).unwrap();
     derive_hotp_factor.id = Some("hotp".to_string());
     derive_factors_map.insert("hotp".to_string(), derive_hotp_factor);

@@ -1,6 +1,8 @@
 use std::collections::HashMap;
 
+use hmac::{Hmac, Mac};
 use mfkdf2::{policy::Policy, setup::factors::hmacsha1::HmacSha1Response};
+use sha1::Sha1;
 
 const HMACSHA1_SECRET: [u8; 20] = [
   0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f, 0x10,
@@ -102,7 +104,12 @@ fn stack_derive() {
   let factor_policy = stack_factor_policy.factors.iter().find(|f| f.id == "hmacsha1_1").unwrap();
   let params = &factor_policy.params;
   let challenge = hex::decode(params["challenge"].as_str().unwrap()).unwrap();
-  let response = mfkdf2::crypto::hmacsha1(&HMACSHA1_SECRET, &challenge);
+  let response: [u8; 20] = <Hmac<Sha1> as Mac>::new_from_slice(&HMACSHA1_SECRET)
+    .unwrap()
+    .chain_update(challenge)
+    .finalize()
+    .into_bytes()
+    .into();
   let derived_key = mfkdf2::derive::key(
     &derived_key.policy,
     HashMap::from([(

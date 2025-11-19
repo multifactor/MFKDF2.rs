@@ -5,7 +5,6 @@ use std::collections::{HashMap, HashSet};
 use argon2::{Argon2, Params, Version};
 use base64::{Engine, engine::general_purpose};
 use serde::{Deserialize, Serialize};
-use serde_json::Value;
 use ssskit::{SecretSharing, Share};
 use uuid::Uuid;
 
@@ -14,35 +13,31 @@ use crate::{
   crypto::{encrypt, hkdf_sha256_with_info, hmacsha256},
   definitions::{MFKDF2DerivedKey, MFKDF2Factor, Salt},
   error::{MFKDF2Error, MFKDF2Result},
-  policy::Policy,
+  policy::{Policy, PolicyFactor},
   setup::FactorSetup,
 };
 
-// TODO (autoparallel): We probably can just use the MFKDF2Factor struct directly here.
-#[derive(Clone, Serialize, Deserialize, Debug, Eq, PartialEq)]
-#[cfg_attr(feature = "bindings", derive(uniffi::Record))]
-pub struct PolicyFactor {
-  pub id:     String,
-  #[serde(rename = "type")]
-  pub kind:   String,
-  pub pad:    String,
-  pub salt:   String,
-  pub secret: String,
-  // TODO (@lonerapier): convert it into a factor based enum
-  pub params: Value,
-  #[serde(skip_serializing_if = "Option::is_none")]
-  pub hint:   Option<String>,
-}
-
+/// Options for setting up a key.
 #[cfg_attr(feature = "bindings", derive(uniffi::Record))]
 #[derive(Clone, Serialize, Deserialize)]
 pub struct MFKDF2Options {
+  /// ID of the policy. If not provided, a random UUID will be generated.
   pub id:        Option<String>,
+  /// Threshold number of factors needed to derive the key.
+  /// Minimum number of factors is 1, maximum is the number of factors provided.
   pub threshold: Option<u8>,
+  /// 32 byte salt for key derivation. If not provided, a random salt will be generated.
   pub salt:      Option<Salt>,
+  /// Flag to use a stack key for key derivation.
   pub stack:     Option<bool>,
+  /// Flag to perform integrity checks for the policy.
+  /// Default is true.
   pub integrity: Option<bool>,
+  /// Additional time cost for argon2id key derivation.
+  /// Default is 0.
   pub time:      Option<u32>,
+  /// Additional memory cost for argon2id key derivation.
+  /// Default is 0.
   pub memory:    Option<u32>,
 }
 

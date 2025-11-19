@@ -12,7 +12,7 @@ use crate::{
   crypto::encrypt,
   definitions::{FactorMetadata, FactorType, Key, MFKDF2Factor},
   error::{MFKDF2Error, MFKDF2Result},
-  otpauth::{self, HashAlgorithm, OtpauthUrlOptions, generate_hotp_code},
+  otpauth::{self, HashAlgorithm, OtpAuthUrlOptions, generate_otp_token},
   setup::{FactorSetup, factors::hotp::mod_positive},
 };
 
@@ -142,7 +142,7 @@ impl FactorSetup for TOTP {
       // Here, T0 is 0 (Unix epoch) and X is self.config.step.
       // We add 'i' to generate a window of future OTPs for offline use.
       let counter = (time / 1000) as u64 / u64::from(self.config.step) + i as u64;
-      let code = generate_hotp_code(
+      let code = generate_otp_token(
         &self.config.secret[..20],
         counter,
         &self.config.hash,
@@ -191,7 +191,7 @@ impl FactorSetup for TOTP {
       "algorithm": self.config.hash.to_string(),
       "digits": self.config.digits,
       "period": self.config.step,
-      "uri": otpauth::otpauth_url(&OtpauthUrlOptions {
+      "uri": otpauth::otpauth_url(&OtpAuthUrlOptions {
         secret: hex::encode(&self.config.secret[..20]),
         label: self.config.label.clone(),
         kind: Some(otpauth::Kind::Totp),
@@ -199,10 +199,8 @@ impl FactorSetup for TOTP {
         issuer: Some(self.config.issuer.clone()),
         digits: Some(self.config.digits),
         period: Some(self.config.step),
-        shared: Some(otpauth::SharedOptions {
-          encoding: Some(otpauth::Encoding::Hex),
-          algorithm: Some(self.config.hash.clone()),
-        }),
+        encoding: Some(otpauth::Encoding::Hex),
+        algorithm: Some(self.config.hash.clone()),
       }).unwrap()
     })
   }
@@ -306,7 +304,6 @@ mod tests {
 
     let factor = result.unwrap();
     assert_eq!(factor.id, Some("test".to_string()));
-    // assert_eq!(factor.salt.len(), 32);
 
     assert!(matches!(factor.factor_type, FactorType::TOTP(_)));
     if let FactorType::TOTP(totp_factor) = factor.factor_type {

@@ -8,9 +8,23 @@ pub mod setup;
 use std::collections::HashSet;
 
 use serde::{Deserialize, Serialize};
-use serde_json as json;
+use serde_json::Value;
 
-use crate::setup::key::PolicyFactor;
+// TODO (autoparallel): We probably can just use the MFKDF2Factor struct directly here.
+#[derive(Clone, Serialize, Deserialize, Debug, Eq, PartialEq)]
+#[cfg_attr(feature = "bindings", derive(uniffi::Record))]
+pub struct PolicyFactor {
+  pub id:     String,
+  #[serde(rename = "type")]
+  pub kind:   String,
+  pub pad:    String,
+  pub salt:   String,
+  pub secret: String,
+  // TODO (@lonerapier): convert it into a factor based enum
+  pub params: Value,
+  #[serde(skip_serializing_if = "Option::is_none")]
+  pub hint:   Option<String>,
+}
 
 #[cfg_attr(feature = "bindings", derive(uniffi::Record))]
 #[derive(Clone, Debug, Default, Serialize, Deserialize, Eq, PartialEq)]
@@ -36,7 +50,7 @@ impl Policy {
     for factor in &self.factors {
       list.push(factor.id.clone());
       if factor.kind == "stack"
-        && let Ok(nested) = json::from_value::<Policy>(factor.params.clone())
+        && let Ok(nested) = serde_json::from_value::<Policy>(factor.params.clone())
       {
         list.extend(nested.ids());
       }

@@ -13,7 +13,7 @@ use crate::{
   definitions::{FactorType, Key, MFKDF2Factor},
   derive::FactorDerive,
   error::{MFKDF2Error, MFKDF2Result},
-  otpauth::generate_hotp_code,
+  otpauth::generate_otp_token,
   setup::factors::{
     hotp::mod_positive,
     totp::{TOTP, TOTPConfig, TOTPParams},
@@ -97,7 +97,7 @@ impl FactorDerive for TOTP {
 
     for i in 0..params.window {
       let counter = (time / 1000) / (params.step as u64) + i as u64;
-      let code = generate_hotp_code(&padded_secret[..20], counter, &params.hash, params.digits);
+      let code = generate_otp_token(&padded_secret[..20], counter, &params.hash, params.digits);
 
       let mut offset =
         mod_positive(i64::from(self.target) - i64::from(code), 10_i64.pow(params.digits));
@@ -229,7 +229,7 @@ mod tests {
     let now_millis = time;
     let counter = now_millis / (u64::from(step) * 1000);
 
-    let correct_code = generate_hotp_code(&secret[..20], counter, &hash, digits);
+    let correct_code = generate_otp_token(&secret[..20], counter, &hash, digits);
 
     let derive_options = get_test_derive_totp_options(Some(time));
     let mut derive_material = totp(correct_code, Some(derive_options)).unwrap();

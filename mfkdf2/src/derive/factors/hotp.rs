@@ -6,7 +6,7 @@ use crate::{
   definitions::{FactorType, Key, MFKDF2Factor},
   derive::FactorDerive,
   error::MFKDF2Result,
-  otpauth::generate_hotp_code,
+  otpauth::generate_otp_token,
   setup::factors::hotp::{HOTP, HOTPConfig, HOTPParams, mod_positive},
 };
 
@@ -38,7 +38,7 @@ impl FactorDerive for HOTP {
     // Generate HOTP code with incremented counter
     let counter = params.counter + 1;
     let generated_code =
-      generate_hotp_code(&padded_secret[..20], counter, &params.hash, params.digits);
+      generate_otp_token(&padded_secret[..20], counter, &params.hash, params.digits);
 
     // Calculate new offset
     let new_offset =
@@ -107,7 +107,7 @@ mod tests {
 
     // Generate the correct HOTP code that the user would need to provide
     let correct_code =
-      generate_hotp_code(&hotp.config.secret[..20], counter, &hotp.config.hash, hotp.config.digits);
+      generate_otp_token(&hotp.config.secret[..20], counter, &hotp.config.hash, hotp.config.digits);
     let expected_target = u32::from_be_bytes(factor.data().try_into().unwrap());
 
     // Verify the relationship: target = (offset + correct_code) % 10^digits
