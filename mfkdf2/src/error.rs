@@ -1,8 +1,9 @@
+//! Result and Error types for MFKDF2 operations.
+
+/// Result type for MFKDF2 operations.
 pub type MFKDF2Result<T> = Result<T, MFKDF2Error>;
 
-// TODO (autoparallel): It may be worth making this have inner errors, e.g., for factors and other
-// things. That is usually not my style, but it may be nicer for the caller as long as destructuring
-// the error is not too painful.
+/// Error type for MFKDF2 operations.
 #[cfg_attr(feature = "bindings", derive(uniffi::Error), uniffi(flat_error))]
 #[derive(thiserror::Error, Debug)]
 pub enum MFKDF2Error {
@@ -23,15 +24,6 @@ pub enum MFKDF2Error {
 
   #[error("factor id must be unique!")]
   DuplicateFactorId,
-
-  #[error(transparent)]
-  DecodeError(#[from] base64::DecodeError),
-
-  #[error(transparent)]
-  RsaError(#[from] rsa::errors::Error),
-
-  #[error(transparent)]
-  WriteError(#[from] std::fmt::Error),
 
   // TODO (autoparallel): This error variant should probably not even exist.
   #[error("failed to convert vector to array!")]
@@ -105,4 +97,13 @@ pub enum MFKDF2Error {
 
   #[error(transparent)]
   SerializeError(#[from] serde_json::Error),
+
+  #[error(transparent)]
+  DecodeError(#[from] base64::DecodeError),
+
+  #[error(transparent)]
+  RsaError(#[from] rsa::errors::Error),
+
+  #[error(transparent)]
+  WriteError(#[from] std::fmt::Error),
 }

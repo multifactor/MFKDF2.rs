@@ -1,8 +1,24 @@
+//! State integrity helpers for MFKDF2.
+//!
+//! To prevent an untrusted server (or an attacker) from silently changing the public "state"
+//! containing the policy and factor configuration, the client authenticates it with a MAC (message
+//! authentication code) computed using a key derived from the user's factors.
+//!
+//! The functions in this module turn a [`Policy`] and each [`PolicyFactor`] into SHA-256
+//! digests. These digests define exactly what bytes are covered by the MAC (for example, an
+//! HMAC-SHA256 over the derived key and the extracted state).
+//!
+//! Any change to things like the threshold, KDF parameters, factor secrets, or salts will change
+//! the MAC input and make verification fail. This defends against state-tampering attacks where an
+//! attacker tries to weaken KDF parameters, modify or remove factors, or otherwise alter the public
+//! state while still having it accepted as valid by an honest client.
+
 use sha2::{Digest, Sha256};
 
-use crate::{policy::Policy, setup::key::PolicyFactor};
+use crate::policy::{Policy, PolicyFactor};
 
 impl Policy {
+  /// Computes the digest of an entire policy, including all factors.
   pub fn extract(&self) -> [u8; 32] {
     let mut hasher = Sha256::new();
 
@@ -16,7 +32,7 @@ impl Policy {
   }
 }
 
-/// Extracts the core signable content from a policy object.
+/// Hashes the core policy fields that must remain stable.
 pub fn extract_policy_core(policy: &Policy) -> [u8; 32] {
   let mut hasher = Sha256::new();
 
