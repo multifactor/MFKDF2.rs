@@ -2,6 +2,7 @@
 //!
 //! This module is used to initialize the logging for the library. It is enabled by the
 //! `bindings` feature flag.
+#![allow(unused)]
 
 use std::str::FromStr;
 

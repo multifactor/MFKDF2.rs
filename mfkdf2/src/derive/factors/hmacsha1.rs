@@ -1,3 +1,10 @@
+//! Factor construction derive phase for the HMAC‑SHA1 factor from
+//! [HMAC-SHA1](`crate::setup::factors::hmacsha1`).
+//!
+//! - During setup, the factor stores a padded HMAC key and a challenge in the policy.
+//! - During derive, this module consumes an HMAC response over that challenge and reconstructs the
+//!   same padded secret so that the factor contributes identical bytes to the MFKDF2 key
+//!   derivation.
 use serde_json::{Value, json};
 
 use crate::{
@@ -12,6 +19,7 @@ impl FactorDerive for HmacSha1 {
   type Output = Value;
   type Params = Value;
 
+  /// Includes the public parameters for in factor state and decrypts the secret material.
   fn include_params(&mut self, params: Self::Params) -> MFKDF2Result<()> {
     self.params = Some(serde_json::to_string(&params).unwrap());
 
@@ -34,6 +42,7 @@ impl FactorDerive for HmacSha1 {
     Ok(())
   }
 
+  /// Computes a new challenge and encrypts the secret material as pad for the factor.
   fn params(&self, _key: Key) -> MFKDF2Result<Self::Params> {
     let mut challenge = [0u8; 64];
     crate::rng::fill_bytes(&mut challenge);
@@ -56,6 +65,75 @@ impl FactorDerive for HmacSha1 {
   }
 }
 
+/// Factor construction derive phase for an HMAC‑SHA1 factor
+///
+/// The caller is expected to compute `response = HMAC-SHA1(secret, challenge)` using the secret
+/// key material stored by the application and the `challenge` value provided in the setup policy
+/// parameters. This helper wraps the response in an [`MFKDF2Factor`] witness Wᵢⱼ that, once
+/// combined with the policy via [`FactorDerive::include_params`], recovers the same padded secret
+/// as in setup.
+///
+/// # Errors
+///
+/// - [MFKDF2Error::MissingDeriveParams](`crate::error::MFKDF2Error::MissingDeriveParams`) if the
+///   setup policy omits the `"pad"` parameter when `include_params` is invoked
+/// - [MFKDF2Error::InvalidDeriveParams](`crate::error::MFKDF2Error::InvalidDeriveParams`) if the
+///   `"pad"` field is not valid hex or has an unexpected shape
+///
+/// # Example
+///
+/// Single‑factor setup and factor construction derive phase using the HMAC‑SHA1 factor within
+/// KeySetup/KeyDerive:
+///
+/// ```rust
+/// # use std::collections::HashMap;
+/// # use mfkdf2::{
+/// #   error::MFKDF2Result,
+/// #   setup::{
+/// #     self,
+/// #     factors::hmacsha1::{HmacSha1Options, hmacsha1 as setup_hmacsha1},
+/// #     key::MFKDF2Options,
+/// #   },
+/// #   derive,
+/// # };
+/// # use hmac::{Mac, Hmac};
+/// # use sha1::Sha1;
+/// # const HMACSHA1_SECRET: [u8; 20] = [0x11; 20];
+/// #
+/// # fn main() -> MFKDF2Result<()> {
+/// // KeySetup: build a policy with a single HMAC‑SHA1 factor
+/// let setup_factor = setup_hmacsha1(HmacSha1Options {
+///   secret: Some(HMACSHA1_SECRET.to_vec()),
+///   ..Default::default()
+/// })?;
+/// let setup_key = setup::key(&[setup_factor], MFKDF2Options::default())?;
+///
+/// // Read the challenge for this factor from the policy
+/// let policy_factor = setup_key.policy.factors.iter().find(|f| f.id == "hmacsha1").unwrap();
+/// let setup_params = &policy_factor.params;
+/// let challenge = hex::decode(setup_params["challenge"].as_str().unwrap()).unwrap();
+///
+/// // The hardware token (or equivalent) computes HMAC-SHA1 over the challenge
+/// let response: [u8; 20] = <Hmac<Sha1> as Mac>::new_from_slice(&HMACSHA1_SECRET)
+///   .unwrap()
+///   .chain_update(&challenge)
+///   .finalize()
+///   .into_bytes()
+///   .into();
+///
+/// // Build the derive‑time HMAC witness and run KeyDerive
+/// let derive_factor = crate::derive::factors::hmacsha1(response.into())?;
+/// let derived_key = derive::key(
+///   &setup_key.policy,
+///   HashMap::from([("hmacsha1".to_string(), derive_factor)]),
+///   true,
+///   false,
+/// )?;
+///
+/// assert_eq!(derived_key.key, setup_key.key);
+/// # Ok(())
+/// # }
+/// ```
 pub fn hmacsha1(response: HmacSha1Response) -> MFKDF2Result<MFKDF2Factor> {
   Ok(MFKDF2Factor {
     id:          None,

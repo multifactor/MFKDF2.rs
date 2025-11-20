@@ -1,3 +1,10 @@
+//! This module constructs [`MFKDF2Factor`] witnesses Wᵢⱼ for the derive phase corresponding
+//! to the setup factors defined in [hotp](`crate::setup::factors::hotp`).
+//! - During setup, the HOTP factor chooses a secret target code and encodes an offset and encrypted
+//!   pad into the policy;
+//! - During derive, this module consumes the HOTP code Wᵢⱼ and reconstructs the same target value
+//!   using the stored offset so that the factor contributes stable material to the key derivation
+//!   while remaining backward‑compatible with existing OATH HOTP applications.
 use base64::Engine;
 use serde_json::{Value, json};
 
@@ -14,6 +21,7 @@ impl FactorDerive for HOTP {
   type Output = Value;
   type Params = Value;
 
+  /// Includes the public parameters for in factor state and calculates the target value.
   fn include_params(&mut self, params: Self::Params) -> MFKDF2Result<()> {
     // Store the policy parameters for derive phase
     self.params = params.clone();
@@ -28,6 +36,7 @@ impl FactorDerive for HOTP {
     Ok(())
   }
 
+  /// Decrypts the secret and generates a new HOTP code with incremented counter.
   fn params(&self, key: Key) -> MFKDF2Result<Self::Params> {
     let params: HOTPParams = serde_json::from_value(self.params.clone())?;
 
@@ -54,6 +63,74 @@ impl FactorDerive for HOTP {
   }
 }
 
+/// HOTP factor construction derive phase
+///
+/// The code should be the numeric one‑time password displayed by an authenticator app that has
+/// been paired with the HOTP secret configured during setup.
+///
+/// # Errors
+///
+/// - [`MFKDF2Error::Serialize`](`crate::error::MFKDF2Error::Serialize`) if the stored policy
+///   parameters cannot be decoded into [HOTPParams](`crate::setup::factors::hotp::HOTPParams`) (for
+///   example, missing or malformed fields)
+///
+/// # Example
+///
+/// Single‑factor setup/derive using HOTP within KeySetup/KeyDerive:
+///
+/// ```rust
+/// # use std::collections::HashMap;
+/// # use mfkdf2::{
+/// #   error::MFKDF2Result,
+/// #   otpauth::HashAlgorithm,
+/// #   setup::{
+/// #     self,
+/// #     factors::hotp::{HOTPOptions, hotp as setup_hotp},
+/// #     key::MFKDF2Options,
+/// #   },
+/// #   derive,
+/// # };
+/// #
+/// # fn main() -> MFKDF2Result<()> {
+/// let secret = b"hello world mfkdf2!!".to_vec();
+/// let options = HOTPOptions {
+///   id: Some("hotp".to_string()),
+///   secret: Some(secret),
+///   digits: Some(6),
+///   hash: Some(HashAlgorithm::Sha1),
+///   ..Default::default()
+/// };
+///
+/// let setup_factor = setup_hotp(options)?;
+/// let hotp = if let mfkdf2::definitions::FactorType::HOTP(ref h) = setup_factor.factor_type {
+///   h.clone()
+/// } else {
+///   unreachable!()
+/// };
+/// let setup_key = setup::key(&[setup_factor], MFKDF2Options::default())?;
+///
+/// let policy_factor = setup_key.policy.factors.iter().find(|f| f.id == "hotp").unwrap();
+/// let params = &policy_factor.params;
+/// let counter = params["counter"].as_u64().unwrap();
+/// let code = mfkdf2::otpauth::generate_otp_token(
+///   &hotp.config.secret[..20],
+///   counter,
+///   &hotp.config.hash,
+///   hotp.config.digits,
+/// );
+///
+/// let derive_factor = crate::derive::factors::hotp(code)?;
+/// let derived_key = derive::key(
+///   &setup_key.policy,
+///   HashMap::from([("hotp".to_string(), derive_factor)]),
+///   true,
+///   false,
+/// )?;
+///
+/// assert_eq!(derived_key.key, setup_key.key);
+/// # Ok(())
+/// # }
+/// ```
 pub fn hotp(code: u32) -> MFKDF2Result<MFKDF2Factor> {
   // Create HOTP factor with the user-provided code
   // The target will be calculated in include_params once we have the policy parameters

@@ -1,3 +1,9 @@
+//! This module implements the factor construction derive phase for the OOBA construction from
+//! `crate::setup::factors::ooba`.
+//! - During setup, the factor samples a random 32‑byte target, encrypts it under a channel‑specific
+//!   RSA key, and embeds an initial code and metadata in the policy.
+//! - During derive, this module consumes a user‑entered OOBA code Wᵢⱼ, decrypts the target using
+//!   the stored pad, and prepares the next encrypted payload and code for the following login
 use base64::{Engine, engine::general_purpose};
 use rsa::Oaep;
 use serde_json::{Value, json};
@@ -15,6 +21,8 @@ impl FactorDerive for Ooba {
   type Output = Value;
   type Params = Value;
 
+  /// Includes the public parameters for in factor state and decrypts the secret material from
+  /// public parameters.
   fn include_params(&mut self, params: Self::Params) -> MFKDF2Result<()> {
     let pad_b64 =
       params["pad"].as_str().ok_or(MFKDF2Error::MissingDeriveParams("pad".to_string()))?;
@@ -42,6 +50,7 @@ impl FactorDerive for Ooba {
     Ok(())
   }
 
+  /// Generates a new OOBA code and encrypts the secret material for the next derivation.
   fn params(&self, _key: Key) -> MFKDF2Result<Self::Params> {
     let code = generate_alphanumeric_characters(self.length.into()).to_uppercase();
 
@@ -67,6 +76,87 @@ impl FactorDerive for Ooba {
   }
 }
 
+/// Factor construction derive phase for an OOBA factor
+///
+/// The `code` should be the alphanumeric value delivered over the out‑of‑band channel (for example,
+/// SMS or push notification) that corresponds to the initial OOBA policy parameters created during
+/// setup.
+///
+/// # Errors
+///
+/// - [`MFKDF2Error::InvalidOobaCode`] if `code` is empty
+/// - [`MFKDF2Error::MissingDeriveParams`] from [`FactorDerive::include_params`] when required
+///   fields such as `"pad"` or `"length"` are absent in the policy parameters
+/// - [`MFKDF2Error::InvalidDeriveParams`] from [`FactorDerive::include_params`] when fields such as
+///   `"pad"`, `"params"`, or `"key"` are malformed or have the wrong type
+///
+/// # Example
+///
+/// Single‑factor setup/derive using OOBA within KeySetup/KeyDerive:
+///
+/// ```rust
+/// # use std::collections::HashMap;
+/// # use jsonwebtoken::jwk::Jwk;
+/// # use rsa::{RsaPrivateKey, RsaPublicKey, traits::PublicKeyParts};
+/// # use serde_json::json;
+/// # use mfkdf2::{
+/// #   error::MFKDF2Result,
+/// #   setup::{
+/// #     self,
+/// #     factors::ooba::{ooba as setup_ooba, OobaOptions},
+/// #     key::MFKDF2Options,
+/// #   },
+/// #   derive,
+/// # };
+/// # use mfkdf2::derive::factors::ooba as derive_ooba;
+/// # use base64::Engine;
+/// # use sha2::Sha256;
+/// # use rsa::Oaep;
+/// #
+/// # fn main() -> MFKDF2Result<()> {
+/// let bits = 2048;
+/// let private_key =
+///   RsaPrivateKey::new(&mut rsa::rand_core::OsRng, bits).expect("failed to generate a key");
+/// let public_key = RsaPublicKey::from(&private_key);
+///
+/// let n = base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(public_key.n().to_bytes_be());
+/// let e = base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(public_key.e().to_bytes_be());
+/// let jwk: Jwk = serde_json::from_value(json!({
+///   "kty": "RSA",
+///   "alg": "RSA-OAEP-256",
+///   "n": n,
+///   "e": e
+/// }))?;
+///
+/// let setup_factor = setup_ooba(OobaOptions {
+///   id:     Some("ooba".into()),
+///   length: Some(8),
+///   key:    Some(jwk),
+///   params: Some(json!({"foo": "bar"})),
+/// })?;
+/// let setup_key = setup::key(&[setup_factor], MFKDF2Options::default())?;
+///
+/// // Decrypt the first OOBA payload to recover the user-visible code
+/// let policy_factor =
+///   setup_key.policy.factors.iter().find(|f| f.id == "ooba").unwrap();
+/// let setup_params = &policy_factor.params;
+/// let ciphertext = hex::decode(setup_params["next"].as_str().unwrap()).unwrap();
+/// let plaintext = private_key.decrypt(Oaep::new::<Sha256>(), &ciphertext).unwrap();
+/// let decoded: serde_json::Value = serde_json::from_slice(&plaintext).unwrap();
+/// let code = decoded["code"].as_str().unwrap();
+///
+/// let derive_factor = derive_ooba(code)?;
+/// let derived_key = derive::key(
+///   &setup_key.policy,
+///   HashMap::from([("ooba".to_string(), derive_factor)]),
+///   true,
+///   false,
+/// )?;
+///
+/// assert_eq!(derived_key.key, setup_key.key);
+/// # Ok(())
+/// # }
+/// ```
 pub fn ooba(code: &str) -> MFKDF2Result<MFKDF2Factor> {
   if code.is_empty() {
     return Err(MFKDF2Error::InvalidOobaCode);

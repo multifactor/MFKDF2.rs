@@ -1,9 +1,8 @@
 //! Password-based factor setup.
 //!
-//! This factor turns a user-chosen password into MFKDF2 factor material.  The
-//! factor also records an entropy estimate derived from Dropbox's `zxcvbn` estimator,
-//! which can be used to enforce password strength policies.
-
+//! This factor turns a user-chosen password into MFKDF2 factor material. The factor also records
+//! an entropy estimate derived from Dropbox's [`zxcvbn`] estimator, which can be used to enforce
+//! password strength policies.
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 use zxcvbn::zxcvbn;

@@ -85,14 +85,16 @@ impl FactorDerive for FactorType {
   fn output(&self) -> Self::Output { self.derive().output() }
 }
 
+#[cfg(feature = "bindings")]
 #[cfg_attr(feature = "bindings", uniffi::export)]
-pub fn derive_factor_params(factor: &FactorType, key: Option<Key>) -> MFKDF2Result<Value> {
+fn derive_factor_params(factor: &FactorType, key: Option<Key>) -> MFKDF2Result<Value> {
   let key = key.unwrap_or_else(|| [0u8; 32].into());
   factor.params(key)
 }
 
+#[cfg(feature = "bindings")]
 #[cfg_attr(feature = "bindings", uniffi::export)]
-pub fn derive_factor_output(factor: &FactorType) -> Value { factor.output() }
+fn derive_factor_output(factor: &FactorType) -> Value { factor.output() }
 
 #[cfg(test)]
 mod tests {

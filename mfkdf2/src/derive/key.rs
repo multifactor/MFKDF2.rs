@@ -19,9 +19,9 @@ use crate::{
 /// Performs `KeyDerive` on an existing policy and a set of derive‑time factor witnesses
 ///
 /// This function implements the derive phase described in [`crate::derive`], taking a policy state
-/// βᵢ and factor witnesses Wᵢⱼ, reconstructing the master secret M, regenerating the
-/// key‑encryption key (KEK), decrypting the current key Kᵢ, and producing a fresh
-/// [`MFKDF2DerivedKey`] with updated factor parameters and integrity metadata
+/// βᵢ and factor witnesses Wᵢⱼ, reconstructing the master secret M, regenerating the key‑encryption
+/// key (KEK), decrypting the current key Kᵢ, and producing a fresh [`MFKDF2DerivedKey`] with
+/// updated factor parameters and integrity metadata
 ///
 /// # Arguments
 ///
@@ -43,7 +43,7 @@ use crate::{
 ///
 /// # Examples
 ///
-/// Password and HMAC‑SHA1 round‑trip where derive reconstructs the same key and secret as setup
+/// Password and HMAC‑SHA1 round‑trip where `derive` reconstructs the same key and secret as setup
 ///
 /// ```rust
 /// # use std::collections::HashMap;
@@ -438,8 +438,9 @@ pub fn key(
   })
 }
 
+#[cfg(feature = "bindings")]
 #[cfg_attr(feature = "bindings", uniffi::export(default(verify = true, stack = false)))]
-pub async fn derive_key(
+async fn derive_key(
   policy: &Policy,
   factors: HashMap<String, MFKDF2Factor>,
   verify: bool,

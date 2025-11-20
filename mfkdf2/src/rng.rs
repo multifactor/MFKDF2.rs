@@ -12,7 +12,7 @@
 //! the output of the reference implementation.
 
 #[cfg(feature = "differential-test")]
-mod rng {
+mod global_rng {
   use std::cell::RefCell;
 
   use rand::{CryptoRng, RngCore, SeedableRng};
@@ -46,112 +46,38 @@ mod rng {
 }
 
 #[cfg(not(feature = "differential-test"))]
-mod rng {
+mod global_rng {
   use rand::{CryptoRng, RngCore, rngs::OsRng};
 
   /// [`GlobalRng`] is a facade around the `rand` crate's [`rand::rngs::OsRng`] to provide the same
   /// interface.
-  ///
-  /// # Examples
-  ///
-  /// ```rust
-  /// let mut rng = GlobalRng;
-  /// let value = rng.next_u32();
-  /// ```
   pub struct GlobalRng;
 
   impl RngCore for GlobalRng {
-    /// Generates a random u32.
-    ///
-    /// # Examples
-    ///
-    /// ```rust
-    /// let mut rng = GlobalRng;
-    /// let value = rng.next_u32();
-    /// ```
     fn next_u32(&mut self) -> u32 { OsRng.next_u32() }
 
-    /// Generates a random u64.
-    ///
-    /// # Examples
-    ///
-    /// ```rust
-    /// let mut rng = GlobalRng;
-    /// let value = rng.next_u64();
-    /// ```
     fn next_u64(&mut self) -> u64 { OsRng.next_u64() }
 
-    /// Fills a byte array with random bytes.
-    ///
-    /// # Examples
-    ///
-    /// ```rust
-    /// let mut rng = GlobalRng;
-    /// let mut bytes = [0u8; 32];
-    /// rng.fill_bytes(&mut bytes);
-    /// ```
     fn fill_bytes(&mut self, dest: &mut [u8]) { OsRng.fill_bytes(dest) }
 
-    /// Tries to fill a byte array with random bytes.
-    ///
-    /// # Examples
-    ///
-    /// ```rust
-    /// let mut rng = GlobalRng;
-    /// let mut bytes = [0u8; 32];
-    /// rng.try_fill_bytes(&mut bytes).unwrap();
-    /// ```
     fn try_fill_bytes(&mut self, dest: &mut [u8]) -> Result<(), rand::Error> {
       OsRng.try_fill_bytes(dest)
     }
   }
   impl CryptoRng for GlobalRng {}
 
-  /// Fills a byte array with random bytes.
-  ///
-  /// # Examples
-  ///
-  /// ```rust
-  /// let mut rng = GlobalRng;
-  /// let mut bytes = [0u8; 32];
-  /// rng.fill_bytes(&mut bytes);
-  /// ```
   pub fn fill_bytes(dst: &mut [u8]) { GlobalRng.fill_bytes(dst); }
 
-  /// Generates a random u32.
-  ///
-  /// # Examples
-  ///
-  /// ```rust
-  /// let mut rng = GlobalRng;
-  /// let value = rng.next_u32();
-  /// ```
   pub fn next_u32() -> u32 { GlobalRng.next_u32() }
 
-  /// Generates a random u32 between 0 and the given max.
-  ///
-  /// # Examples
-  ///
-  /// ```rust
-  /// let mut rng = GlobalRng;
-  /// let value = rng.gen_range_u32(100);
-  /// ```
   pub fn gen_range_u32(max: u32) -> u32 { if max == 0 { 0 } else { next_u32() % max } }
 
-  /// Generates a random u8 between 0 and the given max.
-  ///
-  /// # Examples
-  ///
-  /// ```rust
-  /// let mut rng = GlobalRng;
-  /// let value = rng.gen_range_u8(100);
-  /// ```
   pub fn gen_range_u8(max: u8) -> u8 {
     if max == 0 { 0 } else { (next_u32() % u32::from(max)) as u8 }
   }
 }
 
-pub use rng::*;
+pub use global_rng::*;
 
 #[cfg(test)]
 mod tests {
