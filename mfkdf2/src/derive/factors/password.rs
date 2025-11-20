@@ -30,8 +30,9 @@ pub fn password(password: impl Into<String>) -> MFKDF2Result<MFKDF2Factor> {
   })
 }
 
+#[cfg(feature = "bindings")]
 #[cfg_attr(feature = "bindings", uniffi::export)]
-pub async fn derive_password(password: String) -> MFKDF2Result<MFKDF2Factor> {
+async fn derive_password(password: String) -> MFKDF2Result<MFKDF2Factor> {
   crate::derive::factors::password::password(password)
 }
 

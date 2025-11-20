@@ -36,8 +36,9 @@ pub fn persisted(share: Vec<u8>) -> MFKDF2Result<MFKDF2Factor> {
   })
 }
 
+#[cfg(feature = "bindings")]
 #[cfg_attr(feature = "bindings", uniffi::export)]
-pub async fn derive_persisted(share: Vec<u8>) -> MFKDF2Result<MFKDF2Factor> { persisted(share) }
+async fn derive_persisted(share: Vec<u8>) -> MFKDF2Result<MFKDF2Factor> { persisted(share) }
 
 #[cfg(test)]
 mod tests {

@@ -103,11 +103,9 @@ pub fn password(
   })
 }
 
+#[cfg(feature = "bindings")]
 #[cfg_attr(feature = "bindings", uniffi::export)]
-pub async fn setup_password(
-  password: String,
-  options: PasswordOptions,
-) -> MFKDF2Result<MFKDF2Factor> {
+async fn setup_password(password: String, options: PasswordOptions) -> MFKDF2Result<MFKDF2Factor> {
   crate::setup::factors::password::password(password, options)
 }
 

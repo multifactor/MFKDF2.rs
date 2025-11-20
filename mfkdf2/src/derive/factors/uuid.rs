@@ -29,8 +29,9 @@ pub fn uuid(uuid: Uuid) -> MFKDF2Result<MFKDF2Factor> {
   })
 }
 
+#[cfg(feature = "bindings")]
 #[cfg_attr(feature = "bindings", uniffi::export)]
-pub async fn derive_uuid(uuid: Uuid) -> MFKDF2Result<MFKDF2Factor> {
+async fn derive_uuid(uuid: Uuid) -> MFKDF2Result<MFKDF2Factor> {
   crate::derive::factors::uuid(uuid)
 }
 

@@ -114,11 +114,9 @@ pub fn question(answer: impl Into<String>, options: QuestionOptions) -> MFKDF2Re
   })
 }
 
+#[cfg(feature = "bindings")]
 #[cfg_attr(feature = "bindings", uniffi::export)]
-pub async fn setup_question(
-  answer: String,
-  options: QuestionOptions,
-) -> MFKDF2Result<MFKDF2Factor> {
+async fn setup_question(answer: String, options: QuestionOptions) -> MFKDF2Result<MFKDF2Factor> {
   question(answer, options)
 }
 

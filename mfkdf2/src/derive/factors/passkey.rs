@@ -3,7 +3,7 @@ use serde_json::Value;
 use crate::{
   definitions::{FactorType, MFKDF2Factor},
   derive::FactorDerive,
-  error::{MFKDF2Error, MFKDF2Result},
+  error::MFKDF2Result,
   setup::factors::passkey::Passkey,
 };
 
@@ -25,10 +25,11 @@ pub fn passkey(secret: [u8; 32]) -> MFKDF2Result<MFKDF2Factor> {
   })
 }
 
+#[cfg(feature = "bindings")]
 #[cfg_attr(feature = "bindings", uniffi::export)]
-pub async fn derive_passkey(secret: Vec<u8>) -> MFKDF2Result<MFKDF2Factor> {
+async fn derive_passkey(secret: Vec<u8>) -> MFKDF2Result<MFKDF2Factor> {
   if secret.len() != 32 {
-    return Err(MFKDF2Error::InvalidSecretLength("passkey".to_string()));
+    return Err(crate::error::MFKDF2Error::InvalidSecretLength("passkey".to_string()));
   }
 
   passkey(secret.try_into().unwrap())
