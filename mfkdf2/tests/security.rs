@@ -245,7 +245,7 @@ fn factor_secret_encryption_hotp() -> Result<(), MFKDF2Error> {
   // Derive with the correct HOTP code
   let derive1 = policy::derive::derive(
     &setup.policy,
-    &HashMap::from([("hotp".to_string(), derive::factors::hotp::hotp(241063)?)]),
+    &HashMap::from([("hotp".to_string(), derive::factors::hotp(241063)?)]),
     None,
   )?;
 
@@ -288,7 +288,7 @@ fn factor_secret_encryption_totp() -> Result<(), MFKDF2Error> {
     &setup.policy,
     &HashMap::from([(
       "totp".to_string(),
-      derive::factors::totp::totp(
+      derive::factors::totp(
         953265,
         Some(derive::factors::totp::TOTPDeriveOptions { time: Some(1), oracle: None }),
       )?,
@@ -332,7 +332,7 @@ fn totp_dynamic_no_oracle() -> Result<(), MFKDF2Error> {
     &setup.policy.clone(),
     &HashMap::from([(
       "totp".to_string(),
-      derive::factors::totp::totp(generate_totp_code(&secret, step, &hash, digits), None)?,
+      derive::factors::totp(generate_totp_code(&secret, step, &hash, digits), None)?,
     )]),
     None,
   )?;
@@ -341,7 +341,7 @@ fn totp_dynamic_no_oracle() -> Result<(), MFKDF2Error> {
     &derive1.policy,
     &HashMap::from([(
       "totp".to_string(),
-      derive::factors::totp::totp(generate_totp_code(&secret, step, &hash, digits), None)?,
+      derive::factors::totp(generate_totp_code(&secret, step, &hash, digits), None)?,
     )]),
     None,
   )?;
@@ -350,7 +350,7 @@ fn totp_dynamic_no_oracle() -> Result<(), MFKDF2Error> {
     &derive2.policy,
     &HashMap::from([(
       "totp".to_string(),
-      derive::factors::totp::totp(generate_totp_code(&secret, step, &hash, digits), None)?,
+      derive::factors::totp(generate_totp_code(&secret, step, &hash, digits), None)?,
     )]),
     None,
   )?;
@@ -408,7 +408,7 @@ fn totp_dynamic_valid_fixed_oracle() {
     &setup.policy,
     &HashMap::from([(
       "totp".to_string(),
-      derive::factors::totp::totp(
+      derive::factors::totp(
         generate_totp_code(&secret, step, &hash, digits),
         Some(derive::factors::totp::TOTPDeriveOptions {
           oracle: Some(oracle.clone()),
@@ -425,7 +425,7 @@ fn totp_dynamic_valid_fixed_oracle() {
     &derive1.policy,
     &HashMap::from([(
       "totp".to_string(),
-      derive::factors::totp::totp(
+      derive::factors::totp(
         generate_totp_code(&secret, step, &hash, digits),
         Some(derive::factors::totp::TOTPDeriveOptions {
           oracle: Some(oracle.clone()),
@@ -442,7 +442,7 @@ fn totp_dynamic_valid_fixed_oracle() {
     &derive2.policy,
     &HashMap::from([(
       "totp".to_string(),
-      derive::factors::totp::totp(
+      derive::factors::totp(
         generate_totp_code(&secret, step, &hash, digits),
         Some(derive::factors::totp::TOTPDeriveOptions {
           oracle: Some(oracle.clone()),
@@ -514,7 +514,7 @@ fn totp_dynamic_invalid_fixed_oracle() {
     &setup.policy,
     &HashMap::from([(
       "totp".to_string(),
-      derive::factors::totp::totp(
+      derive::factors::totp(
         generate_totp_code(&secret, step, &hash, digits),
         Some(derive::factors::totp::TOTPDeriveOptions {
           oracle: Some(oracle2.clone()),
@@ -531,7 +531,7 @@ fn totp_dynamic_invalid_fixed_oracle() {
     &derive1.policy,
     &HashMap::from([(
       "totp".to_string(),
-      derive::factors::totp::totp(
+      derive::factors::totp(
         generate_totp_code(&secret, step, &hash, digits),
         Some(derive::factors::totp::TOTPDeriveOptions {
           oracle: Some(oracle2.clone()),
@@ -548,7 +548,7 @@ fn totp_dynamic_invalid_fixed_oracle() {
     &derive2.policy,
     &HashMap::from([(
       "totp".to_string(),
-      derive::factors::totp::totp(
+      derive::factors::totp(
         generate_totp_code(&secret, step, &hash, digits),
         Some(derive::factors::totp::TOTPDeriveOptions {
           oracle: Some(oracle2),
@@ -612,7 +612,7 @@ fn totp_dynamic_valid_dynamic_oracle() {
     &setup.policy,
     &HashMap::from([(
       "totp".to_string(),
-      derive::factors::totp::totp(
+      derive::factors::totp(
         generate_totp_code(&secret, step, &hash, digits),
         Some(derive::factors::totp::TOTPDeriveOptions {
           oracle: Some(oracle.clone()),
@@ -629,7 +629,7 @@ fn totp_dynamic_valid_dynamic_oracle() {
     &derive1.policy,
     &HashMap::from([(
       "totp".to_string(),
-      derive::factors::totp::totp(
+      derive::factors::totp(
         generate_totp_code(&secret, step, &hash, digits),
         Some(derive::factors::totp::TOTPDeriveOptions {
           oracle: Some(oracle.clone()),
@@ -646,7 +646,7 @@ fn totp_dynamic_valid_dynamic_oracle() {
     &derive2.policy,
     &HashMap::from([(
       "totp".to_string(),
-      derive::factors::totp::totp(
+      derive::factors::totp(
         generate_totp_code(&secret, step, &hash, digits),
         Some(derive::factors::totp::TOTPDeriveOptions {
           oracle: Some(oracle),
@@ -705,7 +705,7 @@ fn totp_dynamic_invalid_dynamic_oracle() {
     &setup.policy,
     &HashMap::from([(
       "totp".to_string(),
-      derive::factors::totp::totp(
+      derive::factors::totp(
         528258,
         Some(derive::factors::totp::TOTPDeriveOptions {
           time:   Some(1650430943604),
@@ -722,7 +722,7 @@ fn totp_dynamic_invalid_dynamic_oracle() {
     &derive1.policy,
     &HashMap::from([(
       "totp".to_string(),
-      derive::factors::totp::totp(
+      derive::factors::totp(
         99922,
         Some(derive::factors::totp::TOTPDeriveOptions {
           time:   Some(1650430991083),
@@ -739,7 +739,7 @@ fn totp_dynamic_invalid_dynamic_oracle() {
     &derive1.policy,
     &HashMap::from([(
       "totp".to_string(),
-      derive::factors::totp::totp(
+      derive::factors::totp(
         398884,
         Some(derive::factors::totp::TOTPDeriveOptions {
           time:   Some(1650431018392),

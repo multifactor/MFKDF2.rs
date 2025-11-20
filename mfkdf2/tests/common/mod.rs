@@ -289,7 +289,7 @@ pub fn create_derive_factor(
       ("ooba_1".to_string(), mfkdf2::derive::factors::ooba(code).unwrap())
     },
     "passkey" =>
-      ("passkey_1".to_string(), mfkdf2::derive::factors::passkey::passkey(PASSKEY_SECRET).unwrap()),
+      ("passkey_1".to_string(), mfkdf2::derive::factors::passkey(PASSKEY_SECRET).unwrap()),
     _ => panic!("Unknown factor type for derive: {}", name),
   }
 }

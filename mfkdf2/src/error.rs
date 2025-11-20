@@ -106,4 +106,7 @@ pub enum MFKDF2Error {
 
   #[error(transparent)]
   Write(#[from] std::fmt::Error),
+
+  #[error(transparent)]
+  Regex(#[from] rand_regex::Error),
 }

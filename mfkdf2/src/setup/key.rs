@@ -1,3 +1,9 @@
+//! The core MFKDF2 algorithm serves as a foundational primitive for deriving a high-entropy
+//! master key from a multi-factor policy. Key Setup phase initializes the policy and generates
+//! the necessary shares for each factor.
+//!
+//! Master secret `M` is split into Shamir shares `Sᵢ` over the configured polynomial, and encrypted
+//! to produce encrypted shares `Cᵢ` which is then stored in the [`Policy`].
 // TODO (autoparallel): If we use `no-std`, then this use of `HashSet` will need to be
 // replaced.
 use std::collections::{HashMap, HashSet};
@@ -58,6 +64,164 @@ impl Default for MFKDF2Options {
   }
 }
 
+/// Initializes a derived key from a list of factors and options.
+///
+/// This function implements the initial `KeySetup` phase of the MFKDF2 protocol, treating the
+/// provided `factors` as Witnesses Wᵢ and using [`MFKDF2Options`] to control the policy identifier,
+/// Shamir threshold, key‑derivation cost parameters, and integrity checks.
+///
+/// Internally, key setup phase samples a master secret `M`, derives a key‑encryption key (KEK)
+/// using either Argon2id or a stack‑key HKDF, encrypts the policy key, splits the secret into
+/// Shamir shares over the configured polynomial, and attaches per‑factor helper data and entropy
+/// estimates to the resulting [`Policy`].
+///
+/// # Arguments
+///
+/// * `factors`: Slice of `MFKDF2Factor` setup instances that define the multi‑factor access
+///   structure; each factor must contains suitable secret material for the factor type
+/// * `options`: `MFKDF2Options` controlling policy metadata, threshold, salt, stack mode, integrity
+///   checks, and key‑derivation cost parameters
+///
+/// # Returns
+///
+/// On success, returns a [`MFKDF2DerivedKey`] containing:
+///
+/// * A [`Policy`] with encoded factors, threshold, salt, and integrity HMAC
+/// * A 32‑byte static key `K`
+/// * Shamir shares
+/// * Per‑factor helper data and entropy statistics capturing the minimum entropy across admissible
+///   factor subsets
+///
+/// # Examples
+///
+/// Basic password‑only setup using default options, where the threshold implicitly equals the
+/// number of factors (n‑of‑n)
+///
+/// ```rust
+/// use mfkdf2::{
+///   error::{MFKDF2Error, MFKDF2Result},
+///   setup::{
+///     self,
+///     factors::password::{PasswordOptions, password},
+///     key::{MFKDF2Options, key},
+///   },
+/// };
+///
+/// fn main() -> MFKDF2Result<()> {
+///   let factors = vec![password("correct horse battery staple", PasswordOptions::default())?];
+///   let options = MFKDF2Options::default();
+///
+///   let setup_key = key(&factors, options)?;
+///
+///   assert_eq!(setup_key.policy.threshold as usize, factors.len());
+///   Ok(())
+/// }
+/// ```
+///
+/// Explicit threshold with multiple heterogeneous factors, useful when only a subset of factors
+/// is expected to be present at derive time
+///
+/// ```rust
+/// use mfkdf2::{
+///   error::MFKDF2Result,
+///   setup::{
+///     self,
+///     factors::{
+///       hmacsha1::{HmacSha1Options, hmacsha1},
+///       password::{PasswordOptions, password},
+///     },
+///     key::{MFKDF2Options, key},
+///   },
+/// };
+///
+/// fn main() -> MFKDF2Result<()> {
+///   let password_factor = password("password123", PasswordOptions { id: Some("pw".to_string()) })?;
+///   let hmac_factor =
+///     hmacsha1(HmacSha1Options { id: Some("hmac".to_string()), secret: Some(vec![0u8; 20]) })?;
+///
+///   let factors = vec![password_factor, hmac_factor];
+///   let options = MFKDF2Options { threshold: Some(1), ..Default::default() };
+///
+///   let setup_key = key(&factors, options)?;
+///
+///   assert_eq!(setup_key.policy.threshold, 1);
+///   Ok(())
+/// }
+/// ```
+///
+/// Using a caller‑supplied salt and explicit policy identifier to obtain reproducible policy
+/// metadata across environments
+///
+/// ```rust
+/// use mfkdf2::{
+///   error::MFKDF2Result,
+///   setup::{
+///     factors::password::{PasswordOptions, password},
+///     key::{MFKDF2Options, key},
+///   },
+/// };
+///
+/// fn main() -> MFKDF2Result<()> {
+///   let factor = password("password123", PasswordOptions { id: Some("pw".to_string()) })?;
+///   let salt = vec![42u8; 32];
+///   let options = MFKDF2Options {
+///     id: Some("my‑policy‑id".to_string()),
+///     salt: Some(salt),
+///     ..Default::default()
+///   };
+///
+///   let setup_key = key(&[factor], options)?;
+///
+///   assert_eq!(setup_key.policy.id, "my‑policy‑id");
+///   Ok(())
+/// }
+/// ```
+///
+/// # Errors
+///
+/// The function returns `Err(MFKDF2Error::InvalidThreshold)` when the requested threshold is
+/// outside the closed interval [1, n], where n is the number of provided factors; this includes
+/// the case where `factors` is empty
+///
+/// ```rust
+/// use mfkdf2::{
+///   error::{MFKDF2Error, MFKDF2Result},
+///   setup::key::{MFKDF2Options, key},
+/// };
+///
+/// fn main() -> MFKDF2Result<()> {
+///   let factors = Vec::new();
+///   let options = MFKDF2Options { threshold: Some(0), ..Default::default() };
+///
+///   let setup_key = key(&factors, options);
+///   assert!(matches!(setup_key, Err(MFKDF2Error::InvalidThreshold)));
+///   Ok(())
+/// }
+/// ```
+///
+/// The function returns `Err(MFKDF2Error::DuplicateFactorId)` when two or more factors share the
+/// same identifier, causing the policy factor set to violate the uniqueness constraint on ids
+///
+/// ```rust
+/// use mfkdf2::{
+///   error::{MFKDF2Error, MFKDF2Result},
+///   setup::{
+///     factors::password::{PasswordOptions, password},
+///     key::{MFKDF2Options, key},
+///   },
+/// };
+///
+/// fn main() -> MFKDF2Result<()> {
+///   let f1 = password("pw1", PasswordOptions { id: Some("dup".to_string()) })?;
+///   let f2 = password("pw2", PasswordOptions { id: Some("dup".to_string()) })?;
+///   let factors = vec![f1, f2];
+///   let options = MFKDF2Options::default();
+///
+///   let setup_key = key(&factors, options);
+///   assert!(matches!(setup_key, Err(MFKDF2Error::DuplicateFactorId)));
+///   Ok(())
+/// }
+/// ```
 pub fn key(factors: &[MFKDF2Factor], options: MFKDF2Options) -> MFKDF2Result<MFKDF2DerivedKey> {
   assert!(factors.len() < 256, "MFKDF2 supports at most 255 factors");
 

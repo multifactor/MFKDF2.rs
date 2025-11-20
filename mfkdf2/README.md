@@ -142,7 +142,7 @@ After you have setup a key policy, you can derive the key from the policy and th
 ## Examples
 
 Derive a composite key with password, hmacsha1 and hotp factors. Derive returns the
-[`crate::definitions::MFKDF2DerivedKey`] and updated [`crate::policy::Policy`].
+[MFKDF2DerivedKey](`crate::definitions::MFKDF2DerivedKey`) and updated [Policy](`crate::policy::Policy`).
 
 ```rust
 # use std::collections::HashMap;
@@ -300,7 +300,7 @@ assert_eq!(derived.key, setup_derived.key);
 ```
 
 Threshold value must be between 1 and the number of factors, otherwise
-[`crate::error::MFKDF2Error::InvalidThreshold`] is returned.
+[MFKDF2Error::InvalidThreshold](`crate::error::MFKDF2Error::InvalidThreshold`) is returned.
 
 ```rust
 # use mfkdf2::error::{MFKDF2Error, MFKDF2Result};

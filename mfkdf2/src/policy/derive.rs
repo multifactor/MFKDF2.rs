@@ -2,7 +2,7 @@ use std::collections::{HashMap, HashSet};
 
 use crate::{
   definitions::{MFKDF2DerivedKey, MFKDF2Factor},
-  derive::factors::stack::stack as create_stack_factor,
+  derive::factors::stack as derive_stack,
   error::{MFKDF2Error, MFKDF2Result},
   policy::{Policy, evaluate::evaluate_internal},
 };
@@ -20,7 +20,7 @@ fn expand(
         && evaluate_internal(&nested_policy, factor_set)
       {
         let nested_expanded = expand(&nested_policy, factors, factor_set)?;
-        let stack_factor = create_stack_factor(nested_expanded)?;
+        let stack_factor = derive_stack(nested_expanded)?;
         parsed_factors.insert(factor.id.clone(), stack_factor);
       }
     } else if factor_set.contains(&factor.id)

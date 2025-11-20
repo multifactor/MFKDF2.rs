@@ -1,3 +1,6 @@
+//! The core MFKDF2 algorithm serves as a foundational primitive for deriving a high-entropy
+//! master key from a multi-factor policy. Key Derive phase takes a derived policy state βᵢ and
+//! factor witnesses Wᵢⱼ, and reconstructs the master secret M, along with the next state βᵢ₊₁.
 use std::{collections::HashMap, fmt::Write};
 
 use argon2::{Argon2, Params, Version};
@@ -13,6 +16,274 @@ use crate::{
   policy::Policy,
 };
 
+/// Performs `KeyDerive` on an existing policy and a set of derive‑time factor witnesses
+///
+/// This function implements the derive phase described in [`crate::derive`], taking a policy state
+/// βᵢ and factor witnesses Wᵢⱼ, reconstructing the master secret M, regenerating the
+/// key‑encryption key (KEK), decrypting the current key Kᵢ, and producing a fresh
+/// [`MFKDF2DerivedKey`] with updated factor parameters and integrity metadata
+///
+/// # Arguments
+///
+/// * `policy`: [`Policy`] βᵢ produced during KeySetup that encodes threshold, helper data, and
+///   encrypted Shamir shares
+/// * `factors`: Derived [`MFKDF2Factor`] witnesses Wᵢⱼ
+/// * `verify`: Policy verification flag to check the stored policy HMAC against the derived key
+///   material and returns an error when the integrity check fails
+/// * `stack`: Enables stack‑based factor derivation
+///
+/// # Returns
+///
+/// On success, returns an [`MFKDF2DerivedKey`] representing Kᵢ₊₁ with:
+///
+/// * A possibly updated [`Policy`] reflecting refreshed factor parameters and integrity HMAC
+/// * A 32‑byte key `K`
+/// * Recovered `secret` and Shamir shares consistent with the provided witnesses
+/// * Per‑factor outputs produced by the factor derive algorithms
+///
+/// # Examples
+///
+/// Password and HMAC‑SHA1 round‑trip where derive reconstructs the same key and secret as setup
+///
+/// ```rust
+/// # use std::collections::HashMap;
+/// # use mfkdf2::{
+/// #   error::MFKDF2Result,
+/// #   setup::{
+/// #     self,
+/// #     factors::{
+/// #       hmacsha1::{HmacSha1Options, hmacsha1 as setup_hmacsha1},
+/// #       password::{PasswordOptions, password as setup_password},
+/// #     },
+/// #     key::MFKDF2Options,
+/// #   },
+/// #   derive::{
+/// #     self,
+/// #     factors::{
+/// #       password as derive_password,
+/// #       hmacsha1 as derive_hmacsha1,
+/// #     },
+/// #   },
+/// # };
+/// # use hmac::{Mac, Hmac};
+/// # use sha1::Sha1;
+/// # const HMACSHA1_SECRET: [u8; 20] = [0u8; 20];
+/// # fn main() -> MFKDF2Result<()> {
+/// let password_factor =
+///   setup_password("password123", PasswordOptions { id: Some("pwd".to_string()) })?;
+/// let hmac_factor = setup_hmacsha1(HmacSha1Options {
+///   secret: Some(HMACSHA1_SECRET.to_vec()),
+///   ..Default::default()
+/// })?;
+///
+/// let setup_key = setup::key(&[password_factor, hmac_factor.clone()], MFKDF2Options::default())?;
+///
+/// // Build derive‑time password witness
+/// let derive_pwd = derive_password("password123")?;
+///
+/// // Build derive‑time HMAC witness using the challenge from policy
+/// let policy_hmac = setup_key.policy.factors.iter().find(|f| f.id == "hmacsha1").unwrap();
+/// let challenge = hex::decode(policy_hmac.params["challenge"].as_str().unwrap()).unwrap();
+/// let secret = if let mfkdf2::definitions::FactorType::HmacSha1(h) = &hmac_factor.factor_type {
+///   &h.padded_secret[..20]
+/// } else {
+///   unreachable!()
+/// };
+/// let response: [u8; 20] = <Hmac<Sha1> as Mac>::new_from_slice(&HMACSHA1_SECRET)
+///   .unwrap()
+///   .chain_update(challenge)
+///   .finalize()
+///   .into_bytes()
+///   .into();
+/// let derive_hmac = derive_hmacsha1(response.into())?;
+///
+/// let derived_key = derive::key(
+///   &setup_key.policy,
+///   HashMap::from([("pwd".to_string(), derive_pwd), ("hmacsha1".to_string(), derive_hmac)]),
+///   true,
+///   false,
+/// )?;
+///
+/// assert_eq!(derived_key.key, setup_key.key);
+/// assert_eq!(derived_key.secret, setup_key.secret);
+/// # Ok(())
+/// # }
+/// ```
+///
+/// Threshold derivation with password, HOTP, and TOTP where only a 2‑of‑3 subset is supplied
+///
+/// ```rust
+/// # use std::collections::HashMap;
+/// # use std::time::{SystemTime, UNIX_EPOCH};
+/// # use mfkdf2::{
+/// #   error::MFKDF2Result,
+/// #   otpauth::generate_otp_token,
+/// #   setup::{
+/// #     self,
+/// #     factors::{
+/// #       hotp::{HOTPOptions, hotp as setup_hotp},
+/// #       password::{PasswordOptions, password as setup_password},
+/// #       totp::{TOTPOptions, totp as setup_totp},
+/// #     },
+/// #     key::MFKDF2Options,
+/// #   },
+/// #   derive::factors::{password as derive_password, hotp as derive_hotp},
+/// # };
+/// # use mfkdf2::derive;
+/// #
+/// # fn main() -> MFKDF2Result<()> {
+/// let setup_pwd = setup_password("password123", PasswordOptions::default())?;
+/// let setup_hotp = setup_hotp(HOTPOptions::default())?;
+/// let setup_totp = setup_totp(TOTPOptions::default())?;
+///
+/// let options = MFKDF2Options { threshold: Some(2), ..MFKDF2Options::default() };
+/// let setup_key =
+///   setup::key(&[setup_pwd.clone(), setup_hotp.clone(), setup_totp.clone()], options)?;
+///
+/// let mut factors = HashMap::new();
+///
+/// // Password witness
+/// let derive_pwd = derive_password("password123")?;
+/// factors.insert("password".to_string(), derive_pwd);
+///
+/// // HOTP witness
+/// let policy_hotp = setup_key.policy.factors.iter().find(|f| f.id == "hotp").unwrap();
+/// let hotp_params = &policy_hotp.params;
+/// let counter = hotp_params["counter"].as_u64().unwrap();
+/// let hotp = match setup_hotp.factor_type {
+///   mfkdf2::definitions::FactorType::HOTP(ref h) => h,
+///   _ => unreachable!(),
+/// };
+/// let hotp_code =
+///   generate_otp_token(&hotp.config.secret[..20], counter, &hotp.config.hash, hotp.config.digits);
+/// let derive_hotp = derive_hotp(hotp_code as u32)?;
+/// factors.insert("hotp".to_string(), derive_hotp);
+///
+/// // Only 2 of the 3 factors are supplied
+/// let derived_key = derive::key(&setup_key.policy, factors, false, false)?;
+///
+/// assert_eq!(derived_key.key, setup_key.key);
+/// assert_eq!(derived_key.secret, setup_key.secret);
+/// # Ok(())
+/// # }
+/// ```
+///
+/// Persisted factor example where a single HOTP factor is persisted during setup and later used
+/// directly as a witness during derive alongside a password factor
+///
+/// ```rust
+/// # use std::collections::HashMap;
+/// # use mfkdf2::{
+/// #   error::MFKDF2Result,
+/// #   derive,
+/// #   setup::{
+/// #     self,
+/// #     factors::{
+/// #       hotp::HOTPOptions,
+/// #       password::{PasswordOptions, password as setup_password},
+/// #     },
+/// #     key::MFKDF2Options,
+/// #   },
+/// #   derive::factors::{persisted as derive_persisted, password as derive_password},
+/// # };
+/// #
+/// # fn main() -> MFKDF2Result<()> {
+/// let setup_factors = &[
+///   setup::factors::hotp::hotp(HOTPOptions::default())?,
+///   setup_password("password", PasswordOptions::default())?,
+/// ];
+/// let setup_key = setup::key(setup_factors, MFKDF2Options::default())?;
+///
+/// let persisted = setup_key.persist_factor("hotp");
+/// let derived = derive::key(
+///   &setup_key.policy,
+///   HashMap::from([
+///     ("hotp".to_string(), derive_persisted(persisted)?),
+///     ("password".to_string(), derive_password("password")?),
+///   ]),
+///   true,
+///   false,
+/// )?;
+///
+/// assert_eq!(derived.key, setup_key.key);
+/// # Ok(())
+/// # }
+/// ```
+///
+/// # Errors
+///
+/// The function returns invalid key when the provided witnesses do not reconstruct a consistent set
+/// of Shamir shares, for example when an OTP factor is incorrect
+///
+/// ```rust
+/// # use std::collections::HashMap;
+/// # use mfkdf2::{
+/// #   error::{MFKDF2Error, MFKDF2Result},
+/// #   setup::{
+/// #     self,
+/// #     factors::hotp::{HOTPOptions, hotp as setup_hotp},
+/// #     key::MFKDF2Options,
+/// #   },
+/// #   derive::factors::hotp as derive_hotp,
+/// # };
+/// # use mfkdf2::derive;
+/// #
+/// # fn main() -> MFKDF2Result<()> {
+/// let setup_key = setup::key(&[setup_hotp(HOTPOptions::default())?], MFKDF2Options::default())?;
+///
+/// // Deliberately wrong HOTP code
+/// let wrong_hotp = derive_hotp(123456)?;
+///
+/// let derive_key = derive::key(
+///   &setup_key.policy,
+///   HashMap::from([("hotp".to_string(), wrong_hotp)]),
+///   false,
+///   false,
+/// )?;
+///
+/// assert_ne!(derive_key.key, setup_key.key);
+/// # Ok(())
+/// # }
+/// ```
+///
+/// The function returns `Err(MFKDF2Error::PolicyIntegrityCheckFailed)` when `verify` is `true` and
+/// the stored policy HMAC does not match the recomputed integrity digest, for example when the
+/// policy has been tampered with between setup and derive
+///
+/// ```rust
+/// # use std::collections::HashMap;
+/// # use mfkdf2::{
+/// #   error::{MFKDF2Error, MFKDF2Result},
+/// #   setup::{
+/// #     self,
+/// #     factors::password::{PasswordOptions, password as setup_password},
+/// #     key::MFKDF2Options,
+/// #   },
+/// #   derive::factors::password as derive_password,
+/// # };
+/// # use mfkdf2::derive;
+/// #
+/// # fn main() -> MFKDF2Result<()> {
+/// let setup_key = setup::key(
+///   &[setup_password("password123", PasswordOptions { id: Some("password".to_string()) })?],
+///   MFKDF2Options::default(),
+/// )?;
+///
+/// let mut corrupted_policy = setup_key.policy.clone();
+/// corrupted_policy.hmac = "corrupted".to_string();
+///
+/// let derive_factor = derive_password("password123")?;
+/// let result = derive::key(
+///   &corrupted_policy,
+///   HashMap::from([("password".to_string(), derive_factor)]),
+///   true,
+///   false,
+/// );
+///
+/// assert!(matches!(result, Err(MFKDF2Error::PolicyIntegrityCheckFailed)));
+/// # Ok(())
+/// # }
+/// ```
 pub fn key(
   policy: &Policy,
   factors: HashMap<String, MFKDF2Factor>,
@@ -196,9 +467,8 @@ mod tests {
     derive::{
       self,
       factors::{
-        hmacsha1::hmacsha1 as derive_hmacsha1, hotp::hotp as derive_hotp,
-        ooba::ooba as derive_ooba, passkey::passkey as derive_passkey,
-        password::password as derive_password, persisted, totp::totp as derive_totp,
+        hmacsha1 as derive_hmacsha1, hotp as derive_hotp, ooba as derive_ooba,
+        passkey as derive_passkey, password as derive_password, persisted, totp as derive_totp,
       },
     },
     otpauth::generate_otp_token,
