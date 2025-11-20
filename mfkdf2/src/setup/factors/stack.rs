@@ -1,9 +1,8 @@
-//! Stack factor setup.
+//! Stack factor setup
 //!
-//! A stack factor wraps an entire MFKDF2 key (built from one or more underlying
-//! factors) as a **single reusable factor**. This is useful when you want to
-//! derive a key once from a complex policy and then treat that key as another
-//! factor in a higher‑level policy or protocol.
+//! A stack factor wraps an entire MFKDF2 key (built from one or more underlying factors) as a
+//! **single reusable factor**. This is useful when you want to derive a key once from a complex
+//! policy and then treat that key as another factor in a higher‑level policy or protocol.
 use std::collections::HashMap;
 
 use serde::{Deserialize, Serialize};

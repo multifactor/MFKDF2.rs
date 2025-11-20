@@ -1,3 +1,7 @@
+//! Derive phase [Question](`crate::setup::factors::question`) construction. It accepts a raw user
+//! answer, normalizes it, and returns an [`MFKDF2Factor`] used in the derive phase. The factor also
+//! exposes a strength estimate via `output()` so callers can compare entropy between setup and
+//! derive
 use serde_json::{Value, json};
 use zxcvbn::zxcvbn;
 
@@ -19,9 +23,57 @@ impl FactorDerive for Question {
 
   fn params(&self, _key: Key) -> MFKDF2Result<Self::Params> { Ok(self.params.clone()) }
 
+  /// Returns a strength estimate for the answer using `zxcvbn`.
   fn output(&self) -> Self::Output { json!({"strength": zxcvbn(&self.answer, &[])}) }
 }
 
+/// Factor construction derive phase for a security‑question factor
+///
+/// The answer is normalized (lower‑cased, punctuation removed, and surrounding whitespace trimmed)
+/// to match the behaviour of the setup‑time [question](`crate::setup::factors::question::question`)
+/// helper. The resulting [`MFKDF2Factor`] has no id or entropy assigned during the derive phase;
+/// those are pulled from the policy when combining factors with [`crate::derive::key`]
+///
+/// # Errors
+///
+/// - [`MFKDF2Error::AnswerEmpty`] if the provided answer is empty
+///
+/// # Example
+///
+/// Single‑factor setup/derive using a security‑question factor within KeySetup/KeyDerive:
+///
+/// ```rust
+/// # use std::collections::HashMap;
+/// # use mfkdf2::{
+/// #   error::MFKDF2Result,
+/// #   setup::{
+/// #     self,
+/// #     factors::question::{QuestionOptions, question as setup_question},
+/// #     key::MFKDF2Options,
+/// #   },
+/// #   derive,
+/// # };
+/// # use mfkdf2::derive::factors::question as derive_question;
+/// #
+/// # fn main() -> MFKDF2Result<()> {
+/// let setup_factor = setup_question("Blue! Is My Favorite Color.", QuestionOptions {
+///   id:       Some("question".into()),
+///   question: Some("prompt".into()),
+/// })?;
+/// let setup_key = setup::key(&[setup_factor], MFKDF2Options::default())?;
+///
+/// let derive_factor = derive_question("  Blue! Is My Favorite Color.  ")?;
+/// let derived_key = derive::key(
+///   &setup_key.policy,
+///   HashMap::from([("question".to_string(), derive_factor)]),
+///   true,
+///   false,
+/// )?;
+///
+/// assert_eq!(derived_key.key, setup_key.key);
+/// # Ok(())
+/// # }
+/// ```
 pub fn question(answer: impl Into<String>) -> MFKDF2Result<MFKDF2Factor> {
   let answer = answer.into();
   if answer.is_empty() {

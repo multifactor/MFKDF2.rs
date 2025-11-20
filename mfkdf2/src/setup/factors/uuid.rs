@@ -1,8 +1,8 @@
 //! UUID factor setup.
 //!
-//! This factor uses a random (or caller‑provided) UUID as its secret material.
-//! It is useful for device binding or opaque identifiers where you want stable,
-//! high‑entropy bytes that are not intended to be memorized by a user.
+//! This factor uses a random (or caller‑provided) UUID as its secret material. It is useful for
+//! device binding or opaque identifiers where you want stable, high‑entropy bytes that are not
+//! intended to be memorized by a user.
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 pub use uuid::Uuid;
@@ -60,7 +60,8 @@ impl FactorSetup for UUIDFactor {
 /// or account binding factor.
 ///
 /// # Errors
-/// - [`crate::error::MFKDF2Error::MissingFactorId`] if `id` is provided but empty.
+/// - [MFKDF2Error::MissingFactorId](`crate::error::MFKDF2Error::MissingFactorId`) if `id` is
+///   provided but empty.
 ///
 /// # Example
 ///
