@@ -23,9 +23,9 @@ use crate::{
 #[derive(Clone, Debug, Default, Serialize, Deserialize)]
 pub struct StackOptions {
   /// Optional application-defined identifier for the factor. Defaults to `"stack"`. If
-  /// provided, it must be non-empty.
+  /// provided, it must be non-empty
   pub id:        Option<String>,
-  /// Number of underlying factors that must be present to derive the stacked key.
+  /// Number of underlying factors that must be present to derive the stacked key
   pub threshold: Option<u8>,
   /// Optional override for the policy salt. If not provided, a random salt will be generated.
   pub salt:      Option<Salt>,

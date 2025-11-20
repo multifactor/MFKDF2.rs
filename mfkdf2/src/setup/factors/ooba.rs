@@ -109,12 +109,12 @@ impl TryFrom<&Jwk> for OobaPublicKey {
     let n = rsa::BigUint::from_bytes_be(
       &base64::engine::general_purpose::URL_SAFE_NO_PAD
         .decode(n_str)
-        .map_err(MFKDF2Error::DecodeError)?,
+        .map_err(MFKDF2Error::Base64Decode)?,
     );
     let e = rsa::BigUint::from_bytes_be(
       &base64::engine::general_purpose::URL_SAFE_NO_PAD
         .decode(e_str)
-        .map_err(MFKDF2Error::DecodeError)?,
+        .map_err(MFKDF2Error::Base64Decode)?,
     );
     Ok(OobaPublicKey(RsaPublicKey::new(n, e).map_err(|_| MFKDF2Error::InvalidOobaKey)?))
   }

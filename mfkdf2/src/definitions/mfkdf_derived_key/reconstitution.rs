@@ -67,7 +67,7 @@ impl MFKDF2DerivedKey {
 
       material.insert(
         factor.id.as_str(),
-        factor_material.try_into().map_err(|_| MFKDF2Error::TryFromVecError)?,
+        factor_material.try_into().map_err(|_| MFKDF2Error::TryFromVec)?,
       );
     }
 
@@ -143,7 +143,7 @@ impl MFKDF2DerivedKey {
           format!("mfkdf2:factor:pad:{}", factor.id).as_bytes(),
         )
       } else {
-        return Err(MFKDF2Error::TryFromVecError);
+        return Err(MFKDF2Error::TryFromVec);
       };
 
       let secret_key = hkdf_sha256_with_info(

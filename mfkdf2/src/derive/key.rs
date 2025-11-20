@@ -87,15 +87,13 @@ pub fn key(
   let shares_vec: Vec<Option<Share<SECRET_SHARING_POLY>>> = shares_bytes
     .into_iter()
     .map(|opt| {
-      opt
-        .map(|b| Share::try_from(b.as_slice()).map_err(|_| MFKDF2Error::TryFromVecError))
-        .transpose()
+      opt.map(|b| Share::try_from(b.as_slice()).map_err(|_| MFKDF2Error::TryFromVec)).transpose()
     })
     .collect::<Result<Vec<Option<Share<SECRET_SHARING_POLY>>>, _>>()?;
 
   let sss = SecretSharing(policy.threshold);
-  let secret = sss.recover(&shares_vec).map_err(|_| MFKDF2Error::ShareRecoveryError)?;
-  let secret_arr: [u8; 32] = secret[..32].try_into().map_err(|_| MFKDF2Error::TryFromVecError)?;
+  let secret = sss.recover(&shares_vec).map_err(|_| MFKDF2Error::ShareRecovery)?;
+  let secret_arr: [u8; 32] = secret[..32].try_into().map_err(|_| MFKDF2Error::TryFromVec)?;
   let salt_bytes = general_purpose::STANDARD.decode(&policy.salt)?;
 
   // Generate key
@@ -157,7 +155,7 @@ pub fn key(
       shares_vec.iter().map(|s| s.as_ref()).collect::<Vec<Option<&Share<SECRET_SHARING_POLY>>>>(),
       policy.factors.len(),
     )
-    .map_err(|_| MFKDF2Error::ShareRecoveryError)?;
+    .map_err(|_| MFKDF2Error::ShareRecovery)?;
 
   Ok(MFKDF2DerivedKey {
     policy: new_policy,

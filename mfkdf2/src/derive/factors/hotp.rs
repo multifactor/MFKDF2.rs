@@ -165,7 +165,7 @@ mod tests {
     let params = json!({ "digits": 6 });
     let err = derive_factor.factor_type.include_params(params);
     assert!(
-      matches!(err, Err(crate::error::MFKDF2Error::SerializeError(e)) if e.to_string() == "missing field `hash`")
+      matches!(err, Err(crate::error::MFKDF2Error::Serialize(e)) if e.to_string() == "missing field `hash`")
     );
   }
 }
