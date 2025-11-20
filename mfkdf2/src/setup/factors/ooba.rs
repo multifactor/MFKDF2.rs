@@ -14,7 +14,7 @@
 //!   of `d` digits, both chosen uniformly from the range [0, 10ᵈ)
 //! - the modular difference offsetₒ,₀ = (targetₒ − otpₒ,₀) % 10ᵈ is stored along with an encrypted
 //!   code ciphertext ctₒ,₀ under pkₒ
-//! - the public parameters αₒ,₀ embed `(d, pkₒ, offsetₒ,₀, ctₒ,₀)` into the policy
+//! - the public parameters βₒ,₀ embed `(d, pkₒ, offsetₒ,₀, ctₒ,₀)` into the policy
 //!
 //! During derive, the user receives a new OOBA challenge on the secondary channel
 //! and submits the corresponding code Wₒ,ᵢ = otpₒ,ᵢ to the application. Using the

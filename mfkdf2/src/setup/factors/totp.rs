@@ -33,7 +33,7 @@
 //!
 //! Software-token based key-derivation constructions require no changes to existing authenticator
 //! applications like Google Authenticator. Because the HOTP key hotkeyₜ is stored inside the factor
-//! state αₜ (encrypted as the pad), the computation of new offset values happens entirely inside
+//! state βₜ (encrypted as the pad), the computation of new offset values happens entirely inside
 //! the library's setup/derive machinery. The authenticator app is only ever asked to display otpₜ,ᵢ
 //! once per login, exactly as it does today; it does not participate directly in the key-derivation
 //! logic.

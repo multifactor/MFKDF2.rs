@@ -1,4 +1,7 @@
+//! Derived key crypto operations.
+
 impl crate::definitions::MFKDF2DerivedKey {
+  /// Returns an HKDF-SHA256 derived key for the given purpose and salt.
   pub fn get_subkey(&self, purpose: Option<&str>, salt: Option<&[u8]>) -> [u8; 32] {
     let salt = salt.unwrap_or(&[]);
     let purpose = purpose.unwrap_or("");
