@@ -23,7 +23,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
   definitions::{FactorMetadata, FactorType, MFKDF2Factor},
-  error::{MFKDF2Error, MFKDF2Result},
+  error::MFKDF2Result,
   setup::FactorSetup,
 };
 
@@ -102,10 +102,11 @@ pub fn passkey(secret: [u8; 32], options: PasskeyOptions) -> MFKDF2Result<MFKDF2
   })
 }
 
+#[cfg(feature = "bindings")]
 #[cfg_attr(feature = "bindings", uniffi::export)]
-pub async fn setup_passkey(secret: Vec<u8>, options: PasskeyOptions) -> MFKDF2Result<MFKDF2Factor> {
+async fn setup_passkey(secret: Vec<u8>, options: PasskeyOptions) -> MFKDF2Result<MFKDF2Factor> {
   if secret.len() != 32 {
-    return Err(MFKDF2Error::InvalidSecretLength("passkey".to_string()));
+    return Err(crate::error::MFKDF2Error::InvalidSecretLength("passkey".to_string()));
   }
 
   passkey(secret.try_into().unwrap(), options)
@@ -118,6 +119,6 @@ mod tests {
   #[test]
   fn passkey_errors() {
     let factor = passkey([0u8; 32], PasskeyOptions { id: Some("".to_string()) });
-    assert!(matches!(factor, Err(MFKDF2Error::MissingFactorId)));
+    assert!(matches!(factor, Err(crate::error::MFKDF2Error::MissingFactorId)));
   }
 }

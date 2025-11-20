@@ -128,8 +128,9 @@ pub fn stack(factors: Vec<MFKDF2Factor>, options: StackOptions) -> MFKDF2Result<
   })
 }
 
+#[cfg(feature = "bindings")]
 #[cfg_attr(feature = "bindings", uniffi::export)]
-pub async fn setup_stack(
+async fn setup_stack(
   factors: Vec<MFKDF2Factor>,
   options: StackOptions,
 ) -> MFKDF2Result<MFKDF2Factor> {

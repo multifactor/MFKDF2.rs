@@ -1,13 +1,13 @@
-pub mod hmacsha1;
-pub mod hotp;
-pub mod ooba;
-pub mod passkey;
-pub mod password;
+mod hmacsha1;
+mod hotp;
+mod ooba;
+mod passkey;
+mod password;
 pub mod persisted;
-pub mod question;
-pub mod stack;
+mod question;
+mod stack;
 pub mod totp;
-pub mod uuid;
+mod uuid;
 
 pub use hmacsha1::hmacsha1;
 pub use hotp::hotp;

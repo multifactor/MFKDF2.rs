@@ -46,8 +46,9 @@ pub fn question(answer: impl Into<String>) -> MFKDF2Result<MFKDF2Factor> {
   })
 }
 
+#[cfg(feature = "bindings")]
 #[cfg_attr(feature = "bindings", uniffi::export)]
-pub async fn derive_question(answer: String) -> MFKDF2Result<MFKDF2Factor> { question(answer) }
+async fn derive_question(answer: String) -> MFKDF2Result<MFKDF2Factor> { question(answer) }
 
 #[cfg(test)]
 mod tests {

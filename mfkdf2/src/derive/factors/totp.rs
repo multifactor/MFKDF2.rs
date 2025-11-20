@@ -151,11 +151,9 @@ pub fn totp(code: u32, options: Option<TOTPDeriveOptions>) -> MFKDF2Result<MFKDF
   })
 }
 
+#[cfg(feature = "bindings")]
 #[cfg_attr(feature = "bindings", uniffi::export)]
-pub async fn derive_totp(
-  code: u32,
-  options: Option<TOTPDeriveOptions>,
-) -> MFKDF2Result<MFKDF2Factor> {
+async fn derive_totp(code: u32, options: Option<TOTPDeriveOptions>) -> MFKDF2Result<MFKDF2Factor> {
   totp(code, options)
 }
 

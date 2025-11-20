@@ -85,8 +85,9 @@ pub fn ooba(code: &str) -> MFKDF2Result<MFKDF2Factor> {
   })
 }
 
+#[cfg(feature = "bindings")]
 #[cfg_attr(feature = "bindings", uniffi::export)]
-pub async fn derive_ooba(code: &str) -> MFKDF2Result<MFKDF2Factor> { ooba(code) }
+async fn derive_ooba(code: &str) -> MFKDF2Result<MFKDF2Factor> { ooba(code) }
 
 #[cfg(test)]
 mod tests {
