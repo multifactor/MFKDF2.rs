@@ -1,3 +1,42 @@
+//! Time-based TOTP factor setup.
+//!
+//! This factor models an RFC 6238 TOTP "soft token" (for example, Google
+//! Authenticator or any compatible app) and the corresponding server-side logic
+//! used by MFKDF2 to turn a changing time-based code into stable factor
+//! material.
+//!
+//! Conceptually:
+//! - a TOTP app holds a shared key hotkeyₜ and derives one-time codes otpₜ,ᵢ at regular time steps
+//!   using a counter derived from Unix time;
+//! - MFKDF2 needs a fixed secret σₜ instead of a different code each step, so a random targetₜ is
+//!   chosen in the range [0, 10ᵈ) (where `d` is the number of digits) and express each observed
+//!   otpₜ,ᵢ as "targetₜ plus an offset" modulo 10ᵈ.
+//!
+//! Let T₀ be the starting Unix time, X the TOTP step/period in seconds, and T
+//! the current Unix time. TOTP is essentially HOTP with a time-based counter:
+//! TOTP(K) = HOTP(K, ⌊(T − T₀) / X⌋). During setup this module:
+//! - fixes an initial time T₀ (stored as `start`) and a window size `w` of future steps for which
+//!   offsets will be precomputed;
+//! - draws a random targetₜ ∈ [0, 10ᵈ);
+//! - for each counter value in {ctr, ctr + 1, …, ctr + w − 1} corresponding to that window,
+//!   computes the TOTP code otpₜ,ᵢ using hotkeyₜ and stores an offset offsetₜ,ᵢ = (targetₜ −
+//!   otpₜ,ᵢ) % 10ᵈ;
+//! - encrypts the padded TOTP secret under the final derived key K and exposes it as the `pad`
+//!   field, alongside the packed offsets table, in the public params.
+//!
+//! The resulting TOTP parameters capture start time, step, window, encrypted secret and precomputed
+//! offsets, and are embedded into the MFKDF2 policy. On derive, as long as the current time falls
+//! within the precomputed window, the library can reconstruct the same targetₜ from an app-provided
+//! otpₜ,ᵢ using the stored offset without talking to the TOTP app. All offset calculation happens
+//! inside the library; the authenticator app simply shows otpₜ,ᵢ once per login as usual, and
+//! remains unchanged by the presence of MFKDF2.
+//!
+//! Software-token based key-derivation constructions require no changes to existing authenticator
+//! applications like Google Authenticator. Because the HOTP key hotkeyₜ is stored inside the factor
+//! state αₜ (encrypted as the pad), the computation of new offset values happens entirely inside
+//! the library's setup/derive machinery. The authenticator app is only ever asked to display otpₜ,ᵢ
+//! once per login, exactly as it does today; it does not participate directly in the key-derivation
+//! logic.
 use std::collections::HashMap;
 #[cfg(not(target_arch = "wasm32"))]
 use std::time::{SystemTime, UNIX_EPOCH};
@@ -16,18 +55,33 @@ use crate::{
   setup::{FactorSetup, factors::hotp::mod_positive},
 };
 
+/// Options for configuring a TOTP factor setup
 #[cfg_attr(feature = "bindings", derive(uniffi::Record))]
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct TOTPOptions {
+  /// Optional application-defined identifier for the factor. Defaults to `"totp"`. If
+  /// provided, it must be non-empty
   pub id:     Option<String>,
+  /// 20‑byte TOTP secret. If omitted, a random secret is generated
   pub secret: Option<Vec<u8>>,
+  /// Number of digits in the OTP code (6–8). Values outside this range cause
+  /// [`MFKDF2Error::InvalidTOTPDigits`]
   pub digits: Option<u32>,
+  /// Hash algorithm used by the TOTP generator (default: SHA‑1)
   pub hash:   Option<HashAlgorithm>,
+  /// A string value indicating the provider or service the credential is associated with
   pub issuer: Option<String>,
+  /// A string value identifying which account a credential is associated with. It also serves
+  /// as the unique identifier for the credential itself
   pub label:  Option<String>,
-  pub time:   Option<u64>, // Unix epoch time in milliseconds
+  /// Starting Unix time in milliseconds used to anchor the TOTP window
+  pub time:   Option<u64>,
+  /// Number of TOTP steps for which offsets are precomputed (default is sized for long‑lived
+  /// offline use)
   pub window: Option<u32>,
+  /// Step size in seconds (the TOTP "period", default 30s)
   pub step:   Option<u32>,
+  /// Optional per‑time overrides for debugging or advanced flows
   pub oracle: Option<HashMap<u64, u32>>,
 }
 
@@ -48,17 +102,31 @@ impl Default for TOTPOptions {
   }
 }
 
+/// TOTP configuration
 #[cfg_attr(feature = "bindings", derive(uniffi::Record))]
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct TOTPConfig {
+  /// Optional application-defined identifier for the factor. Defaults to `"totp"`. If provided, it
+  /// must be non-empty
   pub id:     String,
+  /// 20‑byte TOTP secret. If omitted, a random secret is generated
   pub secret: Vec<u8>,
+  /// Number of digits in the OTP code (6–8). Values outside this range cause
+  /// [`MFKDF2Error::InvalidTOTPDigits`]
   pub digits: u32,
+  /// Hash algorithm used by the TOTP generator (default: SHA‑1)
   pub hash:   HashAlgorithm,
+  /// A string value indicating the provider or service the credential is associated with
   pub issuer: String,
+  /// A string value identifying which account a credential is associated with. It also serves
+  /// as the unique identifier for the credential itself
   pub label:  String,
+  /// Starting Unix time in milliseconds used to anchor the TOTP window
   pub time:   u64,
+  /// Number of TOTP steps for which offsets are precomputed (default is sized for long‑lived
+  /// offline use)
   pub window: u32,
+  /// Step size in seconds (the TOTP "period", default 30s)
   pub step:   u32,
   pub oracle: Option<HashMap<u64, u32>>,
 }
@@ -101,24 +169,38 @@ impl Default for TOTPConfig {
   }
 }
 
+/// TOTP public parameters.
 #[cfg_attr(feature = "bindings", derive(uniffi::Record))]
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct TOTPParams {
+  /// Starting Unix time in milliseconds used to anchor the TOTP window
   pub start:   u64,
+  /// Hash algorithm used by the TOTP generator
   pub hash:    HashAlgorithm,
+  /// Number of digits in the OTP code
   pub digits:  u32,
+  /// Step size in seconds (the TOTP "period")
   pub step:    u32,
+  /// Number of TOTP steps for which offsets are precomputed
   pub window:  u32,
+  /// Base64 encoded pad
   pub pad:     String,
+  /// Base64 encoded offsets table
+  /// The offsets table is a sequence of 4-byte integers, one for each time window slot
   pub offsets: String,
 }
 
+/// TOTP factor state
 #[cfg_attr(feature = "bindings", derive(uniffi::Record))]
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct TOTP {
+  /// TOTP configuration
   pub config: TOTPConfig,
+  /// TOTP public parameters
   pub params: Value,
+  /// TOTP code
   pub code:   u32,
+  /// TOTP factor material. The target code that is used to derive the key
   pub target: u32,
 }
 
@@ -206,6 +288,57 @@ impl FactorSetup for TOTP {
   }
 }
 
+/// Initializes a TOTP factor from the given options.
+///
+/// Validates the configuration, generates a random target code and (optionally) secret, and returns
+/// an [`MFKDF2Factor`] that can be used in MFKDF2 key setup. The factor's `output()` method exposes
+/// an `otpauth://` URI suitable for QR codes, while `params()` returns encrypted secret material
+/// and a precomputed offset table for each time window slot.
+///
+/// # Errors
+/// - [`MFKDF2Error::MissingFactorId`] if `id` is provided but empty
+/// - [`MFKDF2Error::InvalidTOTPDigits`] if `digits` is set outside `6..=8`
+/// - [`MFKDF2Error::InvalidSecretLength`] if `secret` is provided but not exactly 20 bytes
+/// - [`MFKDF2Error::MissingSetupParams`] if required fields like `secret` or `time` are missing
+///   when converting to [`TOTPConfig`]
+///
+/// # Example
+///
+/// ```rust
+/// # use mfkdf2::setup::factors::totp::{totp, TOTPOptions};
+/// # use mfkdf2::otpauth::HashAlgorithm;
+/// # use mfkdf2::setup::FactorSetup;
+/// let options = TOTPOptions {
+///   id:     Some("login-totp".into()),
+///   secret: Some(b"shared-totp-secret!!".to_vec()), // 20 bytes
+///   digits: Some(6),
+///   hash:   Some(HashAlgorithm::Sha1),
+///   issuer: Some("ExampleApp".into()),
+///   label:  Some("user@example.com".into()),
+///   time:   None,
+///   window: None,
+///   step:   None,
+///   oracle: None,
+/// };
+/// let factor = totp(options)?;
+/// let output = factor.factor_type.output();
+/// assert_eq!(output["type"], "totp");
+/// # Ok::<(), mfkdf2::error::MFKDF2Error>(())
+/// ```
+///
+/// Invalid secret length
+///
+/// ```rust
+/// # use mfkdf2::setup::factors::totp::{totp, TOTPOptions};
+/// # use mfkdf2::otpauth::HashAlgorithm;
+/// let options = TOTPOptions {
+///   secret: Some(b"my-secret-is-super-secret-123456".to_vec()),
+///   ..Default::default()
+/// };
+/// let result = totp(options);
+/// assert!(matches!(result, Err(mfkdf2::error::MFKDF2Error::InvalidSecretLength(_))));
+/// # Ok::<(), mfkdf2::error::MFKDF2Error>(())
+/// ```
 pub fn totp(options: TOTPOptions) -> MFKDF2Result<MFKDF2Factor> {
   let mut options = options;
 

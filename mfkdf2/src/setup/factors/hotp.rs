@@ -1,3 +1,35 @@
+//! Counter-based HOTP factor setup.
+//!
+//! This factor models a standard OATH HOTP "soft token" (e.g. Google Authenticator, 1Password, or
+//! any RFC 4226 implementation) and the matching server-side verification logic.
+//!
+//! Conceptually:
+//! - An authenticator app holds a shared HOTP key `hotkeyₜ` and counter `ctrₜ`. On each use it
+//!   displays a one-time code `otpₜ,ᵢ` that both client and server can compute given (hotkeyₜ,
+//!   ctrₜ,ᵢ).
+//! - MFKDF2 needs a *fixed* piece of factor material σₜ rather than a changing OTP. For HOTP, each
+//!   dynamic code Wₜ,ᵢ = otpₜ,ᵢ is converted into a fixed secret integer `targetₜ` in the range [0,
+//!   10ᵈ), where `d` is the number of digits in the code.
+//!
+//! During **setup**:
+//! - sample a random integer `targetₜ` in [0, 10ᵈ)
+//! - compute the first HOTP code `otpₜ,₀` using `hotkeyₜ` and counter ctrₜ,₀ = 1
+//! - store an offset offsetₜ,₀ = (targetₜ - otpₜ,₀) % 10ᵈ
+//! - encrypt the padded HOTP secret under the final derived key `K` and expose it as the `"pad"`
+//!   field in the public params.
+//!
+//! The public HOTP parameters αₜ produced here (digits `d`, initial `counter`, `offset`, and the
+//! encrypted `pad`) are what get embedded into the MFKDF2 policy. On the derive side, the client
+//! sends a fresh HOTP code Wₜ,ᵢ = otpₜ,ᵢ, and the library reconstructs the same targetₜ using the
+//! stored offset and counter, giving you stable factor material that is backward-compatible with
+//! existing software tokens.
+//!
+//! Software-token based key-derivation constructions require no changes to existing authenticator
+//! applications like Google Authenticator. Because the HOTP key hotkeyₜ is stored inside the factor
+//! state αₜ (encrypted as the pad), the computation of new offset values happens entirely inside
+//! the library's setup/derive machinery. The authenticator app is only ever asked to display otpₜ,ᵢ
+//! once per login, exactly as it does today; it does not participate directly in the key-derivation
+//! logic.
 use base64::prelude::*;
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
@@ -10,16 +42,26 @@ use crate::{
   setup::FactorSetup,
 };
 
+/// Options for configuring a HOTP factor before setup
 #[cfg_attr(feature = "bindings", derive(uniffi::Record))]
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct HOTPOptions {
+  /// Optional application-defined identifier for the factor. Defaults to `"hotp"`. If
+  /// provided, it must be non-empty
   pub id:     Option<String>,
   // TODO (@lonerapier): use trait based type update for secret
   // Initially this should be 20 bytes, that later gets padded to 32 during construction.
+  /// 20‑byte HOTP secret. If omitted, a random secret is generated
   pub secret: Option<Vec<u8>>,
+  /// Number of digits in the OTP code (6–8). Values outside this range cause
+  /// [`MFKDF2Error::InvalidHOTPDigits`]
   pub digits: Option<u32>,
+  /// Hash algorithm used by the HOTP generator (default: SHA‑1)
   pub hash:   Option<HashAlgorithm>,
+  /// A string value indicating the provider or service the credential is associated with.
   pub issuer: Option<String>,
+  /// A string value identifying which account a credential is associated with. It also serves
+  /// as the unique identifier for the credential itself.
   pub label:  Option<String>,
 }
 
@@ -75,23 +117,34 @@ impl Default for HOTPConfig {
   }
 }
 
+/// HOTP factor state.
 #[cfg_attr(feature = "bindings", derive(uniffi::Record))]
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct HOTP {
   // TODO (@lonerapier): config is only used for setup, not for derive
+  /// HOTP configuration.
   pub config: HOTPConfig,
+  /// HOTP public parameters.
   pub params: Value,
+  /// HOTP code.
   pub code:   u32,
+  /// HOTP factor material. The target code that is used to derive the key.
   pub target: u32,
 }
 
+/// HOTP public parameters.
 #[cfg_attr(feature = "bindings", derive(uniffi::Record))]
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct HOTPParams {
+  /// Hash algorithm used by the HOTP generator.
   pub hash:    HashAlgorithm,
+  /// Number of digits in the OTP code.
   pub digits:  u32,
+  /// Base64 encoded pad.
   pub pad:     String,
+  /// HOTP counter.
   pub counter: u64,
+  /// Target - code offset.
   pub offset:  u32,
 }
 
@@ -156,6 +209,53 @@ impl FactorSetup for HOTP {
 #[must_use]
 pub fn mod_positive(n: i64, m: i64) -> u32 { (((n % m) + m) % m) as u32 }
 
+/// Initializes an HOTP factor from the given options.
+///
+/// Validates the configuration, generates a random target code and (optionally) secret, and returns
+/// an [`MFKDF2Factor`] that can participate in MFKDF2 key setup. The factor's `output()` method
+/// exposes an `otpauth://` URI that you can display as a QR code for users.
+///
+/// # Errors
+///
+/// - [`MFKDF2Error::MissingFactorId`] if `id` is provided but empty.
+/// - [`MFKDF2Error::InvalidHOTPDigits`] if `digits` is set outside `6..=8`.
+/// - [`MFKDF2Error::InvalidSecretLength`] if `secret` is provided but not exactly 20 bytes.
+///
+/// # Example
+///
+/// Pairing with an authenticator app using a known secret:
+///
+/// ```rust
+/// # use mfkdf2::setup::factors::hotp::{hotp, HOTPOptions};
+/// # use mfkdf2::otpauth::HashAlgorithm;
+/// # use mfkdf2::setup::FactorSetup;
+///
+/// let options = HOTPOptions {
+///   id:     Some("login-hotp".into()),
+///   secret: Some(b"shared-hotp-secret!!".to_vec()), // 20 bytes
+///   digits: Some(6),
+///   hash:   Some(HashAlgorithm::Sha1),
+///   issuer: Some("ExampleApp".into()),
+///   label:  Some("user@example.com".into()),
+/// };
+/// let factor = hotp(options)?;
+/// let output = factor.factor_type.output();
+/// assert_eq!(output["type"], "hotp");
+/// # Ok::<(), mfkdf2::error::MFKDF2Error>(())
+/// ```
+///
+/// Invalid digits
+///
+/// ```rust
+/// # use mfkdf2::setup::factors::hotp::{hotp, HOTPOptions};
+/// # use mfkdf2::otpauth::HashAlgorithm;
+/// # use mfkdf2::setup::FactorSetup;
+///
+/// let options = HOTPOptions { digits: Some(4), ..Default::default() };
+/// let result = hotp(options);
+/// assert!(matches!(result, Err(mfkdf2::error::MFKDF2Error::InvalidHOTPDigits)));
+/// # Ok::<(), mfkdf2::error::MFKDF2Error>(())
+/// ```
 pub fn hotp(options: HOTPOptions) -> MFKDF2Result<MFKDF2Factor> {
   let mut options = options;
 

@@ -60,31 +60,31 @@ impl std::fmt::Display for HashAlgorithm {
   }
 }
 
-/// Options for generating an OTP Auth URI as per RFC
+/// Options for generating an OTP Auth URI
 #[derive(Debug, Clone)]
 pub struct OtpAuthUrlOptions {
   /// The shared secret is the secret key that is used to generate the OTP. The format depends on
-  /// the encoding specified in the [`Encoding`] field.
+  /// the encoding specified in the [`Encoding`] field
   pub secret:    String,
   /// The label is used to identify which account a credential is associated with. It also serves
-  /// as the unique identifier for the credential itself.
+  /// as the unique identifier for the credential itself
   pub label:     String,
-  /// Credential type, either [`Kind::Totp`] or [`Kind::Hotp`].
+  /// Credential type, either [`Kind::Totp`] or [`Kind::Hotp`]
   pub kind:      Option<Kind>,
   /// The issuer parameter is an optional string value indicating the provider or service the
-  /// credential is associated with.
+  /// credential is associated with
   pub issuer:    Option<String>,
-  /// The number of digits in the OTP. Allowed values are 6, 7, and 8. Defaults to 6.
+  /// The number of digits in the OTP. Allowed values are 6, 7, and 8. Defaults to 6
   pub digits:    Option<u32>,
   /// The optional counter parameter is required when provisioning HOTP credentials. It will set
-  /// the initial counter value.
+  /// the initial counter value
   pub counter:   Option<u64>,
   /// The period parameter defines a validity period in seconds for the TOTP code. It is only
-  /// applicable for TOTP credentials and defaults to 30 seconds.
+  /// applicable for TOTP credentials and defaults to 30 seconds
   pub period:    Option<u64>,
-  /// The encoding of the secret.
+  /// The encoding of the secret
   pub encoding:  Option<Encoding>,
-  /// The hash algorithm to use for the credential.
+  /// The hash algorithm to use for the credential
   pub algorithm: Option<HashAlgorithm>,
 }
 
