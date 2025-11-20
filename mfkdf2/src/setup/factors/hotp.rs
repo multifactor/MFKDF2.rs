@@ -18,7 +18,7 @@
 //! - encrypt the padded HOTP secret under the final derived key `K` and expose it as the `"pad"`
 //!   field in the public params.
 //!
-//! The public HOTP parameters αₜ produced here (digits `d`, initial `counter`, `offset`, and the
+//! The public HOTP parameters βₜ produced here (digits `d`, initial `counter`, `offset`, and the
 //! encrypted `pad`) are what get embedded into the MFKDF2 policy. On the derive side, the client
 //! sends a fresh HOTP code Wₜ,ᵢ = otpₜ,ᵢ, and the library reconstructs the same targetₜ using the
 //! stored offset and counter, giving you stable factor material that is backward-compatible with
@@ -26,7 +26,7 @@
 //!
 //! Software-token based key-derivation constructions require no changes to existing authenticator
 //! applications like Google Authenticator. Because the HOTP key hotkeyₜ is stored inside the factor
-//! state αₜ (encrypted as the pad), the computation of new offset values happens entirely inside
+//! state βₜ (encrypted as the pad), the computation of new offset values happens entirely inside
 //! the library's setup/derive machinery. The authenticator app is only ever asked to display otpₜ,ᵢ
 //! once per login, exactly as it does today; it does not participate directly in the key-derivation
 //! logic.
