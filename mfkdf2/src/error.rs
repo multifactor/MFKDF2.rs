@@ -27,10 +27,10 @@ pub enum MFKDF2Error {
 
   // TODO (autoparallel): This error variant should probably not even exist.
   #[error("failed to convert vector to array!")]
-  TryFromVecError,
+  TryFromVec,
 
   #[error("share recovery failed!")]
-  ShareRecoveryError,
+  ShareRecovery,
 
   #[error("invalid key length")]
   InvalidKeyLength,
@@ -93,17 +93,17 @@ pub enum MFKDF2Error {
   InvalidHintLength(&'static str),
 
   #[error(transparent)]
-  Argon2Error(#[from] argon2::Error),
+  Argon2(#[from] argon2::Error),
 
   #[error(transparent)]
-  SerializeError(#[from] serde_json::Error),
+  Serialize(#[from] serde_json::Error),
 
   #[error(transparent)]
-  DecodeError(#[from] base64::DecodeError),
+  Base64Decode(#[from] base64::DecodeError),
 
   #[error(transparent)]
-  RsaError(#[from] rsa::errors::Error),
+  Rsa(#[from] rsa::errors::Error),
 
   #[error(transparent)]
-  WriteError(#[from] std::fmt::Error),
+  Write(#[from] std::fmt::Error),
 }
