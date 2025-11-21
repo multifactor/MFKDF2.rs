@@ -2,7 +2,7 @@
 import crypto from 'crypto';
 import * as raw from './generated/web/mfkdf2.js';
 export { uniffiInitAsync } from './index.web.js';
-export { initRustLogging, LogLevel } from './generated/web/mfkdf2.js';
+export { initLog, LogLevel } from './generated/web/mfkdf2.js';
 
 // Re-export types
 export type {
