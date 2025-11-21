@@ -1,3 +1,13 @@
+//! Probabilistic factor hints.
+//!
+//! This module implements the MFKDF2 "hints" feature. Hints allow you to
+//! store a small number of bits of entropy derived from one or more input
+//! factors directly in the public MFKDF2 policy.
+//!
+//! Storing a `b`-bit hint for a factor reduces the brute-force strength of the
+//! final derived key by approximately `b` bits, but allows clients to
+//! probabilistically validate whether a candidate factor is likely to be
+//! correct before attempting a full derivation.
 use std::fmt::Write;
 
 use base64::engine::general_purpose;
@@ -5,6 +15,23 @@ use base64::engine::general_purpose;
 use crate::{definitions::MFKDF2DerivedKey, error::MFKDF2Error};
 
 impl MFKDF2DerivedKey {
+  /// Compute a probabilistic hint for a single factor.
+  ///
+  /// This function derives a deterministic bitstring from the secret material
+  /// backing the given factor and returns the least-significant `bits` of that
+  /// string as a binary `String` (e.g. `"0101010"`). These bits can be stored
+  /// in the public policy and later recomputed for candidate factors to
+  /// probabilistically validate whether they are correct.
+  ///
+  /// Storing a `b`-bit hint for a factor reduces the brute-force strength of
+  /// the final derived key by approximately `b` bits.
+  ///
+  /// # Errors
+  ///
+  /// - Returns [`MFKDF2Error::InvalidHintLength`] if `bits == 0`.
+  /// - Returns [`MFKDF2Error::MissingFactor`] if no factor with `factor_id` exists in the policy.
+  /// - Propagates any cryptographic or decoding errors encountered while deriving the factor
+  ///   material.
   pub fn get_hint(&self, factor_id: &str, bits: u8) -> Result<String, MFKDF2Error> {
     if bits == 0 {
       return Err(MFKDF2Error::InvalidHintLength("bits must be greater than 0"));
@@ -48,6 +75,65 @@ impl MFKDF2DerivedKey {
     )
   }
 
+  /// Compute and store a probabilistic hint for a factor in the public policy.
+  ///
+  /// This is a convenience wrapper around [`MFKDF2DerivedKey::get_hint`] that
+  /// computes a hint and stores it on the matching factor within the
+  /// [Policy](`crate::policy::Policy`) associated with this
+  /// derived key.
+  ///
+  /// If `bits` is `None`, a default of `7` bits is used, which gives legitimate
+  /// users a greater than 99% chance of detecting an incorrect factor while
+  /// leaking only a negligible amount of information about the underlying
+  /// factor to most adversaries.
+  ///
+  /// # Examples
+  ///
+  /// Store a 7-bit hint for a password factor during setup and reuse it during
+  /// derivation:
+  ///
+  /// ```rust
+  /// use std::collections::HashMap;
+  ///
+  /// use mfkdf2::{
+  ///   definitions::MFKDF2Options,
+  ///   derive::{self, factors::password as derive_password},
+  ///   error::MFKDF2Error,
+  ///   setup::{
+  ///     self,
+  ///     factors::{password, password::PasswordOptions},
+  ///   },
+  /// };
+  ///
+  /// # fn main() -> Result<(), MFKDF2Error> {
+  /// // Create a policy with a single password factor.
+  /// let mut setup_key = setup::key(
+  ///   &[password("correct horse battery staple", PasswordOptions {
+  ///     id: Some("password1".to_string()),
+  ///   })?],
+  ///   MFKDF2Options::default(),
+  /// )?;
+  ///
+  /// // Store a 7-bit hint for the password factor in the public policy.
+  /// setup_key.add_hint("password1", None)?;
+  ///
+  /// // Later, compute the expected hint for a candidate password.
+  /// let candidate_hint = setup_key.get_hint("password1", 7)?;
+  /// assert_eq!(candidate_hint.len(), 7);
+  ///
+  /// // During derivation, the library will automatically compare any stored
+  /// // hints and return `MFKDF2Error::HintMismatch` if they do not match.
+  /// let derived_key = derive::key(
+  ///   &setup_key.policy,
+  ///   HashMap::from([("password1".to_string(), derive_password("correct horse battery staple")?)]),
+  ///   true,  // integrity
+  ///   false, // allow_partial
+  /// )?;
+  ///
+  /// assert_eq!(derived_key.key, setup_key.key);
+  /// # Ok(())
+  /// # }
+  /// ```
   pub fn add_hint(&mut self, factor_id: &str, bits: Option<u8>) -> Result<(), MFKDF2Error> {
     let bits = bits.unwrap_or(7);
     let hint = self.get_hint(factor_id, bits);
@@ -57,8 +143,9 @@ impl MFKDF2DerivedKey {
   }
 }
 
+#[cfg(feature = "bindings")]
 #[cfg_attr(feature = "bindings", uniffi::export)]
-pub fn derived_key_get_hint(
+fn derived_key_get_hint(
   derived_key: &MFKDF2DerivedKey,
   factor_id: &str,
   bits: u8,
@@ -66,8 +153,9 @@ pub fn derived_key_get_hint(
   derived_key.get_hint(factor_id, bits)
 }
 
+#[cfg(feature = "bindings")]
 #[cfg_attr(feature = "bindings", uniffi::export)]
-pub fn derived_key_add_hint(
+fn derived_key_add_hint(
   derived_key: MFKDF2DerivedKey,
   factor_id: &str,
   bits: Option<u8>,
@@ -82,10 +170,11 @@ mod tests {
   use std::collections::HashMap;
 
   use crate::{
+    definitions::MFKDF2Options,
     derive,
     derive::factors as derive_factors,
     error,
-    setup::{self, factors::password::PasswordOptions, key::MFKDF2Options},
+    setup::{self, factors::password::PasswordOptions},
   };
 
   #[test]

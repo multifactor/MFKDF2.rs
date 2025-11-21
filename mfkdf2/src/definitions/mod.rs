@@ -1,17 +1,18 @@
-pub mod key;
-pub mod mfkdf_derived_key;
-use serde::{Deserialize, Serialize};
-#[cfg(feature = "bindings")] mod uniffi_types;
+//! # MFKDF2
 
-pub mod entropy;
+mod entropy;
 pub mod factor;
+mod key;
+pub mod mfkdf_derived_key;
+#[cfg(feature = "bindings")] mod uniffi_types;
 
 pub use entropy::MFKDF2Entropy;
 pub use factor::{FactorMetadata, FactorType, MFKDF2Factor};
 pub use key::Key;
 pub use mfkdf_derived_key::MFKDF2DerivedKey;
+use serde::{Deserialize, Serialize};
 
-/// Options for setting up a key.
+/// Options for setting up a [`MFKDF2DerivedKey`] key.
 #[cfg_attr(feature = "bindings", derive(uniffi::Record))]
 #[derive(Clone, Serialize, Deserialize)]
 pub struct MFKDF2Options {

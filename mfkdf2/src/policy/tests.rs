@@ -178,10 +178,10 @@ fn validate_invalid() {
 fn evaluate_basic_1() {
   let policy = create_policy_basic_1();
 
-  assert!(!policy::evaluate::evaluate(&policy, vec!["id1".to_string(), "id2".to_string()]));
-  assert!(!policy::evaluate::evaluate(&policy, vec!["id3".to_string(), "id4".to_string()]));
-  assert!(policy::evaluate::evaluate(&policy, vec!["id1".to_string(), "id4".to_string()]));
-  assert!(policy::evaluate::evaluate(&policy, vec!["id2".to_string(), "id3".to_string()]));
+  assert!(!policy.evaluate(vec!["id1".to_string(), "id2".to_string()]));
+  assert!(!policy.evaluate(vec!["id3".to_string(), "id4".to_string()]));
+  assert!(policy.evaluate(vec!["id1".to_string(), "id4".to_string()]));
+  assert!(policy.evaluate(vec!["id2".to_string(), "id3".to_string()]));
 }
 
 fn create_policy_basic_2() -> policy::Policy {
@@ -212,10 +212,10 @@ fn create_policy_basic_2() -> policy::Policy {
 fn evaluate_basic_2() {
   let policy = create_policy_basic_2();
 
-  assert!(policy::evaluate::evaluate(&policy, vec!["id1".to_string(), "id2".to_string()]));
-  assert!(policy::evaluate::evaluate(&policy, vec!["id3".to_string(), "id4".to_string()]));
-  assert!(!policy::evaluate::evaluate(&policy, vec!["id1".to_string(), "id4".to_string()]));
-  assert!(!policy::evaluate::evaluate(&policy, vec!["id2".to_string(), "id3".to_string()]));
+  assert!(policy.evaluate(vec!["id1".to_string(), "id2".to_string()]));
+  assert!(policy.evaluate(vec!["id3".to_string(), "id4".to_string()]));
+  assert!(!policy.evaluate(vec!["id1".to_string(), "id4".to_string()]));
+  assert!(!policy.evaluate(vec!["id2".to_string(), "id3".to_string()]));
 }
 
 #[test]

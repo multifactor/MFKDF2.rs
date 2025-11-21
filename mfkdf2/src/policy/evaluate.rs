@@ -2,12 +2,50 @@ use std::collections::HashSet;
 
 use super::Policy;
 
-pub fn evaluate(policy: &Policy, factor_ids: Vec<String>) -> bool {
-  let factor_set: HashSet<String> = factor_ids.into_iter().collect();
-  evaluate_internal(policy, &factor_set)
+impl Policy {
+  /// Evaluates the policy by checking if the given factor IDs are valid and sufficient to derive
+  /// the key.
+  ///
+  /// # Example
+  ///
+  /// ```rust
+  /// use mfkdf2::{
+  ///   policy,
+  ///   policy::PolicySetupOptions,
+  ///   setup::factors::password::{PasswordOptions, password},
+  /// };
+  /// #
+  /// let setup = policy::setup(
+  ///   policy::and(
+  ///     policy::or(
+  ///       password("password1", PasswordOptions { id: Some("pwd1".into()) })?,
+  ///       password("password2", PasswordOptions { id: Some("pwd2".into()) })?,
+  ///     )?,
+  ///     policy::or(
+  ///       password("password3", PasswordOptions { id: Some("pwd3".into()) })?,
+  ///       password("password4", PasswordOptions { id: Some("pwd4".into()) })?,
+  ///     )?,
+  ///   )?,
+  ///   PolicySetupOptions::default(),
+  /// )?;
+  ///
+  /// // Evaluate the policy with the given factor IDs.
+  /// let is_valid = setup.policy.evaluate(vec![String::from("pwd1"), String::from("pwd4")]);
+  /// assert!(is_valid);
+  ///
+  /// // invalid policy combination
+  /// let is_valid = setup.policy.evaluate(vec![String::from("pwd1"), String::from("pwd2")]);
+  /// assert!(!is_valid);
+  /// # Ok::<(), mfkdf2::error::MFKDF2Error>(())
+  /// ```
+  pub fn evaluate(&self, factor_ids: Vec<String>) -> bool {
+    let factor_set: HashSet<String> = factor_ids.into_iter().collect();
+    evaluate_internal(self, &factor_set)
+  }
 }
 
-pub(crate) fn evaluate_internal(policy: &Policy, factor_set: &HashSet<String>) -> bool {
+/// Recursively evaluates the policy by checking policy threshold is met by the given factor IDs.
+pub(super) fn evaluate_internal(policy: &Policy, factor_set: &HashSet<String>) -> bool {
   let threshold = policy.threshold;
   let mut actual = 0;
 
@@ -26,7 +64,6 @@ pub(crate) fn evaluate_internal(policy: &Policy, factor_set: &HashSet<String>) -
   actual >= threshold
 }
 
+#[cfg(feature = "bindings")]
 #[cfg_attr(feature = "bindings", uniffi::export(name = "policy_evaluate"))]
-pub fn policy_evaluate(policy: &Policy, factor_ids: Vec<String>) -> bool {
-  evaluate(policy, factor_ids)
-}
+fn policy_evaluate(policy: &Policy, factor_ids: Vec<String>) -> bool { policy.evaluate(factor_ids) }

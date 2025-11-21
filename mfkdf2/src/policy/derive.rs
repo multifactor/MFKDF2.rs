@@ -33,6 +33,56 @@ fn expand(
   Ok(parsed_factors)
 }
 
+/// Derives a key using the given policy and factors.
+///
+/// # Arguments
+///
+/// * `policy`: The [`Policy`] to use for the derivation.
+/// * `factors`: Map of factor IDs to [`MFKDF2Factor`] implementations. Usually derived using
+///  policy combinators ([`and`](`crate::policy::and`), [`or`](`crate::policy::or`),
+/// [`all`](`crate::policy::all`), [`any`](`crate::policy::any`)).
+/// * `verify`: Whether to verify the self-referential MFKDF2 policy integrity. Default is true.
+///
+/// # Example
+///
+/// ```rust
+/// # use std::collections::HashMap;
+/// use mfkdf2::{
+///   derive::factors::password as derive_password,
+///   policy::{PolicySetupOptions, and, derive, or, setup},
+///   setup::factors::password::{PasswordOptions, password},
+/// };
+/// let setup = setup(
+///   and(
+///     password("password1", PasswordOptions { id: Some("pwd1".into()) })?,
+///     or(
+///       password("password2", PasswordOptions { id: Some("pwd2".into()) })?,
+///       password("password3", PasswordOptions { id: Some("pwd3".into()) })?,
+///     )?,
+///   )?,
+///   PolicySetupOptions::default(),
+/// )?;
+///
+/// // Derive the key using the policy.
+/// let derived_key = derive(
+///   &setup.policy,
+///   &HashMap::from([
+///     ("pwd1".to_string(), derive_password("password1")?),
+///     ("pwd2".to_string(), derive_password("password2")?),
+///   ]),
+///   None,
+/// )?;
+/// assert_eq!(derived_key.key, setup.key);
+///
+/// // Derive the key using invalid factors.
+/// let derived_key = derive(
+///   &setup.policy,
+///   &HashMap::from([("pwd3".to_string(), derive_password("password3")?)]),
+///   None,
+/// );
+/// assert!(derived_key.is_err());
+/// # Ok::<(), mfkdf2::error::MFKDF2Error>(())
+/// ```
 pub fn derive(
   policy: &Policy,
   factors: &HashMap<String, MFKDF2Factor>,
@@ -49,11 +99,12 @@ pub fn derive(
 
   let expanded_factors = expand(policy, factors, &factor_set)?;
 
-  crate::derive::key::key(policy, expanded_factors, verify.unwrap_or(true), false)
+  crate::derive::key(policy, expanded_factors, verify.unwrap_or(true), false)
 }
 
+#[cfg(feature = "bindings")]
 #[cfg_attr(feature = "bindings", uniffi::export)]
-pub async fn policy_derive(
+fn policy_derive(
   policy: &Policy,
   factors: &HashMap<String, MFKDF2Factor>,
   verify: Option<bool>,
