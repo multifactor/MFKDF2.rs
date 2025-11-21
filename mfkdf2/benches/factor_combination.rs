@@ -2,6 +2,7 @@ use std::{collections::HashMap, hint::black_box};
 
 use criterion::{Criterion, criterion_group, criterion_main};
 use mfkdf2::{
+  definitions::MFKDF2Options,
   derive,
   derive::factors::totp::TOTPDeriveOptions,
   otpauth::{HashAlgorithm, generate_otp_token},
@@ -14,7 +15,6 @@ use mfkdf2::{
       totp::{TOTPOptions, totp},
       uuid::{UUIDOptions, uuid},
     },
-    key::MFKDF2Options,
   },
 };
 use uuid::Uuid;
@@ -52,7 +52,7 @@ fn bench_factor_combination_setup(c: &mut Criterion) {
         })
         .unwrap(),
       ]);
-      let result = black_box(setup::key::key(&factors, MFKDF2Options::default()));
+      let result = black_box(setup::key(&factors, MFKDF2Options::default()));
       result.unwrap()
     })
   });
@@ -76,7 +76,7 @@ fn bench_factor_combination_setup(c: &mut Criterion) {
         })
         .unwrap(),
       ]);
-      let result = black_box(setup::key::key(&factors, MFKDF2Options::default()));
+      let result = black_box(setup::key(&factors, MFKDF2Options::default()));
       result.unwrap()
     })
   });
@@ -101,7 +101,7 @@ fn bench_factor_combination_derive(c: &mut Criterion) {
   .unwrap();
 
   let options = MFKDF2Options { threshold: Some(2), ..Default::default() };
-  let setup_key = setup::key::key(&[factor1, factor2, factor3], options).unwrap();
+  let setup_key = setup::key(&[factor1, factor2, factor3], options).unwrap();
 
   // Pre-compute HOTP code for derive
   let policy_hotp_factor = setup_key.policy.factors.iter().find(|f| f.id == "hotp").unwrap();

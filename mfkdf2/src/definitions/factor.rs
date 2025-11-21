@@ -13,17 +13,17 @@ pub trait FactorMetadata: Send + Sync + std::fmt::Debug {
 
 /// MFKDF2 factor instance.
 ///
-/// In MFKDF2 protocol, a factor combines a secret piece of data (the factor
-/// material, often derived from a password, hardware token response, TOTP code,
-/// etc.) with some public state stored on the server. The job of a factor is to
-/// turn this dynamic user input into stable key material that can be reused
-/// across multiple key derivations.
+/// In MFKDF2 protocol, a factor combines a secret piece of data (the factor material, often derived
+/// from a password, hardware token response, TOTP code, etc.) with some public state stored on the
+/// server. The job of a factor is to turn this dynamic user input into stable key material that can
+/// be reused across multiple key derivations.
 ///
 /// Each factor has two core operations:
-/// - **setup**: creates an initial factor instance from a factor-specific configuration (e.g.,
-///   password policy, TOTP parameters, hardware token IDs).
-/// - **derive**: given a fresh user "witness" (e.g., the current password or OTP) and the current
-///   public state, produces new factor material and updated public state for the next use.
+/// - [setup](`crate::setup::FactorSetup`): creates an initial factor instance from a
+///   factor-specific configuration (e.g., password policy, TOTP parameters, hardware token IDs).
+/// - [derive](`crate::derive::FactorDerive`): given a fresh user "witness" (e.g., the current
+///   password or OTP) and the current public state, produces new factor material and updated public
+///   state for the next use.
 ///
 /// # Example
 ///

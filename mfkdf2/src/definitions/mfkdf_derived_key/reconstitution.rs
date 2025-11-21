@@ -1,3 +1,5 @@
+//!
+
 use std::collections::{BTreeMap, HashSet};
 
 use base64::{Engine, engine::general_purpose};
@@ -175,8 +177,9 @@ impl MFKDF2DerivedKey {
   }
 }
 
+#[cfg(feature = "bindings")]
 #[cfg_attr(feature = "bindings", uniffi::export)]
-pub fn derived_key_set_threshold(
+fn derived_key_set_threshold(
   derived_key: MFKDF2DerivedKey,
   threshold: u8,
 ) -> MFKDF2Result<MFKDF2DerivedKey> {
@@ -185,8 +188,9 @@ pub fn derived_key_set_threshold(
   Ok(derived_key)
 }
 
+#[cfg(feature = "bindings")]
 #[cfg_attr(feature = "bindings", uniffi::export)]
-pub fn derived_key_remove_factor(
+fn derived_key_remove_factor(
   derived_key: MFKDF2DerivedKey,
   factor: &str,
 ) -> MFKDF2Result<MFKDF2DerivedKey> {
@@ -195,8 +199,9 @@ pub fn derived_key_remove_factor(
   Ok(derived_key)
 }
 
+#[cfg(feature = "bindings")]
 #[cfg_attr(feature = "bindings", uniffi::export)]
-pub fn derived_key_remove_factors(
+fn derived_key_remove_factors(
   derived_key: MFKDF2DerivedKey,
   factors: &[String],
 ) -> MFKDF2Result<MFKDF2DerivedKey> {
@@ -205,8 +210,9 @@ pub fn derived_key_remove_factors(
   Ok(derived_key)
 }
 
+#[cfg(feature = "bindings")]
 #[cfg_attr(feature = "bindings", uniffi::export)]
-pub fn derived_key_add_factor(
+fn derived_key_add_factor(
   derived_key: MFKDF2DerivedKey,
   factor: MFKDF2Factor,
 ) -> MFKDF2Result<MFKDF2DerivedKey> {
@@ -215,8 +221,9 @@ pub fn derived_key_add_factor(
   Ok(derived_key)
 }
 
+#[cfg(feature = "bindings")]
 #[cfg_attr(feature = "bindings", uniffi::export)]
-pub fn derived_key_add_factors(
+fn derived_key_add_factors(
   derived_key: MFKDF2DerivedKey,
   factors: &[MFKDF2Factor],
 ) -> MFKDF2Result<MFKDF2DerivedKey> {
@@ -225,8 +232,9 @@ pub fn derived_key_add_factors(
   Ok(derived_key)
 }
 
+#[cfg(feature = "bindings")]
 #[cfg_attr(feature = "bindings", uniffi::export)]
-pub fn derived_key_recover_factor(
+fn derived_key_recover_factor(
   derived_key: MFKDF2DerivedKey,
   factor: MFKDF2Factor,
 ) -> MFKDF2Result<MFKDF2DerivedKey> {
@@ -235,8 +243,9 @@ pub fn derived_key_recover_factor(
   Ok(derived_key)
 }
 
+#[cfg(feature = "bindings")]
 #[cfg_attr(feature = "bindings", uniffi::export)]
-pub fn derived_key_recover_factors(
+fn derived_key_recover_factors(
   derived_key: MFKDF2DerivedKey,
   factors: &[MFKDF2Factor],
 ) -> MFKDF2Result<MFKDF2DerivedKey> {
@@ -245,8 +254,9 @@ pub fn derived_key_recover_factors(
   Ok(derived_key)
 }
 
+#[cfg(feature = "bindings")]
 #[cfg_attr(feature = "bindings", uniffi::export)]
-pub fn derived_key_reconstitute(
+fn derived_key_reconstitute(
   derived_key: MFKDF2DerivedKey,
   remove_factor: &[String],
   add_factor: &[MFKDF2Factor],
@@ -266,8 +276,10 @@ mod tests {
   use std::collections::HashMap;
 
   use crate::{
-    derive, derive::factors as derive_factors, error, setup,
-    setup::factors::password::PasswordOptions,
+    definitions::MFKDF2Options,
+    derive::{self, factors as derive_factors},
+    error,
+    setup::{self, factors::password::PasswordOptions},
   };
 
   #[test]
@@ -287,7 +299,7 @@ mod tests {
       })?,
     ];
 
-    let mut setup = setup::key(&setup_factors, setup::key::MFKDF2Options {
+    let mut setup = setup::key(&setup_factors, MFKDF2Options {
       threshold: Some(3),
       integrity: Some(false),
       ..Default::default()
@@ -325,7 +337,7 @@ mod tests {
       })?,
     ];
 
-    let options = setup::key::MFKDF2Options { threshold: Some(2), ..Default::default() };
+    let options = MFKDF2Options { threshold: Some(2), ..Default::default() };
     let mut setup_key = setup::key(&setup_factors, options)?;
     let key = setup_key.key.clone();
 
@@ -410,7 +422,7 @@ mod tests {
       })?,
     ];
 
-    let options = setup::key::MFKDF2Options { threshold: Some(2), ..Default::default() };
+    let options = MFKDF2Options { threshold: Some(2), ..Default::default() };
     let mut setup_key = setup::key(&setup_factors, options)?;
     let key = setup_key.key.clone();
 
@@ -474,7 +486,7 @@ mod tests {
       })?,
     ];
 
-    let options = setup::key::MFKDF2Options { threshold: Some(2), ..Default::default() };
+    let options = MFKDF2Options { threshold: Some(2), ..Default::default() };
     let mut setup_key = setup::key(&setup_factors, options)?;
     let key = setup_key.key.clone();
 
@@ -507,7 +519,7 @@ mod tests {
       })?,
     ];
 
-    let options = setup::key::MFKDF2Options { threshold: Some(2), ..Default::default() };
+    let options = MFKDF2Options { threshold: Some(2), ..Default::default() };
     let mut setup_key = setup::key(&setup_factors, options)?;
     let key = setup_key.key.clone();
 
@@ -548,7 +560,7 @@ mod tests {
       })?,
     ];
 
-    let options = setup::key::MFKDF2Options { threshold: Some(2), ..Default::default() };
+    let options = MFKDF2Options { threshold: Some(2), ..Default::default() };
     let mut setup_key = setup::key(&setup_factors, options)?;
     let key = setup_key.key.clone();
 
@@ -585,7 +597,7 @@ mod tests {
       })?,
     ];
 
-    let options = setup::key::MFKDF2Options { threshold: Some(2), ..Default::default() };
+    let options = MFKDF2Options { threshold: Some(2), ..Default::default() };
     let mut setup_key = setup::key(&setup_factors, options)?;
     let key = setup_key.key.clone();
 
@@ -626,7 +638,7 @@ mod tests {
       })?,
     ];
 
-    let options = setup::key::MFKDF2Options { threshold: Some(3), ..Default::default() };
+    let options = MFKDF2Options { threshold: Some(3), ..Default::default() };
     let mut setup_key = setup::key(&setup_factors, options)?;
     let key = setup_key.key.clone();
 
@@ -666,7 +678,7 @@ mod tests {
       })?,
     ];
 
-    let options = setup::key::MFKDF2Options { threshold: Some(2), ..Default::default() };
+    let options = MFKDF2Options { threshold: Some(2), ..Default::default() };
     let mut setup_key = setup::key(&setup_factors, options)?;
     let key = setup_key.key.clone();
 
@@ -700,7 +712,7 @@ mod tests {
       })?,
     ];
 
-    let options = setup::key::MFKDF2Options { threshold: Some(3), ..Default::default() };
+    let options = MFKDF2Options { threshold: Some(3), ..Default::default() };
     let mut setup_key = setup::key(&setup_factors, options)?;
 
     let result = setup_key.reconstitute(
@@ -730,7 +742,7 @@ mod tests {
       })?,
     ];
 
-    let options = setup::key::MFKDF2Options { threshold: Some(3), ..Default::default() };
+    let options = MFKDF2Options { threshold: Some(3), ..Default::default() };
     let mut setup_key = setup::key(&setup_factors, options)?;
 
     let result = setup_key.reconstitute(
@@ -765,7 +777,7 @@ mod tests {
       })?,
     ];
 
-    let options = setup::key::MFKDF2Options { threshold: Some(3), ..Default::default() };
+    let options = MFKDF2Options { threshold: Some(3), ..Default::default() };
     let mut setup_key = setup::key(&setup_factors, options)?;
 
     let result = setup_key.reconstitute(&["password1", "password2", "password3"], &[], Some(4));

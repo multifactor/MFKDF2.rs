@@ -11,7 +11,7 @@
 //! generated static source material κᵢ. The factor’s public state βᵢ then stores an encrypted
 //! version of σᵢ (using the key feedback mechanism) and public helper data.
 pub mod factors;
-pub mod key;
+mod key;
 
 pub use key::key;
 use serde::{Deserialize, Serialize};

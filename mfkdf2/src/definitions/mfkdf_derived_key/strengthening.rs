@@ -17,8 +17,9 @@ impl MFKDF2DerivedKey {
   ///
   /// Clients should persist the updated `policy` back to their storage (e.g. user database)
   /// and discard the old one. Any attempt to reuse or roll back the previous policy will fail
-  /// the integrity check during the next derive (`PolicyIntegrityCheckFailed`), ensuring that
-  /// only a user who can compute the correct key can authorize an increase in cost.
+  /// the integrity check during the next derive
+  /// [`MFKDF2Error::PolicyIntegrityCheckFailed`](`crate::error::MFKDF2Error::PolicyIntegrityCheckFailed`),
+  /// ensuring that only a user who can compute the correct key can authorize an increase in cost.
   ///
   /// The `time` and `memory` arguments are additive deltas over the library defaults used at
   /// setup time. Internally they are applied as `DEFAULT_T_COST + time` and
@@ -129,10 +130,11 @@ mod tests {
   use std::collections::HashMap;
 
   use crate::{
+    definitions::MFKDF2Options,
     derive,
     derive::factors as derive_factors,
     error,
-    setup::{self, factors::password::PasswordOptions, key::MFKDF2Options},
+    setup::{self, factors::password::PasswordOptions},
   };
 
   #[test]

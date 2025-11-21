@@ -9,12 +9,9 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 use crate::{
-  definitions::{FactorMetadata, FactorType, Key, MFKDF2DerivedKey, MFKDF2Factor},
+  definitions::{FactorMetadata, FactorType, Key, MFKDF2DerivedKey, MFKDF2Factor, MFKDF2Options},
   error::{MFKDF2Error, MFKDF2Result},
-  setup::{
-    FactorSetup,
-    key::{self, MFKDF2Options},
-  },
+  setup::{FactorSetup, key},
 };
 
 /// Options for constructing a stack factor.
