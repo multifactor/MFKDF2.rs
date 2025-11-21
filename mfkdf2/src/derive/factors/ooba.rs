@@ -104,11 +104,11 @@ impl FactorDerive for Ooba {
 /// #   setup::{
 /// #     self,
 /// #     factors::ooba::{ooba as setup_ooba, OobaOptions},
-/// #     key::MFKDF2Options,
 /// #   },
+/// #   definitions::MFKDF2Options,
 /// #   derive,
+/// #   derive::factors::ooba as derive_ooba,
 /// # };
-/// # use mfkdf2::derive::factors::ooba as derive_ooba;
 /// # use base64::Engine;
 /// # use sha2::Sha256;
 /// # use rsa::Oaep;

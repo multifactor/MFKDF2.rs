@@ -47,10 +47,10 @@ impl FactorDerive for Persisted {
 /// #   setup::{
 /// #     self,
 /// #     factors::password::{PasswordOptions, password as setup_password},
-/// #     key::MFKDF2Options,
 /// #   },
+/// #   definitions::MFKDF2Options,
+/// #   derive::factors::persisted::persisted,
 /// # };
-/// # use mfkdf2::derive::factors::persisted::persisted;
 /// #
 /// # fn main() -> MFKDF2Result<()> {
 /// let setup_key = setup::key(

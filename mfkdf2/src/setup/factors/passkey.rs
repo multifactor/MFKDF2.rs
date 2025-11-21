@@ -69,13 +69,14 @@ impl Default for PasskeyOptions {
 /// provided secret as MFKDF2 factor material with a fixed 256‑bit entropy estimate.
 ///
 /// # Errors
-/// - [`MFKDF2Error::MissingFactorId`] if `options.id` is present but empty
+/// - [MFKDF2Error::MissingFactorId](`crate::error::MFKDF2Error::MissingFactorId`) if `options.id`
+///   is present but empty
 ///
 /// # Example
 ///
 /// ```rust
-/// # use mfkdf2::setup::factors::passkey::{passkey, PasskeyOptions};
-/// # use rand::{RngCore, rngs::OsRng};
+/// use mfkdf2::setup::factors::passkey::{PasskeyOptions, passkey};
+/// use rand::{RngCore, rngs::OsRng};
 /// #
 /// // application stores a per‑credential PRF output from the platform authenticator
 /// let mut prf = [0u8; 32];

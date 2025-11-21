@@ -63,10 +63,10 @@ impl FactorDerive for Stack {
 /// #       password::{PasswordOptions, password as setup_password},
 /// #       stack::{StackOptions, stack as setup_stack},
 /// #     },
-/// #     key::MFKDF2Options,
 /// #   },
+/// #   definitions::MFKDF2Options,
+/// #   derive::factors::{password as derive_password, stack as derive_stack},
 /// # };
-/// # use mfkdf2::derive::factors::{password as derive_password, stack as derive_stack};
 /// #
 /// # fn main() -> MFKDF2Result<()> {
 /// let f1 = setup_password("password123", PasswordOptions { id: Some("pwd1".into()) })?;

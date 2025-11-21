@@ -1,5 +1,5 @@
-//! Policy-based key derivation combines [key stacking](`crate::setup::factors::stack`) and
-//! [threshold key derivation](`crate::derive::key::key`) behind the scenes to allow keys to be
+//! Policy-based key derivation combines [key stacking](`mod@crate::setup::factors::stack`) and
+//! [threshold key derivation](`crate::derive::key`) behind the scenes to allow keys to be
 //! setup and derived using arbitrarily-complex policies combining a number of factors.
 //!
 //! Policy is a JSON schema that defines the allowed combinations of factors that can be used to

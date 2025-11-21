@@ -41,11 +41,11 @@ impl FactorDerive for UUIDFactor {
 /// #   setup::{
 /// #     self,
 /// #     factors::uuid::{uuid as setup_uuid, UUIDOptions},
-/// #     key::MFKDF2Options,
 /// #   },
+/// #   definitions::MFKDF2Options,
 /// #   derive,
+/// #   derive::factors::uuid as derive_uuid,
 /// # };
-/// # use mfkdf2::derive::factors::uuid as derive_uuid;
 /// #
 /// # fn main() -> MFKDF2Result<()> {
 /// let id = Uuid::parse_str("f9bf78b9-54e7-4696-97dc-5e750de4c592").unwrap();

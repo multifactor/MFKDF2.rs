@@ -226,9 +226,13 @@ pub fn mod_positive(n: i64, m: i64) -> u32 { (((n % m) + m) % m) as u32 }
 /// Pairing with an authenticator app using a known secret:
 ///
 /// ```rust
-/// # use mfkdf2::setup::factors::hotp::{hotp, HOTPOptions};
-/// # use mfkdf2::otpauth::HashAlgorithm;
-/// # use mfkdf2::setup::FactorSetup;
+/// use mfkdf2::{
+///   otpauth::HashAlgorithm,
+///   setup::{
+///     FactorSetup,
+///     factors::hotp::{HOTPOptions, hotp},
+///   },
+/// };
 ///
 /// let options = HOTPOptions {
 ///   id:     Some("login-hotp".into()),

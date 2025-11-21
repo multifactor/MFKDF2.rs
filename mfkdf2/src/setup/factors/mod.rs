@@ -51,19 +51,22 @@ impl FactorSetup for FactorType {
   fn output(&self) -> Self::Output { self.setup().output() }
 }
 
-// Standalone exported functions for FFI
+#[cfg(feature = "bindings")]
 #[cfg_attr(feature = "bindings", uniffi::export)]
 pub fn factor_type_kind(factor_type: &FactorType) -> String { factor_type.kind() }
 
+#[cfg(feature = "bindings")]
 #[cfg_attr(feature = "bindings", uniffi::export)]
-pub fn factor_type_bytes(factor_type: &FactorType) -> Vec<u8> { factor_type.bytes() }
+fn factor_type_bytes(factor_type: &FactorType) -> Vec<u8> { factor_type.bytes() }
 
+#[cfg(feature = "bindings")]
 #[cfg_attr(feature = "bindings", uniffi::export)]
-pub fn setup_factor_type_params(factor_type: &FactorType, key: Option<Key>) -> MFKDF2Result<Value> {
+fn setup_factor_type_params(factor_type: &FactorType, key: Option<Key>) -> MFKDF2Result<Value> {
   // TODO (@lonerapier): remove dummy key usage
   let key = key.unwrap_or_else(|| [0u8; 32].into());
   factor_type.params(key)
 }
 
+#[cfg(feature = "bindings")]
 #[cfg_attr(feature = "bindings", uniffi::export)]
-pub fn setup_factor_type_output(factor_type: &FactorType) -> Value { factor_type.output() }
+fn setup_factor_type_output(factor_type: &FactorType) -> Value { factor_type.output() }

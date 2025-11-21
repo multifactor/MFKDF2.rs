@@ -41,11 +41,11 @@ impl FactorDerive for Password {
 /// #   setup::{
 /// #     self,
 /// #     factors::password::{PasswordOptions, password as setup_password},
-/// #     key::MFKDF2Options,
 /// #   },
+/// #   definitions::MFKDF2Options,
 /// #   derive,
+/// #   derive::factors::password as derive_password,
 /// # };
-/// # use mfkdf2::derive::factors::password as derive_password;
 /// #
 /// # fn main() -> MFKDF2Result<()> {
 /// let setup_factor = setup_password("correct horse battery staple", PasswordOptions::default())?;

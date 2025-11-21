@@ -49,8 +49,8 @@ impl FactorDerive for Question {
 /// #   setup::{
 /// #     self,
 /// #     factors::question::{QuestionOptions, question as setup_question},
-/// #     key::MFKDF2Options,
 /// #   },
+/// #   definitions::MFKDF2Options,
 /// #   derive,
 /// # };
 /// # use mfkdf2::derive::factors::question as derive_question;

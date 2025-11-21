@@ -50,6 +50,7 @@ pub fn generate_alphanumeric_characters(length: u32) -> String {
     .collect()
 }
 
+/// Wrapper for the RSA public key used to encrypt the next OOBA payload
 pub struct OobaPublicKey(pub RsaPublicKey);
 
 /// Options for configuring an OOBA factor
@@ -172,8 +173,8 @@ impl FactorSetup for Ooba {
 /// # Example
 ///
 /// ```rust
-/// # use mfkdf2::setup::factors::ooba::{ooba, OobaOptions};
-/// # use jsonwebtoken::jwk::Jwk;
+/// use mfkdf2::setup::factors::ooba::{ooba, OobaOptions};
+/// use jsonwebtoken::jwk::Jwk;
 /// # let jwk: Jwk = serde_json::from_str(r#"{"kty":"RSA","n":"...","e":"AQAB"}"#).unwrap();
 /// let options = OobaOptions {
 ///   id: Some("push-ooba".into()),
@@ -189,8 +190,8 @@ impl FactorSetup for Ooba {
 /// Invalid length
 ///
 /// ```rust
-/// # use mfkdf2::setup::factors::ooba::{ooba, OobaOptions};
-/// # use jsonwebtoken::jwk::Jwk;
+/// use mfkdf2::setup::factors::ooba::{ooba, OobaOptions};
+/// use jsonwebtoken::jwk::Jwk;
 /// # let jwk: Jwk = serde_json::from_str(r#"{"kty":"RSA","alg":"RSA-OAEP-256","n":"AA","e":"AQAB"}"#).unwrap();
 /// # use mfkdf2::error::MFKDF2Error;
 /// let options = OobaOptions {
