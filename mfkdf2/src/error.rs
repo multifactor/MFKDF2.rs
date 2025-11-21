@@ -4,6 +4,7 @@
 pub type MFKDF2Result<T> = Result<T, MFKDF2Error>;
 
 /// Error type for MFKDF2 operations.
+#[allow(missing_docs)]
 #[cfg_attr(feature = "bindings", derive(uniffi::Error), uniffi(flat_error))]
 #[derive(thiserror::Error, Debug)]
 pub enum MFKDF2Error {

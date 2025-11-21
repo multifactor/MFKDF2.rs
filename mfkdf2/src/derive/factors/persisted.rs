@@ -10,9 +10,11 @@ use crate::{
   error::MFKDF2Result,
 };
 
+/// Persisted share factor state.
 #[cfg_attr(feature = "bindings", derive(uniffi::Record))]
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Persisted {
+  /// Base-64 encoded Shamir share to recover the master secret.
   pub share: Vec<u8>,
 }
 
@@ -52,7 +54,6 @@ impl FactorDerive for Persisted {
 /// #   derive::factors::persisted::persisted,
 /// # };
 /// #
-/// # fn main() -> MFKDF2Result<()> {
 /// let setup_key = setup::key(
 ///   &[setup_password("password", PasswordOptions::default())?],
 ///   MFKDF2Options::default(),
@@ -63,8 +64,7 @@ impl FactorDerive for Persisted {
 /// let derived =
 ///   derive::key(&setup_key.policy, HashMap::from([("password".to_string(), factor)]), true, false)?;
 /// assert_eq!(derived.key, setup_key.key);
-/// # Ok(())
-/// # }
+/// # Ok::<(), mfkdf2::error::MFKDF2Error>(())
 /// ```
 pub fn persisted(share: Vec<u8>) -> MFKDF2Result<MFKDF2Factor> {
   Ok(MFKDF2Factor {

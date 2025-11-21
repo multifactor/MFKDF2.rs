@@ -92,13 +92,11 @@ impl FactorDerive for HOTP {
 /// #   otpauth::HashAlgorithm,
 /// #   setup::{
 /// #     self,
-/// #     factors::hotp::{HOTPOptions, hotp as setup_hotp},
+/// #     factors::hotp::{HOTPOptions},
 /// #   },
 /// #   definitions::MFKDF2Options,
 /// #   derive,
 /// # };
-/// #
-/// # fn main() -> MFKDF2Result<()> {
 /// let secret = b"hello world mfkdf2!!".to_vec();
 /// let options = HOTPOptions {
 ///   id: Some("hotp".to_string()),
@@ -108,7 +106,7 @@ impl FactorDerive for HOTP {
 ///   ..Default::default()
 /// };
 ///
-/// let setup_factor = setup_hotp(options)?;
+/// let setup_factor = setup::factors::hotp(options)?;
 /// let hotp = if let mfkdf2::definitions::FactorType::HOTP(ref h) = setup_factor.factor_type {
 ///   h.clone()
 /// } else {
@@ -126,7 +124,7 @@ impl FactorDerive for HOTP {
 ///   hotp.config.digits,
 /// );
 ///
-/// let derive_factor = crate::derive::factors::hotp(code)?;
+/// let derive_factor = derive::factors::hotp(code)?;
 /// let derived_key = derive::key(
 ///   &setup_key.policy,
 ///   HashMap::from([("hotp".to_string(), derive_factor)]),
@@ -135,8 +133,7 @@ impl FactorDerive for HOTP {
 /// )?;
 ///
 /// assert_eq!(derived_key.key, setup_key.key);
-/// # Ok(())
-/// # }
+/// # Ok::<(), mfkdf2::error::MFKDF2Error>(())
 /// ```
 pub fn hotp(code: u32) -> MFKDF2Result<MFKDF2Factor> {
   // Create HOTP factor with the user-provided code

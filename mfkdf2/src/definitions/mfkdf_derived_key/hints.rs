@@ -97,15 +97,13 @@ impl MFKDF2DerivedKey {
   ///
   /// use mfkdf2::{
   ///   definitions::MFKDF2Options,
-  ///   derive::{self, factors::password as derive_password},
+  ///   derive,
   ///   error::MFKDF2Error,
   ///   setup::{
   ///     self,
   ///     factors::{password, password::PasswordOptions},
   ///   },
   /// };
-  ///
-  /// # fn main() -> Result<(), MFKDF2Error> {
   /// // Create a policy with a single password factor.
   /// let mut setup_key = setup::key(
   ///   &[password("correct horse battery staple", PasswordOptions {
@@ -125,14 +123,16 @@ impl MFKDF2DerivedKey {
   /// // hints and return `MFKDF2Error::HintMismatch` if they do not match.
   /// let derived_key = derive::key(
   ///   &setup_key.policy,
-  ///   HashMap::from([("password1".to_string(), derive_password("correct horse battery staple")?)]),
+  ///   HashMap::from([(
+  ///     "password1".to_string(),
+  ///     derive::factors::password("correct horse battery staple")?,
+  ///   )]),
   ///   true,  // integrity
   ///   false, // allow_partial
   /// )?;
   ///
   /// assert_eq!(derived_key.key, setup_key.key);
-  /// # Ok(())
-  /// # }
+  /// # Ok::<(), mfkdf2::error::MFKDF2Error>(())
   /// ```
   pub fn add_hint(&mut self, factor_id: &str, bits: Option<u8>) -> Result<(), MFKDF2Error> {
     let bits = bits.unwrap_or(7);

@@ -14,12 +14,10 @@ impl crate::definitions::MFKDF2DerivedKey {
   ///     factors::{password, password::PasswordOptions},
   ///   },
   /// };
-  /// # fn main() -> Result<(), MFKDF2Error> {
   /// let setup_key =
   ///   setup::key(&[password("password", PasswordOptions::default())?], MFKDF2Options::default())?;
   /// let share = setup_key.persist_factor("password");
-  /// #   Ok(())
-  /// # }
+  /// #   Ok::<(), mfkdf2::error::MFKDF2Error>(())
   /// ```
   pub fn persist_factor(&self, id: &str) -> Vec<u8> {
     let index = self.policy.factors.iter().position(|f| f.id == id).unwrap();

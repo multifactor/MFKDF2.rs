@@ -39,6 +39,7 @@ use crate::{
   setup::FactorSetup,
 };
 
+/// Generates a random alphanumeric string of the given length.
 #[inline]
 #[must_use]
 pub fn generate_alphanumeric_characters(length: u32) -> String {

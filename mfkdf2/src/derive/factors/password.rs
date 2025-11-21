@@ -46,8 +46,6 @@ impl FactorDerive for Password {
 /// #   derive,
 /// #   derive::factors::password as derive_password,
 /// # };
-/// #
-/// # fn main() -> MFKDF2Result<()> {
 /// let setup_factor = setup_password("correct horse battery staple", PasswordOptions::default())?;
 /// let setup_key = setup::key(&[setup_factor], MFKDF2Options::default())?;
 ///
@@ -60,8 +58,7 @@ impl FactorDerive for Password {
 /// )?;
 ///
 /// assert_eq!(derived_key.key, setup_key.key);
-/// # Ok(())
-/// # }
+/// # Ok::<(), mfkdf2::error::MFKDF2Error>(())
 /// ```
 pub fn password(password: impl Into<String>) -> MFKDF2Result<MFKDF2Factor> {
   let password = std::convert::Into::<String>::into(password);

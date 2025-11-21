@@ -50,7 +50,9 @@ impl From<StackOptions> for MFKDF2Options {
 #[cfg_attr(feature = "bindings", derive(uniffi::Record))]
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Stack {
+  /// Map of underlying factors keyed by their ids.
   pub factors: HashMap<String, MFKDF2Factor>,
+  /// Final Derived key.
   pub key:     MFKDF2DerivedKey,
 }
 

@@ -78,14 +78,24 @@ impl Default for HOTPOptions {
   }
 }
 
+/// HOTP configuration.
 #[cfg_attr(feature = "bindings", derive(uniffi::Record))]
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct HOTPConfig {
+  /// Optional application-defined identifier for the factor. Defaults to `"hotp"`. If
+  /// provided, it must be non-empty
   pub id:     String,
+  /// 20‑byte HOTP secret. If omitted, a random secret is generated
   pub secret: Vec<u8>,
+  /// Number of digits in the OTP code (6–8). Values outside this range cause
+  /// [`MFKDF2Error::InvalidHOTPDigits`]
   pub digits: u32,
+  /// Hash algorithm used by the HOTP generator (default: SHA‑1)
   pub hash:   HashAlgorithm,
+  /// A string value indicating the provider or service the credential is associated with.
   pub issuer: String,
+  /// A string value identifying which account a credential is associated with. It also serves
+  /// as the unique identifier for the credential itself.
   pub label:  String,
 }
 
@@ -205,6 +215,7 @@ impl FactorSetup for HOTP {
   }
 }
 
+/// Modulus operation to ensure the result is positive.
 #[inline]
 #[must_use]
 pub fn mod_positive(n: i64, m: i64) -> u32 { (((n % m) + m) % m) as u32 }

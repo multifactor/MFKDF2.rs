@@ -27,11 +27,13 @@ use crate::{
   },
 };
 
+/// Options for configuring a TOTP factor derive.
 #[cfg_attr(feature = "bindings", derive(uniffi::Record))]
 #[derive(Clone, Debug, Default, Serialize, Deserialize)]
 pub struct TOTPDeriveOptions {
   /// Unix time in milliseconds used for derive; defaults to the current system time when omitted
   pub time:   Option<u64>,
+  /// Optional timing oracle to harden TOTP factor construction
   pub oracle: Option<HashMap<u64, u32>>,
 }
 
@@ -175,8 +177,6 @@ impl FactorDerive for TOTP {
 ///   },
 ///   definitions::MFKDF2Options,
 /// };
-/// #
-/// # fn main() -> MFKDF2Result<()> {
 /// let now_ms = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_millis() as u64;
 /// let options =
 ///   TOTPOptions { secret: Some(b"hello world mfkdf2!!".to_vec()), ..Default::default() };
@@ -205,8 +205,7 @@ impl FactorDerive for TOTP {
 /// )?;
 ///
 /// assert_eq!(derived_key.key, setup_key.key);
-/// # Ok(())
-/// # }
+/// # Ok::<(), mfkdf2::error::MFKDF2Error>(())
 /// ```
 pub fn totp(code: u32, options: Option<TOTPDeriveOptions>) -> MFKDF2Result<MFKDF2Factor> {
   let mut options = options.unwrap_or_default();

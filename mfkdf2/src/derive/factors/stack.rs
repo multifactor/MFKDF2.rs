@@ -67,8 +67,6 @@ impl FactorDerive for Stack {
 /// #   definitions::MFKDF2Options,
 /// #   derive::factors::{password as derive_password, stack as derive_stack},
 /// # };
-/// #
-/// # fn main() -> MFKDF2Result<()> {
 /// let f1 = setup_password("password123", PasswordOptions { id: Some("pwd1".into()) })?;
 /// let f2 = setup_password("password456", PasswordOptions { id: Some("pwd2".into()) })?;
 /// let stack_factor = setup_stack(vec![f1, f2], StackOptions {
@@ -90,8 +88,7 @@ impl FactorDerive for Stack {
 ///   false,
 /// )?;
 /// assert_eq!(derived_key.key, setup_key.key);
-/// # Ok(())
-/// # }
+/// # Ok::<(), mfkdf2::error::MFKDF2Error>(())
 /// ```
 pub fn stack(factors: HashMap<String, MFKDF2Factor>) -> MFKDF2Result<MFKDF2Factor> {
   if factors.is_empty() {
@@ -136,7 +133,6 @@ mod tests {
       StackOptions { id: Some("my-stack".to_string()), threshold: Some(2), salt: None };
 
     let stack_factor = setup_stack(factors, options).unwrap();
-    // let params = stack_factor.factor_type.params_setup([0; 32]);
 
     crate::setup::key(&[stack_factor], MFKDF2Options::default())
       .expect("derived key should be created")

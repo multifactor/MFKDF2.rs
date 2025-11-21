@@ -304,7 +304,7 @@ mod tests {
     .unwrap();
 
     let setup = setup::key(
-      &[setup::factors::ooba::ooba(OobaOptions {
+      &[setup::factors::ooba(OobaOptions {
         key: Some(jwk),
         params: Some(json!({ "email": "test@mfkdf.com" })),
         ..Default::default()

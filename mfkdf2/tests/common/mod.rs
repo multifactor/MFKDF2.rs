@@ -205,7 +205,7 @@ pub fn create_setup_factor(name: &str) -> mfkdf2::definitions::MFKDF2Factor {
       let rsa_public_key =
         RsaPublicKey::from_pkcs1_der(&hex::decode(RSA_PUBLIC_KEY).unwrap()).unwrap();
       let test_jwk = jwk(&rsa_public_key);
-      mfkdf2::setup::factors::ooba::ooba(mfkdf2::setup::factors::ooba::OobaOptions {
+      mfkdf2::setup::factors::ooba(mfkdf2::setup::factors::ooba::OobaOptions {
         id:     Some("ooba_1".to_string()),
         length: Some(8),
         key:    Some(test_jwk),

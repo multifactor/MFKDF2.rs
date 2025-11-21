@@ -51,7 +51,7 @@ mod global_rng {
 
   /// [`GlobalRng`] is a facade around the `rand` crate's [`rand::rngs::OsRng`] to provide the same
   /// interface.
-  pub struct GlobalRng;
+  pub(crate) struct GlobalRng;
 
   impl RngCore for GlobalRng {
     fn next_u32(&mut self) -> u32 { OsRng.next_u32() }
@@ -66,18 +66,18 @@ mod global_rng {
   }
   impl CryptoRng for GlobalRng {}
 
-  pub fn fill_bytes(dst: &mut [u8]) { GlobalRng.fill_bytes(dst); }
+  pub(crate) fn fill_bytes(dst: &mut [u8]) { GlobalRng.fill_bytes(dst); }
 
-  pub fn next_u32() -> u32 { GlobalRng.next_u32() }
+  pub(crate) fn next_u32() -> u32 { GlobalRng.next_u32() }
 
-  pub fn gen_range_u32(max: u32) -> u32 { if max == 0 { 0 } else { next_u32() % max } }
+  pub(crate) fn gen_range_u32(max: u32) -> u32 { if max == 0 { 0 } else { next_u32() % max } }
 
-  pub fn gen_range_u8(max: u8) -> u8 {
+  pub(crate) fn gen_range_u8(max: u8) -> u8 {
     if max == 0 { 0 } else { (next_u32() % u32::from(max)) as u8 }
   }
 }
 
-pub use global_rng::*;
+pub(crate) use global_rng::*;
 
 #[cfg(test)]
 mod tests {
