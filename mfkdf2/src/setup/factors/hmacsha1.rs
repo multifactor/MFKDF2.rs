@@ -102,16 +102,17 @@ impl FactorSetup for HmacSha1 {
 /// Validates the id, ensures the secret is exactly 20 bytes (or generates a random one), and
 /// returns an [`MFKDF2Factor`] with 160 bits of entropy.
 ///
-/// The factor is consumed by the derive side via [`crate::derive::factors::hmacsha1::hmacsha1`]
-/// which accepts an [`HmacSha1Response`] (the 20‑byte HMAC‑SHA1 output from the hardware token for
-/// the current challenge) and reconstructs the original secret.
+/// The factor is consumed by the derive side via
+/// [derive::hmacsha1](`crate::derive::factors::hmacsha1`) which accepts an
+/// [`HmacSha1Response`] (the 20‑byte HMAC‑SHA1 output from the hardware token for the current
+/// challenge) and reconstructs the original secret.
 ///
 /// # Errors
 /// - [`crate::error::MFKDF2Error::MissingFactorId`] if `id` is provided but empty.
 /// - [`crate::error::MFKDF2Error::InvalidSecretLength`] if `secret` is supplied with a length other
 ///   than 20 bytes.
 ///
-/// When driving this factor through [`crate::derive::key::key`], derivation may additionally fail
+/// When driving this factor through [`crate::derive::key`], derivation may additionally fail
 /// with:
 /// - [`crate::error::MFKDF2Error::MissingDeriveParams`] if the persisted policy params for this
 ///   factor are missing the `"pad"` field;
@@ -121,14 +122,14 @@ impl FactorSetup for HmacSha1 {
 /// # Example
 ///
 /// ```rust
-/// # use mfkdf2::{
-/// #   error::MFKDF2Result,
-/// #   setup::{
-/// #     self,
-/// #     factors::hmacsha1::{HmacSha1Options, hmacsha1},
-/// #     key::MFKDF2Options,
-/// #   },
-/// # };
+/// use mfkdf2::{
+///   definitions::MFKDF2Options,
+///   error::MFKDF2Result,
+///   setup::{
+///     self,
+///     factors::hmacsha1::{HmacSha1Options, hmacsha1},
+///   },
+/// };
 ///
 /// # fn main() -> MFKDF2Result<()> {
 /// # const HMACSHA1_SECRET: [u8; 20] = [0x11; 20];
@@ -137,7 +138,7 @@ impl FactorSetup for HmacSha1 {
 ///   HmacSha1Options { id: Some("token".into()), secret: Some(HMACSHA1_SECRET.to_vec()) };
 /// let factor = hmacsha1(options)?;
 ///
-/// let setup_key = setup::key::key(&[factor], MFKDF2Options::default())?;
+/// let setup_key = setup::key(&[factor], MFKDF2Options::default())?;
 /// #
 /// # Ok(())
 /// # }

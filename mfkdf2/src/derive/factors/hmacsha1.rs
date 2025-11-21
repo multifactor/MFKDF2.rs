@@ -92,8 +92,8 @@ impl FactorDerive for HmacSha1 {
 /// #   setup::{
 /// #     self,
 /// #     factors::hmacsha1::{HmacSha1Options, hmacsha1 as setup_hmacsha1},
-/// #     key::MFKDF2Options,
 /// #   },
+/// #   definitions::MFKDF2Options,
 /// #   derive,
 /// # };
 /// # use hmac::{Mac, Hmac};

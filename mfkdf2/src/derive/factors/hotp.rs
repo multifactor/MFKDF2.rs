@@ -86,8 +86,8 @@ impl FactorDerive for HOTP {
 /// #   setup::{
 /// #     self,
 /// #     factors::hotp::{HOTPOptions, hotp as setup_hotp},
-/// #     key::MFKDF2Options,
 /// #   },
+/// #   definitions::MFKDF2Options,
 /// #   derive,
 /// # };
 /// #

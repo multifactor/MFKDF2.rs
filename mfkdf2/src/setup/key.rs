@@ -57,23 +57,21 @@ use crate::{
 ///
 /// ```rust
 /// use mfkdf2::{
+///   definitions::MFKDF2Options,
 ///   error::{MFKDF2Error, MFKDF2Result},
 ///   setup::{
 ///     self,
 ///     factors::password::{PasswordOptions, password},
-///     key::{MFKDF2Options, key},
 ///   },
 /// };
 ///
-/// fn main() -> MFKDF2Result<()> {
-///   let factors = vec![password("correct horse battery staple", PasswordOptions::default())?];
-///   let options = MFKDF2Options::default();
+/// let factors = vec![password("correct horse battery staple", PasswordOptions::default())?];
+/// let options = MFKDF2Options::default();
 ///
-///   let setup_key = key(&factors, options)?;
+/// let setup_key = setup::key(&factors, options)?;
 ///
-///   assert_eq!(setup_key.policy.threshold as usize, factors.len());
-///   Ok(())
-/// }
+/// assert_eq!(setup_key.policy.threshold as usize, factors.len());
+/// #  Ok::<(), mfkdf2::error::MFKDF2Error>(())
 /// ```
 ///
 /// Explicit threshold with multiple heterogeneous factors, useful when only a subset of factors
@@ -81,6 +79,7 @@ use crate::{
 ///
 /// ```rust
 /// use mfkdf2::{
+///   definitions::MFKDF2Options,
 ///   error::MFKDF2Result,
 ///   setup::{
 ///     self,
@@ -88,23 +87,20 @@ use crate::{
 ///       hmacsha1::{HmacSha1Options, hmacsha1},
 ///       password::{PasswordOptions, password},
 ///     },
-///     key::{MFKDF2Options, key},
 ///   },
 /// };
 ///
-/// fn main() -> MFKDF2Result<()> {
-///   let password_factor = password("password123", PasswordOptions { id: Some("pw".to_string()) })?;
-///   let hmac_factor =
-///     hmacsha1(HmacSha1Options { id: Some("hmac".to_string()), secret: Some(vec![0u8; 20]) })?;
+/// let password_factor = password("password123", PasswordOptions { id: Some("pw".to_string()) })?;
+/// let hmac_factor =
+///   hmacsha1(HmacSha1Options { id: Some("hmac".to_string()), secret: Some(vec![0u8; 20]) })?;
 ///
-///   let factors = vec![password_factor, hmac_factor];
-///   let options = MFKDF2Options { threshold: Some(1), ..Default::default() };
+/// let factors = vec![password_factor, hmac_factor];
+/// let options = MFKDF2Options { threshold: Some(1), ..Default::default() };
 ///
-///   let setup_key = key(&factors, options)?;
+/// let setup_key = setup::key(&factors, options)?;
 ///
-///   assert_eq!(setup_key.policy.threshold, 1);
-///   Ok(())
-/// }
+/// assert_eq!(setup_key.policy.threshold, 1);
+/// #  Ok::<(), mfkdf2::error::MFKDF2Error>(())
 /// ```
 ///
 /// Using a caller‑supplied salt and explicit policy identifier to obtain reproducible policy
@@ -112,73 +108,75 @@ use crate::{
 ///
 /// ```rust
 /// use mfkdf2::{
+///   definitions::MFKDF2Options,
 ///   error::MFKDF2Result,
 ///   setup::{
+///     self,
 ///     factors::password::{PasswordOptions, password},
-///     key::{MFKDF2Options, key},
 ///   },
 /// };
 ///
-/// fn main() -> MFKDF2Result<()> {
-///   let factor = password("password123", PasswordOptions { id: Some("pw".to_string()) })?;
-///   let salt = vec![42u8; 32];
-///   let options = MFKDF2Options {
-///     id: Some("my‑policy‑id".to_string()),
-///     salt: Some(salt),
-///     ..Default::default()
+/// let factor = password("password123", PasswordOptions { id: Some("pw".to_string()) })?;
+/// let salt = vec![42u8; 32];
+/// let options =
+///   MFKDF2Options {
+///     id: Some("my‑policy‑id".to_string()), salt: Some(salt), ..Default::default()
 ///   };
 ///
-///   let setup_key = key(&[factor], options)?;
+/// let setup_key = setup::key(&[factor], options)?;
 ///
-///   assert_eq!(setup_key.policy.id, "my‑policy‑id");
-///   Ok(())
-/// }
+/// assert_eq!(setup_key.policy.id, "my‑policy‑id");
+/// #  Ok::<(), mfkdf2::error::MFKDF2Error>(())
 /// ```
 ///
 /// # Errors
 ///
-/// The function returns `Err(MFKDF2Error::InvalidThreshold)` when the requested threshold is
-/// outside the closed interval [1, n], where n is the number of provided factors; this includes
-/// the case where `factors` is empty
+/// The function returns
+/// [MFKDF2Error::InvalidThreshold](`crate::error::MFKDF2Error::InvalidThreshold`) when the
+/// requested threshold is outside the closed interval [1, n], where n is the number of provided
+/// factors; this includes the case where `factors` is empty
 ///
 /// ```rust
 /// use mfkdf2::{
+///   definitions::MFKDF2Options,
 ///   error::{MFKDF2Error, MFKDF2Result},
-///   setup::key::{MFKDF2Options, key},
+///   setup::{
+///     self,
+///     factors::password::{PasswordOptions, password},
+///   },
 /// };
 ///
 /// fn main() -> MFKDF2Result<()> {
 ///   let factors = Vec::new();
 ///   let options = MFKDF2Options { threshold: Some(0), ..Default::default() };
 ///
-///   let setup_key = key(&factors, options);
+///   let setup_key = setup::key(&factors, options);
 ///   assert!(matches!(setup_key, Err(MFKDF2Error::InvalidThreshold)));
 ///   Ok(())
 /// }
 /// ```
 ///
-/// The function returns `Err(MFKDF2Error::DuplicateFactorId)` when two or more factors share the
-/// same identifier, causing the policy factor set to violate the uniqueness constraint on ids
+/// The function returns
+/// [MFKDF2Error::DuplicateFactorId](`crate::error::MFKDF2Error::DuplicateFactorId`) when two or
+/// more factors share the same identifier, causing the policy factor set to violate the uniqueness
+/// constraint on ids
 ///
 /// ```rust
 /// use mfkdf2::{
-///   error::{MFKDF2Error, MFKDF2Result},
-///   setup::{
-///     factors::password::{PasswordOptions, password},
-///     key::{MFKDF2Options, key},
-///   },
+///   definitions::MFKDF2Options,
+///   error::MFKDF2Error,
+///   setup,
+///   setup::factors::password::{PasswordOptions, password},
 /// };
 ///
-/// fn main() -> MFKDF2Result<()> {
-///   let f1 = password("pw1", PasswordOptions { id: Some("dup".to_string()) })?;
-///   let f2 = password("pw2", PasswordOptions { id: Some("dup".to_string()) })?;
-///   let factors = vec![f1, f2];
-///   let options = MFKDF2Options::default();
+/// let f1 = password("pw1", PasswordOptions { id: Some("dup".to_string()) })?;
+/// let f2 = password("pw2", PasswordOptions { id: Some("dup".to_string()) })?;
+/// let factors = vec![f1, f2];
+/// let options = MFKDF2Options::default();
 ///
-///   let setup_key = key(&factors, options);
-///   assert!(matches!(setup_key, Err(MFKDF2Error::DuplicateFactorId)));
-///   Ok(())
-/// }
+/// let setup_key = setup::key(&factors, options);
+/// assert!(matches!(setup_key, Err(MFKDF2Error::DuplicateFactorId)));
+/// # Ok::<(), mfkdf2::error::MFKDF2Error>(())
 /// ```
 pub fn key(factors: &[MFKDF2Factor], options: MFKDF2Options) -> MFKDF2Result<MFKDF2DerivedKey> {
   assert!(factors.len() < 256, "MFKDF2 supports at most 255 factors");

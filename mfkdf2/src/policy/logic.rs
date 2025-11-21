@@ -50,7 +50,7 @@ fn factor_id(_n: u8, _factors: &Vec<MFKDF2Factor>) -> String { uuid::Uuid::new_v
 ///   &derived_key.policy,
 ///   &HashMap::from([("pwd3".to_string(), derive_password("password3")?)]),
 ///   None,
-/// );
+/// )?;
 /// assert_eq!(derived_key.key, setup.key);
 /// # Ok::<(), mfkdf2::error::MFKDF2Error>(())
 /// ```
@@ -200,28 +200,28 @@ pub fn all(factors: Vec<MFKDF2Factor>) -> MFKDF2Result<MFKDF2Factor> {
 /// let setup = setup(any(vec![f1, f2, f3])?, PolicySetupOptions::default())?;
 ///
 /// // Derive the key using the stack factor.
-/// let derive = derive(
+/// let derive_key = derive(
 ///   &setup.policy,
 ///   &HashMap::from([("pwd1".to_string(), derive_password("password1")?)]),
 ///   None,
 /// )?;
-/// assert_eq!(derive.key, setup.key);
+/// assert_eq!(derive_key.key, setup.key);
 ///
 /// // Derive the key using any of the factors.
-/// let derive = derive(
-///   &setup.policy,
+/// let derive_key = derive(
+///   &derive_key.policy,
 ///   &HashMap::from([("pwd2".to_string(), derive_password("password2")?)]),
 ///   None,
 /// )?;
-/// assert_eq!(derive.key, setup.key);
+/// assert_eq!(derive_key.key, setup.key);
 ///
 /// // Derive the key using any of the factors.
-/// let derive = derive(
-///   &setup.policy,
+/// let derive_key = derive(
+///   &derive_key.policy,
 ///   &HashMap::from([("pwd3".to_string(), derive_password("password3")?)]),
 ///   None,
 /// )?;
-/// assert_eq!(derive.key, setup.key);
+/// assert_eq!(derive_key.key, setup.key);
 ///
 /// # Ok::<(), mfkdf2::error::MFKDF2Error>(())
 /// ```

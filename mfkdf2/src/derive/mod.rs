@@ -1,10 +1,10 @@
-//! # KeyDerive
+//! # MFKDF2 Key Derivation
 //!
 //! For i+1-th derivation of [MFKDF2DerivedKey](`crate::definitions::MFKDF2DerivedKey`),
 //! [KeyDerive](`crate::derive::key::key`) takes every factor witnesses Wᵢⱼ and public state
 //! βᵢⱼ (from key's inner state) and produces the updated key K and next state βᵢ₊₁
 //!
-//! # FactorDerive
+//! # Factor Derive
 //!
 //! Derive algorithm for i-th derivation takes a j-th factor's witness Wᵢⱼ and the public
 //! parameter βᵢⱼ and outputs the next state βᵢ₊₁,ⱼ and the source key material κⱼ.

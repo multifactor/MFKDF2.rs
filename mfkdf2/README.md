@@ -59,8 +59,8 @@ over time. It consists of two algorithms:
 Initializes the factor with a secret and produces a public state with initial key material.
 
 ```rust
-# use mfkdf2::setup::factors::password::{password, PasswordOptions};
-# use mfkdf2::setup::factors::totp::{totp, TOTPOptions};
+# use mfkdf2::setup::factors::{password, password::PasswordOptions};
+# use mfkdf2::setup::factors::{totp, totp::TOTPOptions};
 # use mfkdf2::error::MFKDF2Error;
 # let TOTP_SECRET = vec![0u8; 20];
 #
@@ -104,15 +104,16 @@ how a key is derived and ensures the key is the same every time (as long as the 
 correct).
 
 ```rust
-# use mfkdf2::setup::factors::password::{password, PasswordOptions};
-# use mfkdf2::setup::factors::hmacsha1::{hmacsha1, HmacSha1Options};
-# use mfkdf2::setup::factors::hotp::{hotp, HOTPOptions};
-# use mfkdf2::setup::key::{key as setup_key, MFKDF2Options};
+# use mfkdf2::setup::factors::{password, password::PasswordOptions};
+# use mfkdf2::setup::factors::{hmacsha1, hmacsha1::HmacSha1Options};
+# use mfkdf2::setup::factors::{hotp, hotp::HOTPOptions};
+# use mfkdf2::setup;
+# use mfkdf2::definitions::MFKDF2Options;
 # use mfkdf2::error::MFKDF2Error;
 # let HOTP_SECRET = vec![0u8; 20];
 #
 // perform setup key
-let setup_derived_key = setup_key(
+let setup_derived_key = setup::key(
   &[
     password("password123", PasswordOptions::default()).expect("Failed to setup password factor"),
     hmacsha1(HmacSha1Options::default())?,
@@ -146,15 +147,16 @@ Derive a composite key with password, hmacsha1 and hotp factors. Derive returns 
 
 ```rust
 # use std::collections::HashMap;
-# use mfkdf2::setup::factors::password::{password as setup_password, PasswordOptions};
-# use mfkdf2::setup::factors::hmacsha1::{hmacsha1 as setup_hmacsha1, HmacSha1Options};
-# use mfkdf2::setup::factors::hotp::{hotp as setup_hotp, HOTPOptions};
-# use mfkdf2::setup::key::{key as setup_key, MFKDF2Options};
-# use mfkdf2::derive::factors::password::password as derive_password;
-# use mfkdf2::derive::factors::hmacsha1::hmacsha1 as derive_hmacsha1;
-# use mfkdf2::derive::factors::hotp::hotp as derive_hotp;
+# use mfkdf2::setup::factors::{password as setup_password, password::PasswordOptions};
+# use mfkdf2::setup::factors::{hmacsha1 as setup_hmacsha1, hmacsha1::HmacSha1Options};
+# use mfkdf2::setup::factors::{hotp as setup_hotp, hotp::HOTPOptions};
+# use mfkdf2::setup;
+# use mfkdf2::derive::factors::password as derive_password;
+# use mfkdf2::derive::factors::hmacsha1 as derive_hmacsha1;
+# use mfkdf2::derive::factors::hotp as derive_hotp;
 # use mfkdf2::otpauth::generate_otp_token;
-# use mfkdf2::derive::key::key as derive_key;
+# use mfkdf2::derive;
+# use mfkdf2::definitions::MFKDF2Options;
 # use mfkdf2::error::MFKDF2Error;
 # use hmac::{Mac, Hmac};
 # use sha1::Sha1;
@@ -170,7 +172,7 @@ let setup_hotp_factor =
   setup_hotp(HOTPOptions { secret: Some(HOTP_SECRET.clone()), ..Default::default() })?;
 
 // perform setup key
-let setup_derived_key = setup_key(
+let setup_derived_key = setup::key(
   &[setup_password_factor, setup_hmac_factor, setup_hotp_factor],
   MFKDF2Options::default(),
 )?;
@@ -204,7 +206,7 @@ let derive_hmac_factor = derive_hmacsha1(response.into())?;
 # let correct_code = generate_otp_token(&HOTP_SECRET, counter, &hash, digits);
 let derive_hotp_factor = derive_hotp(correct_code as u32)?;
 
-let derived_key = derive_key(
+let derived_key = derive::key(
   &setup_derived_key.policy,
   HashMap::from([
     (String::from("password"), derive_password_factor),
@@ -237,15 +239,16 @@ recovery code. Any 2 of these 3 factors are sufficient to reproduce the key.
 # use std::collections::HashMap;
 #
 # use mfkdf2::error::MFKDF2Error;
-# use mfkdf2::setup::factors::password::{password as setup_password, PasswordOptions};
-# use mfkdf2::setup::factors::hotp::{hotp as setup_hotp, HOTPOptions};
-# use mfkdf2::setup::factors::uuid::{uuid as setup_uuid, UUIDOptions};
-# use mfkdf2::setup::key::{key as setup_key, MFKDF2Options};
-# use mfkdf2::derive::factors::hotp::hotp as derive_hotp;
-# use mfkdf2::derive::factors::uuid::uuid as derive_uuid;
-# use mfkdf2::derive::key::key as derive_key;
-# use mfkdf2::otpauth::{generate_otp_token as generate_hotp_code, HashAlgorithm};
+# use mfkdf2::setup;
 # use mfkdf2::setup::FactorSetup;
+# use mfkdf2::setup::factors::{password as setup_password, password::PasswordOptions};
+# use mfkdf2::setup::factors::{hotp as setup_hotp, hotp::HOTPOptions};
+# use mfkdf2::setup::factors::{uuid as setup_uuid, uuid::UUIDOptions};
+# use mfkdf2::derive::factors::hotp as derive_hotp;
+# use mfkdf2::derive::factors::uuid as derive_uuid;
+# use mfkdf2::derive;
+# use mfkdf2::otpauth::{generate_otp_token as generate_hotp_code, HashAlgorithm};
+# use mfkdf2::definitions::MFKDF2Options;
 # use uuid::Uuid;
 #
 // setup phase: construct factors
@@ -264,7 +267,7 @@ let setup_uuid_factor =
 
 // configure a 2‑of‑3 threshold policy
 let options = MFKDF2Options { threshold: Some(2), ..MFKDF2Options::default() };
-let setup_derived = setup_key(&[password_factor, setup_hotp_factor, setup_uuid_factor], options)?;
+let setup_derived = setup::key(&[password_factor, setup_hotp_factor, setup_uuid_factor], options)?;
 
 // derive phase: build inputs for any 2 factors
 let policy_hotp_factor: &mfkdf2::policy::PolicyFactor = setup_derived
@@ -294,7 +297,7 @@ derive_uuid_factor.id = Some("uuid".to_string());
 derive_factors.insert("uuid".to_string(), derive_uuid_factor);
 
 // only 2 out of the 3 factors are provided here
-let derived = derive_key(&setup_derived.policy, derive_factors, true, false)?;
+let derived = derive::key(&setup_derived.policy, derive_factors, true, false)?;
 assert_eq!(derived.key, setup_derived.key);
 # Ok::<(), mfkdf2::error::MFKDF2Error>(())
 ```
@@ -304,12 +307,13 @@ Threshold value must be between 1 and the number of factors, otherwise
 
 ```rust
 # use mfkdf2::error::{MFKDF2Error, MFKDF2Result};
-# use mfkdf2::setup::factors::password::{password, PasswordOptions};
-# use mfkdf2::setup::key::{key as setup_key, MFKDF2Options};
+# use mfkdf2::setup::factors::{password, password::PasswordOptions};
+# use mfkdf2::setup;
+# use mfkdf2::definitions::MFKDF2Options;
 #
 // requesting 2‑of‑1 factors causes MFKDF2Error::InvalidThreshold
 let result =
-  setup_key(&[password("password123", PasswordOptions::default())?], MFKDF2Options { threshold: Some(2), ..MFKDF2Options::default() });
+  setup::key(&[password("password123", PasswordOptions::default())?], MFKDF2Options { threshold: Some(2), ..MFKDF2Options::default() });
 assert!(matches!(result, Err(MFKDF2Error::InvalidThreshold)));
 # Ok::<(), mfkdf2::error::MFKDF2Error>(())
 ```
@@ -321,10 +325,11 @@ If insufficient factors are provided, share recovery fails and
 # use std::collections::HashMap;
 #
 # use mfkdf2::error::{MFKDF2Error, MFKDF2Result};
-# use mfkdf2::setup::factors::password::{password as setup_password, PasswordOptions};
-# use mfkdf2::setup::key::{key as setup_key, MFKDF2Options};
-# use mfkdf2::derive::factors::password::password as derive_password;
-# use mfkdf2::derive::key::key as derive_key;
+# use mfkdf2::setup::factors::{password as setup_password, password::PasswordOptions};
+# use mfkdf2::setup;
+# use mfkdf2::definitions::MFKDF2Options;
+# use mfkdf2::derive::factors::password as derive_password;
+# use mfkdf2::derive;
 #
 // setup phase with a 2‑of‑2 password policy
 let setup_factors = &[
@@ -332,7 +337,7 @@ let setup_factors = &[
   setup_password("backup‑password", PasswordOptions { id: Some("pw2".into()) })?,
 ];
 let options = MFKDF2Options { threshold: Some(2), ..MFKDF2Options::default() };
-let setup_derived = setup_key(setup_factors, options)?;
+let setup_derived = setup::key(setup_factors, options)?;
 
 // derive phase provides only one out of the two required factors
 let mut derive_factors = HashMap::new();
@@ -340,8 +345,8 @@ let mut derive_pw1 = derive_password("primary‑password")?;
 derive_pw1.id = Some("pw1".into());
 derive_factors.insert("pw1".into(), derive_pw1);
 
-let result = derive_key(&setup_derived.policy, derive_factors, true, false);
-assert!(matches!(result, Err(MFKDF2Error::ShareRecoveryError)));
+let result = derive::key(&setup_derived.policy, derive_factors, true, false);
+assert!(matches!(result, Err(MFKDF2Error::ShareRecovery)));
 # Ok::<(), mfkdf2::error::MFKDF2Error>(())
 ```
 
@@ -368,12 +373,13 @@ policy between the stack and a third password:
 # use std::collections::HashMap;
 #
 # use mfkdf2::error::MFKDF2Error;
-# use mfkdf2::setup::factors::password::{password as setup_password, PasswordOptions};
-# use mfkdf2::setup::factors::stack::{stack as setup_stack, StackOptions};
-# use mfkdf2::setup::key::{key as setup_key, MFKDF2Options};
-# use mfkdf2::derive::factors::password::password as derive_password;
-# use mfkdf2::derive::factors::stack::stack as derive_stack;
-# use mfkdf2::derive::key::key as derive_key;
+# use mfkdf2::setup::factors::{password as setup_password, password::PasswordOptions};
+# use mfkdf2::setup::factors::{stack as setup_stack, stack::StackOptions};
+# use mfkdf2::setup;
+# use mfkdf2::derive::factors::password as derive_password;
+# use mfkdf2::derive::factors::stack as derive_stack;
+# use mfkdf2::derive;
+# use mfkdf2::definitions::MFKDF2Options;
 #
 // inner stack: password₁ ∧ password₂
 let inner = vec![
@@ -390,7 +396,7 @@ let stacked = setup_stack(inner, StackOptions {
 // outer policy: (password₁ ∧ password₂) ∨ password₃
 let password3 = setup_password("password3", PasswordOptions { id: Some("password3".into()) })?;
 
-let setup_derived = setup_key(&[stacked, password3], MFKDF2Options {
+let setup_derived = setup::key(&[stacked, password3], MFKDF2Options {
   threshold: Some(1),
   ..MFKDF2Options::default()
 })?;
@@ -401,7 +407,7 @@ let derive_stack_factor = derive_stack(HashMap::from([
   ("password2".to_string(), derive_password("password2")?),
 ]))?;
 
-let derived = derive_key(
+let derived = derive::key(
   &setup_derived.policy,
   HashMap::from([("stack".to_string(), derive_stack_factor)]),
   false,
@@ -413,7 +419,7 @@ let derived = derive_key(
 ```
 
 The same outer key can also be derived with only `password3` by supplying a single password
-factor keyed by `"password3"` to [setup key](`crate::derive::key::key`).
+factor keyed by `"password3"` to [setup key](`crate::derive::key`).
 
 # Feature Flags
 

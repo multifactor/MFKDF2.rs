@@ -29,8 +29,8 @@ impl FactorDerive for Passkey {
 ///
 /// # Errors
 ///
-/// - [`MFKDF2Error::InvalidSecretLength`] from the bindings helper when a non‑32‑byte slice is
-///   provided
+/// - [MFKDF2Error::InvalidSecretLength](`crate::error::MFKDF2Error::InvalidSecretLength`) from the
+///   bindings helper when a non‑32‑byte slice is provided
 ///
 /// # Example
 ///
@@ -44,8 +44,8 @@ impl FactorDerive for Passkey {
 /// #   setup::{
 /// #     self,
 /// #     factors::passkey::{passkey as setup_passkey, PasskeyOptions},
-/// #     key::MFKDF2Options,
 /// #   },
+/// #   definitions::MFKDF2Options,
 /// #   derive,
 /// # };
 /// # use mfkdf2::derive::factors::passkey as derive_passkey_factor;

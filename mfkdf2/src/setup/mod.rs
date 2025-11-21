@@ -1,10 +1,10 @@
-//! # KeySetup
+//! # MFKDF2 Key Setup
 //! An MFKDF Key Instance Kᵢ is a tuple (βᵢ, key) representing the i-th derivation of the key.
 //! Initial derivation of the key is performed by [KeySetup](`crate::setup::key::key`) that takes
 //! [factor instances](`crate::definitions::factor::MFKDF2Factor`) and produces the
 //! [MFKDF2DerivedKey](`crate::definitions::MFKDF2DerivedKey`).
 //!
-//! # FactorSetup
+//! # Factor Setup
 //! Every [Factor](`crate::definitions::MFKDF2Factor`) instance is constructed using Witness
 //! Wᵢ and parameters βᵢ. Each factor uses [FactorSetup](`crate::setup::FactorSetup`) that takes
 //! secret material σᵢ to produce the initial parameters β₀ given some configuration and randomly

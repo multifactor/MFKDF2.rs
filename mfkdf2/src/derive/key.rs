@@ -48,15 +48,14 @@ use crate::{
 /// ```rust
 /// # use std::collections::HashMap;
 /// # use mfkdf2::{
-/// #   error::MFKDF2Result,
 /// #   setup::{
 /// #     self,
 /// #     factors::{
 /// #       hmacsha1::{HmacSha1Options, hmacsha1 as setup_hmacsha1},
 /// #       password::{PasswordOptions, password as setup_password},
 /// #     },
-/// #     key::MFKDF2Options,
 /// #   },
+/// #   definitions::MFKDF2Options,
 /// #   derive::{
 /// #     self,
 /// #     factors::{
@@ -68,7 +67,6 @@ use crate::{
 /// # use hmac::{Mac, Hmac};
 /// # use sha1::Sha1;
 /// # const HMACSHA1_SECRET: [u8; 20] = [0u8; 20];
-/// # fn main() -> MFKDF2Result<()> {
 /// let password_factor =
 ///   setup_password("password123", PasswordOptions { id: Some("pwd".to_string()) })?;
 /// let hmac_factor = setup_hmacsha1(HmacSha1Options {
@@ -106,8 +104,7 @@ use crate::{
 ///
 /// assert_eq!(derived_key.key, setup_key.key);
 /// assert_eq!(derived_key.secret, setup_key.secret);
-/// # Ok(())
-/// # }
+/// # Ok::<(), mfkdf2::error::MFKDF2Error>(())
 /// ```
 ///
 /// Threshold derivation with password, HOTP, and TOTP where only a 2‑of‑3 subset is supplied
@@ -116,7 +113,6 @@ use crate::{
 /// # use std::collections::HashMap;
 /// # use std::time::{SystemTime, UNIX_EPOCH};
 /// # use mfkdf2::{
-/// #   error::MFKDF2Result,
 /// #   otpauth::generate_otp_token,
 /// #   setup::{
 /// #     self,
@@ -125,13 +121,11 @@ use crate::{
 /// #       password::{PasswordOptions, password as setup_password},
 /// #       totp::{TOTPOptions, totp as setup_totp},
 /// #     },
-/// #     key::MFKDF2Options,
 /// #   },
+/// #   definitions::MFKDF2Options,
 /// #   derive::factors::{password as derive_password, hotp as derive_hotp},
+/// #   derive,
 /// # };
-/// # use mfkdf2::derive;
-/// #
-/// # fn main() -> MFKDF2Result<()> {
 /// let setup_pwd = setup_password("password123", PasswordOptions::default())?;
 /// let setup_hotp = setup_hotp(HOTPOptions::default())?;
 /// let setup_totp = setup_totp(TOTPOptions::default())?;
@@ -164,8 +158,7 @@ use crate::{
 ///
 /// assert_eq!(derived_key.key, setup_key.key);
 /// assert_eq!(derived_key.secret, setup_key.secret);
-/// # Ok(())
-/// # }
+/// # Ok::<(), mfkdf2::error::MFKDF2Error>(())
 /// ```
 ///
 /// Persisted factor example where a single HOTP factor is persisted during setup and later used
@@ -174,7 +167,6 @@ use crate::{
 /// ```rust
 /// # use std::collections::HashMap;
 /// # use mfkdf2::{
-/// #   error::MFKDF2Result,
 /// #   derive,
 /// #   setup::{
 /// #     self,
@@ -182,12 +174,10 @@ use crate::{
 /// #       hotp::HOTPOptions,
 /// #       password::{PasswordOptions, password as setup_password},
 /// #     },
-/// #     key::MFKDF2Options,
 /// #   },
+/// #   definitions::MFKDF2Options,
 /// #   derive::factors::{persisted as derive_persisted, password as derive_password},
 /// # };
-/// #
-/// # fn main() -> MFKDF2Result<()> {
 /// let setup_factors = &[
 ///   setup::factors::hotp::hotp(HOTPOptions::default())?,
 ///   setup_password("password", PasswordOptions::default())?,
@@ -206,8 +196,7 @@ use crate::{
 /// )?;
 ///
 /// assert_eq!(derived.key, setup_key.key);
-/// # Ok(())
-/// # }
+/// # Ok::<(), mfkdf2::error::MFKDF2Error>(())
 /// ```
 ///
 /// # Errors
@@ -218,17 +207,14 @@ use crate::{
 /// ```rust
 /// # use std::collections::HashMap;
 /// # use mfkdf2::{
-/// #   error::{MFKDF2Error, MFKDF2Result},
 /// #   setup::{
 /// #     self,
 /// #     factors::hotp::{HOTPOptions, hotp as setup_hotp},
-/// #     key::MFKDF2Options,
 /// #   },
+/// #   definitions::MFKDF2Options,
 /// #   derive::factors::hotp as derive_hotp,
+/// #   derive,
 /// # };
-/// # use mfkdf2::derive;
-/// #
-/// # fn main() -> MFKDF2Result<()> {
 /// let setup_key = setup::key(&[setup_hotp(HOTPOptions::default())?], MFKDF2Options::default())?;
 ///
 /// // Deliberately wrong HOTP code
@@ -242,8 +228,7 @@ use crate::{
 /// )?;
 ///
 /// assert_ne!(derive_key.key, setup_key.key);
-/// # Ok(())
-/// # }
+/// # Ok::<(), mfkdf2::error::MFKDF2Error>(())
 /// ```
 ///
 /// The function returns `Err(MFKDF2Error::PolicyIntegrityCheckFailed)` when `verify` is `true` and
@@ -253,17 +238,14 @@ use crate::{
 /// ```rust
 /// # use std::collections::HashMap;
 /// # use mfkdf2::{
-/// #   error::{MFKDF2Error, MFKDF2Result},
 /// #   setup::{
 /// #     self,
 /// #     factors::password::{PasswordOptions, password as setup_password},
-/// #     key::MFKDF2Options,
 /// #   },
+/// #   definitions::MFKDF2Options,
 /// #   derive::factors::password as derive_password,
+/// #   derive,
 /// # };
-/// # use mfkdf2::derive;
-/// #
-/// # fn main() -> MFKDF2Result<()> {
 /// let setup_key = setup::key(
 ///   &[setup_password("password123", PasswordOptions { id: Some("password".to_string()) })?],
 ///   MFKDF2Options::default(),
@@ -280,9 +262,8 @@ use crate::{
 ///   false,
 /// );
 ///
-/// assert!(matches!(result, Err(MFKDF2Error::PolicyIntegrityCheckFailed)));
-/// # Ok(())
-/// # }
+/// assert!(matches!(result, Err(mfkdf2::error::MFKDF2Error::PolicyIntegrityCheckFailed)));
+/// # Ok::<(), mfkdf2::error::MFKDF2Error>(())
 /// ```
 pub fn key(
   policy: &Policy,

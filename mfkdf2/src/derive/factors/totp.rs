@@ -1,4 +1,5 @@
-//! Factor construction derive phase for the TOTP factor from [TOTP](`crate::setup::factors::totp`).
+//! Factor construction derive phase for the TOTP factor from
+//! [TOTP](`mod@crate::setup::factors::totp`).
 //!
 //! - During setup, the factor precomputes a window of offsets and stores them along with an
 //!   encrypted TOTP secret in the policy.
@@ -50,6 +51,8 @@ impl FactorDerive for TOTP {
   type Output = Value;
   type Params = Value;
 
+  /// Stores the public parameters for the TOTP factor.
+  /// Calculates the offset index from start time and current time, and derives the target code.
   fn include_params(&mut self, params: Self::Params) -> MFKDF2Result<()> {
     self.params = params.clone();
 
@@ -92,7 +95,7 @@ impl FactorDerive for TOTP {
     Ok(())
   }
 
-  /// Note: `self.options` is only used for [`TOTPDeriveOptions`].
+  /// Decrypts the secret and generates the new codes in the time window.
   fn params(&self, key: Key) -> MFKDF2Result<Self::Params> {
     let params: TOTPParams = serde_json::from_value(self.params.clone())?;
 
@@ -161,17 +164,17 @@ impl FactorDerive for TOTP {
 /// ```rust
 /// # use std::collections::HashMap;
 /// # use std::time::{SystemTime, UNIX_EPOCH};
-/// # use mfkdf2::{
-/// #   error::MFKDF2Result,
-/// #   otpauth::HashAlgorithm,
-/// #   setup::{
-/// #     self,
-/// #     factors::totp::{TOTPOptions, totp as setup_totp},
-/// #     key::MFKDF2Options,
-/// #   },
-/// #   derive,
-/// # };
-/// # use mfkdf2::derive::factors::totp::{totp, TOTPDeriveOptions};
+/// use mfkdf2::{
+///   derive,
+///   derive::factors::totp::{TOTPDeriveOptions, totp},
+///   error::MFKDF2Result,
+///   otpauth::HashAlgorithm,
+///   setup::{
+///     self,
+///     factors::totp::{TOTPOptions, totp as setup_totp},
+///   },
+///   definitions::MFKDF2Options,
+/// };
 /// #
 /// # fn main() -> MFKDF2Result<()> {
 /// let now_ms = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_millis() as u64;
@@ -179,18 +182,18 @@ impl FactorDerive for TOTP {
 ///   TOTPOptions { secret: Some(b"hello world mfkdf2!!".to_vec()), ..Default::default() };
 ///
 /// let setup_factor = setup_totp(options)?;
-/// let secret = if let mfkdf2::definitions::FactorType::TOTP(ref f) = setup_factor.factor_type {
-///   f.config.secret.clone()
-/// } else {
-///   unreachable!()
-/// };
+/// # let secret = if let mfkdf2::definitions::FactorType::TOTP(ref f) = setup_factor.factor_type {
+/// #  f.config.secret.clone()
+/// # } else {
+/// #   unreachable!()
+/// # };
 /// let setup_key = setup::key(&[setup_factor], MFKDF2Options::default())?;
 ///
-/// let step = 30;
-/// let digits = 6;
-/// let hash = HashAlgorithm::Sha1;
-/// let counter = now_ms / (step * 1000);
-/// let code = mfkdf2::otpauth::generate_otp_token(&secret[..20], counter, &hash, digits);
+/// # let step = 30;
+/// # let digits = 6;
+/// # let hash = HashAlgorithm::Sha1;
+/// # let counter = now_ms / (step * 1000);
+/// # let code = mfkdf2::otpauth::generate_otp_token(&secret[..20], counter, &hash, digits);
 ///
 /// let derive_options = TOTPDeriveOptions { time: Some(now_ms), oracle: None };
 /// let derive_factor = totp(code, Some(derive_options))?;
