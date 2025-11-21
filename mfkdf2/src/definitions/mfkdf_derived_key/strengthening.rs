@@ -30,17 +30,21 @@ impl MFKDF2DerivedKey {
   /// # Example
   ///
   /// ```rust
-  /// # use std::collections::HashMap;
-  /// # use mfkdf2::{
-  /// # derive,
-  /// # derive::factors as derive_factors,
-  /// # error::MFKDF2Error,
-  /// # setup::{self, factors::password::PasswordOptions, key::MFKDF2Options},
-  /// # };
+  /// use std::collections::HashMap;
+  /// use mfkdf2::{
+  ///   derive,
+  ///   derive::factors as derive_factors,
+  ///   error::MFKDF2Error,
+  ///   setup::{
+  ///     self,
+  ///     factors::password::PasswordOptions,
+  ///   },
+  ///   definitions::MFKDF2Options,
+  /// };
   ///
   /// // 1. Create a simple single-password policy
   /// let setup_factors = vec![
-  ///   mfkdf2::setup::factors::password("password1", PasswordOptions::default())?,
+  ///   setup::factors::password("password1", PasswordOptions::default())?,
   /// ];
   ///
   /// let setup_key =
@@ -80,10 +84,10 @@ impl MFKDF2DerivedKey {
   ///
   /// This function returns an [`MFKDF2Result`] whose error is typically:
   ///
-  /// - [`crate::error::MFKDF2Error::Argon2Error`] if the chosen `time` / `memory` values cannot be
+  /// - [`crate::error::MFKDF2Error::Argon2`] if the chosen `time` / `memory` values cannot be
   ///   represented as valid Argon2 parameters.
-  /// - [`crate::error::MFKDF2Error::DecodeError`] if the policy salt has been corrupted or tampered
-  ///   with and can no longer be base64-decoded.
+  /// - [`crate::error::MFKDF2Error::Base64Decode`] if the policy salt has been corrupted or
+  ///   tampered with and can no longer be base64-decoded.
   ///
   /// Note that downstream operations that use the upgraded policy may return
   /// [`crate::error::MFKDF2Error::PolicyIntegrityCheckFailed`] if an attacker attempts to
@@ -114,8 +118,9 @@ impl MFKDF2DerivedKey {
   }
 }
 
+#[cfg(feature = "bindings")]
 #[cfg_attr(feature = "bindings", uniffi::export)]
-pub fn derived_key_strengthen(
+fn derived_key_strengthen(
   derived_key: MFKDF2DerivedKey,
   time: u32,
   memory: u32,

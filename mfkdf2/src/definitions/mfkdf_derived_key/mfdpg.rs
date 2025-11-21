@@ -34,12 +34,11 @@ impl crate::definitions::MFKDF2DerivedKey {
   /// same password string
   ///
   /// ```rust
-  /// # use mfkdf2::{error, setup, setup::factors::password::PasswordOptions};
-  ///
-  /// # fn main() -> Result<(), error::MFKDF2Error> {
+  /// # use mfkdf2::{setup, setup::factors::password::PasswordOptions};
+  /// #
   /// let setup_key = setup::key(
   ///   &[setup::factors::password("password1", PasswordOptions { id: Some("password1".to_owned()) })?],
-  ///   setup::key::MFKDF2Options::default(),
+  ///   mfkdf2::definitions::MFKDF2Options::default(),
   /// )?;
   ///
   /// let password = setup_key.derive_password(Some("example.com"), Some(b"salt"), "[a-zA-Z]{6,10}")?;
@@ -48,8 +47,7 @@ impl crate::definitions::MFKDF2DerivedKey {
   ///   setup_key.derive_password(Some("example.com"), Some(b"salt"), "[a-zA-Z]{6,10}")?;
   ///
   /// assert_eq!(password, password2);
-  /// # Ok(())
-  /// # }
+  /// # Ok::<(), mfkdf2::error::MFKDF2Error>(())
   /// ```
   ///
   /// # Determinism

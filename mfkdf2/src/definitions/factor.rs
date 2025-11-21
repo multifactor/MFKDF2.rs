@@ -28,10 +28,11 @@ pub trait FactorMetadata: Send + Sync + std::fmt::Debug {
 /// # Example
 ///
 /// ```rust
-/// # use mfkdf2::setup::factors::password::{password, PasswordOptions};
-/// # use mfkdf2::definitions::FactorType;
-/// # use mfkdf2::derive::factors::password::password as derive_password;
-/// # use mfkdf2::definitions::FactorMetadata;
+/// use mfkdf2::{
+///   definitions::{FactorMetadata, FactorType},
+///   derive::factors::password as derive_password,
+///   setup::factors::password::{PasswordOptions, password},
+/// };
 ///
 /// // setup a password factor with id "pwd"
 /// let setup = password("password123", PasswordOptions { id: Some("pwd".to_string()) })?;
@@ -60,7 +61,8 @@ pub struct MFKDF2Factor {
   pub id:          Option<String>,
   /// Concrete factor implementation (password, TOTP, passkey, etc.).
   pub factor_type: FactorType,
-  /// Optional estimated real [`super::MFKDF2Entropy`] of this factor instance (in bits).
+  /// Optional estimated real [MFKDF2Entropy](`crate::definitions::MFKDF2Entropy`) of this factor
+  /// instance (in bits).
   pub entropy:     Option<f64>,
 }
 
