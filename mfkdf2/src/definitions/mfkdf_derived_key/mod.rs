@@ -1,3 +1,14 @@
+//! # MFKDF2 Derived Key
+//!
+//! The security properties of MFKDF allow the derived key to itself be used to authenticate end
+//! users and implicitly verify all of their authentication factors. Because a properly-configured
+//! MFKDF key (`K`) cannot feasibly be derived without the presentation of all constituent factors,
+//! verifying a user’s derivation of `K` effectively constitutes verification of all factors.
+//!
+//! In practice, this means `MFKDF2DerivedKey` can safely serve as a high-entropy application root
+//! key, while the embedded [`Policy`] and threshold secret-sharing scheme enable flexible recovery
+//! flows (such as `t`‑of‑`n` factor policies) without weakening the guarantees provided by the
+//! underlying multi-factor construction.
 use std::collections::HashMap;
 
 use base64::{Engine, engine::general_purpose};

@@ -1,3 +1,8 @@
+//! Question factor setup.
+//!
+//! This factor models a user-chosen security question and answer. The factor also records
+//! an entropy estimate derived from Dropbox's [`mod@zxcvbn`] crate, which can be used to enforce
+//! security question strength policies.
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 use zxcvbn::zxcvbn;

@@ -54,8 +54,6 @@ impl FactorDerive for Question {
 /// #   derive,
 /// # };
 /// # use mfkdf2::derive::factors::question as derive_question;
-/// #
-/// # fn main() -> MFKDF2Result<()> {
 /// let setup_factor = setup_question("Blue! Is My Favorite Color.", QuestionOptions {
 ///   id:       Some("question".into()),
 ///   question: Some("prompt".into()),
@@ -71,8 +69,7 @@ impl FactorDerive for Question {
 /// )?;
 ///
 /// assert_eq!(derived_key.key, setup_key.key);
-/// # Ok(())
-/// # }
+/// # Ok::<(), mfkdf2::error::MFKDF2Error>(())
 /// ```
 pub fn question(answer: impl Into<String>) -> MFKDF2Result<MFKDF2Factor> {
   let answer = answer.into();

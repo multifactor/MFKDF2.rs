@@ -46,8 +46,6 @@ impl FactorDerive for UUIDFactor {
 /// #   derive,
 /// #   derive::factors::uuid as derive_uuid,
 /// # };
-/// #
-/// # fn main() -> MFKDF2Result<()> {
 /// let id = Uuid::parse_str("f9bf78b9-54e7-4696-97dc-5e750de4c592").unwrap();
 /// let setup_factor = setup_uuid(UUIDOptions { id: Some("uuid".into()), uuid: Some(id) }).unwrap();
 /// let setup_key = setup::key(&[setup_factor], MFKDF2Options::default())?;
@@ -61,8 +59,7 @@ impl FactorDerive for UUIDFactor {
 /// )?;
 ///
 /// assert_eq!(derived_key.key, setup_key.key);
-/// # Ok(())
-/// # }
+/// # Ok::<(), mfkdf2::error::MFKDF2Error>(())
 /// ```
 pub fn uuid(uuid: Uuid) -> MFKDF2Result<MFKDF2Factor> {
   Ok(MFKDF2Factor {

@@ -128,6 +128,7 @@ pub struct TOTPConfig {
   pub window: u32,
   /// Step size in seconds (the TOTP "period", default 30s)
   pub step:   u32,
+  /// Optional timing oracle to harden TOTP factor construction
   pub oracle: Option<HashMap<u64, u32>>,
 }
 

@@ -45,6 +45,7 @@ impl Default for HmacSha1Options {
   fn default() -> Self { Self { id: Some("hmacsha1".to_string()), secret: None } }
 }
 
+/// HMAC‑SHA1 response
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct HmacSha1Response(pub [u8; 20]);
 
@@ -60,8 +61,11 @@ impl From<[u8; 20]> for HmacSha1Response {
 #[cfg_attr(feature = "bindings", derive(uniffi::Record))]
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct HmacSha1 {
+  /// HMAC‑SHA1 response
   pub response:      Option<HmacSha1Response>,
+  /// Public parameters for the factor
   pub params:        Option<String>,
+  /// Padded HMAC key. 20 bytes of secret + 12 bytes of padding.
   pub padded_secret: Vec<u8>,
 }
 
@@ -131,7 +135,6 @@ impl FactorSetup for HmacSha1 {
 ///   },
 /// };
 ///
-/// # fn main() -> MFKDF2Result<()> {
 /// # const HMACSHA1_SECRET: [u8; 20] = [0x11; 20];
 /// // Setup: create a policy with a single HMAC‑SHA1 factor
 /// let options =
@@ -139,9 +142,7 @@ impl FactorSetup for HmacSha1 {
 /// let factor = hmacsha1(options)?;
 ///
 /// let setup_key = setup::key(&[factor], MFKDF2Options::default())?;
-/// #
-/// # Ok(())
-/// # }
+/// # Ok::<(), mfkdf2::error::MFKDF2Error>(())
 /// ```
 pub fn hmacsha1(options: HmacSha1Options) -> MFKDF2Result<MFKDF2Factor> {
   // Validation

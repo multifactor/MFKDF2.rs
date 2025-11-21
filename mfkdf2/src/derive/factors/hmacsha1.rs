@@ -91,7 +91,7 @@ impl FactorDerive for HmacSha1 {
 /// #   error::MFKDF2Result,
 /// #   setup::{
 /// #     self,
-/// #     factors::hmacsha1::{HmacSha1Options, hmacsha1 as setup_hmacsha1},
+/// #     factors::hmacsha1::{HmacSha1Options},
 /// #   },
 /// #   definitions::MFKDF2Options,
 /// #   derive,
@@ -99,10 +99,8 @@ impl FactorDerive for HmacSha1 {
 /// # use hmac::{Mac, Hmac};
 /// # use sha1::Sha1;
 /// # const HMACSHA1_SECRET: [u8; 20] = [0x11; 20];
-/// #
-/// # fn main() -> MFKDF2Result<()> {
 /// // KeySetup: build a policy with a single HMAC‑SHA1 factor
-/// let setup_factor = setup_hmacsha1(HmacSha1Options {
+/// let setup_factor = setup::factors::hmacsha1(HmacSha1Options {
 ///   secret: Some(HMACSHA1_SECRET.to_vec()),
 ///   ..Default::default()
 /// })?;
@@ -122,7 +120,7 @@ impl FactorDerive for HmacSha1 {
 ///   .into();
 ///
 /// // Build the derive‑time HMAC witness and run KeyDerive
-/// let derive_factor = crate::derive::factors::hmacsha1(response.into())?;
+/// let derive_factor = derive::factors::hmacsha1(response.into())?;
 /// let derived_key = derive::key(
 ///   &setup_key.policy,
 ///   HashMap::from([("hmacsha1".to_string(), derive_factor)]),
@@ -131,8 +129,7 @@ impl FactorDerive for HmacSha1 {
 /// )?;
 ///
 /// assert_eq!(derived_key.key, setup_key.key);
-/// # Ok(())
-/// # }
+/// # Ok::<(), mfkdf2::error::MFKDF2Error>(())
 /// ```
 pub fn hmacsha1(response: HmacSha1Response) -> MFKDF2Result<MFKDF2Factor> {
   Ok(MFKDF2Factor {

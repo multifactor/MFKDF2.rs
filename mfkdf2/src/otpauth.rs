@@ -14,7 +14,9 @@ use crate::error::MFKDF2Error;
 /// Password).
 #[derive(Debug, Clone, Copy)]
 pub enum Kind {
+  /// TOTP (Time-based One-time Password)
   Totp,
+  /// HOTP (HMAC-based One-time Password)
   Hotp,
 }
 
@@ -42,10 +44,13 @@ pub enum Encoding {
 #[cfg_attr(feature = "bindings", derive(uniffi::Enum))]
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
 pub enum HashAlgorithm {
+  /// SHA-1
   #[serde(rename = "sha1")]
   Sha1,
+  /// SHA-256
   #[serde(rename = "sha256")]
   Sha256,
+  /// SHA-512
   #[serde(rename = "sha512")]
   Sha512,
 }

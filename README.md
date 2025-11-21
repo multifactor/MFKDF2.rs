@@ -115,32 +115,30 @@ cargo run --bin uniffi-bindgen generate --library target/debug/libmfkdf2.dylib -
 ## Usage
 
 ```rust
-use std::collections::HashMap;
+# use std::collections::HashMap;
 use mfkdf2::{derive, setup};
 use mfkdf2::setup::{factors::hotp::HOTPOptions, password::PasswordOptions, key::MFKDF2Options};
 use mfkdf2::derive::factors::{hotp::HOTPOptions, password::PasswordOptions};
 
-fn main() -> Result<(), Box<dyn std::error::Error>> {
-    // 1. Define factors
-    let password_factor = setup::password("my-super-secret-password", PasswordOptions::default())?;
-    let totp_factor = setup::hotp("base32-encoded-secret", HOTPOptions::default())?;
+// 1. Define factors
+let password_factor = setup::password("my-super-secret-password", PasswordOptions::default())?;
+let totp_factor = setup::hotp("base32-encoded-secret", HOTPOptions::default())?;
 
-    // 2. Set up the key with the policy
-    let key = setup::key(vec![password_factor, totp_factor], MFKDF2Options::default())?;
+// 2. Set up the key with the policy
+let key = setup::key(vec![password_factor, totp_factor], MFKDF2Options::default())?;
 
-    println!("Key: {:?}", key);
+println!("Key: {:?}", key);
 
-    let factors = HashMap::from([
-      ("password".to_string(), derive::factors::password("my-super-secret-password")?),
-      "hotp".to_string(), derive::factors::hotp("123456")?),
-    ]);
-    // 3. Derive the key using user inputs
-    let derived_key = derive::key(&key.policy, factors, true, false)?;
+let factors = HashMap::from([
+  ("password".to_string(), derive::factors::password("my-super-secret-password")?),
+  "hotp".to_string(), derive::factors::hotp("123456")?),
+]);
+// 3. Derive the key using user inputs
+let derived_key = derive::key(&key.policy, factors, true, false)?;
 
-    println!("Derived Key: {:?}", derived_key);
+println!("Derived Key: {:?}", derived_key);
 
-    Ok(())
-}
+# Ok::<(), mfkdf2::error::MFKDF2Error>(())
 ```
 
 ## Development

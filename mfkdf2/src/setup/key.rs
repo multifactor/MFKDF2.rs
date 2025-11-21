@@ -145,22 +145,18 @@ use crate::{
 ///     factors::password::{PasswordOptions, password},
 ///   },
 /// };
+/// let factors = Vec::new();
+/// let options = MFKDF2Options { threshold: Some(0), ..Default::default() };
 ///
-/// fn main() -> MFKDF2Result<()> {
-///   let factors = Vec::new();
-///   let options = MFKDF2Options { threshold: Some(0), ..Default::default() };
-///
-///   let setup_key = setup::key(&factors, options);
-///   assert!(matches!(setup_key, Err(MFKDF2Error::InvalidThreshold)));
-///   Ok(())
-/// }
+/// let setup_key = setup::key(&factors, options);
+/// assert!(matches!(setup_key, Err(MFKDF2Error::InvalidThreshold)));
+/// # Ok::<(), mfkdf2::error::MFKDF2Error>(())
 /// ```
 ///
 /// The function returns
 /// [MFKDF2Error::DuplicateFactorId](`crate::error::MFKDF2Error::DuplicateFactorId`) when two or
 /// more factors share the same identifier, causing the policy factor set to violate the uniqueness
 /// constraint on ids
-///
 /// ```rust
 /// use mfkdf2::{
 ///   definitions::MFKDF2Options,

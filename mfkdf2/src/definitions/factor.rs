@@ -1,3 +1,10 @@
+//! # MFKDF2 Factor
+//!
+//!  A Factor represents an authentication primitive. Each factor has:
+//!
+//! - **Factor material**: the secret input (e.g., a password, TOTP secret, hardware key seed)
+//! - **Public state**: non-secret metadata the factor needs to operate (e.g., counters,
+//!   identifiers)
 use serde::{Deserialize, Serialize};
 
 use crate::setup::factors::{hmacsha1, hotp, ooba, passkey, password, question, stack, totp, uuid};
@@ -67,8 +74,10 @@ pub struct MFKDF2Factor {
 }
 
 impl MFKDF2Factor {
+  /// Returns the type of the factor.
   pub fn kind(&self) -> String { self.factor_type.kind() }
 
+  /// Returns the bytes of the factor material.
   pub fn data(&self) -> Vec<u8> { self.factor_type.bytes() }
 }
 
@@ -94,15 +103,25 @@ impl std::fmt::Debug for MFKDF2Factor {
 #[cfg_attr(feature = "bindings", derive(uniffi::Enum))]
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub enum FactorType {
+  /// [`password::Password`] factor.
   Password(password::Password),
+  /// [`hotp::HOTP`] factor.
   HOTP(hotp::HOTP),
+  /// [`question::Question`] factor.
   Question(question::Question),
+  /// [`uuid::UUIDFactor`] factor.
   UUID(uuid::UUIDFactor),
+  /// [`hmacsha1::HmacSha1`] factor.
   HmacSha1(hmacsha1::HmacSha1),
+  /// [`totp::TOTP`] factor.
   TOTP(totp::TOTP),
+  /// [`ooba::Ooba`] factor.
   OOBA(ooba::Ooba),
+  /// [`passkey::Passkey`] factor.
   Passkey(passkey::Passkey),
+  /// [`stack::Stack`] factor.
   Stack(stack::Stack),
+  /// [Persisted](`crate::derive::factors::persisted::Persisted`) factor.
   Persisted(crate::derive::factors::persisted::Persisted),
 }
 

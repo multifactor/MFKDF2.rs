@@ -43,21 +43,18 @@ impl FactorDerive for Passkey {
 /// #   error::MFKDF2Result,
 /// #   setup::{
 /// #     self,
-/// #     factors::passkey::{passkey as setup_passkey, PasskeyOptions},
+/// #     factors::passkey::{PasskeyOptions},
 /// #   },
 /// #   definitions::MFKDF2Options,
 /// #   derive,
 /// # };
-/// # use mfkdf2::derive::factors::passkey as derive_passkey_factor;
-/// #
-/// # fn main() -> MFKDF2Result<()> {
 /// let mut prf = [0u8; 32];
 /// OsRng.fill_bytes(&mut prf);
 ///
-/// let setup_factor = setup_passkey(prf, PasskeyOptions::default())?;
+/// let setup_factor = setup::factors::passkey(prf, PasskeyOptions::default())?;
 /// let setup_key = setup::key(&[setup_factor], MFKDF2Options::default())?;
 ///
-/// let derive_factor = derive_passkey_factor(prf)?;
+/// let derive_factor = derive::factors::passkey(prf)?;
 /// let derived_key = derive::key(
 ///   &setup_key.policy,
 ///   HashMap::from([("passkey".to_string(), derive_factor)]),
@@ -66,8 +63,7 @@ impl FactorDerive for Passkey {
 /// )?;
 ///
 /// assert_eq!(derived_key.key, setup_key.key);
-/// # Ok(())
-/// # }
+/// # Ok::<(), mfkdf2::error::MFKDF2Error>(())
 /// ```
 pub fn passkey(secret: [u8; 32]) -> MFKDF2Result<MFKDF2Factor> {
   Ok(MFKDF2Factor {

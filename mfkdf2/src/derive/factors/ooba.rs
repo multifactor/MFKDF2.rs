@@ -103,17 +103,12 @@ impl FactorDerive for Ooba {
 /// #   error::MFKDF2Result,
 /// #   setup::{
 /// #     self,
-/// #     factors::ooba::{ooba as setup_ooba, OobaOptions},
+/// #     factors::ooba::{OobaOptions},
 /// #   },
 /// #   definitions::MFKDF2Options,
 /// #   derive,
-/// #   derive::factors::ooba as derive_ooba,
 /// # };
 /// # use base64::Engine;
-/// # use sha2::Sha256;
-/// # use rsa::Oaep;
-/// #
-/// # fn main() -> MFKDF2Result<()> {
 /// let bits = 2048;
 /// let private_key =
 ///   RsaPrivateKey::new(&mut rsa::rand_core::OsRng, bits).expect("failed to generate a key");
@@ -128,7 +123,7 @@ impl FactorDerive for Ooba {
 ///   "e": e
 /// }))?;
 ///
-/// let setup_factor = setup_ooba(OobaOptions {
+/// let setup_factor = setup::factors::ooba(OobaOptions {
 ///   id:     Some("ooba".into()),
 ///   length: Some(8),
 ///   key:    Some(jwk),
@@ -141,11 +136,11 @@ impl FactorDerive for Ooba {
 ///   setup_key.policy.factors.iter().find(|f| f.id == "ooba").unwrap();
 /// let setup_params = &policy_factor.params;
 /// let ciphertext = hex::decode(setup_params["next"].as_str().unwrap()).unwrap();
-/// let plaintext = private_key.decrypt(Oaep::new::<Sha256>(), &ciphertext).unwrap();
+/// let plaintext = private_key.decrypt(rsa::Oaep::new::<sha2::Sha256>(), &ciphertext).unwrap();
 /// let decoded: serde_json::Value = serde_json::from_slice(&plaintext).unwrap();
 /// let code = decoded["code"].as_str().unwrap();
 ///
-/// let derive_factor = derive_ooba(code)?;
+/// let derive_factor = derive::factors::ooba(code)?;
 /// let derived_key = derive::key(
 ///   &setup_key.policy,
 ///   HashMap::from([("ooba".to_string(), derive_factor)]),
@@ -154,8 +149,7 @@ impl FactorDerive for Ooba {
 /// )?;
 ///
 /// assert_eq!(derived_key.key, setup_key.key);
-/// # Ok(())
-/// # }
+/// # Ok::<(), mfkdf2::error::MFKDF2Error>(())
 /// ```
 pub fn ooba(code: &str) -> MFKDF2Result<MFKDF2Factor> {
   if code.is_empty() {
@@ -216,7 +210,7 @@ mod tests {
       params: Some(json!({"foo":"bar"})),
     };
 
-    let result = crate::setup::factors::ooba::ooba(options);
+    let result = crate::setup::factors::ooba(options);
     assert!(result.is_ok());
 
     result.unwrap()
@@ -328,7 +322,7 @@ mod tests {
       key:    Some(jwk),
       params: Some(json!({"foo":"bar"})),
     };
-    let setup = crate::setup::factors::ooba::ooba(options).unwrap();
+    let setup = crate::setup::factors::ooba(options).unwrap();
 
     // Setup for derive
     let setup_params = setup.factor_type.setup().params([0u8; 32].into()).unwrap();
