@@ -13,7 +13,7 @@
 //! underlying secret that "powers" the factor, while κ is the consistent value that the factor
 //! contributes to the final key derivation.
 pub mod factors;
-pub mod key;
+mod key;
 
 pub use key::key;
 use serde_json::Value;
@@ -105,7 +105,7 @@ mod tests {
   use serde_json::json;
 
   use crate::{
-    definitions::MFKDF2DerivedKey,
+    definitions::{MFKDF2DerivedKey, MFKDF2Options},
     derive,
     setup::{
       self,
@@ -115,7 +115,6 @@ mod tests {
         stack::StackOptions,
         uuid::UUIDOptions,
       },
-      key::MFKDF2Options,
     },
   };
 

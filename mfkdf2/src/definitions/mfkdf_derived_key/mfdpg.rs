@@ -76,8 +76,9 @@ impl crate::definitions::MFKDF2DerivedKey {
   }
 }
 
+#[cfg(feature = "bindings")]
 #[cfg_attr(feature = "bindings", uniffi::export)]
-pub fn derived_key_derive_password(
+fn derived_key_derive_password(
   derived_key: &crate::definitions::MFKDF2DerivedKey,
   purpose: Option<String>,
   salt: Option<Vec<u8>>,
@@ -93,6 +94,7 @@ mod tests {
   use std::collections::HashMap;
 
   use crate::{
+    definitions::MFKDF2Options,
     derive, error,
     setup::{self, factors::password::PasswordOptions},
   };
@@ -103,7 +105,7 @@ mod tests {
       &[crate::setup::factors::password("password1", PasswordOptions {
         id: Some("password1".to_string()),
       })?],
-      setup::key::MFKDF2Options::default(),
+      MFKDF2Options::default(),
     )?;
 
     let password =
@@ -133,7 +135,7 @@ mod tests {
       &[crate::setup::factors::password("password1", PasswordOptions {
         id: Some("password1".to_string()),
       })?],
-      setup::key::MFKDF2Options::default(),
+      MFKDF2Options::default(),
     )?;
 
     // Complex regex pattern: ([A-Za-z]+[0-9]|[0-9]+[A-Za-z])[A-Za-z0-9]*
@@ -163,7 +165,7 @@ mod tests {
       &[crate::setup::factors::password("password1", PasswordOptions {
         id: Some("password1".to_string()),
       })?],
-      setup::key::MFKDF2Options::default(),
+      MFKDF2Options::default(),
     )?;
 
     let password1 =
@@ -184,7 +186,7 @@ mod tests {
       &[crate::setup::factors::password("password1", PasswordOptions {
         id: Some("password1".to_string()),
       })?],
-      setup::key::MFKDF2Options::default(),
+      MFKDF2Options::default(),
     )?;
 
     let password1 =
@@ -209,13 +211,13 @@ mod tests {
       &[crate::setup::factors::password("password1", PasswordOptions {
         id: Some("password1".to_string()),
       })?],
-      setup::key::MFKDF2Options::default(),
+      MFKDF2Options::default(),
     )?;
     let setup_key2 = setup::key(
       &[crate::setup::factors::password("password2", PasswordOptions {
         id: Some("password1".to_string()),
       })?],
-      setup::key::MFKDF2Options::default(),
+      MFKDF2Options::default(),
     )?;
 
     let password1 =
@@ -235,7 +237,7 @@ mod tests {
       &[crate::setup::factors::password("password1", PasswordOptions {
         id: Some("password1".to_string()),
       })?],
-      setup::key::MFKDF2Options::default(),
+      MFKDF2Options::default(),
     )?;
 
     let password1 =
@@ -270,7 +272,7 @@ mod tests {
       &[crate::setup::factors::password("password1", PasswordOptions {
         id: Some("password1".to_string()),
       })?],
-      setup::key::MFKDF2Options::default(),
+      MFKDF2Options::default(),
     )?;
 
     let password =
@@ -301,7 +303,7 @@ mod tests {
       &[crate::setup::factors::password("password1", PasswordOptions {
         id: Some("password1".to_string()),
       })?],
-      setup::key::MFKDF2Options::default(),
+      MFKDF2Options::default(),
     )?;
 
     // Complex regex pattern: ([A-Za-z]+[0-9]|[0-9]+[A-Za-z])[A-Za-z0-9]*

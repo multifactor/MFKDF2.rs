@@ -4,7 +4,10 @@ mod common;
 
 use std::collections::HashMap;
 
-use mfkdf2::{definitions::MFKDF2DerivedKey, policy::Policy};
+use mfkdf2::{
+  definitions::{MFKDF2DerivedKey, MFKDF2Options},
+  policy::Policy,
+};
 
 use crate::common::{create_derive_factor, create_setup_factor};
 

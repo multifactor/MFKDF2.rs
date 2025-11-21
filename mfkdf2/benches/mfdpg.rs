@@ -2,11 +2,11 @@ use std::{collections::HashMap, hint::black_box};
 
 use criterion::{Criterion, criterion_group, criterion_main};
 use mfkdf2::{
+  definitions::MFKDF2Options,
   derive,
   setup::{
     self,
     factors::password::{PasswordOptions, password as setup_password},
-    key::MFKDF2Options,
   },
 };
 
@@ -14,7 +14,7 @@ fn bench_mfdpg(c: &mut Criterion) {
   let mut group = c.benchmark_group("mfdpg");
 
   // Setup a derived key for password derivation benchmarks
-  let setup_key = setup::key::key(
+  let setup_key = setup::key(
     &[setup_password("password1", PasswordOptions { id: Some("password".to_string()) }).unwrap()],
     MFKDF2Options::default(),
   )

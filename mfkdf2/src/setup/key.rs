@@ -10,59 +10,17 @@ use std::collections::{HashMap, HashSet};
 
 use argon2::{Argon2, Params, Version};
 use base64::{Engine, engine::general_purpose};
-use serde::{Deserialize, Serialize};
 use ssskit::{SecretSharing, Share};
 use uuid::Uuid;
 
 use crate::{
   constants::SECRET_SHARING_POLY,
   crypto::{encrypt, hkdf_sha256_with_info, hmacsha256},
-  definitions::{MFKDF2DerivedKey, MFKDF2Factor, Salt},
+  definitions::{MFKDF2DerivedKey, MFKDF2Factor, MFKDF2Options, Salt},
   error::{MFKDF2Error, MFKDF2Result},
   policy::{Policy, PolicyFactor},
   setup::FactorSetup,
 };
-
-/// Options for setting up a key.
-#[cfg_attr(feature = "bindings", derive(uniffi::Record))]
-#[derive(Clone, Serialize, Deserialize)]
-pub struct MFKDF2Options {
-  /// ID of the policy. If not provided, a random UUID will be generated.
-  pub id:        Option<String>,
-  /// Threshold number of factors needed to derive the key.
-  /// Minimum number of factors is 1, maximum is the number of factors provided.
-  pub threshold: Option<u8>,
-  /// 32 byte salt for key derivation. If not provided, a random salt will be generated.
-  pub salt:      Option<Salt>,
-  /// Flag to use a stack key for key derivation.
-  pub stack:     Option<bool>,
-  /// Flag to perform integrity checks for the policy.
-  /// Default is true.
-  pub integrity: Option<bool>,
-  /// Additional time cost for argon2id key derivation.
-  /// Default is 0.
-  pub time:      Option<u32>,
-  /// Additional memory cost for argon2id key derivation.
-  /// Default is 0.
-  pub memory:    Option<u32>,
-}
-
-impl Default for MFKDF2Options {
-  fn default() -> Self {
-    let mut salt = [0u8; 32];
-    crate::rng::fill_bytes(&mut salt);
-
-    Self {
-      id:        Some(uuid::Uuid::new_v4().to_string()),
-      threshold: None,
-      salt:      Some(salt.into()),
-      stack:     None,
-      integrity: Some(true),
-      time:      Some(0),
-      memory:    Some(0),
-    }
-  }
-}
 
 /// Initializes a derived key from a list of factors and options.
 ///
@@ -386,8 +344,9 @@ pub fn key(factors: &[MFKDF2Factor], options: MFKDF2Options) -> MFKDF2Result<MFK
   })
 }
 
+#[cfg(feature = "bindings")]
 #[cfg_attr(feature = "bindings", uniffi::export)]
-pub async fn setup_key(
+async fn setup_key(
   factors: &[MFKDF2Factor],
   options: MFKDF2Options,
 ) -> MFKDF2Result<MFKDF2DerivedKey> {

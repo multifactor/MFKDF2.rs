@@ -60,7 +60,7 @@ fn mock_setup_stack() -> Result<mfkdf2::definitions::MFKDF2DerivedKey, mfkdf2::e
         mfkdf2::setup::factors::password::PasswordOptions { id: Some("password_3".to_string()) },
       )?,
     ],
-    mfkdf2::setup::key::MFKDF2Options { threshold: Some(1), ..Default::default() },
+    mfkdf2::definitions::MFKDF2Options { threshold: Some(1), ..Default::default() },
   )?;
   Ok(key)
 }

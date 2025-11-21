@@ -339,7 +339,7 @@ fn key_derivation_combinations(
   let setup_factors: Vec<_> = setup_factor_names.into_iter().map(create_setup_factor).collect();
 
   let options =
-    mfkdf2::setup::key::MFKDF2Options { threshold: Some(threshold), ..Default::default() };
+    mfkdf2::definitions::MFKDF2Options { threshold: Some(threshold), ..Default::default() };
   let setup_key = mfkdf2::setup::key(&setup_factors, options)?;
 
   // 2. Loop through derivation combinations

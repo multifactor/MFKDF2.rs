@@ -117,13 +117,11 @@ mod tests {
 
   use super::*;
   use crate::{
+    definitions::MFKDF2Options,
     derive::factors::password::password,
-    setup::{
-      factors::{
-        password::{PasswordOptions, password as setup_password},
-        stack::{StackOptions, stack as setup_stack},
-      },
-      key::MFKDF2Options,
+    setup::factors::{
+      password::{PasswordOptions, password as setup_password},
+      stack::{StackOptions, stack as setup_stack},
     },
   };
 

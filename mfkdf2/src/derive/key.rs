@@ -464,7 +464,7 @@ mod tests {
 
   use super::*;
   use crate::{
-    definitions::FactorType,
+    definitions::{FactorType, MFKDF2Options},
     derive::{
       self,
       factors::{
@@ -483,7 +483,6 @@ mod tests {
         password::{PasswordOptions, password as setup_password},
         totp::{TOTPOptions, totp as setup_totp},
       },
-      key::MFKDF2Options,
     },
   };
 
@@ -528,9 +527,9 @@ mod tests {
   #[test]
   fn key_derivation_round_trip_password_only() {
     // Setup phase
-    let setup_derived_key = setup::key::key(
+    let setup_derived_key = setup::key(
       &[setup_password("password123", PasswordOptions { id: Some("pwd".to_string()) }).unwrap()],
-      setup::key::MFKDF2Options::default(),
+      MFKDF2Options::default(),
     )
     .unwrap();
 
@@ -563,11 +562,9 @@ mod tests {
     })
     .unwrap();
 
-    let setup_derived_key = setup::key::key(
-      &[setup_password_factor, setup_hmac_factor.clone()],
-      setup::key::MFKDF2Options::default(),
-    )
-    .unwrap();
+    let setup_derived_key =
+      setup::key(&[setup_password_factor, setup_hmac_factor.clone()], MFKDF2Options::default())
+        .unwrap();
 
     // Derivation phase
     let mut derive_factors_map = HashMap::new();
@@ -621,9 +618,9 @@ mod tests {
     let mut setup_ooba_factor = generate_ooba_setup_factor("ooba", &public_key);
     setup_ooba_factor.id = Some("ooba".to_string());
 
-    let setup_derived_key = setup::key::key(
+    let setup_derived_key = setup::key(
       &[setup_hotp_factor.clone(), setup_totp_factor.clone(), setup_ooba_factor.clone()],
-      setup::key::MFKDF2Options::default(),
+      MFKDF2Options::default(),
     )
     .unwrap();
 
@@ -730,8 +727,8 @@ mod tests {
     let mut setup_totp_factor = setup_totp(TOTPOptions::default()).unwrap();
     setup_totp_factor.id = Some("totp".to_string());
 
-    let options = setup::key::MFKDF2Options { threshold: Some(2), ..Default::default() };
-    let setup_derived_key = setup::key::key(
+    let options = MFKDF2Options { threshold: Some(2), ..Default::default() };
+    let setup_derived_key = setup::key(
       &[setup_password_factor.clone(), setup_hotp_factor.clone(), setup_totp_factor.clone()],
       options,
     )
@@ -803,8 +800,8 @@ mod tests {
       setup_totp_factor.clone(),
       setup_ooba_factor.clone(),
     ];
-    let options = setup::key::MFKDF2Options { threshold: Some(3), ..Default::default() };
-    let setup_derived_key = setup::key::key(setup_factors, options).unwrap();
+    let options = MFKDF2Options { threshold: Some(3), ..Default::default() };
+    let setup_derived_key = setup::key(setup_factors, options).unwrap();
 
     // Derivation phase
     let mut derive_factors_map = HashMap::new();
@@ -853,7 +850,7 @@ mod tests {
       setup_password("password789", PasswordOptions { id: Some("pwd3".to_string()) }).unwrap(),
     ];
     let setup_derived_key =
-      setup::key::key(setup_factors, MFKDF2Options { threshold: Some(2), ..Default::default() })
+      setup::key(setup_factors, MFKDF2Options { threshold: Some(2), ..Default::default() })
         .unwrap();
 
     // Derivation phase
@@ -899,7 +896,7 @@ mod tests {
       setup_hotp(HOTPOptions::default())?,
       setup_password("password", PasswordOptions::default())?,
     ];
-    let setup_derived_key = setup::key::key(setup_factors, MFKDF2Options::default())?;
+    let setup_derived_key = setup::key(setup_factors, MFKDF2Options::default())?;
 
     let hotp = setup_derived_key.persist_factor("hotp");
 
@@ -922,7 +919,7 @@ mod tests {
     let mut prf = [0u8; 32];
     OsRng.fill_bytes(&mut prf);
     let setup_derived_key =
-      setup::key::key(&[setup_passkey(prf, PasskeyOptions::default())?], MFKDF2Options::default())?;
+      setup::key(&[setup_passkey(prf, PasskeyOptions::default())?], MFKDF2Options::default())?;
 
     let derive = derive::key(
       &setup_derived_key.policy,
@@ -940,7 +937,7 @@ mod tests {
     let mut prf = [0u8; 32];
     OsRng.fill_bytes(&mut prf);
     let setup_derived_key =
-      setup::key::key(&[setup_passkey(prf, PasskeyOptions::default())?], MFKDF2Options::default())?;
+      setup::key(&[setup_passkey(prf, PasskeyOptions::default())?], MFKDF2Options::default())?;
 
     let mut prf2 = [0u8; 32];
     OsRng.fill_bytes(&mut prf2);

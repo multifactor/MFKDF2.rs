@@ -16,7 +16,7 @@ pub mod persistence;
 pub mod reconstitution;
 pub mod strengthening;
 
-///
+/// MFKDF2 derived key.
 #[cfg_attr(feature = "bindings", derive(uniffi::Record))]
 #[derive(Clone, Debug, Default, Serialize, Deserialize, PartialEq)]
 pub struct MFKDF2DerivedKey {

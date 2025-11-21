@@ -2,11 +2,11 @@ use std::{collections::HashMap, hint::black_box};
 
 use criterion::{Criterion, criterion_group, criterion_main};
 use mfkdf2::{
+  definitions::MFKDF2Options,
   derive,
   setup::{
     self,
     factors::passkey::{PasskeyOptions, passkey as setup_passkey},
-    key::MFKDF2Options,
   },
 };
 
@@ -17,14 +17,14 @@ fn bench_setup_passkey(c: &mut Criterion) {
     b.iter(|| {
       let secret = [42u8; 32];
       let factor = black_box(setup_passkey(secret, PasskeyOptions::default()).unwrap());
-      let result = black_box(setup::key::key(&[factor], MFKDF2Options::default()));
+      let result = black_box(setup::key(&[factor], MFKDF2Options::default()));
       result.unwrap()
     })
   });
 
   // Single derive - 1 passkey
   let secret = [42u8; 32];
-  let single_setup_key = setup::key::key(
+  let single_setup_key = setup::key(
     &[setup_passkey(secret, PasskeyOptions { id: Some("passkey".to_string()) }).unwrap()],
     MFKDF2Options::default(),
   )
@@ -45,7 +45,7 @@ fn bench_setup_passkey(c: &mut Criterion) {
   group.bench_function("multiple_setup_3_threshold_3", |b| {
     b.iter(|| {
       let options = MFKDF2Options { threshold: Some(3), ..Default::default() };
-      let result = black_box(setup::key::key(
+      let result = black_box(setup::key(
         &[
           setup_passkey([1u8; 32], PasskeyOptions { id: Some("passkey1".to_string()) }).unwrap(),
           setup_passkey([2u8; 32], PasskeyOptions { id: Some("passkey2".to_string()) }).unwrap(),
@@ -58,7 +58,7 @@ fn bench_setup_passkey(c: &mut Criterion) {
   });
 
   // Multiple derive - 3 passkeys (all required)
-  let multiple_setup_key_3 = setup::key::key(
+  let multiple_setup_key_3 = setup::key(
     &[
       setup_passkey([1u8; 32], PasskeyOptions { id: Some("passkey1".to_string()) }).unwrap(),
       setup_passkey([2u8; 32], PasskeyOptions { id: Some("passkey2".to_string()) }).unwrap(),
@@ -81,7 +81,7 @@ fn bench_setup_passkey(c: &mut Criterion) {
   });
 
   // Threshold derive - 2 out of 3 passkeys
-  let threshold_setup_key = setup::key::key(
+  let threshold_setup_key = setup::key(
     &[
       setup_passkey([1u8; 32], PasskeyOptions { id: Some("passkey1".to_string()) }).unwrap(),
       setup_passkey([2u8; 32], PasskeyOptions { id: Some("passkey2".to_string()) }).unwrap(),
