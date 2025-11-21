@@ -2,9 +2,10 @@ use std::{collections::HashMap, hint::black_box};
 
 use criterion::{Criterion, criterion_group, criterion_main};
 use mfkdf2::{
+  definitions::MFKDF2Options,
   derive,
   derive::factors::totp::TOTPDeriveOptions,
-  otpauth::{HashAlgorithm, generate_hotp_code},
+  otpauth::{HashAlgorithm, generate_otp_token},
   setup::{
     self,
     factors::{
@@ -14,7 +15,6 @@ use mfkdf2::{
       totp::{TOTPOptions, totp},
       uuid::{UUIDOptions, uuid},
     },
-    key::MFKDF2Options,
   },
 };
 use uuid::Uuid;
@@ -52,7 +52,7 @@ fn bench_factor_combination_setup(c: &mut Criterion) {
         })
         .unwrap(),
       ]);
-      let result = black_box(setup::key::key(&factors, MFKDF2Options::default()));
+      let result = black_box(setup::key(&factors, MFKDF2Options::default()));
       result.unwrap()
     })
   });
@@ -76,7 +76,7 @@ fn bench_factor_combination_setup(c: &mut Criterion) {
         })
         .unwrap(),
       ]);
-      let result = black_box(setup::key::key(&factors, MFKDF2Options::default()));
+      let result = black_box(setup::key(&factors, MFKDF2Options::default()));
       result.unwrap()
     })
   });
@@ -101,18 +101,18 @@ fn bench_factor_combination_derive(c: &mut Criterion) {
   .unwrap();
 
   let options = MFKDF2Options { threshold: Some(2), ..Default::default() };
-  let setup_key = setup::key::key(&[factor1, factor2, factor3], options).unwrap();
+  let setup_key = setup::key(&[factor1, factor2, factor3], options).unwrap();
 
   // Pre-compute HOTP code for derive
   let policy_hotp_factor = setup_key.policy.factors.iter().find(|f| f.id == "hotp").unwrap();
   let hotp_params = &policy_hotp_factor.params;
   let counter = hotp_params["counter"].as_u64().unwrap();
-  let hotp_code = generate_hotp_code(&SECRET20, counter, &HashAlgorithm::Sha1, 6);
+  let hotp_code = generate_otp_token(&SECRET20, counter, &HashAlgorithm::Sha1, 6);
 
   // Pre-compute TOTP code for derive
   let time = 1;
   let totp_counter = time / 30;
-  let totp_code = generate_hotp_code(&SECRET20, totp_counter, &HashAlgorithm::Sha1, 6);
+  let totp_code = generate_otp_token(&SECRET20, totp_counter, &HashAlgorithm::Sha1, 6);
 
   // Benchmark derive with password + hotp (threshold 2 of 3)
   group.bench_function("derive_password_hotp", |b| {

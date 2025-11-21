@@ -2,11 +2,11 @@ use std::{collections::HashMap, hint::black_box};
 
 use criterion::{Criterion, criterion_group, criterion_main};
 use mfkdf2::{
+  definitions::MFKDF2Options,
   derive,
   setup::{
     self,
     factors::hotp::{HOTPOptions, hotp as setup_hotp},
-    key::MFKDF2Options,
   },
 };
 
@@ -25,13 +25,13 @@ fn bench_hotp(c: &mut Criterion) {
         })
         .unwrap(),
       );
-      let result = black_box(setup::key::key(&[factor], MFKDF2Options::default()));
+      let result = black_box(setup::key(&[factor], MFKDF2Options::default()));
       result.unwrap()
     })
   });
 
   // Single derive - 1 HOTP
-  let single_setup_key = setup::key::key(
+  let single_setup_key = setup::key(
     &[setup_hotp(HOTPOptions {
       id: Some("hotp".to_string()),
       secret: Some(SECRET20.to_vec()),
@@ -77,13 +77,13 @@ fn bench_hotp(c: &mut Criterion) {
         .unwrap(),
       ]);
       let options = MFKDF2Options { threshold: Some(3), ..Default::default() };
-      let result = black_box(setup::key::key(&factors, options));
+      let result = black_box(setup::key(&factors, options));
       result.unwrap()
     })
   });
 
   // Multiple derive - 3 HOTPs (all required)
-  let multiple_setup_key_3 = setup::key::key(
+  let multiple_setup_key_3 = setup::key(
     &[
       setup_hotp(HOTPOptions {
         id: Some("hotp1".to_string()),
@@ -123,7 +123,7 @@ fn bench_hotp(c: &mut Criterion) {
   });
 
   // Threshold derive - 2 out of 3 HOTPs
-  let threshold_setup_key = setup::key::key(
+  let threshold_setup_key = setup::key(
     &[
       setup_hotp(HOTPOptions {
         id: Some("hotp1".to_string()),

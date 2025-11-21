@@ -2,7 +2,7 @@ use std::{collections::HashMap, hint::black_box};
 
 use criterion::{Criterion, criterion_group, criterion_main};
 use mfkdf2::{
-  definitions::MFKDF2Factor,
+  definitions::{MFKDF2Factor, MFKDF2Options},
   derive,
   setup::{
     self,
@@ -10,7 +10,6 @@ use mfkdf2::{
       password::{PasswordOptions, password as setup_password},
       stack::{StackOptions, stack as setup_stack},
     },
-    key::MFKDF2Options,
   },
 };
 
@@ -57,13 +56,13 @@ fn bench_setup_stack(c: &mut Criterion) {
   group.bench_function("single_setup", |b| {
     b.iter(|| {
       let factor = black_box(create_stack_factor("stack", "p1", "pw1", "p2", "pw2").unwrap());
-      let result = black_box(setup::key::key(&[factor], MFKDF2Options::default()));
+      let result = black_box(setup::key(&[factor], MFKDF2Options::default()));
       result.unwrap()
     })
   });
 
   // Single derive - 1 stack
-  let single_setup_key = setup::key::key(
+  let single_setup_key = setup::key(
     &[create_stack_factor("stack", "p1", "pw1", "p2", "pw2").unwrap()],
     MFKDF2Options::default(),
   )
@@ -81,7 +80,7 @@ fn bench_setup_stack(c: &mut Criterion) {
   group.bench_function("multiple_setup_3_threshold_3", |b| {
     b.iter(|| {
       let options = MFKDF2Options { threshold: Some(3), ..Default::default() };
-      let result = black_box(setup::key::key(
+      let result = black_box(setup::key(
         &[
           create_stack_factor("s1", "s1p1", "s1p1", "s1p2", "s1p2").unwrap(),
           create_stack_factor("s2", "s2p1", "s2p1", "s2p2", "s2p2").unwrap(),
@@ -94,7 +93,7 @@ fn bench_setup_stack(c: &mut Criterion) {
   });
 
   // Multiple derive - 3 stacks (all required)
-  let multiple_setup_key_3 = setup::key::key(
+  let multiple_setup_key_3 = setup::key(
     &[
       create_stack_factor("s1", "s1p1", "s1p1", "s1p2", "s1p2").unwrap(),
       create_stack_factor("s2", "s2p1", "s2p1", "s2p2", "s2p2").unwrap(),
@@ -138,7 +137,7 @@ fn bench_setup_stack(c: &mut Criterion) {
   });
 
   // Threshold derive - 2 out of 3 stacks
-  let threshold_setup_key = setup::key::key(
+  let threshold_setup_key = setup::key(
     &[
       create_stack_factor("s1", "s1p1", "s1p1", "s1p2", "s1p2").unwrap(),
       create_stack_factor("s2", "s2p1", "s2p1", "s2p2", "s2p2").unwrap(),

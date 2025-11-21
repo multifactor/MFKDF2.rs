@@ -4,7 +4,10 @@ mod common;
 
 use std::collections::HashMap;
 
-use mfkdf2::{definitions::MFKDF2DerivedKey, policy::Policy};
+use mfkdf2::{
+  definitions::{MFKDF2DerivedKey, MFKDF2Options},
+  policy::Policy,
+};
 
 use crate::common::{create_derive_factor, create_setup_factor};
 
@@ -14,11 +17,8 @@ fn make_policy(setup_factor_names: &[&str], threshold: u8, integrity: bool) -> M
 
   // setup key (policy comes back)
   // NOTE: integrity flag is in MFKDF2Options
-  let options = mfkdf2::setup::key::MFKDF2Options {
-    threshold: Some(threshold),
-    integrity: Some(integrity),
-    ..Default::default()
-  };
+  let options =
+    MFKDF2Options { threshold: Some(threshold), integrity: Some(integrity), ..Default::default() };
 
   mfkdf2::setup::key(&setup_factors, options).unwrap()
 }

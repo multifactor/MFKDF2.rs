@@ -1,4 +1,5 @@
 impl crate::definitions::MFKDF2DerivedKey {
+  /// Returns an HKDF-SHA256 derived key for the given purpose and salt.
   pub fn get_subkey(&self, purpose: Option<&str>, salt: Option<&[u8]>) -> [u8; 32] {
     let salt = salt.unwrap_or(&[]);
     let purpose = purpose.unwrap_or("");
@@ -6,8 +7,9 @@ impl crate::definitions::MFKDF2DerivedKey {
   }
 }
 
+#[cfg(feature = "bindings")]
 #[cfg_attr(feature = "bindings", uniffi::export)]
-pub fn derived_key_get_subkey(
+fn derived_key_get_subkey(
   derived_key: &crate::definitions::MFKDF2DerivedKey,
   purpose: Option<String>,
   salt: Option<Vec<u8>>,

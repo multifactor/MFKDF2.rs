@@ -5,7 +5,7 @@ chai.use(chaiAsPromised);
 chai.should();
 
 import { suite, test } from 'mocha';
-import mfkdf2, { initRustLogging, LogLevel, uniffiInitAsync } from '../../src/api';
+import mfkdf2, { uniffiInitAsync } from '../../src/api';
 import { Mfkdf2Error } from '../../src/generated/web/mfkdf2.js';
 import mfkdf from 'mfkdf';
 import { derivedKeyIsEqual } from './validation';
@@ -14,7 +14,6 @@ suite('differential/policy', () => {
   // Initialize UniFFI once before all tests
   before(async () => {
     await uniffiInitAsync();
-    await initRustLogging(LogLevel.Debug);
   });
 
   suite('validate', () => {

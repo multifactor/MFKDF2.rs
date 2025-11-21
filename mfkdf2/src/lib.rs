@@ -1,68 +1,18 @@
-#[cfg(feature = "bindings")]
-uniffi::setup_scaffolding!();
+#![doc = include_str!("../README.md")]
+#![warn(missing_docs, rustdoc::missing_doc_code_examples)]
+#![warn(unused_extern_crates, unreachable_pub, nonstandard_style)]
 
 pub mod constants;
-pub mod crypto;
+mod crypto;
 pub mod definitions;
 pub mod derive;
 pub mod error;
 pub mod integrity;
+mod log;
 pub mod otpauth;
 pub mod policy;
-pub mod rng;
+mod rng;
 pub mod setup;
 
-type LogLevel = log::Level;
-
 #[cfg(feature = "bindings")]
-#[cfg_attr(feature = "bindings", uniffi::remote(Enum))]
-enum LogLevel {
-  Trace,
-  Debug,
-  Info,
-  Warn,
-  Error,
-}
-
-#[cfg_attr(feature = "bindings", uniffi::export)]
-pub async fn init_rust_logging(level: Option<LogLevel>) {
-  // Determine log level from parameter or environment variable
-  #[cfg(feature = "bindings")]
-  let log_level: log::Level = if let Some(level) = level {
-    match level {
-      LogLevel::Trace => log::Level::Trace,
-      LogLevel::Debug => log::Level::Debug,
-      LogLevel::Info => log::Level::Info,
-      LogLevel::Warn => log::Level::Warn,
-      LogLevel::Error => log::Level::Error,
-    }
-  } else {
-    let env_level = std::env::var("RUST_LOG").unwrap_or_else(|_| "info".to_string());
-    match env_level.to_lowercase().as_str() {
-      "trace" => log::Level::Trace,
-      "debug" => log::Level::Debug,
-      "warn" => log::Level::Warn,
-      "error" => log::Level::Error,
-      _ => log::Level::Info,
-    }
-  };
-
-  #[cfg(not(feature = "bindings"))]
-  let log_level = if let Some(level) = level {
-    level
-  } else {
-    let env_level = std::env::var("RUST_LOG").unwrap_or_else(|_| "info".to_string());
-    match env_level.to_lowercase().as_str() {
-      "trace" => log::Level::Trace,
-      "debug" => log::Level::Debug,
-      "warn" => log::Level::Warn,
-      "error" => log::Level::Error,
-      _ => log::Level::Info,
-    }
-  };
-
-  #[cfg(target_arch = "wasm32")]
-  let _ = console_log::init_with_level(log_level);
-
-  log::set_max_level(log_level.to_level_filter());
-}
+uniffi::setup_scaffolding!();

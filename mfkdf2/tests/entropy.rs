@@ -1,6 +1,5 @@
 use mfkdf2::{
-  policy::setup::PolicySetupOptions,
-  setup::{factors::password::PasswordOptions, key::MFKDF2Options},
+  definitions::MFKDF2Options, policy::PolicySetupOptions, setup::factors::password::PasswordOptions,
 };
 
 #[test]
@@ -79,16 +78,16 @@ fn entropy_1_of_3_passwords() -> Result<(), mfkdf2::error::MFKDF2Error> {
 #[test]
 fn entropy_policy_combinators() -> Result<(), mfkdf2::error::MFKDF2Error> {
   // Mirrors the complex AND/OR/ANY nesting from the JS test
-  let policy = mfkdf2::policy::setup::setup(
-    mfkdf2::policy::logic::and(
+  let policy = mfkdf2::policy::setup(
+    mfkdf2::policy::and(
       mfkdf2::setup::factors::password("12345678", PasswordOptions {
         id: Some("password1".to_string()),
       })?,
-      mfkdf2::policy::logic::any(vec![
+      mfkdf2::policy::any(vec![
         mfkdf2::setup::factors::password("12345678", PasswordOptions {
           id: Some("password7".to_string()),
         })?,
-        mfkdf2::policy::logic::or(
+        mfkdf2::policy::or(
           mfkdf2::setup::factors::password("12345678", PasswordOptions {
             id: Some("password3".to_string()),
           })?,
@@ -96,11 +95,11 @@ fn entropy_policy_combinators() -> Result<(), mfkdf2::error::MFKDF2Error> {
             id: Some("password2".to_string()),
           })?,
         )?,
-        mfkdf2::policy::logic::and(
+        mfkdf2::policy::and(
           mfkdf2::setup::factors::password("12345678", PasswordOptions {
             id: Some("password4".to_string()),
           })?,
-          mfkdf2::policy::logic::or(
+          mfkdf2::policy::or(
             mfkdf2::setup::factors::password("12345678", PasswordOptions {
               id: Some("password5".to_string()),
             })?,

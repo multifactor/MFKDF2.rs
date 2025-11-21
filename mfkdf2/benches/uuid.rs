@@ -2,11 +2,11 @@ use std::{collections::HashMap, hint::black_box};
 
 use criterion::{Criterion, criterion_group, criterion_main};
 use mfkdf2::{
+  definitions::MFKDF2Options,
   derive,
   setup::{
     self,
     factors::uuid::{UUIDOptions, uuid as setup_uuid},
-    key::MFKDF2Options,
   },
 };
 use uuid::Uuid;
@@ -23,13 +23,13 @@ fn bench_uuid(c: &mut Criterion) {
         })
         .unwrap(),
       );
-      let result = black_box(setup::key::key(&[factor], MFKDF2Options::default()));
+      let result = black_box(setup::key(&[factor], MFKDF2Options::default()));
       result.unwrap()
     })
   });
 
   // Single derive - 1 UUID
-  let single_setup_key = setup::key::key(
+  let single_setup_key = setup::key(
     &[setup_uuid(UUIDOptions {
       id:   Some("uuid".to_string()),
       uuid: Some(Uuid::parse_str("9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6d").unwrap()),
@@ -55,7 +55,7 @@ fn bench_uuid(c: &mut Criterion) {
   group.bench_function("multiple_setup_3_threshold_3", |b| {
     b.iter(|| {
       let options = MFKDF2Options { threshold: Some(3), ..Default::default() };
-      let result = black_box(setup::key::key(
+      let result = black_box(setup::key(
         &[
           setup_uuid(UUIDOptions {
             id:   Some("uuid1".to_string()),
@@ -80,7 +80,7 @@ fn bench_uuid(c: &mut Criterion) {
   });
 
   // Multiple derive - 3 UUIDs (all required)
-  let multiple_setup_key_3 = setup::key::key(
+  let multiple_setup_key_3 = setup::key(
     &[
       setup_uuid(UUIDOptions {
         id:   Some("uuid1".to_string()),
@@ -127,7 +127,7 @@ fn bench_uuid(c: &mut Criterion) {
   });
 
   // Threshold derive - 2 out of 3 UUIDs
-  let threshold_setup_key = setup::key::key(
+  let threshold_setup_key = setup::key(
     &[
       setup_uuid(UUIDOptions {
         id:   Some("uuid1".to_string()),
