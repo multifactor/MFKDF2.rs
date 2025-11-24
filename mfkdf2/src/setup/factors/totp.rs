@@ -141,7 +141,7 @@ impl FactorSetup for TOTP {
       // T = floor((CurrentUnixTime - T0) / X)
       // Here, T0 is 0 (Unix epoch) and X is self.config.step.
       // We add 'i' to generate a window of future OTPs for offline use.
-      let counter = (time / 1000) as u64 / u64::from(self.config.step + i);
+      let counter = (time / 1000) as u64 / u64::from(self.config.step) + i as u64;
       let code = generate_hotp_code(
         &self.config.secret[..20],
         counter,

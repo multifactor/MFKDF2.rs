@@ -92,7 +92,6 @@ web-time    = { version = "1.1", default-features = false }
 [dev-dependencies]
 # itertools = "0.14"
 criterion = "0.7"
-proptest  = "1.9.0"
 rstest    = "0.25"
 
 [[bench]]
