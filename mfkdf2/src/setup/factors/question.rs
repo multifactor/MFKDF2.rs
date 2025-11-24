@@ -10,11 +10,21 @@ use crate::{
 
 #[cfg_attr(feature = "bindings", derive(uniffi::Record))]
 #[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct QuestionOptions {
+  pub id:       Option<String>,
+  pub question: Option<String>,
+}
+
+impl Default for QuestionOptions {
+  fn default() -> Self { Self { id: Some("question".to_string()), question: None } }
+}
+
+#[cfg_attr(feature = "bindings", derive(uniffi::Record))]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Question {
-  // TODO (sambhav): does this option need to be added here?
-  pub options: QuestionOptions,
-  pub params:  String,
-  pub answer:  String,
+  pub answer:   String,
+  pub params:   Value,
+  pub question: String,
 }
 
 impl FactorMetadata for Question {
@@ -29,26 +39,15 @@ impl FactorSetup for Question {
 
   fn params(&self, _key: Key) -> MFKDF2Result<Self::Params> {
     Ok(json!({
-      "question": self.options.question.clone().ok_or(MFKDF2Error::MissingSetupParams("question".to_string()))?,
+      "question": self.question,
     }))
   }
 
-  fn output(&self, _key: Key) -> Self::Output {
+  fn output(&self) -> Self::Output {
     json!({
       "strength": zxcvbn(&self.answer, &[]),
     })
   }
-}
-
-#[cfg_attr(feature = "bindings", derive(uniffi::Record))]
-#[derive(Clone, Debug, Serialize, Deserialize)]
-pub struct QuestionOptions {
-  pub id:       Option<String>,
-  pub question: Option<String>,
-}
-
-impl Default for QuestionOptions {
-  fn default() -> Self { Self { id: Some("question".to_string()), question: None } }
 }
 
 pub fn question(answer: impl Into<String>, options: QuestionOptions) -> MFKDF2Result<MFKDF2Factor> {
@@ -77,17 +76,9 @@ pub fn question(answer: impl Into<String>, options: QuestionOptions) -> MFKDF2Re
     .to_string();
   let strength = zxcvbn(&answer, &[]);
 
-  let mut options = options;
-  options.question = Some(question);
-  options.id = id.clone();
-
   Ok(MFKDF2Factor {
     id,
-    factor_type: FactorType::Question(Question {
-      options,
-      params: serde_json::to_string(&Value::Null).unwrap(),
-      answer,
-    }),
+    factor_type: FactorType::Question(Question { question, params: Value::Null, answer }),
     entropy: Some((strength.guesses() as f64).log2()),
   })
 }
@@ -129,7 +120,7 @@ mod tests {
     assert!(matches!(factor.factor_type, FactorType::Question(_)));
     if let FactorType::Question(q) = factor.factor_type {
       assert_eq!(q.answer, "blue no yellow");
-      assert_eq!(q.options.question, Some("What is your favorite color?".to_string()));
+      assert_eq!(q.question, "What is your favorite color?".to_string());
     }
   }
 
@@ -165,7 +156,7 @@ mod tests {
   #[test]
   fn output() {
     let factor = mock_construction();
-    let output = factor.factor_type.output([0u8; 32].into());
+    let output = factor.factor_type.output();
     assert!(output.is_object());
     assert!(output["strength"].is_object());
     assert!(output["strength"]["score"].is_number());

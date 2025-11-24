@@ -13,7 +13,7 @@ impl crate::definitions::MFKDF2DerivedKey {
 
 #[cfg_attr(feature = "bindings", uniffi::export)]
 pub fn derived_key_derive_password(
-  derived_key: crate::definitions::MFKDF2DerivedKey,
+  derived_key: &crate::definitions::MFKDF2DerivedKey,
   purpose: Option<String>,
   salt: Option<Vec<u8>>,
   regex: &str,
@@ -34,11 +34,12 @@ mod tests {
 
   #[test]
   fn basics_portability() -> Result<(), error::MFKDF2Error> {
-    let setup_factors = vec![crate::setup::factors::password("password1", PasswordOptions {
-      id: Some("password1".to_string()),
-    })?];
-
-    let setup_key = setup::key(setup_factors, setup::key::MFKDF2Options::default())?;
+    let setup_key = setup::key(
+      &[crate::setup::factors::password("password1", PasswordOptions {
+        id: Some("password1".to_string()),
+      })?],
+      setup::key::MFKDF2Options::default(),
+    )?;
 
     let password = setup_key.derive_password(Some("example.com"), Some(b"salt"), "[a-zA-Z0-9]{8}");
     assert!(password.len() > 5 && password.len() < 11);
@@ -49,7 +50,7 @@ mod tests {
 
     let derive_factors =
       HashMap::from([("password1".to_string(), derive::factors::password("password1")?)]);
-    let derive_key = derive::key(setup_key.policy, derive_factors, false, false)?;
+    let derive_key = derive::key(&setup_key.policy, derive_factors, false, false)?;
     assert_eq!(derive_key.key, setup_key.key);
 
     let password3 =
@@ -61,11 +62,12 @@ mod tests {
 
   #[test]
   fn basics_full_example() -> Result<(), error::MFKDF2Error> {
-    let setup_factors = vec![crate::setup::factors::password("password1", PasswordOptions {
-      id: Some("password1".to_string()),
-    })?];
-
-    let setup_key = setup::key(setup_factors, setup::key::MFKDF2Options::default())?;
+    let setup_key = setup::key(
+      &[crate::setup::factors::password("password1", PasswordOptions {
+        id: Some("password1".to_string()),
+      })?],
+      setup::key::MFKDF2Options::default(),
+    )?;
 
     // Complex regex pattern: ([A-Za-z]+[0-9]|[0-9]+[A-Za-z])[A-Za-z0-9]*
     let password1 = setup_key.derive_password(
@@ -76,7 +78,7 @@ mod tests {
 
     let derive_factors =
       HashMap::from([("password1".to_string(), derive::factors::password("password1")?)]);
-    let derive_key = derive::key(setup_key.policy, derive_factors, false, false)?;
+    let derive_key = derive::key(&setup_key.policy, derive_factors, false, false)?;
 
     let password3 = derive_key.derive_password(
       Some("example.com"),
@@ -90,11 +92,12 @@ mod tests {
 
   #[test]
   fn correctness_basic_test() -> Result<(), error::MFKDF2Error> {
-    let setup_factors = vec![crate::setup::factors::password("password1", PasswordOptions {
-      id: Some("password1".to_string()),
-    })?];
-
-    let setup_key = setup::key(setup_factors, setup::key::MFKDF2Options::default())?;
+    let setup_key = setup::key(
+      &[crate::setup::factors::password("password1", PasswordOptions {
+        id: Some("password1".to_string()),
+      })?],
+      setup::key::MFKDF2Options::default(),
+    )?;
 
     let password1 = setup_key.derive_password(Some("example.com"), Some(b"salt"), "[a-zA-Z]{6,10}");
 
@@ -108,17 +111,18 @@ mod tests {
 
   #[test]
   fn correctness_full_test() -> Result<(), error::MFKDF2Error> {
-    let setup_factors = vec![crate::setup::factors::password("password1", PasswordOptions {
-      id: Some("password1".to_string()),
-    })?];
-
-    let setup_key = setup::key(setup_factors, setup::key::MFKDF2Options::default())?;
+    let setup_key = setup::key(
+      &[crate::setup::factors::password("password1", PasswordOptions {
+        id: Some("password1".to_string()),
+      })?],
+      setup::key::MFKDF2Options::default(),
+    )?;
 
     let password1 = setup_key.derive_password(Some("example.com"), Some(b"salt"), "[a-zA-Z]{6,10}");
 
     let derive_factors =
       HashMap::from([("password1".to_string(), derive::factors::password("password1")?)]);
-    let derive_key = derive::key(setup_key.policy, derive_factors, false, false)?;
+    let derive_key = derive::key(&setup_key.policy, derive_factors, false, false)?;
 
     let password2 =
       derive_key.derive_password(Some("example.com"), Some(b"salt"), "[a-zA-Z]{6,10}");
@@ -131,16 +135,18 @@ mod tests {
 
   #[test]
   fn safety_basic_test() -> Result<(), error::MFKDF2Error> {
-    let setup_factors1 = vec![crate::setup::factors::password("password1", PasswordOptions {
-      id: Some("password1".to_string()),
-    })?];
-
-    let setup_factors2 = vec![crate::setup::factors::password("password1", PasswordOptions {
-      id: Some("password1".to_string()),
-    })?];
-
-    let setup_key1 = setup::key(setup_factors1, setup::key::MFKDF2Options::default())?;
-    let setup_key2 = setup::key(setup_factors2, setup::key::MFKDF2Options::default())?;
+    let setup_key1 = setup::key(
+      &[crate::setup::factors::password("password1", PasswordOptions {
+        id: Some("password1".to_string()),
+      })?],
+      setup::key::MFKDF2Options::default(),
+    )?;
+    let setup_key2 = setup::key(
+      &[crate::setup::factors::password("password2", PasswordOptions {
+        id: Some("password1".to_string()),
+      })?],
+      setup::key::MFKDF2Options::default(),
+    )?;
 
     let password1 =
       setup_key1.derive_password(Some("example.com"), Some(b"salt"), "[a-zA-Z]{6,10}");
@@ -155,18 +161,19 @@ mod tests {
 
   #[test]
   fn safety_full_test() -> Result<(), error::MFKDF2Error> {
-    let setup_factors = vec![crate::setup::factors::password("password1", PasswordOptions {
-      id: Some("password1".to_string()),
-    })?];
-
-    let setup_key = setup::key(setup_factors, setup::key::MFKDF2Options::default())?;
+    let setup_key = setup::key(
+      &[crate::setup::factors::password("password1", PasswordOptions {
+        id: Some("password1".to_string()),
+      })?],
+      setup::key::MFKDF2Options::default(),
+    )?;
 
     let password1 = setup_key.derive_password(Some("example.com"), Some(b"salt"), "[a-zA-Z]{6,10}");
 
     let policy = setup_key.policy.clone();
     let derive_factors1 =
       HashMap::from([("password1".to_string(), derive::factors::password("password1")?)]);
-    let derive_key1 = derive::key(policy.clone(), derive_factors1, false, false)?;
+    let derive_key1 = derive::key(&policy, derive_factors1, false, false)?;
 
     let password2 =
       derive_key1.derive_password(Some("example.com"), Some(b"salt"), "[a-zA-Z]{6,10}");
@@ -176,7 +183,7 @@ mod tests {
 
     let derive_factors2 =
       HashMap::from([("password1".to_string(), derive::factors::password("password2")?)]);
-    let derive_key2 = derive::key(policy, derive_factors2, false, false)?;
+    let derive_key2 = derive::key(&policy, derive_factors2, false, false)?;
 
     let password3 =
       derive_key2.derive_password(Some("example.com"), Some(b"salt"), "[a-zA-Z]{6,10}");
@@ -188,11 +195,12 @@ mod tests {
 
   #[test]
   fn compatibility_basic_policy() -> Result<(), error::MFKDF2Error> {
-    let setup_factors = vec![crate::setup::factors::password("password1", PasswordOptions {
-      id: Some("password1".to_string()),
-    })?];
-
-    let setup_key = setup::key(setup_factors, setup::key::MFKDF2Options::default())?;
+    let setup_key = setup::key(
+      &[crate::setup::factors::password("password1", PasswordOptions {
+        id: Some("password1".to_string()),
+      })?],
+      setup::key::MFKDF2Options::default(),
+    )?;
 
     let password = setup_key.derive_password(Some("example.com"), Some(b"salt"), "[a-zA-Z]{6,10}");
 
@@ -217,11 +225,12 @@ mod tests {
 
   #[test]
   fn compatibility_custom_policy() -> Result<(), error::MFKDF2Error> {
-    let setup_factors = vec![crate::setup::factors::password("password1", PasswordOptions {
-      id: Some("password1".to_string()),
-    })?];
-
-    let setup_key = setup::key(setup_factors, setup::key::MFKDF2Options::default())?;
+    let setup_key = setup::key(
+      &[crate::setup::factors::password("password1", PasswordOptions {
+        id: Some("password1".to_string()),
+      })?],
+      setup::key::MFKDF2Options::default(),
+    )?;
 
     // Complex regex pattern: ([A-Za-z]+[0-9]|[0-9]+[A-Za-z])[A-Za-z0-9]*
     let regex_pattern = "([A-Za-z]+[0-9]|[0-9]+[A-Za-z])[A-Za-z0-9]*";

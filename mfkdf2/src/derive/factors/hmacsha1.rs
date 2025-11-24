@@ -64,7 +64,7 @@ pub fn hmacsha1(response: HmacSha1Response) -> MFKDF2Result<MFKDF2Factor> {
       params:        None,
       padded_secret: [0u8; 32].to_vec(),
     }),
-    entropy:     Some(160.0),
+    entropy:     None,
   })
 }
 
@@ -95,7 +95,7 @@ mod tests {
     let secret = setup_factor
       .factor_type
       .setup()
-      .output([0u8; 32].into())
+      .output()
       .get("secret")
       .unwrap()
       .as_array()

@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, fmt::Write};
 
 use argon2::{Argon2, Params, Version};
 use base64::{Engine, engine::general_purpose};
@@ -14,29 +14,28 @@ use crate::{
 };
 
 pub fn key(
-  policy: Policy,
+  policy: &Policy,
   factors: HashMap<String, MFKDF2Factor>,
   verify: bool,
   stack: bool,
 ) -> MFKDF2Result<MFKDF2DerivedKey> {
+  assert!(factors.len() < 256, "MFKDF2 supports at most 255 factors");
+
   let mut shares_bytes = Vec::new();
   let mut outputs = HashMap::new();
-  let mut factors = factors.clone(); // TODO (@lonerapier): fix this
+  let mut factors = factors;
   let mut new_policy = policy.clone();
 
-  for factor in new_policy.factors.iter_mut() {
-    let material = match factors.get_mut(factor.id.as_str()) {
-      Some(material) => material,
-      None => {
-        shares_bytes.push(None);
-        continue;
-      },
+  for factor in &new_policy.factors {
+    let Some(material) = factors.get_mut(factor.id.as_str()) else {
+      shares_bytes.push(None);
+      continue;
     };
 
     if material.kind() == "persisted" {
       shares_bytes.push(Some(material.data()));
     } else {
-      material.factor_type.include_params(serde_json::from_str(&factor.params).unwrap())?;
+      material.factor_type.include_params(factor.params.clone())?;
 
       // TODO (autoparallel): This should probably be done with a `MaybeUninit` array.
       let salt_bytes = general_purpose::STANDARD.decode(&factor.salt)?;
@@ -49,7 +48,6 @@ pub fn key(
 
       // TODO (autoparallel): This should probably be done with a `MaybeUninit` array.
       let pad = general_purpose::STANDARD.decode(&factor.pad)?;
-      // TODO (@lonerapier): unpadding of bytes is needed
       let plaintext = decrypt(pad, &stretched);
 
       if let Some(ref factor_hint) = factor.hint {
@@ -59,8 +57,10 @@ pub fn key(
           format!("mfkdf2:factor:hint:{}", factor.id).as_bytes(),
         );
 
-        let binary_string: String =
-          buffer.iter().map(|byte| format!("{:08b}", byte)).collect::<Vec<_>>().join("");
+        let binary_string = buffer.iter().fold(String::new(), |mut acc, byte| {
+          write!(&mut acc, "{byte:08b}").unwrap();
+          acc
+        });
 
         // Take the last `hint_len` characters
         let hint = binary_string
@@ -84,13 +84,10 @@ pub fn key(
     }
   }
 
-  // only first 33 bytes are needed from the share due to byte encoding (x=1 + y=32)
-  // TODO (@lonerapier): remove stupid clones by fixing ssskit fork
   let shares_vec: Vec<Option<Share<SECRET_SHARING_POLY>>> = shares_bytes
-    .iter()
+    .into_iter()
     .map(|opt| {
       opt
-        .clone()
         .map(|b| Share::try_from(b.as_slice()).map_err(|_| MFKDF2Error::TryFromVecError))
         .transpose()
     })
@@ -122,13 +119,12 @@ pub fn key(
     .hash_password_into(&secret_arr, &salt_bytes, &mut kek)?;
   }
 
-  let policy_key_bytes = general_purpose::STANDARD.decode(policy.key.clone())?;
+  let policy_key_bytes = general_purpose::STANDARD.decode(policy.key.as_bytes())?;
   let key = decrypt(policy_key_bytes, &kek);
 
-  for factor in new_policy.factors.iter_mut() {
-    let material = match factors.get(factor.id.as_str()).cloned() {
-      Some(material) => material,
-      None => continue,
+  for factor in &mut new_policy.factors {
+    let Some(material) = factors.get(factor.id.as_str()) else {
+      continue;
     };
 
     let params_key = hkdf_sha256_with_info(
@@ -137,7 +133,7 @@ pub fn key(
       format!("mfkdf2:factor:params:{}", factor.id).as_bytes(),
     );
     let params = material.factor_type.params(params_key.into())?;
-    factor.params = serde_json::to_string(&params)?;
+    factor.params = params;
   }
 
   let integrity_key = hkdf_sha256_with_info(&key, &salt_bytes, "mfkdf2:integrity".as_bytes());
@@ -165,7 +161,7 @@ pub fn key(
 
   Ok(MFKDF2DerivedKey {
     policy: new_policy,
-    key: key.to_vec(),
+    key: key.try_into()?,
     secret: secret_arr.to_vec(),
     shares: original_shares.into_iter().map(|s| Vec::from(&s)).collect(),
     outputs,
@@ -175,7 +171,7 @@ pub fn key(
 
 #[cfg_attr(feature = "bindings", uniffi::export(default(verify = true, stack = false)))]
 pub async fn derive_key(
-  policy: Policy,
+  policy: &Policy,
   factors: HashMap<String, MFKDF2Factor>,
   verify: bool,
   stack: bool,
@@ -265,9 +261,8 @@ mod tests {
     // Setup phase
     let mut setup_factor = setup_password("password123", PasswordOptions::default()).unwrap();
     setup_factor.id = Some("pwd".to_string());
-    let setup_factors = vec![setup_factor.clone()];
     let setup_derived_key =
-      setup::key::key(setup_factors, setup::key::MFKDF2Options::default()).unwrap();
+      setup::key::key(&[setup_factor.clone()], setup::key::MFKDF2Options::default()).unwrap();
 
     // Derivation phase
     let mut derive_factors_map = HashMap::new();
@@ -276,9 +271,9 @@ mod tests {
     derive_factors_map.insert("pwd".to_string(), derive_factor);
 
     let derived_key =
-      key(setup_derived_key.policy.clone(), derive_factors_map.clone(), false, false).unwrap();
+      key(&setup_derived_key.policy, derive_factors_map.clone(), false, false).unwrap();
 
-    let derived_key2 = key(derived_key.policy, derive_factors_map, false, false).unwrap();
+    let derived_key2 = key(&derived_key.policy, derive_factors_map, false, false).unwrap();
 
     // Assertions
     assert_eq!(derived_key.secret, setup_derived_key.secret);
@@ -300,9 +295,11 @@ mod tests {
     .unwrap();
     setup_hmac_factor.id = Some("hmac".to_string());
 
-    let setup_factors = vec![setup_password_factor.clone(), setup_hmac_factor.clone()];
-    let setup_derived_key =
-      setup::key::key(setup_factors, setup::key::MFKDF2Options::default()).unwrap();
+    let setup_derived_key = setup::key::key(
+      &[setup_password_factor.clone(), setup_hmac_factor.clone()],
+      setup::key::MFKDF2Options::default(),
+    )
+    .unwrap();
 
     // Derivation phase
     let mut derive_factors_map = HashMap::new();
@@ -315,7 +312,7 @@ mod tests {
     // Hmac factor
     let policy_hmac_factor =
       setup_derived_key.policy.factors.iter().find(|f| f.id == "hmac").unwrap();
-    let params: Value = serde_json::from_str(&policy_hmac_factor.params).unwrap();
+    let params = &policy_hmac_factor.params;
     let challenge = hex::decode(params["challenge"].as_str().unwrap()).unwrap();
 
     let secret = if let FactorType::HmacSha1(h) = &setup_hmac_factor.factor_type {
@@ -328,8 +325,7 @@ mod tests {
     derive_hmac_factor.id = Some("hmac".to_string());
     derive_factors_map.insert("hmac".to_string(), derive_hmac_factor);
 
-    let derived_key =
-      key(setup_derived_key.policy.clone(), derive_factors_map, false, false).unwrap();
+    let derived_key = key(&setup_derived_key.policy, derive_factors_map, false, false).unwrap();
 
     // Assertions
     assert_eq!(derived_key.key, setup_derived_key.key);
@@ -357,10 +353,11 @@ mod tests {
     let mut setup_ooba_factor = generate_ooba_setup_factor("ooba", &public_key);
     setup_ooba_factor.id = Some("ooba".to_string());
 
-    let setup_factors =
-      vec![setup_hotp_factor.clone(), setup_totp_factor.clone(), setup_ooba_factor.clone()];
-    let setup_derived_key =
-      setup::key::key(setup_factors, setup::key::MFKDF2Options::default()).unwrap();
+    let setup_derived_key = setup::key::key(
+      &[setup_hotp_factor.clone(), setup_totp_factor.clone(), setup_ooba_factor.clone()],
+      setup::key::MFKDF2Options::default(),
+    )
+    .unwrap();
 
     // Derivation phase
     let mut derive_factors_map = HashMap::new();
@@ -368,29 +365,19 @@ mod tests {
     // HOTP factor
     let policy_hotp_factor =
       setup_derived_key.policy.factors.iter().find(|f| f.id == "hotp").unwrap();
-    let hotp_params: Value = serde_json::from_str(&policy_hotp_factor.params).unwrap();
-    let hotp_padded_secret = hotp.options.secret.as_ref().unwrap();
+    let hotp_params = &policy_hotp_factor.params;
     let counter = hotp_params["counter"].as_u64().unwrap();
-    let correct_code = generate_hotp_code(
-      &hotp_padded_secret[..20],
-      counter,
-      &hotp.options.hash,
-      hotp.options.digits,
-    );
+    let correct_code =
+      generate_hotp_code(&hotp.config.secret[..20], counter, &hotp.config.hash, hotp.config.digits);
     let mut derive_hotp_factor = derive_hotp(correct_code as u32).unwrap();
     derive_hotp_factor.id = Some("hotp".to_string());
     derive_factors_map.insert("hotp".to_string(), derive_hotp_factor);
 
     // TOTP factor
-    let totp_padded_secret = totp.options.secret.as_ref().unwrap();
     let time = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_millis();
-    let counter = time as u64 / (totp.options.step * 1000);
-    let totp_code = generate_hotp_code(
-      &totp_padded_secret[..20],
-      counter,
-      &totp.options.hash,
-      totp.options.digits,
-    );
+    let counter = time as u64 / (totp.config.step as u64 * 1000);
+    let totp_code =
+      generate_hotp_code(&totp.config.secret[..20], counter, &totp.config.hash, totp.config.digits);
     let mut derive_totp_factor = derive_totp(totp_code as u32, None).unwrap();
     derive_totp_factor.id = Some("totp".to_string());
     derive_factors_map.insert("totp".to_string(), derive_totp_factor);
@@ -398,19 +385,18 @@ mod tests {
     // OOBA factor
     let policy_ooba_factor =
       setup_derived_key.policy.factors.iter().find(|f| f.id == "ooba").unwrap();
-    let ooba_params: Value = serde_json::from_str(&policy_ooba_factor.params).unwrap();
+    let ooba_params = &policy_ooba_factor.params;
     let ciphertext = hex::decode(ooba_params["next"].as_str().unwrap()).unwrap();
     let decrypted = serde_json::from_slice::<Value>(
       &private_key.decrypt(Oaep::new::<Sha256>(), &ciphertext).unwrap(),
     )
     .unwrap();
     let code = decrypted["code"].as_str().unwrap();
-    let mut derive_ooba_factor = derive_ooba(code.to_string()).unwrap();
+    let mut derive_ooba_factor = derive_ooba(code).unwrap();
     derive_ooba_factor.id = Some("ooba".to_string());
     derive_factors_map.insert("ooba".to_string(), derive_ooba_factor);
 
-    let derived_key =
-      key(setup_derived_key.policy.clone(), derive_factors_map, true, false).unwrap();
+    let derived_key = key(&setup_derived_key.policy, derive_factors_map, true, false).unwrap();
 
     // Assertions
     assert_eq!(derived_key.key, setup_derived_key.key);
@@ -422,46 +408,37 @@ mod tests {
 
     // hotp factor
     let policy_hotp_factor = derived_key.policy.factors.iter().find(|f| f.id == "hotp").unwrap();
-    let hotp_params: Value = serde_json::from_str(&policy_hotp_factor.params).unwrap();
-    let hotp_padded_secret = hotp.options.secret.as_ref().unwrap();
+    let hotp_params = &policy_hotp_factor.params;
     let counter = hotp_params["counter"].as_u64().unwrap();
-    let correct_code = generate_hotp_code(
-      &hotp_padded_secret[..20],
-      counter,
-      &hotp.options.hash,
-      hotp.options.digits,
-    );
+    let correct_code =
+      generate_hotp_code(&hotp.config.secret[..20], counter, &hotp.config.hash, hotp.config.digits);
     let mut derive_hotp_factor = derive_hotp(correct_code as u32).unwrap();
     derive_hotp_factor.id = Some("hotp".to_string());
     derive_factors_map.insert("hotp".to_string(), derive_hotp_factor);
 
     // totp factor
     let time = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_millis();
-    let counter = time as u64 / (totp.options.step * 1000);
-    let totp_code = generate_hotp_code(
-      &totp_padded_secret[..20],
-      counter,
-      &totp.options.hash,
-      totp.options.digits,
-    );
+    let counter = time as u64 / (u64::from(totp.config.step) * 1000);
+    let totp_code =
+      generate_hotp_code(&totp.config.secret[..20], counter, &totp.config.hash, totp.config.digits);
     let mut derive_totp_factor = derive_totp(totp_code as u32, None).unwrap();
     derive_totp_factor.id = Some("totp".to_string());
     derive_factors_map.insert("totp".to_string(), derive_totp_factor);
 
     // ooba factor
     let policy_ooba_factor = derived_key.policy.factors.iter().find(|f| f.id == "ooba").unwrap();
-    let ooba_params: Value = serde_json::from_str(&policy_ooba_factor.params).unwrap();
+    let ooba_params = &policy_ooba_factor.params;
     let ciphertext = hex::decode(ooba_params["next"].as_str().unwrap()).unwrap();
     let decrypted = serde_json::from_slice::<Value>(
       &private_key.decrypt(Oaep::new::<Sha256>(), &ciphertext).unwrap(),
     )
     .unwrap();
     let code = decrypted["code"].as_str().unwrap();
-    let mut derive_ooba_factor = derive_ooba(code.to_string()).unwrap();
+    let mut derive_ooba_factor = derive_ooba(code).unwrap();
     derive_ooba_factor.id = Some("ooba".to_string());
     derive_factors_map.insert("ooba".to_string(), derive_ooba_factor);
 
-    let derived_key2 = key(derived_key.policy, derive_factors_map, true, false).unwrap();
+    let derived_key2 = key(&derived_key.policy, derive_factors_map, true, false).unwrap();
 
     // Assertions
     assert_eq!(derived_key.key, derived_key2.key);
@@ -485,10 +462,12 @@ mod tests {
     let mut setup_totp_factor = setup_totp(TOTPOptions::default()).unwrap();
     setup_totp_factor.id = Some("totp".to_string());
 
-    let setup_factors =
-      vec![setup_password_factor.clone(), setup_hotp_factor.clone(), setup_totp_factor.clone()];
     let options = setup::key::MFKDF2Options { threshold: Some(2), ..Default::default() };
-    let setup_derived_key = setup::key::key(setup_factors, options).unwrap();
+    let setup_derived_key = setup::key::key(
+      &[setup_password_factor.clone(), setup_hotp_factor.clone(), setup_totp_factor.clone()],
+      options,
+    )
+    .unwrap();
 
     // Derivation phase
     let mut derive_factors_map = HashMap::new();
@@ -501,22 +480,16 @@ mod tests {
     // HOTP factor
     let policy_hotp_factor =
       setup_derived_key.policy.factors.iter().find(|f| f.id == "hotp").unwrap();
-    let hotp_params: Value = serde_json::from_str(&policy_hotp_factor.params).unwrap();
-    let hotp_padded_secret = hotp.options.secret.as_ref().unwrap();
+    let hotp_params = &policy_hotp_factor.params;
     let counter = hotp_params["counter"].as_u64().unwrap();
-    let correct_code = generate_hotp_code(
-      &hotp_padded_secret[..20],
-      counter,
-      &hotp.options.hash,
-      hotp.options.digits,
-    );
+    let correct_code =
+      generate_hotp_code(&hotp.config.secret[..20], counter, &hotp.config.hash, hotp.config.digits);
     let mut derive_hotp_factor = derive_hotp(correct_code as u32).unwrap();
     derive_hotp_factor.id = Some("hotp".to_string());
     derive_factors_map.insert("hotp".to_string(), derive_hotp_factor);
 
     // We are only providing 2 out of 3 factors
-    let derived_key =
-      key(setup_derived_key.policy.clone(), derive_factors_map, false, false).unwrap();
+    let derived_key = key(&setup_derived_key.policy, derive_factors_map, false, false).unwrap();
 
     // Assertions
     assert_eq!(derived_key.key, setup_derived_key.key);
@@ -555,7 +528,7 @@ mod tests {
     let mut setup_ooba_factor = generate_ooba_setup_factor("ooba", &public_key);
     setup_ooba_factor.id = Some("ooba".to_string());
 
-    let setup_factors = vec![
+    let setup_factors = &[
       setup_password_factor.clone(),
       setup_hmac_factor.clone(),
       setup_hotp_factor.clone(),
@@ -576,7 +549,7 @@ mod tests {
     // Hmac factor
     let policy_hmac_factor =
       setup_derived_key.policy.factors.iter().find(|f| f.id == "hmac").unwrap();
-    let params: Value = serde_json::from_str(&policy_hmac_factor.params).unwrap();
+    let params = &policy_hmac_factor.params;
     let challenge = hex::decode(params["challenge"].as_str().unwrap()).unwrap();
     let secret = &hmac_setup.padded_secret[..20];
     let response = crate::crypto::hmacsha1(secret, &challenge);
@@ -587,22 +560,16 @@ mod tests {
     // HOTP factor
     let policy_hotp_factor =
       setup_derived_key.policy.factors.iter().find(|f| f.id == "hotp").unwrap();
-    let hotp_params: Value = serde_json::from_str(&policy_hotp_factor.params).unwrap();
-    let hotp_padded_secret = hotp.options.secret.as_ref().unwrap();
+    let hotp_params = &policy_hotp_factor.params;
     let counter = hotp_params["counter"].as_u64().unwrap();
-    let correct_code = generate_hotp_code(
-      &hotp_padded_secret[..20],
-      counter,
-      &hotp.options.hash,
-      hotp.options.digits,
-    );
+    let correct_code =
+      generate_hotp_code(&hotp.config.secret[..20], counter, &hotp.config.hash, hotp.config.digits);
     let mut derive_hotp_factor = derive_hotp(correct_code as u32).unwrap();
     derive_hotp_factor.id = Some("hotp".to_string());
     derive_factors_map.insert("hotp".to_string(), derive_hotp_factor);
 
     // We are only providing 3 out of 5 factors
-    let derived_key =
-      key(setup_derived_key.policy.clone(), derive_factors_map, false, false).unwrap();
+    let derived_key = key(&setup_derived_key.policy, derive_factors_map, false, false).unwrap();
 
     // Assertions
     assert_eq!(derived_key.key, setup_derived_key.key);
@@ -612,7 +579,7 @@ mod tests {
   #[test]
   fn key_derivation_shares() {
     // Setup phase
-    let setup_factors = vec![
+    let setup_factors = &[
       setup_password("password123", PasswordOptions { id: Some("pwd1".to_string()) }).unwrap(),
       setup_password("password456", PasswordOptions { id: Some("pwd2".to_string()) }).unwrap(),
       setup_password("password789", PasswordOptions { id: Some("pwd3".to_string()) }).unwrap(),
@@ -634,8 +601,7 @@ mod tests {
     derive_password_factor.id = Some("pwd2".to_string());
     derive_factors_map.insert("pwd2".to_string(), derive_password_factor);
 
-    let derived_key =
-      key(setup_derived_key.policy.clone(), derive_factors_map, true, false).unwrap();
+    let derived_key = key(&setup_derived_key.policy, derive_factors_map, true, false).unwrap();
 
     // Assertions
     assert_eq!(derived_key.shares, setup_derived_key.shares);
@@ -652,8 +618,7 @@ mod tests {
     derive_password_factor.id = Some("pwd2".to_string());
     derive_factors_map.insert("pwd2".to_string(), derive_password_factor);
 
-    let derived_key =
-      key(setup_derived_key.policy.clone(), derive_factors_map, true, false).unwrap();
+    let derived_key = key(&setup_derived_key.policy, derive_factors_map, true, false).unwrap();
 
     // Assertions
     assert_eq!(derived_key.shares, setup_derived_key.shares);
@@ -662,7 +627,7 @@ mod tests {
   #[test]
   fn key_derivation_persisted() -> Result<(), MFKDF2Error> {
     // Setup phase
-    let setup_factors = vec![
+    let setup_factors = &[
       setup_hotp(HOTPOptions::default())?,
       setup_password("password", PasswordOptions::default())?,
     ];
@@ -671,7 +636,7 @@ mod tests {
     let hotp = setup_derived_key.persist_factor("hotp");
 
     let derive = derive::key(
-      setup_derived_key.policy,
+      &setup_derived_key.policy,
       HashMap::from([
         ("hotp".to_string(), persisted(hotp)?),
         ("password".to_string(), derive_password("password")?),
@@ -688,13 +653,11 @@ mod tests {
   fn passkeys_liveness() -> Result<(), MFKDF2Error> {
     let mut prf = [0u8; 32];
     OsRng.fill_bytes(&mut prf);
-    let setup_derived_key = setup::key::key(
-      vec![setup_passkey(prf, PasskeyOptions::default())?],
-      MFKDF2Options::default(),
-    )?;
+    let setup_derived_key =
+      setup::key::key(&[setup_passkey(prf, PasskeyOptions::default())?], MFKDF2Options::default())?;
 
     let derive = derive::key(
-      setup_derived_key.policy,
+      &setup_derived_key.policy,
       HashMap::from([("passkey".to_string(), derive_passkey(prf)?)]),
       true,
       false,
@@ -708,16 +671,14 @@ mod tests {
   fn passkeys_safety() -> Result<(), MFKDF2Error> {
     let mut prf = [0u8; 32];
     OsRng.fill_bytes(&mut prf);
-    let setup_derived_key = setup::key::key(
-      vec![setup_passkey(prf, PasskeyOptions::default())?],
-      MFKDF2Options::default(),
-    )?;
+    let setup_derived_key =
+      setup::key::key(&[setup_passkey(prf, PasskeyOptions::default())?], MFKDF2Options::default())?;
 
     let mut prf2 = [0u8; 32];
     OsRng.fill_bytes(&mut prf2);
 
     let derive = derive::key(
-      setup_derived_key.policy,
+      &setup_derived_key.policy,
       HashMap::from([("passkey".to_string(), derive_passkey(prf2)?)]),
       false,
       false,

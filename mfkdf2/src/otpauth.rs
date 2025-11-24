@@ -1,3 +1,5 @@
+use std::fmt::Write;
+
 use data_encoding::{BASE32_NOPAD, HEXLOWER};
 use hmac::{Hmac, Mac};
 use serde::{Deserialize, Serialize};
@@ -71,9 +73,9 @@ pub struct OtpauthUrlOptions {
   /// Issuer (provider name)
   pub issuer:  Option<String>,
   /// Digits (default 6)
-  pub digits:  Option<u8>,
+  pub digits:  Option<u32>,
   /// Period seconds (default 30; TOTP-only)
-  pub period:  Option<u64>,
+  pub period:  Option<u32>,
   /// Shared (encoding + algorithm)
   pub shared:  Option<SharedOptions>,
 }
@@ -125,13 +127,13 @@ pub fn otpauth_url(options: &OtpauthUrlOptions) -> Result<String, MFKDF2Error> {
   let mut url = format!("otpauth://{kind}/{label}?secret={secret}");
 
   if let Some(issuer) = issuer {
-    url.push_str(&format!("&issuer={issuer}"));
+    write!(&mut url, "&issuer={issuer}")?;
   }
 
-  url.push_str(&format!("&algorithm={alg}&digits={digits}"));
+  write!(&mut url, "&algorithm={alg}&digits={digits}")?;
 
   if matches!(kind, Kind::Totp) {
-    url.push_str(&format!("&period={period}"));
+    write!(&mut url, "&period={period}")?;
   }
   // TODO (@lonerapier): speakeasy doesn't add counter to the url for hotp
   // else {
@@ -142,7 +144,7 @@ pub fn otpauth_url(options: &OtpauthUrlOptions) -> Result<String, MFKDF2Error> {
   Ok(url)
 }
 
-pub fn generate_hotp_code(secret: &[u8], counter: u64, hash: &HashAlgorithm, digits: u8) -> u32 {
+pub fn generate_hotp_code(secret: &[u8], counter: u64, hash: &HashAlgorithm, digits: u32) -> u32 {
   let counter_bytes = counter.to_be_bytes();
 
   let digest = match hash {
@@ -165,12 +167,14 @@ pub fn generate_hotp_code(secret: &[u8], counter: u64, hash: &HashAlgorithm, dig
 
   // Dynamic truncation as per RFC 4226
   let offset = (digest[digest.len() - 1] & 0xf) as usize;
-  let code = ((digest[offset] & 0x7f) as u32) << 24
-    | (digest[offset + 1] as u32) << 16
-    | (digest[offset + 2] as u32) << 8
-    | (digest[offset + 3] as u32);
+  let code = u32::from_be_bytes([
+    digest[offset] & 0x7f,
+    digest[offset + 1],
+    digest[offset + 2],
+    digest[offset + 3],
+  ]);
 
-  code % (10_u32.pow(digits as u32))
+  code % 10_u32.pow(digits)
 }
 
 #[cfg(test)]
@@ -280,7 +284,7 @@ mod tests {
     let digits = 6;
 
     let code = generate_hotp_code(secret, counter, &hash, digits);
-    assert!(code < 10_u32.pow(digits as u32));
+    assert!(code < 10_u32.pow(digits));
 
     // Same inputs should produce same output
     let code2 = generate_hotp_code(secret, counter, &hash, digits);

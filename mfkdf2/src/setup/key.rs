@@ -5,13 +5,14 @@ use std::collections::{HashMap, HashSet};
 use argon2::{Argon2, Params, Version};
 use base64::{Engine, engine::general_purpose};
 use serde::{Deserialize, Serialize};
+use serde_json::Value;
 use ssskit::{SecretSharing, Share};
 use uuid::Uuid;
 
 use crate::{
   constants::SECRET_SHARING_POLY,
   crypto::{encrypt, hkdf_sha256_with_info, hmacsha256},
-  definitions::{MFKDF2DerivedKey, MFKDF2Factor},
+  definitions::{MFKDF2DerivedKey, MFKDF2Factor, Salt},
   error::{MFKDF2Error, MFKDF2Result},
   policy::Policy,
   setup::FactorSetup,
@@ -28,7 +29,7 @@ pub struct PolicyFactor {
   pub salt:   String,
   pub secret: String,
   // TODO (@lonerapier): convert it into a factor based enum
-  pub params: String,
+  pub params: Value,
   #[serde(skip_serializing_if = "Option::is_none")]
   pub hint:   Option<String>,
 }
@@ -38,8 +39,7 @@ pub struct PolicyFactor {
 pub struct MFKDF2Options {
   pub id:        Option<String>,
   pub threshold: Option<u8>,
-  // TODO (@lonerapier): use uniffi custom type
-  pub salt:      Option<Vec<u8>>,
+  pub salt:      Option<Salt>,
   pub stack:     Option<bool>,
   pub integrity: Option<bool>,
   pub time:      Option<u32>,
@@ -54,7 +54,7 @@ impl Default for MFKDF2Options {
     Self {
       id:        Some(uuid::Uuid::new_v4().to_string()),
       threshold: None,
-      salt:      Some(salt.to_vec()),
+      salt:      Some(salt.into()),
       stack:     None,
       integrity: Some(true),
       time:      Some(0),
@@ -63,24 +63,25 @@ impl Default for MFKDF2Options {
   }
 }
 
-pub fn key(factors: Vec<MFKDF2Factor>, options: MFKDF2Options) -> MFKDF2Result<MFKDF2DerivedKey> {
+pub fn key(factors: &[MFKDF2Factor], options: MFKDF2Options) -> MFKDF2Result<MFKDF2DerivedKey> {
+  assert!(factors.len() < 256, "MFKDF2 supports at most 255 factors");
+
   // Sets the threshold to be the number of factors (n of n) if not provided.
   let threshold = options.threshold.unwrap_or(factors.len() as u8);
 
   // Check threshold against number of factors
   // TODO (autoparallel): This should be compile-time checkable? Or at least an error.
-  if factors.is_empty() || !(1..=factors.len()).contains(&(threshold as usize)) {
+  if factors.is_empty() || threshold as usize == 0 || threshold as usize > factors.len() {
     return Err(MFKDF2Error::InvalidThreshold);
   }
 
   // Generate salt & secret if not provided
-  let salt: Vec<u8> = match options.salt {
-    Some(salt) => salt,
-    None => {
-      let mut salt = [0u8; 32];
-      crate::rng::fill_bytes(&mut salt);
-      salt.to_vec()
-    },
+  let salt: Salt = if let Some(salt) = options.salt {
+    salt
+  } else {
+    let mut salt = [0u8; 32];
+    crate::rng::fill_bytes(&mut salt);
+    salt.into()
   };
 
   let policy_id = if let Some(id) = options.id.clone() {
@@ -109,7 +110,7 @@ pub fn key(factors: Vec<MFKDF2Factor>, options: MFKDF2Options) -> MFKDF2Result<M
   let mut kek = [0u8; 32];
   if options.stack.unwrap_or(false) {
     // stack key
-    kek = hkdf_sha256_with_info(&secret, &salt, format!("mfkdf2:stack:{}", policy_id).as_bytes());
+    kek = hkdf_sha256_with_info(&secret, &salt, format!("mfkdf2:stack:{policy_id}").as_bytes());
   } else {
     // default key
     Argon2::new(
@@ -140,55 +141,46 @@ pub fn key(factors: Vec<MFKDF2Factor>, options: MFKDF2Options) -> MFKDF2Result<M
   let mut theoretical_entropy: Vec<u32> = Vec::new();
   let mut real_entropy: Vec<f64> = Vec::new();
 
-  for (factor, share) in factors.iter().zip(shares.clone()) {
+  for (factor, share) in factors.iter().zip(shares.iter()) {
     // Factor id uniqueness
     let id = factor.id.clone();
     if !ids.insert(id.clone()) {
       return Err(MFKDF2Error::DuplicateFactorId);
     }
+    let id = id.unwrap();
 
     let mut salt = [0u8; 32];
     crate::rng::fill_bytes(&mut salt);
 
     // HKDF stretch & AES-encrypt share
-    let stretched = hkdf_sha256_with_info(
-      &factor.data(),
-      &salt,
-      format!("mfkdf2:factor:pad:{}", &factor.id.clone().unwrap()).as_bytes(),
-    );
-    let pad = encrypt(&share, &stretched);
+    let stretched =
+      hkdf_sha256_with_info(&factor.data(), &salt, format!("mfkdf2:factor:pad:{id}").as_bytes());
+    let pad = encrypt(share, &stretched);
 
     // Generate factor key
-    let params_key = hkdf_sha256_with_info(
-      &key,
-      &salt,
-      format!("mfkdf2:factor:params:{}", &factor.id.clone().unwrap()).as_bytes(),
-    );
-
+    let params_key =
+      hkdf_sha256_with_info(&key, &salt, format!("mfkdf2:factor:params:{id}").as_bytes());
     let params = factor.factor_type.setup().params(params_key.into())?;
-    // TODO (autoparallel): This should not be an unwrap.
-    outputs.insert(factor.id.clone().unwrap(), factor.factor_type.output(key.into()));
 
-    let secret_key = hkdf_sha256_with_info(
-      &key,
-      &salt,
-      format!("mfkdf2:factor:secret:{}", &factor.id.clone().unwrap()).as_bytes(),
-    );
+    outputs.insert(id.clone(), factor.factor_type.output());
+
+    let secret_key =
+      hkdf_sha256_with_info(&key, &salt, format!("mfkdf2:factor:secret:{id}").as_bytes());
     let factor_secret = encrypt(&stretched, &secret_key);
 
     // Record entropy statistics (in bits) for this factor.
-    theoretical_entropy.push(u32::try_from(factor.data().len() * 8).unwrap());
+    theoretical_entropy.push(factor.data().len() as u32 * 8);
     // TODO (autoparallel): This should not be an unwrap, should entropy really be optional?
     real_entropy.push(factor.entropy.unwrap());
 
     policy_factors.push(PolicyFactor {
-      id:     id.unwrap(),
-      kind:   factor.kind(),
-      pad:    general_purpose::STANDARD.encode(pad),
-      salt:   general_purpose::STANDARD.encode(salt),
+      id,
+      kind: factor.kind(),
+      pad: general_purpose::STANDARD.encode(pad),
+      salt: general_purpose::STANDARD.encode(salt),
       secret: general_purpose::STANDARD.encode(factor_secret),
-      params: serde_json::to_string(&params).unwrap(),
-      hint:   None,
+      params,
+      hint: None,
     });
   }
 
@@ -198,7 +190,7 @@ pub fn key(factors: Vec<MFKDF2Factor>, options: MFKDF2Options) -> MFKDF2Result<M
     threshold,
     salt: general_purpose::STANDARD.encode(&salt),
     factors: policy_factors,
-    hmac: "".to_string(),
+    hmac: String::new(),
     time,
     memory,
     key: general_purpose::STANDARD.encode(policy_key),
@@ -216,15 +208,15 @@ pub fn key(factors: Vec<MFKDF2Factor>, options: MFKDF2Options) -> MFKDF2Result<M
   theoretical_entropy.sort_unstable();
   real_entropy.sort_unstable_by(f64::total_cmp);
 
-  let theoretical_sum: u32 = theoretical_entropy.iter().take(threshold as usize).copied().sum();
-  let real_sum: f64 = real_entropy.iter().take(threshold as usize).copied().sum();
+  let theoretical_sum: u32 = theoretical_entropy.into_iter().take(threshold as usize).sum();
+  let real_sum: f64 = real_entropy.into_iter().take(threshold as usize).sum();
 
   let entropy_theoretical = theoretical_sum.min(256);
   let entropy_real = real_sum.min(256.0);
 
   Ok(MFKDF2DerivedKey {
     policy,
-    key: key.to_vec(),
+    key: key.into(),
     secret: secret.to_vec(),
     shares,
     outputs,
@@ -237,7 +229,7 @@ pub fn key(factors: Vec<MFKDF2Factor>, options: MFKDF2Options) -> MFKDF2Result<M
 
 #[cfg_attr(feature = "bindings", uniffi::export)]
 pub async fn setup_key(
-  factors: Vec<MFKDF2Factor>,
+  factors: &[MFKDF2Factor],
   options: MFKDF2Options,
 ) -> MFKDF2Result<MFKDF2DerivedKey> {
   key(factors, options)
@@ -338,7 +330,7 @@ mod tests {
   #[test]
   fn key_construction(#[case] factors: Vec<MFKDF2Factor>) {
     let options = MFKDF2Options::default();
-    let derived_key = key(factors.clone(), options.clone()).unwrap();
+    let derived_key = key(&factors, options.clone()).unwrap();
 
     let salt = general_purpose::STANDARD.decode(derived_key.policy.salt.clone()).unwrap();
     let mut kek = [0u8; 32];
@@ -365,7 +357,7 @@ mod tests {
     assert_eq!(derived_key.policy.time, options.time.unwrap());
     assert_eq!(derived_key.policy.memory, options.memory.unwrap());
 
-    assert_eq!(derived_key.key, key);
+    assert_eq!(derived_key.key, key.clone().try_into().unwrap());
 
     // verify factor secret is encrypted with key
     let mut shares = Vec::new();
@@ -405,7 +397,7 @@ mod tests {
     let factors = generate_factors(num_factors);
     let options = MFKDF2Options { threshold: Some(threshold), ..Default::default() };
 
-    let derived_key = key(factors.clone(), options.clone()).unwrap();
+    let derived_key = key(&factors, options.clone()).unwrap();
 
     assert_eq!(derived_key.policy.threshold, threshold);
 
@@ -427,7 +419,7 @@ mod tests {
 
     let policy_key = general_purpose::STANDARD.decode(derived_key.policy.key.clone()).unwrap();
     let key = decrypt(policy_key, &kek);
-    assert_eq!(derived_key.key, key);
+    assert_eq!(derived_key.key, key.clone().try_into().unwrap());
 
     let shares_to_recover: Vec<Vec<u8>> =
       derived_key.shares.iter().take(threshold as usize).cloned().collect();
@@ -449,7 +441,7 @@ mod tests {
   fn key_construction_with_invalid_threshold(#[case] num_factors: usize, #[case] threshold: u8) {
     let factors = generate_factors(num_factors);
     let options = MFKDF2Options { threshold: Some(threshold), ..Default::default() };
-    let derived_key_result = key(factors.clone(), options.clone());
+    let derived_key_result = key(&factors, options.clone());
 
     assert!(matches!(derived_key_result, Err(MFKDF2Error::InvalidThreshold)));
   }

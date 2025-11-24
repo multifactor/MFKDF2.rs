@@ -60,7 +60,7 @@ impl FactorSetup for HmacSha1 {
     }))
   }
 
-  fn output(&self, _key: Key) -> Self::Output {
+  fn output(&self) -> Self::Output {
     json!({
       "secret": self.padded_secret[..20],
     })
@@ -88,7 +88,7 @@ pub fn hmacsha1(options: HmacSha1Options) -> MFKDF2Result<MFKDF2Factor> {
   }
   let mut secret_pad = [0u8; 12];
   rng::fill_bytes(&mut secret_pad);
-  let padded_secret = secret.iter().chain(secret_pad.iter()).cloned().collect();
+  let padded_secret = secret.into_iter().chain(secret_pad).collect();
 
   Ok(MFKDF2Factor {
     id:          Some(id),
@@ -154,7 +154,7 @@ mod tests {
     assert_eq!(factor.id, Some("hmacsha1".to_string()));
     assert_eq!(factor.data().len(), 32); // Secret should be 20 bytes + 12 bytes of padding
     assert!(factor.factor_type.setup().params([0u8; 32].into()).unwrap().is_object());
-    assert!(factor.factor_type.output([0u8; 32].into()).is_object());
+    assert!(factor.factor_type.output().is_object());
     assert_eq!(factor.entropy, Some(160.0)); // 20 bytes * 8 bits = 160 bits
   }
 
@@ -167,7 +167,7 @@ mod tests {
   #[test]
   fn output_setup() {
     let factor = mock_construction();
-    let output = factor.factor_type.output([0u8; 32].into());
+    let output = factor.factor_type.output();
     assert!(output.is_object());
 
     let secret = output["secret"]

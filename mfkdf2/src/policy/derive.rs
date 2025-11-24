@@ -16,7 +16,7 @@ fn expand(
 
   for factor in &policy.factors {
     if factor.kind == "stack" {
-      if let Ok(nested_policy) = serde_json::from_str::<Policy>(&factor.params)
+      if let Ok(nested_policy) = serde_json::from_value::<Policy>(factor.params.clone())
         && evaluate_internal(&nested_policy, factor_set)
       {
         let nested_expanded = expand(&nested_policy, factors, factor_set)?;
@@ -34,8 +34,8 @@ fn expand(
 }
 
 pub fn derive(
-  policy: Policy,
-  factors: HashMap<String, MFKDF2Factor>,
+  policy: &Policy,
+  factors: &HashMap<String, MFKDF2Factor>,
   verify: Option<bool>,
 ) -> MFKDF2Result<MFKDF2DerivedKey> {
   if !policy.validate() {
@@ -43,19 +43,19 @@ pub fn derive(
   }
 
   let factor_set: HashSet<String> = factors.keys().cloned().collect();
-  if !evaluate_internal(&policy, &factor_set) {
+  if !evaluate_internal(policy, &factor_set) {
     return Err(MFKDF2Error::InvalidThreshold);
   }
 
-  let expanded_factors = expand(&policy, &factors, &factor_set)?;
+  let expanded_factors = expand(policy, factors, &factor_set)?;
 
   crate::derive::key::key(policy, expanded_factors, verify.unwrap_or(true), false)
 }
 
 #[cfg_attr(feature = "bindings", uniffi::export)]
 pub async fn policy_derive(
-  policy: Policy,
-  factors: HashMap<String, MFKDF2Factor>,
+  policy: &Policy,
+  factors: &HashMap<String, MFKDF2Factor>,
   verify: Option<bool>,
 ) -> MFKDF2Result<MFKDF2DerivedKey> {
   derive(policy, factors, verify)

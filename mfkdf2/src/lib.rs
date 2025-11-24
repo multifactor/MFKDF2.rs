@@ -12,6 +12,8 @@ pub mod policy;
 pub mod rng;
 pub mod setup;
 
+use std::str::FromStr;
+
 type LogLevel = log::Level;
 
 #[cfg(feature = "bindings")]
@@ -27,8 +29,8 @@ enum LogLevel {
 #[cfg_attr(feature = "bindings", uniffi::export)]
 pub async fn init_rust_logging(level: Option<LogLevel>) {
   // Determine log level from parameter or environment variable
-  #[cfg(feature = "bindings")]
   let log_level: log::Level = if let Some(level) = level {
+    #[cfg(feature = "bindings")]
     match level {
       LogLevel::Trace => log::Level::Trace,
       LogLevel::Debug => log::Level::Debug,
@@ -36,31 +38,12 @@ pub async fn init_rust_logging(level: Option<LogLevel>) {
       LogLevel::Warn => log::Level::Warn,
       LogLevel::Error => log::Level::Error,
     }
-  } else {
-    let env_level = std::env::var("RUST_LOG").unwrap_or_else(|_| "info".to_string());
-    match env_level.to_lowercase().as_str() {
-      "trace" => log::Level::Trace,
-      "debug" => log::Level::Debug,
-      "info" => log::Level::Info,
-      "warn" => log::Level::Warn,
-      "error" => log::Level::Error,
-      _ => log::Level::Info,
-    }
-  };
 
-  #[cfg(not(feature = "bindings"))]
-  let log_level = if let Some(level) = level {
+    #[cfg(not(feature = "bindings"))]
     level
   } else {
     let env_level = std::env::var("RUST_LOG").unwrap_or_else(|_| "info".to_string());
-    match env_level.to_lowercase().as_str() {
-      "trace" => log::Level::Trace,
-      "debug" => log::Level::Debug,
-      "info" => log::Level::Info,
-      "warn" => log::Level::Warn,
-      "error" => log::Level::Error,
-      _ => log::Level::Info,
-    }
+    log::Level::from_str(&env_level).unwrap_or(log::Level::Info)
   };
 
   #[cfg(target_arch = "wasm32")]

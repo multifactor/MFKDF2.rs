@@ -38,7 +38,7 @@ fn mock_setup_stack() -> Result<mfkdf2::definitions::MFKDF2DerivedKey, mfkdf2::e
   .collect::<Result<Vec<_>, _>>()?;
 
   let key = mfkdf2::setup::key(
-    vec![
+    &[
       mfkdf2::setup::factors::stack(
         stacked_factors,
         mfkdf2::setup::factors::stack::StackOptions {
@@ -64,18 +64,11 @@ fn mock_setup_stack() -> Result<mfkdf2::definitions::MFKDF2DerivedKey, mfkdf2::e
 }
 
 #[test]
-fn stack_setup() {
-  let key = mock_setup_stack().unwrap();
-  println!("Setup key: {}", key);
-}
-
-#[test]
 fn stack_derive() {
   let key = mock_setup_stack().unwrap();
-  println!("Setup key: {}", key);
 
   let derived_key = mfkdf2::derive::key(
-    key.policy.clone(),
+    &key.policy,
     HashMap::from([(
       "stack_1".to_string(),
       mfkdf2::derive::factors::stack(HashMap::from([
@@ -84,15 +77,14 @@ fn stack_derive() {
       ]))
       .unwrap(),
     )]),
-    false,
+    true,
     false,
   )
   .unwrap();
-  println!("Derived key: {}", derived_key);
   assert_eq!(derived_key.key, key.key);
 
   let derived_key = mfkdf2::derive::key(
-    key.policy,
+    &key.policy,
     HashMap::from([(
       "password_3".to_string(),
       mfkdf2::derive::factors::password("my-secure-password").unwrap(),
@@ -101,19 +93,18 @@ fn stack_derive() {
     false,
   )
   .unwrap();
-  println!("Derived key: {}", derived_key);
   assert_eq!(derived_key.key, key.key);
 
-  let stack_factor_policy = serde_json::from_str::<Policy>(
-    derived_key.policy.factors.iter().find(|f| f.id == "stack_2").unwrap().params.as_str(),
+  let stack_factor_policy = serde_json::from_value::<Policy>(
+    derived_key.policy.factors.iter().find(|f| f.id == "stack_2").unwrap().params.clone(),
   )
   .unwrap();
   let factor_policy = stack_factor_policy.factors.iter().find(|f| f.id == "hmacsha1_1").unwrap();
-  let params: serde_json::Value = serde_json::from_str(&factor_policy.params).unwrap();
+  let params = &factor_policy.params;
   let challenge = hex::decode(params["challenge"].as_str().unwrap()).unwrap();
   let response = mfkdf2::crypto::hmacsha1(&HMACSHA1_SECRET, &challenge);
   let derived_key = mfkdf2::derive::key(
-    derived_key.policy,
+    &derived_key.policy,
     HashMap::from([(
       "stack_2".to_string(),
       mfkdf2::derive::factors::stack(HashMap::from([
@@ -135,7 +126,6 @@ fn stack_derive() {
     false,
   )
   .unwrap();
-  println!("Derived key: {}", derived_key);
   assert_eq!(derived_key.key, key.key);
 }
 
@@ -143,10 +133,9 @@ fn stack_derive() {
 #[should_panic]
 fn stack_derive_fail() {
   let key = mock_setup_stack().unwrap();
-  println!("Setup key: {}", key);
 
   let derived_key = mfkdf2::derive::key(
-    key.policy,
+    &key.policy,
     HashMap::from([(
       "password_3".to_string(),
       mfkdf2::derive::factors::password("wrong_password").unwrap(),
@@ -155,7 +144,6 @@ fn stack_derive_fail() {
     false,
   )
   .unwrap();
-  println!("Derived key: {}", derived_key);
   assert_eq!(derived_key.key, key.key);
 }
 
@@ -163,10 +151,9 @@ fn stack_derive_fail() {
 #[should_panic]
 fn stack_derive_fail_second() {
   let key = mock_setup_stack().unwrap();
-  println!("Setup key: {}", key);
 
   let derived_key = mfkdf2::derive::key(
-    key.policy.clone(),
+    &key.policy,
     HashMap::from([(
       "stack".to_string(),
       mfkdf2::derive::factors::stack(HashMap::from([(
@@ -179,7 +166,6 @@ fn stack_derive_fail_second() {
     false,
   )
   .unwrap();
-  println!("Derived key: {}", derived_key);
   assert_eq!(derived_key.key, key.key);
 }
 
@@ -189,7 +175,6 @@ fn stack_policy_json_schema_compliance() {
 
   // Serialize the policy to JSON
   let policy_json = serde_json::to_string_pretty(&key.policy).unwrap();
-  println!("Policy JSON:\n{}", policy_json);
 
   // Parse it back to ensure it's valid JSON
   let parsed: serde_json::Value = serde_json::from_str(&policy_json).unwrap();
@@ -218,6 +203,4 @@ fn stack_policy_json_schema_compliance() {
     assert!(factor.get("secret").is_some(), "Factor missing secret field");
     assert!(factor.get("params").is_some(), "Factor missing params field");
   }
-
-  println!("✅ Policy JSON schema compliance test passed!");
 }

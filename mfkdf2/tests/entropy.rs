@@ -7,7 +7,7 @@ use mfkdf2::{
 fn entropy_3_of_3_passwords() -> Result<(), mfkdf2::error::MFKDF2Error> {
   // ['12345678', 'ABCDEFGH', 'abcdefgh'] with threshold 3
   let setup = mfkdf2::setup::key(
-    vec![
+    &[
       mfkdf2::setup::factors::password("12345678", PasswordOptions {
         id: Some("password1".to_string()),
       })?,
@@ -31,7 +31,7 @@ fn entropy_3_of_3_passwords() -> Result<(), mfkdf2::error::MFKDF2Error> {
 #[test]
 fn entropy_2_of_3_passwords() -> Result<(), mfkdf2::error::MFKDF2Error> {
   let setup = mfkdf2::setup::key(
-    vec![
+    &[
       mfkdf2::setup::factors::password("12345678", PasswordOptions {
         id: Some("password1".to_string()),
       })?,
@@ -55,7 +55,7 @@ fn entropy_2_of_3_passwords() -> Result<(), mfkdf2::error::MFKDF2Error> {
 #[test]
 fn entropy_1_of_3_passwords() -> Result<(), mfkdf2::error::MFKDF2Error> {
   let setup = mfkdf2::setup::key(
-    vec![
+    &[
       mfkdf2::setup::factors::password("12345678", PasswordOptions {
         id: Some("password1".to_string()),
       })?,
@@ -76,8 +76,8 @@ fn entropy_1_of_3_passwords() -> Result<(), mfkdf2::error::MFKDF2Error> {
   Ok(())
 }
 
-#[tokio::test]
-async fn entropy_policy_combinators() -> Result<(), mfkdf2::error::MFKDF2Error> {
+#[test]
+fn entropy_policy_combinators() -> Result<(), mfkdf2::error::MFKDF2Error> {
   // Mirrors the complex AND/OR/ANY nesting from the JS test
   let policy = mfkdf2::policy::setup::setup(
     mfkdf2::policy::logic::and(
@@ -95,8 +95,7 @@ async fn entropy_policy_combinators() -> Result<(), mfkdf2::error::MFKDF2Error> 
           mfkdf2::setup::factors::password("12345678", PasswordOptions {
             id: Some("password2".to_string()),
           })?,
-        )
-        .await?,
+        )?,
         mfkdf2::policy::logic::and(
           mfkdf2::setup::factors::password("12345678", PasswordOptions {
             id: Some("password4".to_string()),
@@ -108,14 +107,10 @@ async fn entropy_policy_combinators() -> Result<(), mfkdf2::error::MFKDF2Error> 
             mfkdf2::setup::factors::password("12345678", PasswordOptions {
               id: Some("password6".to_string()),
             })?,
-          )
-          .await?,
-        )
-        .await?,
-      ])
-      .await?,
-    )
-    .await?,
+          )?,
+        )?,
+      ])?,
+    )?,
     PolicySetupOptions::default(),
   )?;
 
@@ -128,7 +123,7 @@ async fn entropy_policy_combinators() -> Result<(), mfkdf2::error::MFKDF2Error> 
 #[test]
 fn entropy_totp_hotp_6_digits() -> Result<(), mfkdf2::error::MFKDF2Error> {
   let setup = mfkdf2::setup::key(
-    vec![
+    &[
       mfkdf2::setup::factors::totp(Default::default())?, // default 6 digits
       mfkdf2::setup::factors::hotp(Default::default())?, // default 6 digits
     ],
@@ -144,13 +139,13 @@ fn entropy_totp_hotp_6_digits() -> Result<(), mfkdf2::error::MFKDF2Error> {
 #[test]
 fn entropy_totp_hotp_8_digits() -> Result<(), mfkdf2::error::MFKDF2Error> {
   let setup = mfkdf2::setup::key(
-    vec![
+    &[
       mfkdf2::setup::factors::totp(mfkdf2::setup::factors::totp::TOTPOptions {
-        digits: 8,
+        digits: Some(8),
         ..Default::default()
       })?,
       mfkdf2::setup::factors::hotp(mfkdf2::setup::factors::hotp::HOTPOptions {
-        digits: 8,
+        digits: Some(8),
         ..Default::default()
       })?,
     ],

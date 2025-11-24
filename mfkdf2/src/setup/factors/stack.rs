@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 use crate::{
-  definitions::{FactorMetadata, FactorType, Key, MFKDF2DerivedKey, MFKDF2Factor},
+  definitions::{FactorMetadata, FactorType, Key, MFKDF2DerivedKey, MFKDF2Factor, Salt},
   error::{MFKDF2Error, MFKDF2Result},
   setup::{
     FactorSetup,
@@ -17,7 +17,7 @@ use crate::{
 pub struct StackOptions {
   pub id:        Option<String>,
   pub threshold: Option<u8>,
-  pub salt:      Option<Vec<u8>>,
+  pub salt:      Option<Salt>,
 }
 
 impl From<StackOptions> for MFKDF2Options {
@@ -46,7 +46,7 @@ pub struct Stack {
 impl FactorMetadata for Stack {
   fn kind(&self) -> String { "stack".to_string() }
 
-  fn bytes(&self) -> Vec<u8> { self.key.key.clone() }
+  fn bytes(&self) -> Vec<u8> { self.key.key.clone().into() }
 }
 
 impl FactorSetup for Stack {
@@ -57,7 +57,7 @@ impl FactorSetup for Stack {
     Ok(serde_json::to_value(&self.key.policy)?)
   }
 
-  fn output(&self, _key: Key) -> Self::Output { serde_json::to_value(&self.key).unwrap() }
+  fn output(&self) -> Self::Output { serde_json::to_value(&self.key).unwrap() }
 }
 
 pub fn stack(factors: Vec<MFKDF2Factor>, options: StackOptions) -> MFKDF2Result<MFKDF2Factor> {
@@ -71,17 +71,19 @@ pub fn stack(factors: Vec<MFKDF2Factor>, options: StackOptions) -> MFKDF2Result<
     },
   };
 
-  let key = key::key(factors.clone(), options.into())?;
+  let key = key::key(&factors, options.into())?;
 
   let mut factor_map = HashMap::new();
-  factors.into_iter().for_each(|f| {
-    factor_map.insert(f.id.clone().unwrap(), f);
-  });
+  for factor in factors {
+    factor_map.insert(factor.id.clone().unwrap(), factor);
+  }
+
+  let real_entropy = key.entropy.real;
 
   Ok(MFKDF2Factor {
     id,
-    factor_type: FactorType::Stack(Stack { factors: factor_map, key: key.clone() }),
-    entropy: Some(key.entropy.real as f64),
+    factor_type: FactorType::Stack(Stack { factors: factor_map, key }),
+    entropy: Some(real_entropy),
   })
 }
 
@@ -145,7 +147,7 @@ mod tests {
     let key = [0u8; 32];
 
     let params = stack_factor.factor_type.setup().params(key.into()).unwrap();
-    let output = stack_factor.factor_type.output(key.into());
+    let output = stack_factor.factor_type.output();
 
     if let FactorType::Stack(stack) = stack_factor.factor_type {
       let expected_params = serde_json::to_value(&stack.key.policy).unwrap();

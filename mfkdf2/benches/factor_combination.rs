@@ -17,7 +17,6 @@ use mfkdf2::{
     key::MFKDF2Options,
   },
 };
-use serde_json::Value;
 use uuid::Uuid;
 
 const SECRET20: [u8; 20] = *b"abcdefghijklmnopqrst";
@@ -27,7 +26,7 @@ fn bench_factor_combination_setup(c: &mut Criterion) {
   // Case A: 5-of-5 factors (password + hmacsha1 + hotp + totp + uuid)
   group.bench_function("setup_5_factors", |b| {
     b.iter(|| {
-      let factors = black_box(vec![
+      let factors = black_box([
         password("password1", PasswordOptions::default()).unwrap(),
         hmacsha1(HmacSha1Options {
           id:     Some("hmacsha1".to_string()),
@@ -37,16 +36,12 @@ fn bench_factor_combination_setup(c: &mut Criterion) {
         hotp(HOTPOptions {
           id: Some("hotp".to_string()),
           secret: Some(SECRET20.to_vec()),
-          digits: 6,
-          hash: HashAlgorithm::Sha1,
           ..Default::default()
         })
         .unwrap(),
         totp(TOTPOptions {
           id: Some("totp".to_string()),
           secret: Some(SECRET20.to_vec()),
-          digits: 6,
-          hash: HashAlgorithm::Sha1,
           time: Some(1),
           ..Default::default()
         })
@@ -57,7 +52,7 @@ fn bench_factor_combination_setup(c: &mut Criterion) {
         })
         .unwrap(),
       ]);
-      let result = black_box(setup::key::key(factors, MFKDF2Options::default()));
+      let result = black_box(setup::key::key(&factors, MFKDF2Options::default()));
       result.unwrap()
     })
   });
@@ -65,27 +60,23 @@ fn bench_factor_combination_setup(c: &mut Criterion) {
   // Case B: 3-of-3 factors (password + hotp + totp)
   group.bench_function("setup_3_factors", |b| {
     b.iter(|| {
-      let factors = black_box(vec![
+      let factors = black_box([
         password("password1", PasswordOptions::default()).unwrap(),
         hotp(HOTPOptions {
           id: Some("hotp".to_string()),
           secret: Some(SECRET20.to_vec()),
-          digits: 6,
-          hash: HashAlgorithm::Sha1,
           ..Default::default()
         })
         .unwrap(),
         totp(TOTPOptions {
           id: Some("totp".to_string()),
           secret: Some(SECRET20.to_vec()),
-          digits: 6,
-          hash: HashAlgorithm::Sha1,
           time: Some(1),
           ..Default::default()
         })
         .unwrap(),
       ]);
-      let result = black_box(setup::key::key(factors, MFKDF2Options::default()));
+      let result = black_box(setup::key::key(&factors, MFKDF2Options::default()));
       result.unwrap()
     })
   });
@@ -98,28 +89,23 @@ fn bench_factor_combination_derive(c: &mut Criterion) {
   let factor2 = hotp(HOTPOptions {
     id: Some("hotp".to_string()),
     secret: Some(SECRET20.to_vec()),
-    digits: 6,
-    hash: HashAlgorithm::Sha1,
     ..Default::default()
   })
   .unwrap();
   let factor3 = totp(TOTPOptions {
     id: Some("totp".to_string()),
     secret: Some(SECRET20.to_vec()),
-    digits: 6,
-    hash: HashAlgorithm::Sha1,
     time: Some(1),
     ..Default::default()
   })
   .unwrap();
 
-  let factors = vec![factor1, factor2, factor3];
   let options = MFKDF2Options { threshold: Some(2), ..Default::default() };
-  let setup_key = setup::key::key(factors, options).unwrap();
+  let setup_key = setup::key::key(&[factor1, factor2, factor3], options).unwrap();
 
   // Pre-compute HOTP code for derive
   let policy_hotp_factor = setup_key.policy.factors.iter().find(|f| f.id == "hotp").unwrap();
-  let hotp_params: Value = serde_json::from_str(&policy_hotp_factor.params).unwrap();
+  let hotp_params = &policy_hotp_factor.params;
   let counter = hotp_params["counter"].as_u64().unwrap();
   let hotp_code = generate_hotp_code(&SECRET20, counter, &HashAlgorithm::Sha1, 6);
 
@@ -135,7 +121,7 @@ fn bench_factor_combination_derive(c: &mut Criterion) {
         ("pwd".to_string(), derive::factors::password("password1").unwrap()),
         ("hotp".to_string(), derive::factors::hotp(hotp_code as u32).unwrap()),
       ]));
-      let result = black_box(derive::key(setup_key.policy.clone(), factors_map, false, false));
+      let result = black_box(derive::key(&setup_key.policy, factors_map, false, false));
       result.unwrap()
     })
   });
@@ -154,7 +140,7 @@ fn bench_factor_combination_derive(c: &mut Criterion) {
           .unwrap(),
         ),
       ]));
-      let result = black_box(derive::key(setup_key.policy.clone(), factors_map, false, false));
+      let result = black_box(derive::key(&setup_key.policy, factors_map, false, false));
       result.unwrap()
     })
   });

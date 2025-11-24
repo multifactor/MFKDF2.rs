@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 
 use crate::{
-  definitions::{MFKDF2DerivedKey, MFKDF2Factor},
+  definitions::{MFKDF2DerivedKey, MFKDF2Factor, Salt},
   error::{MFKDF2Error, MFKDF2Result},
   setup::key::{MFKDF2Options, key as setup_key},
 };
@@ -12,7 +12,7 @@ pub struct PolicySetupOptions {
   pub id:        Option<String>,
   pub threshold: Option<u8>,
   pub integrity: Option<bool>,
-  pub salt:      Option<Vec<u8>>,
+  pub salt:      Option<Salt>,
 }
 
 impl From<PolicySetupOptions> for MFKDF2Options {
@@ -40,7 +40,7 @@ impl From<PolicySetupOptions> for MFKDF2Options {
 }
 
 pub fn setup(factor: MFKDF2Factor, options: PolicySetupOptions) -> MFKDF2Result<MFKDF2DerivedKey> {
-  let derived_key = setup_key(vec![factor], options.into())?;
+  let derived_key = setup_key(&[factor], options.into())?;
 
   if !derived_key.policy.validate() {
     return Err(MFKDF2Error::DuplicateFactorId);

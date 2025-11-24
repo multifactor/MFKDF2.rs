@@ -30,6 +30,9 @@ pub enum MFKDF2Error {
   #[error(transparent)]
   RsaError(#[from] rsa::errors::Error),
 
+  #[error(transparent)]
+  WriteError(#[from] std::fmt::Error),
+
   // TODO (autoparallel): This error variant should probably not even exist.
   #[error("failed to convert vector to array!")]
   TryFromVecError,

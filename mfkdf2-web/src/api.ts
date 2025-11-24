@@ -95,8 +95,7 @@ function stringifyFactorParams(value: any): any {
         if (!(key in input)) continue;
 
         if (context === 'factor' && key === 'params') {
-          const nested = input[key];
-          ordered.params = typeof nested === 'string' ? nested : stringifyPolicy(nested);
+          ordered.params = input[key];
           continue;
         }
 
@@ -143,8 +142,8 @@ function wrapSetupFactor(factor: raw.Mfkdf2Factor): any {
       // Parse JSON string returned by UniFFI (Value is serialized as string)
       return typeof result === 'string' ? JSON.parse(result) : result;
     },
-    async output(key?: ArrayBuffer) {
-      const result = raw.setupFactorTypeOutput(factor.factorType, key);
+    async output() {
+      const result = raw.setupFactorTypeOutput(factor.factorType);
       // Parse JSON string returned by UniFFI (Value is serialized as string)
       return typeof result === 'string' ? JSON.parse(result) : result;
     }
@@ -178,25 +177,27 @@ function wrapPolicy(policy: any): any {
   delete wrapped.schema;
 
   for (const factor of wrapped.factors) {
+    // use `type` instead of `kind`
     factor.type = factor.type ?? factor.kind;
     delete factor.kind;
+    // parse params from string to object
     factor.params = deepParse(factor.params);
   }
 
   return wrapped;
 }
 
-// TODO (@lonerapier): try to remove this
 // Unwrap policy to remove $id and $schema (non-mutating)
 function unwrapPolicy(policy: any): raw.Policy {
   const unwrapped: any = {
     ...policy,
     factors: policy.factors.map((f: any) => {
       const factor = { ...f };
+      // delete `type` and use `kind` instead
       factor.kind = factor.type ? factor.type : factor.kind;
       delete factor.type;
-      const stringified = stringifyFactorParams(factor.params);
-      factor.params = stringified;
+      // params is a Value object, convert back to string for UniFFI transport
+      factor.params = stringifyFactorParams(factor.params);
       return factor;
     })
   };
@@ -205,11 +206,6 @@ function unwrapPolicy(policy: any): raw.Policy {
   unwrapped.schema = unwrapped.$schema ?? unwrapped.schema;
   delete unwrapped.$id;
   delete unwrapped.$schema;
-
-  unwrapped.time = unwrapped.time ?? 0;
-  unwrapped.memory = unwrapped.memory ?? 0;
-
-  delete unwrapped.size;
 
   return unwrapped;
 }
@@ -254,7 +250,7 @@ function wrapDerivedKey(key: raw.Mfkdf2DerivedKey): any {
       }
 
       key.policy = unwrapPolicy(key.policy);
-      const updated = raw.derivedKeySetThreshold(key, threshold ?? key.policy.threshold);
+      const updated = raw.derivedKeySetThreshold(key, threshold);
       return applyUpdate(updated);
     },
     async removeFactor(factorId: string) {
@@ -287,6 +283,14 @@ function wrapDerivedKey(key: raw.Mfkdf2DerivedKey): any {
       const updated = raw.derivedKeyRecoverFactors(key, factors);
       return applyUpdate(updated);
     },
+    /**
+     * Reconstitutes the key with the given factors.
+     * @param remove_factors - The factors ids to remove from the key.
+     * @param add_factors - The factors to add to the key.
+     * @param threshold - The threshold for the key.
+     * @returns The updated key.
+     * @throws {TypeError} If the threshold is not an integer.
+     */
     async reconstitute(remove_factors?: string[], add_factors?: raw.Mfkdf2Factor[], threshold?: number) {
       // check for integer otherwise uniffi will cast to integer
       if (threshold && !Number.isInteger(threshold)) {
@@ -336,6 +340,7 @@ function wrapDerivedKey(key: raw.Mfkdf2DerivedKey): any {
       return updated;
     },
     async derivePassword(purpose: string, salt: string, regex: RegExp) {
+      key.policy = unwrapPolicy(key.policy);
       // TODO (@lonerapier): fix this type
       let buffer = toArrayBuffer(Buffer.from(salt));
       const updated = raw.derivedKeyDerivePassword(key, purpose, buffer, regex.source);
@@ -349,8 +354,13 @@ function wrapDerivedKey(key: raw.Mfkdf2DerivedKey): any {
 export const mfkdf = {
   setup: {
     factors: {
-      // Setup factors are async in reference implementation
-      // Default values match reference implementation's defaults.js
+      /**
+       * 
+       * @param password - The password to setup.
+       * @param options - The options for the password factor.
+       * @param options.id - The id of the factor.
+       * @returns The setup factor.
+       */
       async password(password: string, options: { id?: string } = {}) {
         const factor = await raw.setupPassword(password, {
           id: options.id
@@ -361,24 +371,24 @@ export const mfkdf = {
         const factor = await raw.setupHotp({
           id: options.id,
           secret: toArrayBuffer(options.secret),
-          digits: options.digits ?? 6,
-          hash: options.hash ?? raw.HashAlgorithm.Sha1,
-          issuer: options.issuer ?? 'MFKDF',
-          label: options.label ?? 'mfkdf.com'
+          digits: options.digits,
+          hash: options.hash,
+          issuer: options.issuer,
+          label: options.label
         });
         return wrapSetupFactor(factor);
       },
-      async totp(options: { secret?: ArrayBuffer | Buffer, id?: string, digits?: number, hash?: raw.HashAlgorithm, issuer?: string, label?: string, window?: bigint, step?: bigint, time?: bigint | number, oracle?: Record<number, number> } = {}) {
+      async totp(options: { secret?: ArrayBuffer | Buffer, id?: string, digits?: number, hash?: raw.HashAlgorithm, issuer?: string, label?: string, window?: number, step?: number, time?: bigint | number, oracle?: Record<number, number> } = {}) {
         const factor = await raw.setupTotp({
           id: options.id,
           secret: toArrayBuffer(options.secret),
-          digits: options.digits ?? 6,
-          hash: options.hash ?? raw.HashAlgorithm.Sha1,
-          issuer: options.issuer ?? 'MFKDF',
-          label: options.label ?? 'mfkdf.com',
-          time: options.time ? BigInt(options.time) : BigInt(Date.now()), // BUG: uniffi doesn't support optional integers
-          window: options.window ?? 87600n,
-          step: options.step ?? 30n,
+          digits: options.digits,
+          hash: options.hash,
+          issuer: options.issuer,
+          label: options.label,
+          time: options?.time ? BigInt(options.time) : undefined,
+          window: options.window,
+          step: options.step,
           oracle: options?.oracle ? new Map(Object.entries(options.oracle).map(([key, value]) => [BigInt(key), value])) : undefined,
         });
         return wrapSetupFactor(factor);
@@ -551,19 +561,19 @@ export const mfkdf = {
       return await raw.policyEvaluate(unwrapPolicy(policy), factorIds);
     },
     async atLeast(n: number, factors: raw.Mfkdf2Factor[]) {
-      return wrapSetupFactor(await raw.policyAtLeast(n, factors));
+      return wrapSetupFactor(raw.policyAtLeast(n, factors));
     },
     async all(factors: raw.Mfkdf2Factor[]) {
-      return wrapSetupFactor(await raw.policyAll(factors));
+      return wrapSetupFactor(raw.policyAll(factors));
     },
     async any(factors: raw.Mfkdf2Factor[]) {
-      return wrapSetupFactor(await raw.policyAny(factors));
+      return wrapSetupFactor(raw.policyAny(factors));
     },
     async or(factor1: raw.Mfkdf2Factor, factor2: raw.Mfkdf2Factor) {
-      return wrapSetupFactor(await raw.policyOr(factor1, factor2));
+      return wrapSetupFactor(raw.policyOr(factor1, factor2));
     },
     async and(factor1: raw.Mfkdf2Factor, factor2: raw.Mfkdf2Factor) {
-      return wrapSetupFactor(await raw.policyAnd(factor1, factor2));
+      return wrapSetupFactor(raw.policyAnd(factor1, factor2));
     }
   }
 };

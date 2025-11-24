@@ -4,7 +4,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 
 use base64::Engine;
 use serde::{Deserialize, Serialize};
-use serde_json::{Value, json};
+use serde_json::Value;
 #[cfg(target_arch = "wasm32")]
 use web_time::{SystemTime, UNIX_EPOCH};
 
@@ -13,10 +13,10 @@ use crate::{
   definitions::{FactorType, Key, MFKDF2Factor},
   derive::FactorDerive,
   error::{MFKDF2Error, MFKDF2Result},
-  otpauth::{HashAlgorithm, generate_hotp_code},
+  otpauth::generate_hotp_code,
   setup::factors::{
     hotp::mod_positive,
-    totp::{TOTP, TOTPOptions},
+    totp::{TOTP, TOTPConfig, TOTPParams},
   },
 };
 
@@ -27,9 +27,15 @@ pub struct TOTPDeriveOptions {
   pub oracle: Option<HashMap<u64, u32>>,
 }
 
-impl From<TOTPDeriveOptions> for TOTPOptions {
-  fn from(options: TOTPDeriveOptions) -> Self {
-    TOTPOptions { time: options.time, oracle: options.oracle, ..Default::default() }
+impl TryFrom<TOTPDeriveOptions> for TOTPConfig {
+  type Error = MFKDF2Error;
+
+  fn try_from(options: TOTPDeriveOptions) -> Result<Self, MFKDF2Error> {
+    Ok(TOTPConfig {
+      time: options.time.ok_or(MFKDF2Error::MissingDeriveParams("time".to_string()))?,
+      oracle: options.oracle,
+      ..Default::default()
+    })
   }
 }
 
@@ -38,119 +44,89 @@ impl FactorDerive for TOTP {
   type Params = Value;
 
   fn include_params(&mut self, params: Self::Params) -> MFKDF2Result<()> {
-    self.params = serde_json::to_string(&params)
-      .map_err(|e| MFKDF2Error::InvalidDeriveParams(format!("invalid params: {}", e)))?;
+    self.params = params.clone();
 
-    // TODO (@lonerapier): create a type for factor params and serialize/deser using that.
-    let step = params
-      .get("step")
-      .and_then(Value::as_u64)
-      .ok_or(MFKDF2Error::MissingDeriveParams("step".to_string()))?;
-    let window = params
-      .get("window")
-      .and_then(Value::as_u64)
-      .ok_or(MFKDF2Error::MissingDeriveParams("window".to_string()))?;
-    let digits = params
-      .get("digits")
-      .and_then(Value::as_u64)
-      .ok_or(MFKDF2Error::MissingDeriveParams("digits".to_string()))?;
-    let start = params
-      .get("start")
-      .and_then(Value::as_u64) // TODO (@lonerapier): time is u128, but is being serialized to u64
-      .ok_or(MFKDF2Error::MissingDeriveParams("start".to_string()))?;
-    let offsets_b64 = params
-      .get("offsets")
-      .and_then(Value::as_str)
-      .ok_or(MFKDF2Error::MissingDeriveParams("offsets".to_string()))?;
-    let offsets = base64::prelude::BASE64_STANDARD.decode(offsets_b64).map_err(|e| {
-      MFKDF2Error::InvalidDeriveParams(format!("invalid base64 for offsets: {}", e))
-    })?;
+    let params: TOTPParams = serde_json::from_value(params)?;
 
-    let start_counter = start / (step * 1000);
-    let time_ms = self.options.time.ok_or(MFKDF2Error::MissingDeriveParams("time".to_string()))?;
-    let now_counter = time_ms / (step * 1000);
+    let start_counter = params.start / (params.step as u64 * 1000);
+    let now_counter = self.config.time / (params.step as u64 * 1000);
 
     let index = (now_counter - start_counter) as usize;
-    if index >= window as usize {
+    if index >= params.window as usize {
       return Err(MFKDF2Error::TOTPWindowExceeded);
     }
 
     let offset_start = index * 4;
     let offset_end = offset_start + 4;
-    if offsets.len() < offset_end {
+    if params.offsets.len() < offset_end {
       return Err(MFKDF2Error::InvalidDeriveParams(
         "offsets array is too small for the current index".to_string(),
       ));
     }
+    let offsets = base64::prelude::BASE64_STANDARD.decode(params.offsets)?;
     let mut offset =
       u32::from_be_bytes(offsets[offset_start..offset_end].try_into().map_err(|_| {
         MFKDF2Error::InvalidDeriveParams("failed to read 4-byte offset from offsets".to_string())
       })?);
 
-    let oracle_time = now_counter * step * 1000;
-    if self.options.oracle.is_some()
-      && self.options.oracle.as_ref().unwrap().contains_key(&oracle_time)
+    let oracle_time = now_counter * (params.step as u64) * 1000;
+    if self.config.oracle.is_some()
+      && self.config.oracle.as_ref().unwrap().contains_key(&oracle_time)
     {
       offset = mod_positive(
-        offset as i64 - *self.options.oracle.as_ref().unwrap().get(&oracle_time).unwrap() as i64,
-        10_i64.pow(digits as u32),
-      ) as u32;
+        i64::from(offset)
+          - i64::from(*self.config.oracle.as_ref().unwrap().get(&oracle_time).unwrap()),
+        10_i64.pow(params.digits),
+      );
     }
     self.target =
-      mod_positive(offset as i64 + self.code as i64, 10_i64.pow(self.options.digits as u32)) as u32;
+      mod_positive(i64::from(offset) + i64::from(self.code), 10_i64.pow(self.config.digits));
 
     Ok(())
   }
 
   /// Note: `self.options` is only used for [`TOTPDeriveOptions`].
   fn params(&self, key: Key) -> MFKDF2Result<Self::Params> {
-    let params: Value = serde_json::from_str(&self.params)?;
+    let params: TOTPParams = serde_json::from_value(self.params.clone())?;
 
-    let pad = params["pad"].as_str().ok_or(MFKDF2Error::MissingDeriveParams("pad".to_string()))?;
-    let pad = base64::prelude::BASE64_STANDARD.decode(pad)?;
+    let pad = base64::prelude::BASE64_STANDARD.decode(params.pad)?;
     let padded_secret = decrypt(pad.clone(), &key.0);
 
-    let window =
-      params["window"].as_u64().ok_or(MFKDF2Error::MissingDeriveParams("window".to_string()))?;
-    let step =
-      params["step"].as_u64().ok_or(MFKDF2Error::MissingDeriveParams("step".to_string()))?;
-    let digits =
-      params["digits"].as_u64().ok_or(MFKDF2Error::MissingDeriveParams("digits".to_string()))?;
-    let hash: HashAlgorithm = serde_json::from_value(params["hash"].clone())?;
+    let time = params.start;
+    let mut new_offsets = Vec::with_capacity((4 * params.window) as usize);
 
-    let time =
-      self.options.time.ok_or(MFKDF2Error::MissingDeriveParams("time".to_string()))? as u128;
-    let mut new_offsets = Vec::with_capacity((4 * window) as usize);
-
-    for i in 0..window {
-      let counter = (time / 1000) as u64 / step + i;
-      let code = generate_hotp_code(&padded_secret[..20], counter, &hash, digits as u8);
+    for i in 0..params.window {
+      let counter = (time / 1000) / (params.step as u64) + i as u64;
+      let code = generate_hotp_code(&padded_secret[..20], counter, &params.hash, params.digits);
 
       let mut offset =
-        mod_positive(self.target as i64 - code as i64, 10_i64.pow(digits as u32)) as u32;
+        mod_positive(i64::from(self.target) - i64::from(code), 10_i64.pow(params.digits));
 
-      let oracle_time = counter * step * 1000;
-      if self.options.oracle.is_some()
-        && self.options.oracle.as_ref().unwrap().contains_key(&oracle_time)
+      let oracle_time = counter * u64::from(params.step) * 1000;
+      if self.config.oracle.is_some()
+        && self.config.oracle.as_ref().unwrap().contains_key(&oracle_time)
       {
         offset = mod_positive(
-          offset as i64 + *self.options.oracle.as_ref().unwrap().get(&oracle_time).unwrap() as i64,
-          10_i64.pow(digits as u32),
-        ) as u32;
+          i64::from(offset)
+            + i64::from(*self.config.oracle.as_ref().unwrap().get(&oracle_time).unwrap()),
+          10_i64.pow(params.digits),
+        );
       }
 
       new_offsets.extend_from_slice(&offset.to_be_bytes());
     }
 
-    Ok(json!({
-      "start": time,
-      "hash": hash.to_string(),
-      "digits": digits,
-      "step": step,
-      "window": window,
-      "pad": base64::prelude::BASE64_STANDARD.encode(&pad),
-      "offsets": base64::prelude::BASE64_STANDARD.encode(&new_offsets),
-    }))
+    let params = TOTPParams {
+      start:   time,
+      hash:    params.hash,
+      digits:  params.digits,
+      step:    params.step,
+      window:  params.window,
+      pad:     base64::prelude::BASE64_STANDARD.encode(&pad),
+      offsets: base64::prelude::BASE64_STANDARD.encode(&new_offsets),
+    };
+
+    Ok(serde_json::to_value(params)?)
   }
 }
 
@@ -166,12 +142,12 @@ pub fn totp(code: u32, options: Option<TOTPDeriveOptions>) -> MFKDF2Result<MFKDF
   Ok(MFKDF2Factor {
     id:          Some("totp".to_string()),
     factor_type: FactorType::TOTP(TOTP {
-      options: options.into(),
-      params: serde_json::to_string(&Value::Null).unwrap(),
+      config: TOTPConfig::try_from(options)?,
+      params: Value::Null,
       code,
       target: 0,
     }),
-    entropy:     Some(0.0), // TODO (@lonerapier): is entropy used anywhere after derive?
+    entropy:     None,
   })
 }
 
@@ -187,8 +163,13 @@ pub async fn derive_totp(
 mod tests {
   use std::time::SystemTime;
 
+  use serde_json::json;
+
   use super::*;
-  use crate::setup::factors::totp as setup_totp;
+  use crate::{
+    otpauth::HashAlgorithm,
+    setup::factors::{totp as setup_totp, totp::TOTPOptions},
+  };
 
   fn get_test_derive_totp_options(time: Option<u64>) -> TOTPDeriveOptions {
     TOTPDeriveOptions { time, oracle: None }
@@ -200,14 +181,14 @@ mod tests {
     setup_totp::TOTPOptions {
       id:     Some("totp-test".to_string()),
       secret: Some(b"hello world mfkdf2!!".to_vec()),
-      digits: 6,
-      hash:   HashAlgorithm::Sha1,
-      step:   30,
-      window: 5,
+      digits: Some(6),
+      hash:   Some(HashAlgorithm::Sha1),
+      step:   Some(30),
+      window: Some(5),
       time:   Some(now_ms),
       oracle: None,
-      issuer: "MFKDF".to_string(),
-      label:  "test".to_string(),
+      issuer: Some("MFKDF".to_string()),
+      label:  Some("test".to_string()),
     }
   }
 
@@ -229,15 +210,15 @@ mod tests {
   fn totp_round_trip() {
     let setup_options = get_test_totp_options();
     // can't get secret here, because it will be padded inside totp()
-    let step = setup_options.step;
-    let digits = setup_options.digits;
-    let hash = setup_options.hash.clone();
+    let step = setup_options.step.unwrap();
+    let digits = setup_options.digits.unwrap();
+    let hash = setup_options.hash.clone().unwrap();
     let time = setup_options.time.unwrap();
 
     let factor = setup_totp::totp(setup_options).unwrap();
 
     let secret = if let FactorType::TOTP(f) = &factor.factor_type {
-      f.options.secret.as_ref().unwrap().clone()
+      f.config.secret.clone()
     } else {
       panic!("wrong factor type");
     };
@@ -246,7 +227,7 @@ mod tests {
     let setup_params = factor.factor_type.setup().params(mock_key.into()).unwrap();
 
     let now_millis = time;
-    let counter = now_millis / (step * 1000);
+    let counter = now_millis / (u64::from(step) * 1000);
 
     let correct_code = generate_hotp_code(&secret[..20], counter, &hash, digits);
 
@@ -300,6 +281,7 @@ mod tests {
   }
 
   #[test]
+  #[should_panic]
   fn totp_include_params_missing_step() {
     let mut derive_factor = totp(123456, None).unwrap();
     let mut params = factor_params_for_test();
@@ -309,6 +291,7 @@ mod tests {
   }
 
   #[test]
+  #[should_panic]
   fn totp_include_params_missing_window() {
     let mut derive_factor = totp(123456, None).unwrap();
     let mut params = factor_params_for_test();

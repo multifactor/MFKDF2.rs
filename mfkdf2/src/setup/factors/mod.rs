@@ -36,7 +36,8 @@ impl FactorType {
       FactorType::OOBA(ooba) => ooba,
       FactorType::Passkey(passkey) => passkey,
       FactorType::Stack(stack) => stack,
-      _ => unreachable!("Persisted factor should not be used in this context"),
+      FactorType::Persisted(_) =>
+        unreachable!("Persisted factor should not be used in this context"),
     }
   }
 }
@@ -47,7 +48,7 @@ impl FactorSetup for FactorType {
 
   fn params(&self, key: Key) -> MFKDF2Result<Self::Params> { self.setup().params(key) }
 
-  fn output(&self, key: Key) -> Self::Output { self.setup().output(key) }
+  fn output(&self) -> Self::Output { self.setup().output() }
 }
 
 // Standalone exported functions for FFI
@@ -65,7 +66,4 @@ pub fn setup_factor_type_params(factor_type: &FactorType, key: Option<Key>) -> M
 }
 
 #[cfg_attr(feature = "bindings", uniffi::export)]
-pub fn setup_factor_type_output(factor_type: &FactorType, key: Option<Key>) -> Value {
-  let key = key.unwrap_or_else(|| [0u8; 32].into());
-  factor_type.output(key)
-}
+pub fn setup_factor_type_output(factor_type: &FactorType) -> Value { factor_type.output() }

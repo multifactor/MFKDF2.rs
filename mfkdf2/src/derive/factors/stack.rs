@@ -19,7 +19,7 @@ impl FactorDerive for Stack {
     // The key derivation is handled by the derive_key function
     let policy: Policy = serde_json::from_value(params)
       .map_err(|_| MFKDF2Error::InvalidDeriveParams("params".to_string()))?;
-    self.key = crate::derive::key(policy, self.factors.clone(), false, true)?;
+    self.key = crate::derive::key(&policy, self.factors.clone(), false, true)?;
     Ok(())
   }
 
@@ -77,7 +77,7 @@ mod tests {
     let stack_factor = setup_stack(factors, options).unwrap();
     // let params = stack_factor.factor_type.params_setup([0; 32]);
 
-    crate::setup::key(vec![stack_factor], MFKDF2Options::default())
+    crate::setup::key(&[stack_factor], MFKDF2Options::default())
       .expect("derived key should be created")
   }
 
@@ -95,9 +95,9 @@ mod tests {
     let derive_stack_factor = stack(derive_factors).unwrap();
 
     let derive_key = crate::derive::key(
-      setup_derived_key.policy,
+      &setup_derived_key.policy,
       HashMap::from([("my-stack".to_string(), derive_stack_factor)]),
-      false,
+      true,
       false,
     );
     assert!(derive_key.is_ok());

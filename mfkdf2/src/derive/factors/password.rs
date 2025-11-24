@@ -22,11 +22,10 @@ pub fn password(password: impl Into<String>) -> MFKDF2Result<MFKDF2Factor> {
   if password.is_empty() {
     return Err(MFKDF2Error::PasswordEmpty);
   }
-  let strength = zxcvbn(&password, &[]);
 
   Ok(MFKDF2Factor {
     factor_type: FactorType::Password(Password { password }),
-    entropy:     Some((strength.guesses() as f64).log2()),
+    entropy:     None,
     id:          None,
   })
 }
@@ -57,10 +56,7 @@ mod tests {
         assert_eq!(p.password, "hello");
         assert_eq!(factor.data(), "hello".as_bytes());
         let params: Value = <Password as FactorSetup>::params(p, [0u8; 32].into()).unwrap();
-        // TODO: fix this
-        // let output = p.output_derive();
-        // let strength: Entropy = serde_json::from_value(output["strength"].clone()).unwrap();
-        // assert_eq!(strength.guesses().ilog2(), factor.entropy.unwrap());
+
         assert_eq!(params, json!({}));
       },
       _ => panic!("Wrong factor type"),

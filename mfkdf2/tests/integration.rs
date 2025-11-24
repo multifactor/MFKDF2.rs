@@ -21,7 +21,7 @@ fn key_derive() -> Result<(), mfkdf2::error::MFKDF2Error> {
 
   let factors = HashMap::from([factor]);
 
-  let derived_key = mfkdf2::derive::key(key.policy, factors, false, false)?;
+  let derived_key = mfkdf2::derive::key(&key.policy, factors, true, false)?;
   println!("Derived key: {}", derived_key);
 
   assert_eq!(derived_key.key, key.key);
@@ -40,7 +40,7 @@ fn key_derive_fail() {
 
   let factors = HashMap::from([factor]);
 
-  let derived_key = mfkdf2::derive::key(key.policy, factors, false, false).unwrap();
+  let derived_key = mfkdf2::derive::key(&key.policy, factors, true, false).unwrap();
   println!("Derived key: {}", derived_key);
 
   assert_eq!(derived_key.key, key.key);
@@ -59,7 +59,7 @@ fn key_derive_threshold() {
 
   let factors = HashMap::from([factor]);
 
-  let derived_key = mfkdf2::derive::key(key.policy.clone(), factors, false, false).unwrap();
+  let derived_key = mfkdf2::derive::key(&key.policy, factors, true, false).unwrap();
   println!("Derived key: {}", derived_key);
 
   assert_eq!(derived_key.key, key.key);
@@ -68,7 +68,7 @@ fn key_derive_threshold() {
 
   let factors = HashMap::from([factor]);
 
-  let derived_key = mfkdf2::derive::key(key.policy, factors, false, false).unwrap();
+  let derived_key = mfkdf2::derive::key(&key.policy, factors, true, false).unwrap();
   println!("Derived key: {}", derived_key);
 
   assert_eq!(derived_key.key, key.key);
@@ -92,7 +92,7 @@ fn key_derive_password_question() {
 
   let factors = HashMap::from([factor_password, factor_question]);
 
-  let derived_key = mfkdf2::derive::key(key.policy.clone(), factors, false, false).unwrap();
+  let derived_key = mfkdf2::derive::key(&key.policy, factors, true, false).unwrap();
   println!("Derived key: {}", derived_key);
 
   assert_eq!(derived_key.key, key.key);
@@ -110,7 +110,7 @@ fn key_derive_uuid() {
 
   let factors = HashMap::from([factor]);
 
-  let derived_key = mfkdf2::derive::key(key.policy.clone(), factors, false, false).unwrap();
+  let derived_key = mfkdf2::derive::key(&key.policy, factors, true, false).unwrap();
 
   assert_eq!(derived_key.key, key.key);
 }
@@ -121,8 +121,8 @@ fn key_derive_hmacsha1() -> Result<(), mfkdf2::error::MFKDF2Error> {
   println!("Setup key: {}", key);
 
   let challenge = hex::decode(
-    serde_json::from_str::<serde_json::Value>(
-      key.policy.factors.iter().find(|f| f.kind == "hmacsha1").unwrap().params.as_str(),
+    serde_json::from_value::<serde_json::Value>(
+      key.policy.factors.iter().find(|f| f.kind == "hmacsha1").unwrap().params.clone(),
     )
     .unwrap()["challenge"]
       .as_str()
@@ -136,7 +136,7 @@ fn key_derive_hmacsha1() -> Result<(), mfkdf2::error::MFKDF2Error> {
     ("hmacsha1_1".to_string(), mfkdf2::derive::factors::hmacsha1(response.into()).unwrap());
   let factors = HashMap::from([factor]);
 
-  let derived_key = mfkdf2::derive::key(key.policy, factors, false, false)?;
+  let derived_key = mfkdf2::derive::key(&key.policy, factors, true, false)?;
   println!("Derived key: {}", derived_key);
 
   assert_eq!(derived_key.key, key.key);
@@ -195,9 +195,9 @@ fn key_derive_hotp() -> Result<(), mfkdf2::error::MFKDF2Error> {
 
   // Extract HOTP parameters from the policy
   let hotp_factor = key.policy.factors.iter().find(|f| f.kind == "hotp").unwrap();
-  let params: serde_json::Value = serde_json::from_str(&hotp_factor.params).unwrap();
+  let params = &hotp_factor.params;
   let counter = params["counter"].as_u64().unwrap();
-  let digits = params["digits"].as_u64().unwrap() as u8;
+  let digits = params["digits"].as_u64().unwrap() as u32;
   let hash = serde_json::from_value(params["hash"].clone()).unwrap();
 
   // Generate the HOTP code that the user would need to provide
@@ -210,7 +210,7 @@ fn key_derive_hotp() -> Result<(), mfkdf2::error::MFKDF2Error> {
   let factor = ("hotp_1".to_string(), mfkdf2::derive::factors::hotp(generated_code).unwrap());
   let factors = HashMap::from([factor]);
 
-  let derived_key = mfkdf2::derive::key(key.policy, factors, false, false)?;
+  let derived_key = mfkdf2::derive::key(&key.policy, factors, true, false)?;
   println!("Derived key: {}", derived_key);
 
   assert_eq!(derived_key.key, key.key);
@@ -228,11 +228,60 @@ fn key_derive_hotp_wrong_code() {
   let factor = ("hotp_1".to_string(), mfkdf2::derive::factors::hotp(wrong_code).unwrap());
   let factors = HashMap::from([factor]);
 
-  let derived_key = mfkdf2::derive::key(key.policy, factors, false, false).unwrap();
+  let derived_key = mfkdf2::derive::key(&key.policy, factors, true, false).unwrap();
   println!("Derived key: {}", derived_key);
 
   // This should fail because the wrong code will produce a different target
   assert_eq!(derived_key.key, key.key);
+}
+
+#[test]
+fn totp_static() -> Result<(), mfkdf2::error::MFKDF2Error> {
+  let setup = mfkdf2::setup::key(
+    &[mfkdf2::setup::factors::totp(mfkdf2::setup::factors::totp::TOTPOptions {
+      secret: Some(b"abcdefghijklmnopqrst".to_vec()),
+      time: Some(1),
+      ..Default::default()
+    })?],
+    mfkdf2::setup::key::MFKDF2Options::default(),
+  )?;
+
+  let derived_key1 = mfkdf2::derive::key(
+    &setup.policy,
+    HashMap::from([(
+      "totp".to_string(),
+      mfkdf2::derive::factors::totp(
+        241063,
+        Some(mfkdf2::derive::factors::totp::TOTPDeriveOptions {
+          time: Some(30001),
+          ..Default::default()
+        }),
+      )?,
+    )]),
+    true,
+    false,
+  )?;
+
+  let derived_key2 = mfkdf2::derive::key(
+    &derived_key1.policy,
+    HashMap::from([(
+      "totp".to_string(),
+      mfkdf2::derive::factors::totp(
+        361687,
+        Some(mfkdf2::derive::factors::totp::TOTPDeriveOptions {
+          time: Some(60001),
+          ..Default::default()
+        }),
+      )?,
+    )]),
+    true,
+    false,
+  )?;
+
+  assert_eq!(derived_key1.key, setup.key);
+  assert_eq!(derived_key2.key, setup.key);
+
+  Ok(())
 }
 
 #[test]
@@ -242,9 +291,9 @@ fn key_derive_mixed_password_hotp() -> Result<(), mfkdf2::error::MFKDF2Error> {
 
   // Extract HOTP parameters
   let hotp_factor = key.policy.factors.iter().find(|f| f.kind == "hotp").unwrap();
-  let params: serde_json::Value = serde_json::from_str(&hotp_factor.params).unwrap();
+  let params = &hotp_factor.params;
   let counter = params["counter"].as_u64().unwrap();
-  let digits = params["digits"].as_u64().unwrap() as u8;
+  let digits = params["digits"].as_u64().unwrap() as u32;
   let hash = serde_json::from_value(params["hash"].clone()).unwrap();
 
   // Generate the correct HOTP code using SHA256 (different from previous test)
@@ -258,7 +307,7 @@ fn key_derive_mixed_password_hotp() -> Result<(), mfkdf2::error::MFKDF2Error> {
   let factor_hotp = ("hotp_1".to_string(), mfkdf2::derive::factors::hotp(generated_code).unwrap());
   let factors = HashMap::from([factor_password, factor_hotp]);
 
-  let derived_key = mfkdf2::derive::key(key.policy, factors, false, false)?;
+  let derived_key = mfkdf2::derive::key(&key.policy, factors, true, false)?;
   println!("Derived key: {}", derived_key);
 
   assert_eq!(derived_key.key, key.key);
@@ -284,7 +333,7 @@ fn key_derivation_combinations(
 
   let options =
     mfkdf2::setup::key::MFKDF2Options { threshold: Some(threshold), ..Default::default() };
-  let setup_key = mfkdf2::setup::key(setup_factors, options)?;
+  let setup_key = mfkdf2::setup::key(&setup_factors, options)?;
 
   // 2. Loop through derivation combinations
   for combo in derive_combinations {
@@ -293,7 +342,7 @@ fn key_derivation_combinations(
       let derive_factors: HashMap<_, _> =
         combo.iter().map(|name| create_derive_factor(name, &policy_for_run)).collect();
 
-      let derived_key = mfkdf2::derive::key(policy_for_run.clone(), derive_factors, false, false)?;
+      let derived_key = mfkdf2::derive::key(&policy_for_run, derive_factors, true, false)?;
 
       assert_eq!(
         derived_key.key, setup_key.key,

@@ -13,7 +13,7 @@ use crate::{
   definitions::{FactorMetadata, FactorType, Key, MFKDF2Factor},
   error::{MFKDF2Error, MFKDF2Result},
   otpauth::{self, HashAlgorithm, OtpauthUrlOptions, generate_hotp_code},
-  setup::FactorSetup,
+  setup::{FactorSetup, factors::hotp::mod_positive},
 };
 
 #[cfg_attr(feature = "bindings", derive(uniffi::Record))]
@@ -21,28 +21,79 @@ use crate::{
 pub struct TOTPOptions {
   pub id:     Option<String>,
   pub secret: Option<Vec<u8>>,
-  pub digits: u8,
-  pub hash:   HashAlgorithm,
-  pub issuer: String,
-  pub label:  String,
+  pub digits: Option<u32>,
+  pub hash:   Option<HashAlgorithm>,
+  pub issuer: Option<String>,
+  pub label:  Option<String>,
   pub time:   Option<u64>, // Unix epoch time in milliseconds
-  pub window: u64,
-  pub step:   u64,
+  pub window: Option<u32>,
+  pub step:   Option<u32>,
   pub oracle: Option<HashMap<u64, u32>>,
 }
 
 impl Default for TOTPOptions {
   fn default() -> Self {
-    let now_ms = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_millis() as u64;
-
     Self {
       id:     Some("totp".to_string()),
       secret: None,
+      digits: Some(6),
+      hash:   Some(HashAlgorithm::Sha1),
+      issuer: Some("MFKDF".to_string()),
+      label:  Some("mfkdf.com".to_string()),
+      time:   None,
+      window: Some(87600),
+      step:   Some(30),
+      oracle: None,
+    }
+  }
+}
+
+#[cfg_attr(feature = "bindings", derive(uniffi::Record))]
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct TOTPConfig {
+  pub id:     String,
+  pub secret: Vec<u8>,
+  pub digits: u32,
+  pub hash:   HashAlgorithm,
+  pub issuer: String,
+  pub label:  String,
+  pub time:   u64,
+  pub window: u32,
+  pub step:   u32,
+  pub oracle: Option<HashMap<u64, u32>>,
+}
+
+impl TryFrom<TOTPOptions> for TOTPConfig {
+  type Error = MFKDF2Error;
+
+  fn try_from(value: TOTPOptions) -> Result<Self, Self::Error> {
+    Ok(TOTPConfig {
+      id:     value.id.ok_or(MFKDF2Error::MissingFactorId)?,
+      secret: value.secret.ok_or(MFKDF2Error::MissingSetupParams("secret".to_string()))?,
+      digits: value.digits.ok_or(MFKDF2Error::InvalidTOTPDigits)?,
+      hash:   value.hash.unwrap_or(HashAlgorithm::Sha1),
+      issuer: value.issuer.unwrap_or("MFKDF".to_string()),
+      label:  value.label.unwrap_or("mfkdf.com".to_string()),
+      time:   value.time.ok_or(MFKDF2Error::MissingSetupParams("time".to_string()))?,
+      window: value.window.unwrap_or(87600),
+      step:   value.step.unwrap_or(30),
+      oracle: value.oracle,
+    })
+  }
+}
+
+impl Default for TOTPConfig {
+  fn default() -> Self {
+    let now_ms = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_millis() as u64;
+
+    Self {
+      id:     "totp".to_string(),
+      secret: [0u8; 20].to_vec(),
       digits: 6,
       hash:   HashAlgorithm::Sha1,
       issuer: "MFKDF".to_string(),
       label:  "mfkdf.com".to_string(),
-      time:   Some(now_ms),
+      time:   now_ms,
       window: 87600,
       step:   30,
       oracle: None,
@@ -52,14 +103,24 @@ impl Default for TOTPOptions {
 
 #[cfg_attr(feature = "bindings", derive(uniffi::Record))]
 #[derive(Clone, Debug, Serialize, Deserialize)]
-pub struct TOTP {
-  pub options: TOTPOptions,
-  pub params:  String,
-  pub code:    u32,
-  pub target:  u32,
+pub struct TOTPParams {
+  pub start:   u64,
+  pub hash:    HashAlgorithm,
+  pub digits:  u32,
+  pub step:    u32,
+  pub window:  u32,
+  pub pad:     String,
+  pub offsets: String,
 }
 
-fn mod_positive(n: i64, m: i64) -> i64 { ((n % m) + m) % m }
+#[cfg_attr(feature = "bindings", derive(uniffi::Record))]
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct TOTP {
+  pub config: TOTPConfig,
+  pub params: Value,
+  pub code:   u32,
+  pub target: u32,
+}
 
 impl FactorMetadata for TOTP {
   fn kind(&self) -> String { "totp".to_string() }
@@ -72,72 +133,75 @@ impl FactorSetup for TOTP {
   type Params = Value;
 
   fn params(&self, key: Key) -> MFKDF2Result<Self::Params> {
-    let time =
-      self.options.time.ok_or(MFKDF2Error::MissingSetupParams("time".to_string()))? as u128;
-    let mut offsets = Vec::with_capacity((4 * self.options.window) as usize);
-    let padded_secret =
-      self.options.secret.as_ref().ok_or(MFKDF2Error::MissingSetupParams("secret".to_string()))?;
+    let time = u128::from(self.config.time);
+    let mut offsets = Vec::with_capacity(4 * self.config.window as usize);
 
-    for i in 0..self.options.window {
+    for i in 0..self.config.window {
       // Calculate the time-step 'T' as per RFC 6238, Section 4.2.
       // T = floor((CurrentUnixTime - T0) / X)
-      // Here, T0 is 0 (Unix epoch) and X is self.options.step.
+      // Here, T0 is 0 (Unix epoch) and X is self.config.step.
       // We add 'i' to generate a window of future OTPs for offline use.
-      let counter = (time / 1000) as u64 / self.options.step + i;
-      let code =
-        generate_hotp_code(&padded_secret[..20], counter, &self.options.hash, self.options.digits);
+      let counter = (time / 1000) as u64 / u64::from(self.config.step) + i as u64;
+      let code = generate_hotp_code(
+        &self.config.secret[..20],
+        counter,
+        &self.config.hash,
+        self.config.digits,
+      );
 
       let mut offset =
-        mod_positive(self.target as i64 - code as i64, 10_i64.pow(self.options.digits as u32))
-          as u32;
+        mod_positive(i64::from(self.target) - i64::from(code), 10_i64.pow(self.config.digits));
 
-      let oracle_time = counter * self.options.step * 1000;
-      if self.options.oracle.is_some()
-        && self.options.oracle.as_ref().unwrap().contains_key(&oracle_time)
+      let oracle_time = counter * u64::from(self.config.step) * 1000;
+      if self.config.oracle.is_some()
+        && self.config.oracle.as_ref().unwrap().contains_key(&oracle_time)
       {
         offset = mod_positive(
-          offset as i64 + *self.options.oracle.as_ref().unwrap().get(&oracle_time).unwrap() as i64,
-          10_i64.pow(self.options.digits as u32),
-        ) as u32;
+          i64::from(offset)
+            + i64::from(*self.config.oracle.as_ref().unwrap().get(&oracle_time).unwrap()),
+          10_i64.pow(self.config.digits),
+        );
       }
 
       offsets.extend_from_slice(&offset.to_be_bytes());
     }
 
-    let pad = encrypt(padded_secret, &key.0);
+    let pad = encrypt(&self.config.secret, &key.0);
 
-    Ok(json!({
-        "start": time,
-        "hash": self.options.hash.to_string(),
-        "digits": self.options.digits,
-        "step": self.options.step,
-        "window": self.options.window,
-        "pad": base64::prelude::BASE64_STANDARD.encode(&pad),
-        "offsets": base64::prelude::BASE64_STANDARD.encode(&offsets),
-    }))
+    let params = TOTPParams {
+      start:   time as u64,
+      hash:    self.config.hash.clone(),
+      digits:  self.config.digits,
+      step:    self.config.step,
+      window:  self.config.window,
+      pad:     base64::prelude::BASE64_STANDARD.encode(&pad),
+      offsets: base64::prelude::BASE64_STANDARD.encode(&offsets),
+    };
+
+    Ok(serde_json::to_value(params)?)
   }
 
-  fn output(&self, _key: Key) -> Self::Output {
+  fn output(&self) -> Self::Output {
     json!({
       "scheme": "otpauth",
       "type": "totp",
-      "label": self.options.label,
-      "secret": &self.options.secret.clone().unwrap()[..20],
-      "issuer": self.options.issuer,
-      "algorithm": self.options.hash.to_string(),
-      "digits": self.options.digits,
-      "period": self.options.step,
+        "label": self.config.label,
+      "secret": &self.config.secret[..20],
+      "issuer": self.config.issuer,
+      "algorithm": self.config.hash.to_string(),
+      "digits": self.config.digits,
+      "period": self.config.step,
       "uri": otpauth::otpauth_url(&OtpauthUrlOptions {
-        secret: hex::encode(&self.options.secret.clone().unwrap()[..20]),
-        label: self.options.label.clone(),
+        secret: hex::encode(&self.config.secret[..20]),
+        label: self.config.label.clone(),
         kind: Some(otpauth::Kind::Totp),
         counter: None,
-        issuer: Some(self.options.issuer.clone()),
-        digits: Some(self.options.digits),
-        period: Some(self.options.step),
+        issuer: Some(self.config.issuer.clone()),
+        digits: Some(self.config.digits),
+        period: Some(self.config.step),
         shared: Some(otpauth::SharedOptions {
           encoding: Some(otpauth::Encoding::Hex),
-          algorithm: Some(self.options.hash.clone()),
+          algorithm: Some(self.config.hash.clone()),
         }),
       }).unwrap()
     })
@@ -154,17 +218,20 @@ pub fn totp(options: TOTPOptions) -> MFKDF2Result<MFKDF2Factor> {
     return Err(crate::error::MFKDF2Error::MissingFactorId);
   }
   let id = options.id.clone().unwrap_or("totp".to_string());
-  if options.digits < 6 || options.digits > 8 {
+
+  if let Some(digits) = options.digits
+    && !(6..=8).contains(&digits)
+  {
     return Err(crate::error::MFKDF2Error::InvalidTOTPDigits);
   }
+  options.digits = Some(options.digits.unwrap_or(6));
 
   // secret length validation
   if let Some(ref secret) = options.secret
     && secret.len() != 20
   {
-    return Err(crate::error::MFKDF2Error::InvalidSecretLength(id.clone()));
+    return Err(crate::error::MFKDF2Error::InvalidSecretLength(id));
   }
-
   let secret = options.secret.unwrap_or_else(|| {
     let mut secret = [0u8; 20];
     crate::rng::fill_bytes(&mut secret);
@@ -177,20 +244,22 @@ pub fn totp(options: TOTPOptions) -> MFKDF2Result<MFKDF2Factor> {
   }
 
   // Generate random target
-  let target = crate::rng::gen_range_u32(10_u32.pow(u32::from(options.digits)) - 1);
+  let target = crate::rng::gen_range_u32(10_u32.pow(options.digits.unwrap()) - 1);
 
   let mut secret_pad = [0u8; 12];
   crate::rng::fill_bytes(&mut secret_pad);
-  let padded_secret = secret.iter().chain(secret_pad.iter()).cloned().collect();
+  let padded_secret = secret.into_iter().chain(secret_pad).collect();
   options.secret = Some(padded_secret);
 
-  let entropy = Some(options.digits as f64 * 10.0_f64.log2());
+  let entropy = Some(f64::from(options.digits.unwrap()) * 10.0_f64.log2());
+
+  options.id = Some(id.clone());
 
   Ok(MFKDF2Factor {
     id: Some(id),
     factor_type: FactorType::TOTP(TOTP {
-      options,
-      params: serde_json::to_string(&Value::Null).unwrap(),
+      config: options.try_into()?,
+      params: Value::Null,
       code: 0,
       target,
     }),
@@ -209,7 +278,7 @@ mod tests {
   fn mock_construction() -> MFKDF2Factor {
     let options = TOTPOptions {
       id: Some("test".to_string()),
-      digits: 8,
+      digits: Some(8),
       secret: Some(b"my-super-secret-1234".to_vec()), // 31 bytes
       time: Some(1672531200000),                      // 2023-01-01 00:00:00 UTC in milliseconds
       ..Default::default()
@@ -225,10 +294,10 @@ mod tests {
   fn construction() {
     let options = TOTPOptions {
       id: Some("test".to_string()),
-      digits: 8,
-      hash: HashAlgorithm::Sha256,
-      issuer: "TestCorp".to_string(),
-      label: "tester@testcorp.com".to_string(),
+      digits: Some(8),
+      hash: Some(HashAlgorithm::Sha256),
+      issuer: Some("TestCorp".to_string()),
+      label: Some("tester@testcorp.com".to_string()),
       ..Default::default()
     };
 
@@ -241,12 +310,11 @@ mod tests {
 
     assert!(matches!(factor.factor_type, FactorType::TOTP(_)));
     if let FactorType::TOTP(totp_factor) = factor.factor_type {
-      assert_eq!(totp_factor.options.digits, 8);
-      assert_eq!(totp_factor.options.hash, HashAlgorithm::Sha256);
-      assert_eq!(totp_factor.options.issuer, "TestCorp".to_string());
-      assert_eq!(totp_factor.options.label, "tester@testcorp.com".to_string());
-      assert!(totp_factor.options.secret.is_some());
-      assert_eq!(totp_factor.options.secret.as_ref().unwrap().len(), 32); // 20 bytes generated + 12 bytes padding
+      assert_eq!(totp_factor.config.digits, 8);
+      assert_eq!(totp_factor.config.hash, HashAlgorithm::Sha256);
+      assert_eq!(totp_factor.config.issuer, "TestCorp".to_string());
+      assert_eq!(totp_factor.config.label, "tester@testcorp.com".to_string());
+      assert_eq!(totp_factor.config.secret.len(), 32); // 20 bytes generated + 12 bytes padding
       assert!(totp_factor.target < 10_u32.pow(8));
     }
   }
@@ -260,14 +328,14 @@ mod tests {
 
   #[test]
   fn invalid_digits_too_low() {
-    let options = TOTPOptions { digits: 5, ..Default::default() };
+    let options = TOTPOptions { digits: Some(5), ..Default::default() };
     let result = totp(options);
     assert!(matches!(result, Err(MFKDF2Error::InvalidTOTPDigits)));
   }
 
   #[test]
   fn invalid_digits_too_high() {
-    let options = TOTPOptions { digits: 9, ..Default::default() };
+    let options = TOTPOptions { digits: Some(9), ..Default::default() };
     let result = totp(options);
     assert!(matches!(result, Err(MFKDF2Error::InvalidTOTPDigits)));
   }
@@ -289,9 +357,8 @@ mod tests {
     assert!(result.is_ok());
     let factor = result.unwrap();
     if let FactorType::TOTP(totp_factor) = factor.factor_type {
-      assert!(totp_factor.options.secret.is_some());
       // 20 bytes generated + 12 bytes padding
-      assert_eq!(totp_factor.options.secret.as_ref().unwrap().len(), 32);
+      assert_eq!(totp_factor.config.secret.len(), 32);
     } else {
       panic!("Wrong factor type");
     }
@@ -321,8 +388,8 @@ mod tests {
     let pad_b64 = params["pad"].as_str().unwrap();
     let pad = base64::prelude::BASE64_STANDARD.decode(pad_b64).unwrap();
     let decrypted_secret = decrypt(pad, &key);
-    let original_secret = totp_factor.options.secret.as_ref().unwrap();
-    assert_eq!(&decrypted_secret[..original_secret.len()], original_secret.as_slice());
+    let original_secret = totp_factor.config.secret.as_slice();
+    assert_eq!(&decrypted_secret[..original_secret.len()], original_secret);
 
     let offsets_b64 = params["offsets"].as_str().unwrap();
     let offsets = base64::prelude::BASE64_STANDARD.decode(offsets_b64).unwrap();
@@ -332,14 +399,13 @@ mod tests {
   #[test]
   fn output_setup() {
     let factor = mock_construction();
-    let key = [0u8; 32];
 
     let totp_factor = match factor.factor_type {
       FactorType::TOTP(ref f) => f,
       _ => panic!("Factor type should be TOTP"),
     };
 
-    let output = totp_factor.output(key.into());
+    let output = totp_factor.output();
     assert!(output.is_object());
 
     assert_eq!(output["scheme"], "otpauth");
@@ -357,7 +423,7 @@ mod tests {
       .map(|v| v.as_u64().unwrap() as u8)
       .collect::<Vec<u8>>();
     assert_eq!(secret.len(), 20);
-    assert_eq!(secret, &totp_factor.options.secret.as_ref().unwrap()[..20]);
+    assert_eq!(secret, totp_factor.config.secret[..20]);
   }
 
   #[test]

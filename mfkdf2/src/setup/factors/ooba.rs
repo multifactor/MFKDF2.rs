@@ -14,11 +14,12 @@ use crate::{
 };
 
 #[inline]
+#[must_use]
 pub fn generate_alphanumeric_characters(length: u32) -> String {
   (0..length)
     .map(|_| {
       let n: u8 = crate::rng::gen_range_u8(36); // 0–35
-      char::from_digit(n as u32, 36).unwrap() // base-36 => 0–9, a–z
+      char::from_digit(u32::from(n), 36).unwrap() // base-36 => 0–9, a–z
     })
     .collect()
 }
@@ -96,7 +97,7 @@ impl FactorSetup for Ooba {
     params["code"] = json!(code);
 
     let plaintext = serde_json::to_vec(&params)?;
-    let key = OobaPublicKey::try_from(&self.jwk.clone().ok_or(MFKDF2Error::MissingOobaKey)?)?;
+    let key = OobaPublicKey::try_from(self.jwk.as_ref().ok_or(MFKDF2Error::MissingOobaKey)?)?;
     let ciphertext = key.0.encrypt(&mut OsRng, Oaep::new::<Sha256>(), &plaintext)?;
 
     Ok(json!({
@@ -137,11 +138,11 @@ pub fn ooba(options: OobaOptions) -> MFKDF2Result<MFKDF2Factor> {
     factor_type: FactorType::OOBA(Ooba {
       target: target.to_vec(),
       length,
-      code: "".to_string(),
+      code: String::new(),
       jwk: Some(key),
       params,
     }),
-    entropy:     Some((36_f64.powf(length as f64)).log2()),
+    entropy:     Some((36_f64.powf(f64::from(length))).log2()),
   })
 }
 
@@ -308,7 +309,7 @@ mod tests {
   fn output() {
     let (_, public_key) = keypair();
     let factor = mock_construction(&public_key);
-    let output = factor.factor_type.output([0u8; 32].into());
+    let output = factor.factor_type.output();
     assert_eq!(output, json!({}));
   }
 }
