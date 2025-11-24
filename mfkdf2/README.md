@@ -129,10 +129,10 @@ let setup_derived_key = setup::key(
 
 After you have setup a key policy, you can derive the key from the policy and the factors.
 
-1. κᵢ ←  Derive(Fᵢ, witnessᵢ, βᵢ): Per-factor key material
-2. σ  ←  Combine(κ₁, κ₂, …, κₙ): Combine per-factor key material into a single key material
-3. K  ←  KDF(σ): Final static derived key
-4. βᵢ ←  Update(Fᵢ, K, βᵢ): Optional state update (counters, hardening)
+1. $\kappa_i \leftarrow \text{Derive}(F_i, \text{witness}_i, \beta_i)$: Per-factor key material
+2. $\sigma \leftarrow \text{Combine}(\kappa_1, \kappa_2, \dots, \kappa_n)$: Combine per-factor key material into a single key material
+3. $K \leftarrow \text{KDF}(\sigma)$: Final static derived key
+4. $\beta_i \leftarrow \text{Update}($F_i, K, \beta_i)$: Optional state update (counters, hardening)
 
 ```text
 [F_hmacsha1] --HMAC--> (k_hmacsha1) \
