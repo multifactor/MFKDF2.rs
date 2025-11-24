@@ -9,7 +9,9 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 use crate::{
-  definitions::{FactorMetadata, FactorType, Key, MFKDF2DerivedKey, MFKDF2Factor, Salt},
+  definitions::{
+    FactorMetadata, FactorType, Key, MFKDF2DerivedKey, MFKDF2Factor, MFKDF2Options, Salt,
+  },
   error::{MFKDF2Error, MFKDF2Result},
   setup::{FactorSetup, key},
 };

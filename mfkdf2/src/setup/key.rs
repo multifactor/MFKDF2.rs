@@ -117,11 +117,12 @@ use crate::{
 /// };
 ///
 /// let factor = password("password123", PasswordOptions { id: Some("pw".to_string()) })?;
-/// let salt = vec![42u8; 32];
-/// let options =
-///   MFKDF2Options {
-///     id: Some("my‑policy‑id".to_string()), salt: Some(salt), ..Default::default()
-///   };
+/// let salt = [42u8; 32];
+/// let options = MFKDF2Options {
+///   id: Some("my‑policy‑id".to_string()),
+///   salt: Some(salt.into()),
+///   ..Default::default()
+/// };
 ///
 /// let setup_key = setup::key(&[factor], options)?;
 ///

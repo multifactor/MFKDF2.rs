@@ -250,7 +250,7 @@ fn totp_static() -> Result<(), mfkdf2::error::MFKDF2Error> {
       time: Some(1),
       ..Default::default()
     })?],
-    mfkdf2::setup::key::MFKDF2Options::default(),
+    mfkdf2::definitions::MFKDF2Options::default(),
   )?;
 
   let derived_key1 = mfkdf2::derive::key(

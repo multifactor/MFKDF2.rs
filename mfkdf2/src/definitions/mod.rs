@@ -1,8 +1,17 @@
-pub mod bytearray;
-pub mod mfkdf_derived_key;
-use serde::{Deserialize, Serialize};
-#[cfg(feature = "bindings")] mod uniffi_types;
-
+//! # MFKDF2 Definitions
+//!
+//! This module contains the definitions for the MFKDF2 protocol.
+//!
+//! - [`MFKDF2Options`]: Options for setting up a [`MFKDF2DerivedKey`] key.
+//! - [`MFKDF2Entropy`]: Entropy estimation for the derived key.
+//! - [`MFKDF2Factor`]: Factor type.
+//! - [`MFKDF2DerivedKey`]: Derived key after setup or derive operation.
+//! - [`FactorMetadata`]: Trait for factor metadata.
+//! - [`FactorType`]: Factor type enum.
+//! - [`ByteArray`]: Generic byte array type.
+//! - [`Key`]: 32 byte key.
+//! - [`Salt`]: 32 byte salt.
+mod bytearray;
 mod entropy;
 pub mod factor;
 pub mod mfkdf_derived_key;

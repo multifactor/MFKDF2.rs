@@ -86,7 +86,7 @@ pub struct OtpAuthUrlOptions {
   pub counter:   Option<u64>,
   /// The period parameter defines a validity period in seconds for the TOTP code. It is only
   /// applicable for TOTP credentials and defaults to 30 seconds
-  pub period:    Option<u64>,
+  pub period:    Option<u32>,
   /// The encoding of the secret
   pub encoding:  Option<Encoding>,
   /// The hash algorithm to use for the credential

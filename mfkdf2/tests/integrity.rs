@@ -14,11 +14,8 @@ use crate::common::{create_derive_factor, create_setup_factor};
 fn make_policy(setup_factor_names: &[&str], threshold: u8, integrity: bool) -> MFKDF2DerivedKey {
   let setup_factors: Vec<_> = setup_factor_names.iter().copied().map(create_setup_factor).collect();
 
-  let options = mfkdf2::setup::key::MFKDF2Options {
-    threshold: Some(threshold),
-    integrity: Some(integrity),
-    ..Default::default()
-  };
+  let options =
+    MFKDF2Options { threshold: Some(threshold), integrity: Some(integrity), ..Default::default() };
 
   mfkdf2::setup::key(&setup_factors, options).unwrap()
 }

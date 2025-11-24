@@ -1,5 +1,5 @@
 #![doc = include_str!("../README.md")]
-#![warn(missing_docs, rustdoc::missing_doc_code_examples)]
+#![warn(missing_docs)]
 #![warn(unused_extern_crates, unreachable_pub, nonstandard_style)]
 
 pub mod constants;
