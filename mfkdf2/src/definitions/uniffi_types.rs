@@ -3,7 +3,7 @@ use serde_json::Value;
 use uuid::Uuid;
 
 use crate::{
-  definitions::key::Key, error::MFKDF2Error, setup::factors::hmacsha1::HmacSha1Response,
+  definitions::bytearray::Key, error::MFKDF2Error, setup::factors::hmacsha1::HmacSha1Response,
 };
 
 uniffi::custom_type!(HmacSha1Response, Vec<u8>, {

@@ -19,6 +19,8 @@ pub fn key(
   verify: bool,
   stack: bool,
 ) -> MFKDF2Result<MFKDF2DerivedKey> {
+  assert!(factors.len() < 256, "MFKDF2 supports at most 255 factors");
+
   let mut shares_bytes = Vec::new();
   let mut outputs = HashMap::new();
   let mut factors = factors;

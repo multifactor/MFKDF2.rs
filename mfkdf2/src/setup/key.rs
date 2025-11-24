@@ -65,6 +65,8 @@ impl Default for MFKDF2Options {
 }
 
 pub fn key(factors: &[MFKDF2Factor], options: MFKDF2Options) -> MFKDF2Result<MFKDF2DerivedKey> {
+  assert!(factors.len() < 256, "MFKDF2 supports at most 255 factors");
+
   // Sets the threshold to be the number of factors (n of n) if not provided.
   let threshold = options.threshold.unwrap_or(factors.len() as u8);
 

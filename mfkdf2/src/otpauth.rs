@@ -167,10 +167,12 @@ pub fn generate_hotp_code(secret: &[u8], counter: u64, hash: &HashAlgorithm, dig
 
   // Dynamic truncation as per RFC 4226
   let offset = (digest[digest.len() - 1] & 0xf) as usize;
-  let code = (u32::from(digest[offset] & 0x7f) << 24)
-    | (u32::from(digest[offset + 1]) << 16)
-    | (u32::from(digest[offset + 2]) << 8)
-    | u32::from(digest[offset + 3]);
+  let code = u32::from_be_bytes([
+    digest[offset] & 0x7f,
+    digest[offset + 1],
+    digest[offset + 2],
+    digest[offset + 3],
+  ]);
 
   code % 10_u32.pow(digits)
 }

@@ -1,11 +1,11 @@
 use std::collections::HashMap;
 
-use base64::engine::general_purpose;
+use base64::{Engine, engine::general_purpose};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 use crate::{
-  definitions::{entropy::MFKDF2Entropy, key::Key},
+  definitions::{bytearray::Key, entropy::MFKDF2Entropy},
   policy::Policy,
 };
 
@@ -32,8 +32,8 @@ impl std::fmt::Display for MFKDF2DerivedKey {
     write!(
       f,
       "MFKDF2DerivedKey {{ key: {}, secret: {} }}",
-      base64::Engine::encode(&general_purpose::STANDARD, self.key.0),
-      base64::Engine::encode(&general_purpose::STANDARD, self.secret.clone()),
+      general_purpose::STANDARD.encode(self.key.as_ref()),
+      general_purpose::STANDARD.encode(self.secret.clone()),
     )
   }
 }
