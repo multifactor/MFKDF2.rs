@@ -97,7 +97,7 @@ mod tests {
     let derive_key = crate::derive::key(
       &setup_derived_key.policy,
       HashMap::from([("my-stack".to_string(), derive_stack_factor)]),
-      false,
+      true,
       false,
     );
     assert!(derive_key.is_ok());

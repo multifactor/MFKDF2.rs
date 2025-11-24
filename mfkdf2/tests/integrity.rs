@@ -9,11 +9,8 @@ use mfkdf2::{definitions::MFKDF2DerivedKey, policy::Policy};
 use crate::common::{create_derive_factor, create_setup_factor};
 
 fn make_policy(setup_factor_names: &[&str], threshold: u8, integrity: bool) -> MFKDF2DerivedKey {
-  // build setup factors
   let setup_factors: Vec<_> = setup_factor_names.iter().copied().map(create_setup_factor).collect();
 
-  // setup key (policy comes back)
-  // NOTE: integrity flag is in MFKDF2Options
   let options = mfkdf2::setup::key::MFKDF2Options {
     threshold: Some(threshold),
     integrity: Some(integrity),

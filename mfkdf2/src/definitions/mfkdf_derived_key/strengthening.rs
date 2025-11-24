@@ -80,7 +80,7 @@ mod tests {
     let derive_key2 = derive::key(
       &derive_key.policy,
       HashMap::from([("password1".to_string(), derive_factors::password("password1")?)]),
-      false,
+      true,
       false,
     )?;
 
