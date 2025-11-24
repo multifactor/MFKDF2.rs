@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 use crate::{
-  definitions::{FactorMetadata, FactorType, Key, MFKDF2DerivedKey, MFKDF2Factor},
+  definitions::{FactorMetadata, FactorType, Key, MFKDF2DerivedKey, MFKDF2Factor, Salt},
   error::{MFKDF2Error, MFKDF2Result},
   setup::{
     FactorSetup,
@@ -17,7 +17,7 @@ use crate::{
 pub struct StackOptions {
   pub id:        Option<String>,
   pub threshold: Option<u8>,
-  pub salt:      Option<Vec<u8>>,
+  pub salt:      Option<Salt>,
 }
 
 impl From<StackOptions> for MFKDF2Options {

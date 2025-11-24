@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 
 use crate::{
-  definitions::{MFKDF2DerivedKey, MFKDF2Factor},
+  definitions::{MFKDF2DerivedKey, MFKDF2Factor, Salt},
   error::{MFKDF2Error, MFKDF2Result},
   setup::key::{MFKDF2Options, key as setup_key},
 };
@@ -12,7 +12,7 @@ pub struct PolicySetupOptions {
   pub id:        Option<String>,
   pub threshold: Option<u8>,
   pub integrity: Option<bool>,
-  pub salt:      Option<Vec<u8>>,
+  pub salt:      Option<Salt>,
 }
 
 impl From<PolicySetupOptions> for MFKDF2Options {

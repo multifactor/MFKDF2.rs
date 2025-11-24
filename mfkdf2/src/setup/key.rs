@@ -12,7 +12,7 @@ use uuid::Uuid;
 use crate::{
   constants::SECRET_SHARING_POLY,
   crypto::{encrypt, hkdf_sha256_with_info, hmacsha256},
-  definitions::{MFKDF2DerivedKey, MFKDF2Factor},
+  definitions::{MFKDF2DerivedKey, MFKDF2Factor, Salt},
   error::{MFKDF2Error, MFKDF2Result},
   policy::Policy,
   setup::FactorSetup,
@@ -39,8 +39,7 @@ pub struct PolicyFactor {
 pub struct MFKDF2Options {
   pub id:        Option<String>,
   pub threshold: Option<u8>,
-  // TODO (@lonerapier): use uniffi custom type
-  pub salt:      Option<Vec<u8>>,
+  pub salt:      Option<Salt>,
   pub stack:     Option<bool>,
   pub integrity: Option<bool>,
   pub time:      Option<u32>,
@@ -55,7 +54,7 @@ impl Default for MFKDF2Options {
     Self {
       id:        Some(uuid::Uuid::new_v4().to_string()),
       threshold: None,
-      salt:      Some(salt.to_vec()),
+      salt:      Some(salt.into()),
       stack:     None,
       integrity: Some(true),
       time:      Some(0),
@@ -77,12 +76,12 @@ pub fn key(factors: &[MFKDF2Factor], options: MFKDF2Options) -> MFKDF2Result<MFK
   }
 
   // Generate salt & secret if not provided
-  let salt: Vec<u8> = if let Some(salt) = options.salt {
+  let salt: Salt = if let Some(salt) = options.salt {
     salt
   } else {
     let mut salt = [0u8; 32];
     crate::rng::fill_bytes(&mut salt);
-    salt.to_vec()
+    salt.into()
   };
 
   let policy_id = if let Some(id) = options.id.clone() {

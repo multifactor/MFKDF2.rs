@@ -108,9 +108,9 @@ suite('setup/key', () => {
     test('valid', async () => {
       const { policy } = await mfkdf.setup.key(
         [await mfkdf.setup.factors.password('hello')],
-        { salt: Buffer.from('1234567812345678', 'base64') }
+        { salt: Buffer.from('12345678123456781234567812345678') }
       )
-      policy.salt.should.equal('1234567812345678')
+      policy.salt.should.equal(Buffer.from('12345678123456781234567812345678').toString('base64'))
     })
 
     /* invalid test
