@@ -1,11 +1,16 @@
+//! Result and Error types for MFKDF2 operations.
+
+/// Result type for MFKDF2 operations.
 pub type MFKDF2Result<T> = Result<T, MFKDF2Error>;
 
-// TODO (autoparallel): It may be worth making this have inner errors, e.g., for factors and other
-// things. That is usually not my style, but it may be nicer for the caller as long as destructuring
-// the error is not too painful.
+/// Error type for MFKDF2 operations.
+#[allow(missing_docs)]
 #[cfg_attr(feature = "bindings", derive(uniffi::Error), uniffi(flat_error))]
 #[derive(thiserror::Error, Debug)]
 pub enum MFKDF2Error {
+  #[error("too many factors! maximum is 255")]
+  TooManyFactors,
+
   #[error("password cannot be empty!")]
   PasswordEmpty,
 
@@ -24,21 +29,12 @@ pub enum MFKDF2Error {
   #[error("factor id must be unique!")]
   DuplicateFactorId,
 
-  #[error(transparent)]
-  DecodeError(#[from] base64::DecodeError),
-
-  #[error(transparent)]
-  RsaError(#[from] rsa::errors::Error),
-
-  #[error(transparent)]
-  WriteError(#[from] std::fmt::Error),
-
   // TODO (autoparallel): This error variant should probably not even exist.
   #[error("failed to convert vector to array!")]
-  TryFromVecError,
+  TryFromVec,
 
   #[error("share recovery failed!")]
-  ShareRecoveryError,
+  ShareRecovery,
 
   #[error("invalid key length")]
   InvalidKeyLength,
@@ -101,8 +97,20 @@ pub enum MFKDF2Error {
   InvalidHintLength(&'static str),
 
   #[error(transparent)]
-  Argon2Error(#[from] argon2::Error),
+  Argon2(#[from] argon2::Error),
 
   #[error(transparent)]
-  SerializeError(#[from] serde_json::Error),
+  Serialize(#[from] serde_json::Error),
+
+  #[error(transparent)]
+  Base64Decode(#[from] base64::DecodeError),
+
+  #[error(transparent)]
+  Rsa(#[from] rsa::errors::Error),
+
+  #[error(transparent)]
+  Write(#[from] std::fmt::Error),
+
+  #[error(transparent)]
+  Regex(#[from] rand_regex::Error),
 }

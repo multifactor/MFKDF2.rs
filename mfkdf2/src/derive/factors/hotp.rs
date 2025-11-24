@@ -1,3 +1,10 @@
+//! This module constructs [`MFKDF2Factor`] witnesses Wᵢⱼ for the derive phase corresponding
+//! to the setup factors defined in [hotp](`crate::setup::factors::hotp()`).
+//! - During setup, the HOTP factor chooses a secret target code and encodes an offset and encrypted
+//!   pad into the policy;
+//! - During derive, this module consumes the HOTP code Wᵢⱼ and reconstructs the same target value
+//!   using the stored offset so that the factor contributes stable material to the key derivation
+//!   while remaining backward‑compatible with existing OATH HOTP applications.
 use base64::Engine;
 use serde_json::{Value, json};
 
@@ -6,7 +13,7 @@ use crate::{
   definitions::{FactorType, Key, MFKDF2Factor},
   derive::FactorDerive,
   error::MFKDF2Result,
-  otpauth::generate_hotp_code,
+  otpauth::generate_otp_token,
   setup::factors::hotp::{HOTP, HOTPConfig, HOTPParams, mod_positive},
 };
 
@@ -14,6 +21,7 @@ impl FactorDerive for HOTP {
   type Output = Value;
   type Params = Value;
 
+  /// Includes the public parameters for in factor state and calculates the target value.
   fn include_params(&mut self, params: Self::Params) -> MFKDF2Result<()> {
     // Store the policy parameters for derive phase
     self.params = params.clone();
@@ -28,6 +36,7 @@ impl FactorDerive for HOTP {
     Ok(())
   }
 
+  /// Decrypts the secret and generates a new HOTP code with incremented counter.
   fn params(&self, key: Key) -> MFKDF2Result<Self::Params> {
     let params: HOTPParams = serde_json::from_value(self.params.clone())?;
 
@@ -38,7 +47,7 @@ impl FactorDerive for HOTP {
     // Generate HOTP code with incremented counter
     let counter = params.counter + 1;
     let generated_code =
-      generate_hotp_code(&padded_secret[..20], counter, &params.hash, params.digits);
+      generate_otp_token(&padded_secret[..20], counter, &params.hash, params.digits);
 
     // Calculate new offset
     let new_offset =
@@ -54,6 +63,71 @@ impl FactorDerive for HOTP {
   }
 }
 
+/// HOTP factor construction derive phase
+///
+/// The code should be the numeric one‑time password displayed by an authenticator app that has
+/// been paired with the HOTP secret configured during setup.
+///
+/// # Errors
+///
+/// - [`MFKDF2Error::Serialize`](`crate::error::MFKDF2Error::Serialize`) if the stored policy
+///   parameters cannot be decoded into [`HOTPParams`](`crate::setup::factors::hotp::HOTPParams`)
+///   (for example, missing or malformed fields)
+///
+/// # Example
+///
+/// Single‑factor setup/derive using HOTP within `KeySetup`/`KeyDerive`:
+///
+/// ```rust
+/// # use std::collections::HashMap;
+/// # use mfkdf2::{
+/// #   error::MFKDF2Result,
+/// #   otpauth::HashAlgorithm,
+/// #   setup::{
+/// #     self,
+/// #     factors::hotp::{HOTPOptions},
+/// #   },
+/// #   definitions::MFKDF2Options,
+/// #   derive,
+/// # };
+/// let secret = b"hello world mfkdf2!!".to_vec();
+/// let options = HOTPOptions {
+///   id: Some("hotp".to_string()),
+///   secret: Some(secret),
+///   digits: Some(6),
+///   hash: Some(HashAlgorithm::Sha1),
+///   ..Default::default()
+/// };
+///
+/// let setup_factor = setup::factors::hotp(options)?;
+/// let hotp = if let mfkdf2::definitions::FactorType::HOTP(ref h) = setup_factor.factor_type {
+///   h.clone()
+/// } else {
+///   unreachable!()
+/// };
+/// let setup_key = setup::key(&[setup_factor], MFKDF2Options::default())?;
+///
+/// let policy_factor = setup_key.policy.factors.iter().find(|f| f.id == "hotp").unwrap();
+/// let params = &policy_factor.params;
+/// let counter = params["counter"].as_u64().unwrap();
+/// let code = mfkdf2::otpauth::generate_otp_token(
+///   &hotp.config.secret[..20],
+///   counter,
+///   &hotp.config.hash,
+///   hotp.config.digits,
+/// );
+///
+/// let derive_factor = derive::factors::hotp(code)?;
+/// let derived_key = derive::key(
+///   &setup_key.policy,
+///   HashMap::from([("hotp".to_string(), derive_factor)]),
+///   true,
+///   false,
+/// )?;
+///
+/// assert_eq!(derived_key.key, setup_key.key);
+/// # Ok::<(), mfkdf2::error::MFKDF2Error>(())
+/// ```
 pub fn hotp(code: u32) -> MFKDF2Result<MFKDF2Factor> {
   // Create HOTP factor with the user-provided code
   // The target will be calculated in include_params once we have the policy parameters
@@ -69,8 +143,9 @@ pub fn hotp(code: u32) -> MFKDF2Result<MFKDF2Factor> {
   })
 }
 
+#[cfg(feature = "bindings")]
 #[cfg_attr(feature = "bindings", uniffi::export)]
-pub async fn derive_hotp(code: u32) -> MFKDF2Result<MFKDF2Factor> { hotp(code) }
+async fn derive_hotp(code: u32) -> MFKDF2Result<MFKDF2Factor> { hotp(code) }
 
 #[cfg(test)]
 mod tests {
@@ -107,7 +182,7 @@ mod tests {
 
     // Generate the correct HOTP code that the user would need to provide
     let correct_code =
-      generate_hotp_code(&hotp.config.secret[..20], counter, &hotp.config.hash, hotp.config.digits);
+      generate_otp_token(&hotp.config.secret[..20], counter, &hotp.config.hash, hotp.config.digits);
     let expected_target = u32::from_be_bytes(factor.data().try_into().unwrap());
 
     // Verify the relationship: target = (offset + correct_code) % 10^digits
@@ -165,7 +240,7 @@ mod tests {
     let params = json!({ "digits": 6 });
     let err = derive_factor.factor_type.include_params(params);
     assert!(
-      matches!(err, Err(crate::error::MFKDF2Error::SerializeError(e)) if e.to_string() == "missing field `hash`")
+      matches!(err, Err(crate::error::MFKDF2Error::Serialize(e)) if e.to_string() == "missing field `hash`")
     );
   }
 }

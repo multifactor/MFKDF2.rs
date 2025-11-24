@@ -1,3 +1,10 @@
+//! Stack factor derive
+//!
+//! This module implements the factor construction derive phase for the stack factor from
+//! [`Stack`](`crate::setup::factors::stack()`). A stack factor treats an entire derived key (built
+//! from one or more underlying factors) as a single higher‑level factor. During derive it accepts a
+//! map of inner witnesses Wᵢⱼ, reconstructs the stacked key using [`crate::derive::key::key`] in
+//! stack mode, and exposes the resulting policy and key material as a single factor
 use std::collections::HashMap;
 
 use serde_json::{Value, json};
@@ -31,6 +38,58 @@ impl FactorDerive for Stack {
   fn output(&self) -> Self::Output { serde_json::to_value(&self.key).unwrap_or(json!({})) }
 }
 
+/// Factor construction derive phase for a stack factor
+///
+/// The `factors` map should contain witnesses used in the derive phase for the inner factors that
+/// were used to construct the stacked key during setup, keyed by their factor ids. This helper
+/// wraps them in a `Stack` factor that, when passed to [`KeyDerive`](`crate::derive::key::key`)
+/// along with the appropriate policy, reconstructs the stacked key in stack mode.
+///
+/// # Errors
+///
+/// - [`MFKDF2Error::InvalidDeriveParams`] with `"factors"` when `factors` is empty
+/// - [`MFKDF2Error::InvalidDeriveParams`] when the provided policy JSON cannot be deserialized into
+///   a [`crate::policy::Policy`]
+///
+/// # Example
+///
+/// ```rust
+/// # use std::collections::HashMap;
+/// # use mfkdf2::{
+/// #   error::MFKDF2Result,
+/// #   setup::{
+/// #     self,
+/// #     factors::{
+/// #       password::{PasswordOptions, password as setup_password},
+/// #       stack::{StackOptions, stack as setup_stack},
+/// #     },
+/// #   },
+/// #   definitions::MFKDF2Options,
+/// #   derive::factors::{password as derive_password, stack as derive_stack},
+/// # };
+/// let f1 = setup_password("password123", PasswordOptions { id: Some("pwd1".into()) })?;
+/// let f2 = setup_password("password456", PasswordOptions { id: Some("pwd2".into()) })?;
+/// let stack_factor = setup_stack(vec![f1, f2], StackOptions {
+///   id:        Some("my-stack".into()),
+///   threshold: Some(2),
+///   salt:      None,
+/// })?;
+/// let setup_key = setup::key(&[stack_factor], MFKDF2Options::default())?;
+///
+/// let mut inner = HashMap::new();
+/// inner.insert("pwd1".to_string(), derive_password("password123")?);
+/// inner.insert("pwd2".to_string(), derive_password("password456")?);
+/// let derive_stack_factor = derive_stack(inner)?;
+///
+/// let derived_key = mfkdf2::derive::key(
+///   &setup_key.policy,
+///   HashMap::from([("my-stack".to_string(), derive_stack_factor)]),
+///   false,
+///   false,
+/// )?;
+/// assert_eq!(derived_key.key, setup_key.key);
+/// # Ok::<(), mfkdf2::error::MFKDF2Error>(())
+/// ```
 pub fn stack(factors: HashMap<String, MFKDF2Factor>) -> MFKDF2Result<MFKDF2Factor> {
   if factors.is_empty() {
     return Err(MFKDF2Error::InvalidDeriveParams("factors".to_string()));
@@ -43,8 +102,9 @@ pub fn stack(factors: HashMap<String, MFKDF2Factor>) -> MFKDF2Result<MFKDF2Facto
   })
 }
 
+#[cfg(feature = "bindings")]
 #[cfg_attr(feature = "bindings", uniffi::export)]
-pub async fn derive_stack(factors: HashMap<String, MFKDF2Factor>) -> MFKDF2Result<MFKDF2Factor> {
+async fn derive_stack(factors: HashMap<String, MFKDF2Factor>) -> MFKDF2Result<MFKDF2Factor> {
   stack(factors)
 }
 
@@ -54,13 +114,11 @@ mod tests {
 
   use super::*;
   use crate::{
+    definitions::MFKDF2Options,
     derive::factors::password::password,
-    setup::{
-      factors::{
-        password::{PasswordOptions, password as setup_password},
-        stack::{StackOptions, stack as setup_stack},
-      },
-      key::MFKDF2Options,
+    setup::factors::{
+      password::{PasswordOptions, password as setup_password},
+      stack::{StackOptions, stack as setup_stack},
     },
   };
 
@@ -75,7 +133,6 @@ mod tests {
       StackOptions { id: Some("my-stack".to_string()), threshold: Some(2), salt: None };
 
     let stack_factor = setup_stack(factors, options).unwrap();
-    // let params = stack_factor.factor_type.params_setup([0; 32]);
 
     crate::setup::key(&[stack_factor], MFKDF2Options::default())
       .expect("derived key should be created")

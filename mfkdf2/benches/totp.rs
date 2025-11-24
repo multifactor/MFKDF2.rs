@@ -6,13 +6,13 @@ use std::{
 
 use criterion::{Criterion, criterion_group, criterion_main};
 use mfkdf2::{
+  definitions::MFKDF2Options,
   derive,
   derive::factors::totp::TOTPDeriveOptions,
-  otpauth::{HashAlgorithm, generate_hotp_code},
+  otpauth::{HashAlgorithm, generate_otp_token},
   setup::{
     self,
     factors::totp::{TOTPOptions, totp as setup_totp},
-    key::MFKDF2Options,
   },
 };
 
@@ -39,13 +39,13 @@ fn bench_totp(c: &mut Criterion) {
         })
         .unwrap(),
       );
-      let result = black_box(setup::key::key(&[factor], MFKDF2Options::default()));
+      let result = black_box(setup::key(&[factor], MFKDF2Options::default()));
       result.unwrap()
     })
   });
 
   // Single derive - 1 TOTP
-  let single_setup_key = setup::key::key(
+  let single_setup_key = setup::key(
     &[setup_totp(TOTPOptions {
       id: Some("totp".to_string()),
       secret: Some(SECRET20.to_vec()),
@@ -65,7 +65,7 @@ fn bench_totp(c: &mut Criterion) {
     b.iter(|| {
       // Create an oracle that provides the correct TOTP code for any time
       let mut oracle = HashMap::new();
-      let totp_code = generate_hotp_code(&SECRET20, current_time / 30, &HashAlgorithm::Sha1, 6);
+      let totp_code = generate_otp_token(&SECRET20, current_time / 30, &HashAlgorithm::Sha1, 6);
       oracle.insert(current_time / 30, totp_code);
 
       let factors_map = black_box(HashMap::from([(
@@ -87,7 +87,7 @@ fn bench_totp(c: &mut Criterion) {
   group.bench_function("multiple_setup_3_threshold_3", |b| {
     b.iter(|| {
       let options = MFKDF2Options { threshold: Some(3), ..Default::default() };
-      let result = black_box(setup::key::key(
+      let result = black_box(setup::key(
         &[
           setup_totp(TOTPOptions {
             id: Some("totp1".to_string()),
@@ -132,7 +132,7 @@ fn bench_totp(c: &mut Criterion) {
 
   // Multiple derive - 3 TOTPs (all required)
   current_time = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_millis() as u64;
-  let multiple_setup_key_3 = setup::key::key(
+  let multiple_setup_key_3 = setup::key(
     &[
       setup_totp(TOTPOptions {
         id: Some("totp1".to_string()),
@@ -178,7 +178,7 @@ fn bench_totp(c: &mut Criterion) {
         (
           "totp1".to_string(),
           derive::factors::totp(
-            generate_hotp_code(&SECRET20, current_time / 30, &HashAlgorithm::Sha1, 6),
+            generate_otp_token(&SECRET20, current_time / 30, &HashAlgorithm::Sha1, 6),
             None,
           )
           .unwrap(),
@@ -186,7 +186,7 @@ fn bench_totp(c: &mut Criterion) {
         (
           "totp2".to_string(),
           derive::factors::totp(
-            generate_hotp_code(
+            generate_otp_token(
               &[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20],
               current_time / 30,
               &HashAlgorithm::Sha1,
@@ -199,7 +199,7 @@ fn bench_totp(c: &mut Criterion) {
         (
           "totp3".to_string(),
           derive::factors::totp(
-            generate_hotp_code(
+            generate_otp_token(
               &[21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40],
               current_time / 30,
               &HashAlgorithm::Sha1,
@@ -217,7 +217,7 @@ fn bench_totp(c: &mut Criterion) {
 
   // Threshold derive - 2 out of 3 TOTPs
   current_time = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_millis() as u64;
-  let threshold_setup_key = setup::key::key(
+  let threshold_setup_key = setup::key(
     &[
       setup_totp(TOTPOptions {
         id: Some("totp1".to_string()),
@@ -263,7 +263,7 @@ fn bench_totp(c: &mut Criterion) {
         (
           "totp1".to_string(),
           derive::factors::totp(
-            generate_hotp_code(&SECRET20, current_time / 30, &HashAlgorithm::Sha1, 6),
+            generate_otp_token(&SECRET20, current_time / 30, &HashAlgorithm::Sha1, 6),
             None,
           )
           .unwrap(),
@@ -271,7 +271,7 @@ fn bench_totp(c: &mut Criterion) {
         (
           "totp2".to_string(),
           derive::factors::totp(
-            generate_hotp_code(
+            generate_otp_token(
               &[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20],
               current_time / 30,
               &HashAlgorithm::Sha1,

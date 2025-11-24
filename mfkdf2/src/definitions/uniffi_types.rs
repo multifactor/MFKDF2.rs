@@ -1,3 +1,6 @@
+//! # Uniffi Types
+//!
+//! This module contains the Uniffi custom types for the MFKDF2 library.
 use jsonwebtoken::jwk::Jwk;
 use serde_json::Value;
 use uuid::Uuid;
@@ -40,5 +43,4 @@ uniffi::custom_type!(Value, String, {
   try_lift: |s: String| Ok(serde_json::from_str(&s)?),
 });
 
-// Uniffi custom type for Key
 uniffi::custom_type!(Key, Vec<u8>);

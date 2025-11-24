@@ -1,3 +1,10 @@
+//! # Factor Setup
+//!
+//! Every [`MFKDF2Factor`](`crate::definitions::MFKDF2Factor`) instance is constructed using Witness
+//! Wᵢ and parameters βᵢ. Each factor performs `FactorSetup` that takes secret material σᵢ to
+//! produce the initial parameters β₀ given some configuration and randomly generated static source
+//! material κᵢ. The factor’s public state βᵢ then stores an encrypted version of σᵢ (using the key
+//! feedback mechanism) and public helper data.
 pub mod hmacsha1;
 pub mod hotp;
 pub mod ooba;
@@ -10,6 +17,7 @@ pub mod uuid;
 
 pub use hmacsha1::hmacsha1;
 pub use hotp::hotp;
+pub use ooba::ooba;
 pub use passkey::passkey;
 pub use password::password;
 pub use question::question;
@@ -19,13 +27,14 @@ pub use totp::totp;
 pub use uuid::uuid;
 
 use crate::{
-  definitions::{FactorMetadata, FactorType, Key},
+  definitions::{FactorType, Key, factor::FactorMetadata},
   error::MFKDF2Result,
   setup::FactorSetup,
 };
 
 impl FactorType {
-  pub fn setup(&self) -> &dyn FactorSetup<Params = Value, Output = Value> {
+  /// Returns the setup implementation for the factor type.
+  pub(crate) fn setup(&self) -> &dyn FactorSetup<Params = Value, Output = Value> {
     match self {
       FactorType::Password(password) => password,
       FactorType::HOTP(hotp) => hotp,
@@ -51,19 +60,22 @@ impl FactorSetup for FactorType {
   fn output(&self) -> Self::Output { self.setup().output() }
 }
 
-// Standalone exported functions for FFI
+#[cfg(feature = "bindings")]
 #[cfg_attr(feature = "bindings", uniffi::export)]
-pub fn factor_type_kind(factor_type: &FactorType) -> String { factor_type.kind() }
+fn factor_type_kind(factor_type: &FactorType) -> String { factor_type.kind() }
 
+#[cfg(feature = "bindings")]
 #[cfg_attr(feature = "bindings", uniffi::export)]
-pub fn factor_type_bytes(factor_type: &FactorType) -> Vec<u8> { factor_type.bytes() }
+fn factor_type_bytes(factor_type: &FactorType) -> Vec<u8> { factor_type.bytes() }
 
+#[cfg(feature = "bindings")]
 #[cfg_attr(feature = "bindings", uniffi::export)]
-pub fn setup_factor_type_params(factor_type: &FactorType, key: Option<Key>) -> MFKDF2Result<Value> {
+fn setup_factor_type_params(factor_type: &FactorType, key: Option<Key>) -> MFKDF2Result<Value> {
   // TODO (@lonerapier): remove dummy key usage
   let key = key.unwrap_or_else(|| [0u8; 32].into());
   factor_type.params(key)
 }
 
+#[cfg(feature = "bindings")]
 #[cfg_attr(feature = "bindings", uniffi::export)]
-pub fn setup_factor_type_output(factor_type: &FactorType) -> Value { factor_type.output() }
+fn setup_factor_type_output(factor_type: &FactorType) -> Value { factor_type.output() }

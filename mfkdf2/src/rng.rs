@@ -1,16 +1,31 @@
+//! # RNG
+//!
+//! RNG is used to generate random bytes for the MFKDF2 algorithm. It is implemented using the
+//! `rand` crate. The reason for having a separate RNG module is to allow for differential testing.
+//!
+//! [`GlobalRng`] is a facade around the `rand` crate's [`rand::rngs::OsRng`] to provide the same
+//! interface.
+//!
+//! ## Differential Testing
+//!
+//! Differential testing is used to ensure the correctness of the library. It is enabled by the
+//! `differential-test` feature flag. It is performed by comparing the output of the library with
+//! the output of the reference implementation.
+
 #[cfg(feature = "differential-test")]
-mod rng_impl {
+mod global_rng {
   use std::cell::RefCell;
 
   use rand::{CryptoRng, RngCore, SeedableRng};
   use rand_chacha::ChaCha20Rng;
 
+  /// The default seed for the global RNG.
   const DEFAULT_SEED: [u8; 32] = [10u8; 32];
   thread_local! {
     static RNG: RefCell<ChaCha20Rng> = RefCell::new(ChaCha20Rng::from_seed(DEFAULT_SEED));
   }
 
-  pub struct GlobalRng;
+  pub(crate) struct GlobalRng;
 
   impl RngCore for GlobalRng {
     fn next_u32(&mut self) -> u32 { RNG.with(|rng| rng.borrow_mut().next_u32()) }
@@ -25,17 +40,21 @@ mod rng_impl {
   }
   impl CryptoRng for GlobalRng {}
 
-  pub fn fill_bytes(dst: &mut [u8]) { RNG.with(|rng| rng.borrow_mut().fill_bytes(dst)); }
-  pub fn next_u32() -> u32 { RNG.with(|rng| rng.borrow_mut().next_u32()) }
-  pub fn gen_range_u32(max: u32) -> u32 { if max == 0 { 0 } else { next_u32() % max } }
-  pub fn gen_range_u8(max: u8) -> u8 { if max == 0 { 0 } else { (next_u32() % max as u32) as u8 } }
+  pub(crate) fn fill_bytes(dst: &mut [u8]) { RNG.with(|rng| rng.borrow_mut().fill_bytes(dst)); }
+  pub(crate) fn next_u32() -> u32 { RNG.with(|rng| rng.borrow_mut().next_u32()) }
+  pub(crate) fn gen_range_u32(max: u32) -> u32 { if max == 0 { 0 } else { next_u32() % max } }
+  pub(crate) fn gen_range_u8(max: u8) -> u8 {
+    if max == 0 { 0 } else { (next_u32() % max as u32) as u8 }
+  }
 }
 
 #[cfg(not(feature = "differential-test"))]
-mod rng_impl {
+mod global_rng {
   use rand::{CryptoRng, RngCore, rngs::OsRng};
 
-  pub struct GlobalRng;
+  /// [`GlobalRng`] is a facade around the `rand` crate's [`rand::rngs::OsRng`] to provide the same
+  /// interface.
+  pub(crate) struct GlobalRng;
 
   impl RngCore for GlobalRng {
     fn next_u32(&mut self) -> u32 { OsRng.next_u32() }
@@ -50,15 +69,18 @@ mod rng_impl {
   }
   impl CryptoRng for GlobalRng {}
 
-  pub fn fill_bytes(dst: &mut [u8]) { OsRng.fill_bytes(dst); }
-  pub fn next_u32() -> u32 { OsRng.next_u32() }
-  pub fn gen_range_u32(max: u32) -> u32 { if max == 0 { 0 } else { next_u32() % max } }
-  pub fn gen_range_u8(max: u8) -> u8 {
+  pub(crate) fn fill_bytes(dst: &mut [u8]) { GlobalRng.fill_bytes(dst); }
+
+  pub(crate) fn next_u32() -> u32 { GlobalRng.next_u32() }
+
+  pub(crate) fn gen_range_u32(max: u32) -> u32 { if max == 0 { 0 } else { next_u32() % max } }
+
+  pub(crate) fn gen_range_u8(max: u8) -> u8 {
     if max == 0 { 0 } else { (next_u32() % u32::from(max)) as u8 }
   }
 }
 
-pub use rng_impl::*;
+pub(crate) use global_rng::*;
 
 #[cfg(test)]
 mod tests {

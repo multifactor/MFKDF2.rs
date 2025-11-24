@@ -1,23 +1,86 @@
+//! Multi-factor deterministic password generator (MFDPG), which aims to rectify the shortcomings
+//! of existing deterministic password generators (DPGs) by incorporating multi-factor key
+//! derivation into the password management process.
+//!
+//! This module implements the MFDPG primitive on top of `MFKDF2DerivedKey` by sampling passwords
+//! from a caller-provided regular language using deterministic randomness derived from the key.
+//!
+//! Generated passwords behave like a deterministic password manager: given the same multi-factor
+//! setup, purpose string, salt, and policy regex, the derived password remains stable across
+//! sessions, platforms, and bindings.
 use rand::{SeedableRng, distributions::Distribution};
 use rand_regex::Regex;
 
+use crate::error::MFKDF2Error;
+
 impl crate::definitions::MFKDF2DerivedKey {
-  pub fn derive_password(&self, purpose: Option<&str>, salt: Option<&[u8]>, regex: &str) -> String {
+  /// Derives a deterministic, policy-compliant password from an `MFKDF2DerivedKey`
+  ///
+  /// The password depends on the derived key material, an optional purpose string, an optional
+  /// salt, and a caller-supplied regular expression that describes the allowed password language
+  ///
+  /// # Arguments
+  ///
+  /// * `purpose`: Optional logical namespace such as a domain, account identifier, or resource
+  ///   label
+  /// * `salt`: Optional opaque salt slice; changing this parameter changes the derived password
+  ///   even under the same purpose
+  /// * `regex`: Regular expression understood by `rand_regex` that constrains the generated
+  ///   password shape
+  ///
+  /// # Examples
+  ///
+  /// The following example mirrors the MFDPG JavaScript helper where the same inputs produce the
+  /// same password string
+  ///
+  /// ```rust
+  /// # use mfkdf2::{setup, setup::factors::password::PasswordOptions};
+  /// #
+  /// let setup_key = setup::key(
+  ///   &[setup::factors::password("password1", PasswordOptions { id: Some("password1".to_owned()) })?],
+  ///   mfkdf2::definitions::MFKDF2Options::default(),
+  /// )?;
+  ///
+  /// let password = setup_key.derive_password(Some("example.com"), Some(b"salt"), "[a-zA-Z]{6,10}")?;
+  ///
+  /// let password2 =
+  ///   setup_key.derive_password(Some("example.com"), Some(b"salt"), "[a-zA-Z]{6,10}")?;
+  ///
+  /// assert_eq!(password, password2);
+  /// # Ok::<(), mfkdf2::error::MFKDF2Error>(())
+  /// ```
+  ///
+  /// # Determinism
+  ///
+  /// Repeated calls with the same key, purpose, salt, and regular expression always yield the same
+  /// password
+  ///
+  /// # Errors
+  ///
+  /// - [`MFKDF2Error::Regex`](`crate::error::MFKDF2Error::Regex`) if the regular expression is
+  ///   invalid
+  pub fn derive_password(
+    &self,
+    purpose: Option<&str>,
+    salt: Option<&[u8]>,
+    regex: &str,
+  ) -> Result<String, MFKDF2Error> {
     let password_key = self.get_subkey(purpose, salt);
     // seed and rng with password_key
     let mut rng = rand_chacha::ChaCha20Rng::from_seed(password_key);
-    let dfa = Regex::compile(regex, 10000).expect("Failed to compile regex");
-    dfa.sample(&mut rng)
+    let dfa = Regex::compile(regex, 10000)?;
+    Ok(dfa.sample(&mut rng))
   }
 }
 
+#[cfg(feature = "bindings")]
 #[cfg_attr(feature = "bindings", uniffi::export)]
-pub fn derived_key_derive_password(
+fn derived_key_derive_password(
   derived_key: &crate::definitions::MFKDF2DerivedKey,
   purpose: Option<String>,
   salt: Option<Vec<u8>>,
   regex: &str,
-) -> String {
+) -> Result<String, MFKDF2Error> {
   let purpose = purpose.as_deref();
   let salt = salt.as_deref();
   derived_key.derive_password(purpose, salt, regex)
@@ -28,6 +91,7 @@ mod tests {
   use std::collections::HashMap;
 
   use crate::{
+    definitions::MFKDF2Options,
     derive, error,
     setup::{self, factors::password::PasswordOptions},
   };
@@ -38,14 +102,16 @@ mod tests {
       &[crate::setup::factors::password("password1", PasswordOptions {
         id: Some("password1".to_string()),
       })?],
-      setup::key::MFKDF2Options::default(),
+      MFKDF2Options::default(),
     )?;
 
-    let password = setup_key.derive_password(Some("example.com"), Some(b"salt"), "[a-zA-Z0-9]{8}");
+    let password =
+      setup_key.derive_password(Some("example.com"), Some(b"salt"), "[a-zA-Z0-9]{8}")?;
     assert!(password.len() > 5 && password.len() < 11);
     assert!(password.chars().all(|c| c.is_alphanumeric()));
 
-    let password2 = setup_key.derive_password(Some("example.com"), Some(b"salt"), "[a-zA-Z0-9]{8}");
+    let password2 =
+      setup_key.derive_password(Some("example.com"), Some(b"salt"), "[a-zA-Z0-9]{8}")?;
     assert_eq!(password, password2);
 
     let derive_factors =
@@ -54,7 +120,7 @@ mod tests {
     assert_eq!(derive_key.key, setup_key.key);
 
     let password3 =
-      derive_key.derive_password(Some("example.com"), Some(b"salt"), "[a-zA-Z0-9]{8}");
+      derive_key.derive_password(Some("example.com"), Some(b"salt"), "[a-zA-Z0-9]{8}")?;
     assert_eq!(password, password3);
 
     Ok(())
@@ -66,7 +132,7 @@ mod tests {
       &[crate::setup::factors::password("password1", PasswordOptions {
         id: Some("password1".to_string()),
       })?],
-      setup::key::MFKDF2Options::default(),
+      MFKDF2Options::default(),
     )?;
 
     // Complex regex pattern: ([A-Za-z]+[0-9]|[0-9]+[A-Za-z])[A-Za-z0-9]*
@@ -74,7 +140,7 @@ mod tests {
       Some("example.com"),
       Some(b"salt"),
       "([A-Za-z]+[0-9]|[0-9]+[A-Za-z])[A-Za-z0-9]*",
-    );
+    )?;
 
     let derive_factors =
       HashMap::from([("password1".to_string(), derive::factors::password("password1")?)]);
@@ -84,7 +150,7 @@ mod tests {
       Some("example.com"),
       Some(b"salt"),
       "([A-Za-z]+[0-9]|[0-9]+[A-Za-z])[A-Za-z0-9]*",
-    );
+    )?;
 
     assert_eq!(password1, password3);
     Ok(())
@@ -96,12 +162,14 @@ mod tests {
       &[crate::setup::factors::password("password1", PasswordOptions {
         id: Some("password1".to_string()),
       })?],
-      setup::key::MFKDF2Options::default(),
+      MFKDF2Options::default(),
     )?;
 
-    let password1 = setup_key.derive_password(Some("example.com"), Some(b"salt"), "[a-zA-Z]{6,10}");
+    let password1 =
+      setup_key.derive_password(Some("example.com"), Some(b"salt"), "[a-zA-Z]{6,10}")?;
 
-    let password2 = setup_key.derive_password(Some("example.com"), Some(b"salt"), "[a-zA-Z]{6,10}");
+    let password2 =
+      setup_key.derive_password(Some("example.com"), Some(b"salt"), "[a-zA-Z]{6,10}")?;
 
     assert_eq!(password1, password2);
     assert!(password1.len() >= 6 && password1.len() <= 10);
@@ -115,17 +183,18 @@ mod tests {
       &[crate::setup::factors::password("password1", PasswordOptions {
         id: Some("password1".to_string()),
       })?],
-      setup::key::MFKDF2Options::default(),
+      MFKDF2Options::default(),
     )?;
 
-    let password1 = setup_key.derive_password(Some("example.com"), Some(b"salt"), "[a-zA-Z]{6,10}");
+    let password1 =
+      setup_key.derive_password(Some("example.com"), Some(b"salt"), "[a-zA-Z]{6,10}")?;
 
     let derive_factors =
       HashMap::from([("password1".to_string(), derive::factors::password("password1")?)]);
     let derive_key = derive::key(&setup_key.policy, derive_factors, false, false)?;
 
     let password2 =
-      derive_key.derive_password(Some("example.com"), Some(b"salt"), "[a-zA-Z]{6,10}");
+      derive_key.derive_password(Some("example.com"), Some(b"salt"), "[a-zA-Z]{6,10}")?;
 
     assert_eq!(password1, password2);
     assert!(password1.len() >= 6 && password1.len() <= 10);
@@ -139,20 +208,20 @@ mod tests {
       &[crate::setup::factors::password("password1", PasswordOptions {
         id: Some("password1".to_string()),
       })?],
-      setup::key::MFKDF2Options::default(),
+      MFKDF2Options::default(),
     )?;
     let setup_key2 = setup::key(
       &[crate::setup::factors::password("password2", PasswordOptions {
         id: Some("password1".to_string()),
       })?],
-      setup::key::MFKDF2Options::default(),
+      MFKDF2Options::default(),
     )?;
 
     let password1 =
-      setup_key1.derive_password(Some("example.com"), Some(b"salt"), "[a-zA-Z]{6,10}");
+      setup_key1.derive_password(Some("example.com"), Some(b"salt"), "[a-zA-Z]{6,10}")?;
 
     let password2 =
-      setup_key2.derive_password(Some("example.com"), Some(b"salt"), "[a-zA-Z]{6,10}");
+      setup_key2.derive_password(Some("example.com"), Some(b"salt"), "[a-zA-Z]{6,10}")?;
 
     // Different setups should produce different passwords
     assert_ne!(password1, password2);
@@ -165,10 +234,11 @@ mod tests {
       &[crate::setup::factors::password("password1", PasswordOptions {
         id: Some("password1".to_string()),
       })?],
-      setup::key::MFKDF2Options::default(),
+      MFKDF2Options::default(),
     )?;
 
-    let password1 = setup_key.derive_password(Some("example.com"), Some(b"salt"), "[a-zA-Z]{6,10}");
+    let password1 =
+      setup_key.derive_password(Some("example.com"), Some(b"salt"), "[a-zA-Z]{6,10}")?;
 
     let policy = setup_key.policy.clone();
     let derive_factors1 =
@@ -176,7 +246,7 @@ mod tests {
     let derive_key1 = derive::key(&policy, derive_factors1, false, false)?;
 
     let password2 =
-      derive_key1.derive_password(Some("example.com"), Some(b"salt"), "[a-zA-Z]{6,10}");
+      derive_key1.derive_password(Some("example.com"), Some(b"salt"), "[a-zA-Z]{6,10}")?;
 
     // Same password should produce same result
     assert_eq!(password1, password2);
@@ -186,7 +256,7 @@ mod tests {
     let derive_key2 = derive::key(&policy, derive_factors2, false, false)?;
 
     let password3 =
-      derive_key2.derive_password(Some("example.com"), Some(b"salt"), "[a-zA-Z]{6,10}");
+      derive_key2.derive_password(Some("example.com"), Some(b"salt"), "[a-zA-Z]{6,10}")?;
 
     // Different password should produce different result
     assert_ne!(password1, password3);
@@ -199,10 +269,11 @@ mod tests {
       &[crate::setup::factors::password("password1", PasswordOptions {
         id: Some("password1".to_string()),
       })?],
-      setup::key::MFKDF2Options::default(),
+      MFKDF2Options::default(),
     )?;
 
-    let password = setup_key.derive_password(Some("example.com"), Some(b"salt"), "[a-zA-Z]{6,10}");
+    let password =
+      setup_key.derive_password(Some("example.com"), Some(b"salt"), "[a-zA-Z]{6,10}")?;
 
     // Verify password length is within expected range
     assert!(password.len() > 5, "Password length should be above 5, got {}", password.len());
@@ -229,12 +300,12 @@ mod tests {
       &[crate::setup::factors::password("password1", PasswordOptions {
         id: Some("password1".to_string()),
       })?],
-      setup::key::MFKDF2Options::default(),
+      MFKDF2Options::default(),
     )?;
 
     // Complex regex pattern: ([A-Za-z]+[0-9]|[0-9]+[A-Za-z])[A-Za-z0-9]*
     let regex_pattern = "([A-Za-z]+[0-9]|[0-9]+[A-Za-z])[A-Za-z0-9]*";
-    let password = setup_key.derive_password(Some("example.com"), Some(b"salt"), regex_pattern);
+    let password = setup_key.derive_password(Some("example.com"), Some(b"salt"), regex_pattern)?;
 
     // Verify password matches the complex regex pattern
     // The pattern requires either:

@@ -1,17 +1,27 @@
+//! Question factor setup.
+//!
+//! This factor models a user-chosen security question and answer. The factor also records
+//! an entropy estimate derived from Dropbox's [`mod@zxcvbn`] crate, which can be used to enforce
+//! security question strength policies.
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 use zxcvbn::zxcvbn;
 
 use crate::{
-  definitions::{FactorMetadata, FactorType, Key, MFKDF2Factor},
+  definitions::{FactorType, Key, MFKDF2Factor, factor::FactorMetadata},
   error::{MFKDF2Error, MFKDF2Result},
   setup::FactorSetup,
 };
 
+/// Options for configuring a security‑question factor.
 #[cfg_attr(feature = "bindings", derive(uniffi::Record))]
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct QuestionOptions {
+  /// Optional application-defined identifier for the factor. Defaults to `"question"`. If
+  /// provided, it must be non-empty.
   pub id:       Option<String>,
+  /// Human‑readable prompt shown to the user (e.g., _"What is your favorite teacher's name?"_).
+  /// If omitted, you can store or render the question separately in your application.
   pub question: Option<String>,
 }
 
@@ -19,11 +29,15 @@ impl Default for QuestionOptions {
   fn default() -> Self { Self { id: Some("question".to_string()), question: None } }
 }
 
+/// Security‑question factor state. This factor models a user-chosen security question and answer.
 #[cfg_attr(feature = "bindings", derive(uniffi::Record))]
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Question {
+  /// Normalized answer string used as factor material.
   pub answer:   String,
+  /// Factor public state that is used to derive the factor material.
   pub params:   Value,
+  /// Human‑readable prompt shown to the user (e.g., _"What is your favorite teacher's name?"_).
   pub question: String,
 }
 
@@ -50,6 +64,28 @@ impl FactorSetup for Question {
   }
 }
 
+/// Creates a [`Question`] factor from a raw user answer.
+///
+/// The `answer` is normalized (lower‑cased, punctuation removed, surrounding whitespace trimmed)
+/// to reduce accidental mismatches. Entropy is computed using `zxcvbn` on the normalized answer and
+/// stored on the factor.
+///
+/// # Errors
+/// - [`MFKDF2Error::AnswerEmpty`] if the provided answer is empty.
+/// - [`MFKDF2Error::MissingFactorId`] if `options.id` is present but empty.
+///
+/// # Example
+///
+/// ```rust
+/// # use mfkdf2::setup::factors::question::{question, QuestionOptions};
+/// let opts = QuestionOptions {
+///   id:       Some("recovery-question".into()),
+///   question: Some("What is your favorite color?".into()),
+/// };
+/// let factor = question("Blue! No, Yellow!", opts)?;
+/// assert_eq!(factor.id.as_deref(), Some("recovery-question"));
+/// # Ok::<(), mfkdf2::error::MFKDF2Error>(())
+/// ```
 pub fn question(answer: impl Into<String>, options: QuestionOptions) -> MFKDF2Result<MFKDF2Factor> {
   let answer = answer.into();
   if answer.is_empty() {
@@ -83,11 +119,9 @@ pub fn question(answer: impl Into<String>, options: QuestionOptions) -> MFKDF2Re
   })
 }
 
+#[cfg(feature = "bindings")]
 #[cfg_attr(feature = "bindings", uniffi::export)]
-pub async fn setup_question(
-  answer: String,
-  options: QuestionOptions,
-) -> MFKDF2Result<MFKDF2Factor> {
+async fn setup_question(answer: String, options: QuestionOptions) -> MFKDF2Result<MFKDF2Factor> {
   question(answer, options)
 }
 

@@ -1,17 +1,26 @@
+//! UUID factor setup.
+//!
+//! This factor uses a random (or caller‑provided) UUID as its secret material. It is useful for
+//! device binding or opaque identifiers where you want stable, high‑entropy bytes that are not
+//! intended to be memorized by a user.
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 pub use uuid::Uuid;
 
 use crate::{
-  definitions::{FactorMetadata, FactorType, MFKDF2Factor},
+  definitions::{FactorType, MFKDF2Factor, factor::FactorMetadata},
   error::MFKDF2Result,
   setup::FactorSetup,
 };
 
+/// Options for configuring a [`UUIDFactor`].
 #[cfg_attr(feature = "bindings", derive(uniffi::Record))]
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct UUIDOptions {
+  /// Optional application-defined identifier for the factor. Defaults to `"uuid"`. If
+  /// provided, it must be non-empty.
   pub id:   Option<String>,
+  /// Optional pre‑existing UUID. If omitted, a new random UUID v4 is generated during setup.
   pub uuid: Option<Uuid>,
 }
 
@@ -19,9 +28,11 @@ impl Default for UUIDOptions {
   fn default() -> Self { Self { id: Some("uuid".to_string()), uuid: None } }
 }
 
+/// UUID‑backed factor state.
 #[cfg_attr(feature = "bindings", derive(uniffi::Record))]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct UUIDFactor {
+  /// UUID used as factor material.
   pub uuid: Uuid,
 }
 
@@ -42,6 +53,24 @@ impl FactorSetup for UUIDFactor {
   }
 }
 
+/// Creates a UUID factor from the given options.
+///
+/// If no UUID is supplied, a new v4 UUID is generated. The resulting factor
+/// provides ~122 bits of entropy and can be used as a non‑interactive device
+/// or account binding factor.
+///
+/// # Errors
+/// - [`MFKDF2Error::MissingFactorId`](`crate::error::MFKDF2Error::MissingFactorId`) if `id` is
+///   provided but empty.
+///
+/// # Example
+///
+/// ```rust
+/// # use mfkdf2::setup::factors::uuid::{uuid, UUIDOptions};
+/// let factor = uuid(UUIDOptions::default())?;
+/// assert_eq!(factor.id.as_deref(), Some("uuid"));
+/// # Ok::<(), mfkdf2::error::MFKDF2Error>(())
+/// ```
 pub fn uuid(options: UUIDOptions) -> MFKDF2Result<MFKDF2Factor> {
   // Validation
   if let Some(ref id) = options.id
@@ -59,8 +88,9 @@ pub fn uuid(options: UUIDOptions) -> MFKDF2Result<MFKDF2Factor> {
   })
 }
 
+#[cfg(feature = "bindings")]
 #[cfg_attr(feature = "bindings", uniffi::export)]
-pub async fn setup_uuid(options: UUIDOptions) -> MFKDF2Result<MFKDF2Factor> { uuid(options) }
+async fn setup_uuid(options: UUIDOptions) -> MFKDF2Result<MFKDF2Factor> { uuid(options) }
 
 #[cfg(test)]
 mod tests {

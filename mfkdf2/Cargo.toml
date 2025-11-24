@@ -159,3 +159,6 @@ default = []
 # Enable UniFFI bindings (FFI exports, scaffolding, bin, etc.)
 bindings          = ["dep:uniffi"]
 differential-test = []
+
+[package.metadata.docs.rs]
+rustdoc-args = ["--html-in-header", "katex-header.html"]

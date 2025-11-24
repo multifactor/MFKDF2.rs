@@ -2,7 +2,9 @@ mod common;
 
 use std::collections::HashMap;
 
+use hmac::{Hmac, Mac};
 use rstest::rstest;
+use sha1::Sha1;
 
 use crate::common::*;
 
@@ -130,7 +132,12 @@ fn key_derive_hmacsha1() -> Result<(), mfkdf2::error::MFKDF2Error> {
   )
   .unwrap();
 
-  let response = mfkdf2::crypto::hmacsha1(&HMACSHA1_SECRET, &challenge);
+  let response: [u8; 20] = <Hmac<Sha1> as Mac>::new_from_slice(&HMACSHA1_SECRET)
+    .unwrap()
+    .chain_update(challenge)
+    .finalize()
+    .into_bytes()
+    .into();
 
   let factor =
     ("hmacsha1_1".to_string(), mfkdf2::derive::factors::hmacsha1(response.into()).unwrap());
@@ -202,7 +209,7 @@ fn key_derive_hotp() -> Result<(), mfkdf2::error::MFKDF2Error> {
 
   // Generate the HOTP code that the user would need to provide
   // This simulates what would come from an authenticator app
-  let generated_code = mfkdf2::otpauth::generate_hotp_code(&HOTP_SECRET, counter, &hash, digits);
+  let generated_code = mfkdf2::otpauth::generate_otp_token(&HOTP_SECRET, counter, &hash, digits);
 
   println!("Generated HOTP code: {}", generated_code);
 
@@ -243,7 +250,7 @@ fn totp_static() -> Result<(), mfkdf2::error::MFKDF2Error> {
       time: Some(1),
       ..Default::default()
     })?],
-    mfkdf2::setup::key::MFKDF2Options::default(),
+    mfkdf2::definitions::MFKDF2Options::default(),
   )?;
 
   let derived_key1 = mfkdf2::derive::key(
@@ -297,7 +304,7 @@ fn key_derive_mixed_password_hotp() -> Result<(), mfkdf2::error::MFKDF2Error> {
   let hash = serde_json::from_value(params["hash"].clone()).unwrap();
 
   // Generate the correct HOTP code using SHA256 (different from previous test)
-  let generated_code = mfkdf2::otpauth::generate_hotp_code(&HOTP_SECRET, counter, &hash, digits);
+  let generated_code = mfkdf2::otpauth::generate_otp_token(&HOTP_SECRET, counter, &hash, digits);
 
   println!("Generated HOTP code (SHA256): {}", generated_code);
 
@@ -332,7 +339,7 @@ fn key_derivation_combinations(
   let setup_factors: Vec<_> = setup_factor_names.into_iter().map(create_setup_factor).collect();
 
   let options =
-    mfkdf2::setup::key::MFKDF2Options { threshold: Some(threshold), ..Default::default() };
+    mfkdf2::definitions::MFKDF2Options { threshold: Some(threshold), ..Default::default() };
   let setup_key = mfkdf2::setup::key(&setup_factors, options)?;
 
   // 2. Loop through derivation combinations

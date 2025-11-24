@@ -87,7 +87,7 @@ suite('derive/key', () => {
         .key(setup.policy, {
           password1: await mfkdf.derive.factors.password('password1')
         })
-        .should.be.rejectedWith(Mfkdf2Error.ShareRecoveryError)
+        .should.be.rejectedWith(Mfkdf2Error.ShareRecovery)
     })
   })
 

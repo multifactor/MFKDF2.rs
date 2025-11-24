@@ -1,22 +1,31 @@
+//! Stack factor setup
+//!
+//! A stack factor wraps an entire MFKDF2 key (built from one or more underlying factors) as a
+//! **single reusable factor**. This is useful when you want to derive a key once from a complex
+//! policy and then treat that key as another factor in a higher‑level policy or protocol.
 use std::collections::HashMap;
 
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 use crate::{
-  definitions::{FactorMetadata, FactorType, Key, MFKDF2DerivedKey, MFKDF2Factor, Salt},
-  error::{MFKDF2Error, MFKDF2Result},
-  setup::{
-    FactorSetup,
-    key::{self, MFKDF2Options},
+  definitions::{
+    FactorType, Key, MFKDF2DerivedKey, MFKDF2Factor, MFKDF2Options, Salt, factor::FactorMetadata,
   },
+  error::{MFKDF2Error, MFKDF2Result},
+  setup::{FactorSetup, key},
 };
 
+/// Options for constructing a stack factor.
 #[cfg_attr(feature = "bindings", derive(uniffi::Record))]
 #[derive(Clone, Debug, Default, Serialize, Deserialize)]
 pub struct StackOptions {
+  /// Optional application-defined identifier for the factor. Defaults to `"stack"`. If
+  /// provided, it must be non-empty
   pub id:        Option<String>,
+  /// Number of underlying factors that must be present to derive the stacked key
   pub threshold: Option<u8>,
+  /// Optional override for the policy salt. If not provided, a random salt will be generated.
   pub salt:      Option<Salt>,
 }
 
@@ -36,10 +45,16 @@ impl From<StackOptions> for MFKDF2Options {
   }
 }
 
+/// Stack factor state.
+///
+/// Contains both the derived key and a map of the underlying factors keyed by
+/// their ids. The factor bytes are the derived key material.
 #[cfg_attr(feature = "bindings", derive(uniffi::Record))]
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Stack {
+  /// Map of underlying factors keyed by their ids.
   pub factors: HashMap<String, MFKDF2Factor>,
+  /// Final Derived key.
   pub key:     MFKDF2DerivedKey,
 }
 
@@ -60,6 +75,32 @@ impl FactorSetup for Stack {
   fn output(&self) -> Self::Output { serde_json::to_value(&self.key).unwrap() }
 }
 
+/// Creates a stack factor from existing factors.
+///
+/// Internally this calls [`key::key`] to build an `MFKDF2DerivedKey` over the
+/// provided factors and then packages the result as a single [`MFKDF2Factor`].
+/// This can fail if the inputs cannot form a valid policy (for example, an empty
+/// factor list or an impossible threshold).
+///
+/// # Errors
+/// - [`MFKDF2Error::MissingFactorId`] if `id` is provided but empty.
+/// - Any error returned by [`key::key`] when building the underlying policy.
+///
+/// # Example
+///
+/// ```rust
+/// # use mfkdf2::setup::factors::password::{password, PasswordOptions};
+/// # use mfkdf2::setup::factors::stack::{stack, StackOptions};
+/// let f1 = password("password1", PasswordOptions { id: Some("pwd1".into()) })?;
+/// let f2 = password("password2", PasswordOptions { id: Some("pwd2".into()) })?;
+/// let stacked = stack(vec![f1, f2], StackOptions {
+///   id:        Some("my-stack".into()),
+///   threshold: Some(2),
+///   salt:      None,
+/// })?;
+/// assert_eq!(stacked.id.as_deref(), Some("my-stack"));
+/// # Ok::<(), mfkdf2::error::MFKDF2Error>(())
+/// ```
 pub fn stack(factors: Vec<MFKDF2Factor>, options: StackOptions) -> MFKDF2Result<MFKDF2Factor> {
   let id = match options.id {
     None => Some("stack".to_string()),
@@ -87,8 +128,9 @@ pub fn stack(factors: Vec<MFKDF2Factor>, options: StackOptions) -> MFKDF2Result<
   })
 }
 
+#[cfg(feature = "bindings")]
 #[cfg_attr(feature = "bindings", uniffi::export)]
-pub async fn setup_stack(
+async fn setup_stack(
   factors: Vec<MFKDF2Factor>,
   options: StackOptions,
 ) -> MFKDF2Result<MFKDF2Factor> {

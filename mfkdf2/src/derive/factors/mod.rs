@@ -1,13 +1,29 @@
-pub mod hmacsha1;
-pub mod hotp;
-pub mod ooba;
-pub mod passkey;
-pub mod password;
+//! Factor construction derive phase
+//!
+//! This module constructs [`MFKDF2Factor`](`crate::definitions::MFKDF2Factor`) witnesses Wᵢⱼ for
+//! the derive phase corresponding to the setup factors defined in [`mod@crate::setup::factors`].
+//! Each helper takes respective factor secret (such as a password, OTP code, UUID, or passkey
+//! secret) plus any derive-specific options and constructs a
+//! [`MFKDF2Factor`](`crate::definitions::MFKDF2Factor`) that is used in `KeyDerive` derivation.
+//!
+//! During the [`KeyDerive`](`crate::derive::key::key`) phase, these factors combine with the public
+//! policy state βᵢ to reconstruct the underlying static source material κⱼ and ultimately recover
+//! the master secret `M` and next derived key state βᵢ₊₁.
+//!
+//! **Note:** Factor setup/derive individually are not intended to be used in isolation, but are
+//! composed through [`setup::key`](`crate::setup::key`) (Setup) and
+//! [`derive::key`](`crate::derive::key::key`) (Derive), respectively, where factors supply witness
+//! material for the overall multi‑factor policy.
+mod hmacsha1;
+mod hotp;
+mod ooba;
+mod passkey;
+mod password;
 pub mod persisted;
-pub mod question;
-pub mod stack;
+mod question;
+mod stack;
 pub mod totp;
-pub mod uuid;
+mod uuid;
 
 pub use hmacsha1::hmacsha1;
 pub use hotp::hotp;

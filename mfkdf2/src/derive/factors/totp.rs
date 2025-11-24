@@ -1,3 +1,10 @@
+//! Factor construction derive phase for the TOTP factor from
+//! [TOTP](`mod@crate::setup::factors::totp`).
+//!
+//! - During setup, the factor precomputes a window of offsets and stores them along with an
+//!   encrypted TOTP secret in the policy.
+//! - During derive, this module consumes a time‑based TOTP code Wᵢⱼ and reconstructs the same
+//!   target code σₜ within the configured time window, refreshing offsets for future logins
 use std::collections::HashMap;
 #[cfg(not(target_arch = "wasm32"))]
 use std::time::{SystemTime, UNIX_EPOCH};
@@ -13,17 +20,20 @@ use crate::{
   definitions::{FactorType, Key, MFKDF2Factor},
   derive::FactorDerive,
   error::{MFKDF2Error, MFKDF2Result},
-  otpauth::generate_hotp_code,
+  otpauth::generate_otp_token,
   setup::factors::{
     hotp::mod_positive,
     totp::{TOTP, TOTPConfig, TOTPParams},
   },
 };
 
+/// Options for configuring a TOTP factor derive.
 #[cfg_attr(feature = "bindings", derive(uniffi::Record))]
 #[derive(Clone, Debug, Default, Serialize, Deserialize)]
 pub struct TOTPDeriveOptions {
+  /// Unix time in milliseconds used for derive; defaults to the current system time when omitted
   pub time:   Option<u64>,
+  /// Optional timing oracle to harden TOTP factor construction
   pub oracle: Option<HashMap<u64, u32>>,
 }
 
@@ -43,6 +53,8 @@ impl FactorDerive for TOTP {
   type Output = Value;
   type Params = Value;
 
+  /// Stores the public parameters for the TOTP factor.
+  /// Calculates the offset index from start time and current time, and derives the target code.
   fn include_params(&mut self, params: Self::Params) -> MFKDF2Result<()> {
     self.params = params.clone();
 
@@ -85,7 +97,7 @@ impl FactorDerive for TOTP {
     Ok(())
   }
 
-  /// Note: `self.options` is only used for [`TOTPDeriveOptions`].
+  /// Decrypts the secret and generates the new codes in the time window.
   fn params(&self, key: Key) -> MFKDF2Result<Self::Params> {
     let params: TOTPParams = serde_json::from_value(self.params.clone())?;
 
@@ -97,7 +109,7 @@ impl FactorDerive for TOTP {
 
     for i in 0..params.window {
       let counter = (time / 1000) / (params.step as u64) + i as u64;
-      let code = generate_hotp_code(&padded_secret[..20], counter, &params.hash, params.digits);
+      let code = generate_otp_token(&padded_secret[..20], counter, &params.hash, params.digits);
 
       let mut offset =
         mod_positive(i64::from(self.target) - i64::from(code), 10_i64.pow(params.digits));
@@ -130,6 +142,71 @@ impl FactorDerive for TOTP {
   }
 }
 
+/// Factor construction derive phase for a TOTP factor
+///
+/// The `code` should be the numeric TOTP value displayed by a standard authenticator app that was
+/// paired with the secret configured during setup. `options` can override the effective time and
+/// oracle behaviour for advanced flows; by default, the current system time is used and no oracle
+/// adjustments are applied.
+///
+/// # Errors
+///
+/// - [`MFKDF2Error::MissingDeriveParams`] if required fields such as "time" are missing when
+///   converting [`TOTPDeriveOptions`] into [`TOTPConfig`] (this is avoided when `options` is `None`
+///   and the default time is used)
+/// - [`MFKDF2Error::TOTPWindowExceeded`] when the effective time lies outside the precomputed
+///   window encoded in the policy
+/// - [`MFKDF2Error::InvalidDeriveParams`] when the offsets buffer is malformed or too small for the
+///   computed index
+///
+/// # Example
+///
+/// Single‑factor setup/derive using TOTP within KeySetup/KeyDerive:
+///
+/// ```rust
+/// # use std::collections::HashMap;
+/// # use std::time::{SystemTime, UNIX_EPOCH};
+/// use mfkdf2::{
+///   derive,
+///   derive::factors::totp::{TOTPDeriveOptions, totp},
+///   error::MFKDF2Result,
+///   otpauth::HashAlgorithm,
+///   setup::{
+///     self,
+///     factors::totp::{TOTPOptions, totp as setup_totp},
+///   },
+///   definitions::MFKDF2Options,
+/// };
+/// let now_ms = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_millis() as u64;
+/// let options =
+///   TOTPOptions { secret: Some(b"hello world mfkdf2!!".to_vec()), ..Default::default() };
+///
+/// let setup_factor = setup_totp(options)?;
+/// # let secret = if let mfkdf2::definitions::FactorType::TOTP(ref f) = setup_factor.factor_type {
+/// #  f.config.secret.clone()
+/// # } else {
+/// #   unreachable!()
+/// # };
+/// let setup_key = setup::key(&[setup_factor], MFKDF2Options::default())?;
+///
+/// # let step = 30;
+/// # let digits = 6;
+/// # let hash = HashAlgorithm::Sha1;
+/// # let counter = now_ms / (step * 1000);
+/// # let code = mfkdf2::otpauth::generate_otp_token(&secret[..20], counter, &hash, digits);
+///
+/// let derive_options = TOTPDeriveOptions { time: Some(now_ms), oracle: None };
+/// let derive_factor = totp(code, Some(derive_options))?;
+/// let derived_key = derive::key(
+///   &setup_key.policy,
+///   HashMap::from([("totp".to_string(), derive_factor)]),
+///   true,
+///   false,
+/// )?;
+///
+/// assert_eq!(derived_key.key, setup_key.key);
+/// # Ok::<(), mfkdf2::error::MFKDF2Error>(())
+/// ```
 pub fn totp(code: u32, options: Option<TOTPDeriveOptions>) -> MFKDF2Result<MFKDF2Factor> {
   let mut options = options.unwrap_or_default();
 
@@ -151,11 +228,9 @@ pub fn totp(code: u32, options: Option<TOTPDeriveOptions>) -> MFKDF2Result<MFKDF
   })
 }
 
+#[cfg(feature = "bindings")]
 #[cfg_attr(feature = "bindings", uniffi::export)]
-pub async fn derive_totp(
-  code: u32,
-  options: Option<TOTPDeriveOptions>,
-) -> MFKDF2Result<MFKDF2Factor> {
+async fn derive_totp(code: u32, options: Option<TOTPDeriveOptions>) -> MFKDF2Result<MFKDF2Factor> {
   totp(code, options)
 }
 
@@ -229,7 +304,7 @@ mod tests {
     let now_millis = time;
     let counter = now_millis / (u64::from(step) * 1000);
 
-    let correct_code = generate_hotp_code(&secret[..20], counter, &hash, digits);
+    let correct_code = generate_otp_token(&secret[..20], counter, &hash, digits);
 
     let derive_options = get_test_derive_totp_options(Some(time));
     let mut derive_material = totp(correct_code, Some(derive_options)).unwrap();

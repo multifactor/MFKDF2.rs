@@ -2,11 +2,11 @@ use std::{collections::HashMap, hint::black_box};
 
 use criterion::{Criterion, criterion_group, criterion_main};
 use mfkdf2::{
+  definitions::MFKDF2Options,
   derive,
   setup::{
     self,
     factors::question::{QuestionOptions, question as setup_question},
-    key::MFKDF2Options,
   },
 };
 
@@ -22,13 +22,13 @@ fn bench_question(c: &mut Criterion) {
         })
         .unwrap(),
       );
-      let result = black_box(setup::key::key(&[factor], MFKDF2Options::default()));
+      let result = black_box(setup::key(&[factor], MFKDF2Options::default()));
       result.unwrap()
     })
   });
 
   // Single derive - 1 question
-  let single_setup_key = setup::key::key(
+  let single_setup_key = setup::key(
     &[setup_question("answer1", QuestionOptions {
       id:       Some("question".to_string()),
       question: Some("What is your favorite color?".to_string()),
@@ -53,7 +53,7 @@ fn bench_question(c: &mut Criterion) {
   group.bench_function("multiple_setup_3_threshold_3", |b| {
     b.iter(|| {
       let options = MFKDF2Options { threshold: Some(3), ..Default::default() };
-      let result = black_box(setup::key::key(
+      let result = black_box(setup::key(
         &[
           setup_question("answer1", QuestionOptions {
             id:       Some("q1".to_string()),
@@ -78,7 +78,7 @@ fn bench_question(c: &mut Criterion) {
   });
 
   // Multiple derive - 3 questions (all required)
-  let multiple_setup_key_3 = setup::key::key(
+  let multiple_setup_key_3 = setup::key(
     &[
       setup_question("answer1", QuestionOptions {
         id:       Some("q1".to_string()),
@@ -113,7 +113,7 @@ fn bench_question(c: &mut Criterion) {
   });
 
   // Threshold derive - 2 out of 3 questions
-  let threshold_setup_key = setup::key::key(
+  let threshold_setup_key = setup::key(
     &[
       setup_question("answer1", QuestionOptions {
         id:       Some("q1".to_string()),
