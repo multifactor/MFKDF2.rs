@@ -142,6 +142,8 @@ After you have setup a key policy, you can derive the key from the policy and th
 
 ## Examples
 
+### Password + HOTP + HMACSHA1
+
 Derive a composite key with password, hmacsha1 and hotp factors. Derive returns the
 [MFKDF2DerivedKey](`crate::definitions::MFKDF2DerivedKey`) and updated [Policy](`crate::policy::Policy`).
 
@@ -219,6 +221,50 @@ let derived_key = derive::key(
 
 // derived_key.key -> 34d2…5771
 # assert_eq!(derived_key.key, setup_derived_key.key);
+# Ok::<(), mfkdf2::error::MFKDF2Error>(())
+```
+
+### Password + TOTP
+
+```rust
+# use std::collections::HashMap;
+use mfkdf2::setup::factors::{totp::TOTPOptions, password::PasswordOptions};
+use mfkdf2::definitions::MFKDF2Options;
+
+let setup = mfkdf2::setup::key(
+  &[
+    mfkdf2::setup::factors::password("password1", PasswordOptions::default())?,
+    mfkdf2::setup::factors::totp(TOTPOptions {
+      secret: Some(b"abcdefghijklmnopqrst".to_vec()),
+      time: Some(1),
+      ..Default::default()
+    })?,
+  ],
+  MFKDF2Options::default(),
+)?;
+
+let derived_key = mfkdf2::derive::key(
+  &setup.policy,
+  HashMap::from([
+    ("password".to_string(), mfkdf2::derive::factors::password("password1")?),
+    (
+      "totp".to_string(),
+      mfkdf2::derive::factors::totp(
+        241063,
+        Some(mfkdf2::derive::factors::totp::TOTPDeriveOptions {
+          time: Some(30001),
+          ..Default::default()
+        }),
+      )?,
+    ),
+  ]),
+  true,
+  false,
+)?;
+
+println!("Derived Key: {:?}", derived_key);
+
+# assert_eq!(setup.key, derived_key.key);
 # Ok::<(), mfkdf2::error::MFKDF2Error>(())
 ```
 
