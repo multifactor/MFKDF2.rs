@@ -55,7 +55,7 @@ suite('setup/factors/totp', () => {
       digits: 8,
       issuer: 'TestCorp',
       label: 'test@example.com',
-      step: 60n
+      step: 60
     })
     factor.id.should.equal('mytotp')
     factor.type.should.equal('totp')

@@ -75,7 +75,7 @@ pub struct OtpauthUrlOptions {
   /// Digits (default 6)
   pub digits:  Option<u32>,
   /// Period seconds (default 30; TOTP-only)
-  pub period:  Option<u64>,
+  pub period:  Option<u32>,
   /// Shared (encoding + algorithm)
   pub shared:  Option<SharedOptions>,
 }

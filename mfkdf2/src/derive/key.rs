@@ -375,7 +375,7 @@ mod tests {
 
     // TOTP factor
     let time = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_millis();
-    let counter = time as u64 / (totp.config.step * 1000);
+    let counter = time as u64 / (totp.config.step as u64 * 1000);
     let totp_code =
       generate_hotp_code(&totp.config.secret[..20], counter, &totp.config.hash, totp.config.digits);
     let mut derive_totp_factor = derive_totp(totp_code as u32, None).unwrap();
@@ -418,7 +418,7 @@ mod tests {
 
     // totp factor
     let time = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_millis();
-    let counter = time as u64 / (totp.config.step * 1000);
+    let counter = time as u64 / (u64::from(totp.config.step) * 1000);
     let totp_code =
       generate_hotp_code(&totp.config.secret[..20], counter, &totp.config.hash, totp.config.digits);
     let mut derive_totp_factor = derive_totp(totp_code as u32, None).unwrap();

@@ -156,7 +156,7 @@ name    = "reconstitution"
 path    = "benches/reconstitution.rs"
 
 [features]
-default = ["bindings"]
+default = []
 # Enable UniFFI bindings (FFI exports, scaffolding, bin, etc.)
 bindings          = ["dep:uniffi"]
 differential-test = []

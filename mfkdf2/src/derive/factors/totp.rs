@@ -48,8 +48,8 @@ impl FactorDerive for TOTP {
 
     let params: TOTPParams = serde_json::from_value(params)?;
 
-    let start_counter = params.start / (params.step * 1000);
-    let now_counter = self.config.time / (params.step * 1000);
+    let start_counter = params.start / (params.step as u64 * 1000);
+    let now_counter = self.config.time / (params.step as u64 * 1000);
 
     let index = (now_counter - start_counter) as usize;
     if index >= params.window as usize {
@@ -69,7 +69,7 @@ impl FactorDerive for TOTP {
         MFKDF2Error::InvalidDeriveParams("failed to read 4-byte offset from offsets".to_string())
       })?);
 
-    let oracle_time = now_counter * params.step * 1000;
+    let oracle_time = now_counter * (params.step as u64) * 1000;
     if self.config.oracle.is_some()
       && self.config.oracle.as_ref().unwrap().contains_key(&oracle_time)
     {
@@ -96,13 +96,13 @@ impl FactorDerive for TOTP {
     let mut new_offsets = Vec::with_capacity((4 * params.window) as usize);
 
     for i in 0..params.window {
-      let counter = (time / 1000) as u64 / params.step + i;
+      let counter = (time / 1000) / (params.step as u64) + i as u64;
       let code = generate_hotp_code(&padded_secret[..20], counter, &params.hash, params.digits);
 
       let mut offset =
         mod_positive(i64::from(self.target) - i64::from(code), 10_i64.pow(params.digits));
 
-      let oracle_time = counter * params.step * 1000;
+      let oracle_time = counter * u64::from(params.step) * 1000;
       if self.config.oracle.is_some()
         && self.config.oracle.as_ref().unwrap().contains_key(&oracle_time)
       {
@@ -227,7 +227,7 @@ mod tests {
     let setup_params = factor.factor_type.setup().params(mock_key.into()).unwrap();
 
     let now_millis = time;
-    let counter = now_millis / (step * 1000);
+    let counter = now_millis / (u64::from(step) * 1000);
 
     let correct_code = generate_hotp_code(&secret[..20], counter, &hash, digits);
 

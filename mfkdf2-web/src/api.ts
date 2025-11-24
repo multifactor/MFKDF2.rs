@@ -378,7 +378,7 @@ export const mfkdf = {
         });
         return wrapSetupFactor(factor);
       },
-      async totp(options: { secret?: ArrayBuffer | Buffer, id?: string, digits?: number, hash?: raw.HashAlgorithm, issuer?: string, label?: string, window?: bigint, step?: bigint, time?: bigint | number, oracle?: Record<number, number> } = {}) {
+      async totp(options: { secret?: ArrayBuffer | Buffer, id?: string, digits?: number, hash?: raw.HashAlgorithm, issuer?: string, label?: string, window?: number, step?: number, time?: bigint | number, oracle?: Record<number, number> } = {}) {
         const factor = await raw.setupTotp({
           id: options.id,
           secret: toArrayBuffer(options.secret),

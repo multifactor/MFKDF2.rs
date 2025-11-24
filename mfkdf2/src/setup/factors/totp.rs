@@ -26,8 +26,8 @@ pub struct TOTPOptions {
   pub issuer: Option<String>,
   pub label:  Option<String>,
   pub time:   Option<u64>, // Unix epoch time in milliseconds
-  pub window: Option<u64>,
-  pub step:   Option<u64>,
+  pub window: Option<u32>,
+  pub step:   Option<u32>,
   pub oracle: Option<HashMap<u64, u32>>,
 }
 
@@ -58,8 +58,8 @@ pub struct TOTPConfig {
   pub issuer: String,
   pub label:  String,
   pub time:   u64,
-  pub window: u64,
-  pub step:   u64,
+  pub window: u32,
+  pub step:   u32,
   pub oracle: Option<HashMap<u64, u32>>,
 }
 
@@ -107,8 +107,8 @@ pub struct TOTPParams {
   pub start:   u64,
   pub hash:    HashAlgorithm,
   pub digits:  u32,
-  pub step:    u64,
-  pub window:  u64,
+  pub step:    u32,
+  pub window:  u32,
   pub pad:     String,
   pub offsets: String,
 }
@@ -141,7 +141,7 @@ impl FactorSetup for TOTP {
       // T = floor((CurrentUnixTime - T0) / X)
       // Here, T0 is 0 (Unix epoch) and X is self.config.step.
       // We add 'i' to generate a window of future OTPs for offline use.
-      let counter = (time / 1000) as u64 / self.config.step + i;
+      let counter = (time / 1000) as u64 / u64::from(self.config.step + i);
       let code = generate_hotp_code(
         &self.config.secret[..20],
         counter,
@@ -152,7 +152,7 @@ impl FactorSetup for TOTP {
       let mut offset =
         mod_positive(i64::from(self.target) - i64::from(code), 10_i64.pow(self.config.digits));
 
-      let oracle_time = counter * self.config.step * 1000;
+      let oracle_time = counter * u64::from(self.config.step) * 1000;
       if self.config.oracle.is_some()
         && self.config.oracle.as_ref().unwrap().contains_key(&oracle_time)
       {
