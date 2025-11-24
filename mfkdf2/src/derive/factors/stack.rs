@@ -42,8 +42,8 @@ impl FactorDerive for Stack {
 ///
 /// The `factors` map should contain witnesses used in the derive phase for the inner factors that
 /// were used to construct the stacked key during setup, keyed by their factor ids. This helper
-/// wraps them in a `Stack` factor that, when passed to [KeyDerive](`crate::derive::key::key`) along
-/// with the appropriate policy, reconstructs the stacked key in stack mode.
+/// wraps them in a `Stack` factor that, when passed to [`KeyDerive`](`crate::derive::key::key`)
+/// along with the appropriate policy, reconstructs the stacked key in stack mode.
 ///
 /// # Errors
 ///

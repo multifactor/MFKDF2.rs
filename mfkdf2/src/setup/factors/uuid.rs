@@ -60,7 +60,7 @@ impl FactorSetup for UUIDFactor {
 /// or account binding factor.
 ///
 /// # Errors
-/// - [MFKDF2Error::MissingFactorId](`crate::error::MFKDF2Error::MissingFactorId`) if `id` is
+/// - [`MFKDF2Error::MissingFactorId`](`crate::error::MFKDF2Error::MissingFactorId`) if `id` is
 ///   provided but empty.
 ///
 /// # Example

@@ -38,9 +38,9 @@ fn expand(
 /// # Arguments
 ///
 /// * `policy`: The [`Policy`] to use for the derivation.
-/// * `factors`: Map of factor IDs to [`MFKDF2Factor`] implementations. Usually derived using
-///  policy combinators ([`and`](`crate::policy::and`), [`or`](`crate::policy::or`),
-/// [`all`](`crate::policy::all`), [`any`](`crate::policy::any`)).
+/// * `factors`: Map of factor IDs to [`MFKDF2Factor`] implementations. Usually derived using policy
+///   combinators ([`and`](`crate::policy::and`), [`or`](`crate::policy::or`),
+///   [`all`](`crate::policy::all`), [`any`](`crate::policy::any`)).
 /// * `verify`: Whether to verify the self-referential MFKDF2 policy integrity. Default is true.
 ///
 /// # Example

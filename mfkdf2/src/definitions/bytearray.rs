@@ -1,4 +1,4 @@
-//! Generic ByteArray type for FFI boundaries, typically used for fixed-size byte arrays like keys
+//! Generic `ByteArray` type for FFI boundaries, typically used for fixed-size byte arrays like keys
 //! and salts.
 use serde::{Deserialize, Serialize};
 

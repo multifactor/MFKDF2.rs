@@ -178,7 +178,6 @@ pub fn and(factor1: MFKDF2Factor, factor2: MFKDF2Factor) -> MFKDF2Result<MFKDF2F
 /// ```
 #[cfg_attr(feature = "bindings", uniffi::export(name = "policy_all"))]
 pub fn all(factors: Vec<MFKDF2Factor>) -> MFKDF2Result<MFKDF2Factor> {
-  assert!(factors.len() < 256, "Too many factors for policy");
   let n = factors.len() as u8;
   at_least(n, factors)
 }

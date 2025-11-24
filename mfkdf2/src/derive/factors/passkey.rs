@@ -1,7 +1,7 @@
-//! Derive phase [Passkey](`crate::setup::factors::passkey`) construction. It accepts the same
-//! 32‑byte secret produced by a WebAuthn PRF extension or equivalent hardware‑backed primitive and
-//! wraps it as an [`MFKDF2Factor`] used during the derive phase so that the passkey contributes
-//! stable 256‑bit entropy across KeySetup and KeyDerive
+//! Derive phase [`Passkey`](`crate::setup::factors::passkey`) construction. It accepts the same
+//! 32‑byte secret produced by a `WebAuthn` PRF extension or equivalent hardware‑backed primitive
+//! and wraps it as an [`MFKDF2Factor`] used during the derive phase so that the passkey contributes
+//! stable 256‑bit entropy across `KeySetup` and `KeyDerive`
 use serde_json::Value;
 
 use crate::{
@@ -29,8 +29,8 @@ impl FactorDerive for Passkey {
 ///
 /// # Errors
 ///
-/// - [MFKDF2Error::InvalidSecretLength](`crate::error::MFKDF2Error::InvalidSecretLength`) from the
-///   bindings helper when a non‑32‑byte slice is provided
+/// - [`MFKDF2Error::InvalidSecretLength`](`crate::error::MFKDF2Error::InvalidSecretLength`) from
+///   the bindings helper when a non‑32‑byte slice is provided
 ///
 /// # Example
 ///

@@ -55,11 +55,10 @@ impl crate::definitions::MFKDF2DerivedKey {
   /// Repeated calls with the same key, purpose, salt, and regular expression always yield the same
   /// password
   ///
-  /// # Panics
+  /// # Errors
   ///
-  /// This method panics when `regex` cannot be compiled by `rand_regex::Regex::compile`, for
-  /// example when the pattern uses unsupported constructs or exceeds the configured DFA size
-  /// bound (10 000 states)
+  /// - [`MFKDF2Error::Regex`](`crate::error::MFKDF2Error::Regex`) if the regular expression is
+  ///   invalid
   pub fn derive_password(
     &self,
     purpose: Option<&str>,

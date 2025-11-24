@@ -29,10 +29,11 @@ enum LogLevel {
 ///
 /// # Arguments
 ///
-/// * `level` - Optional logging level. If None, uses RUST_LOG env var or defaults to Info.
+/// * `level` - Optional logging level. If None, uses `RUST_LOG` env var or defaults to Info.
 ///
 /// # Platform-specific behavior
-/// On WASM targets, initializes console_log. On other platforms, sets the maximum log level filter.
+/// On WASM targets, initializes `console_log`. On other platforms, sets the maximum log level
+/// filter.
 #[cfg_attr(feature = "bindings", uniffi::export)]
 fn init_log(level: Option<LogLevel>) {
   // Determine log level from parameter or environment variable

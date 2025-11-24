@@ -1,9 +1,9 @@
 //! Passkey factor setup.
 //!
-//! This factor is intended for **hardware‑backed credentials** such as WebAuthn
+//! This factor is intended for **hardware‑backed credentials** such as `WebAuthn`
 //! passkeys bound to a platform authenticator. Instead of consuming a traditional
-//! WebAuthn signature (which is intentionally non‑deterministic to prevent replay
-//! attacks), the factor expects a stable 32‑byte secret produced by the WebAuthn
+//! `WebAuthn` signature (which is intentionally non‑deterministic to prevent replay
+//! attacks), the factor expects a stable 32‑byte secret produced by the `WebAuthn`
 //! PRF extension or an equivalent key‑derivation mechanism.
 //!
 //! Conceptually:
@@ -31,7 +31,7 @@ use crate::{
 #[cfg_attr(feature = "bindings", derive(uniffi::Record))]
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Passkey {
-  /// 32‑byte secret derived from the passkey’s WebAuthn PRF output or equivalent
+  /// 32‑byte secret derived from the passkey’s `WebAuthn` PRF output or equivalent
   /// hardware‑protected key
   pub secret: Vec<u8>,
 }
@@ -63,13 +63,13 @@ impl Default for PasskeyOptions {
 /// Creates a passkey factor from a 32‑byte secret
 ///
 /// This constructor is intended for flows where a client or middleware layer has
-/// already obtained a deterministic 32‑byte value from a WebAuthn PRF operation
-/// or similar hardware‑backed primitive. The function does not perform any WebAuthn
+/// already obtained a deterministic 32‑byte value from a `WebAuthn` PRF operation
+/// or similar hardware‑backed primitive. The function does not perform any `WebAuthn`
 /// protocol steps; it only validates the logical factor identifier and wraps the
 /// provided secret as MFKDF2 factor material with a fixed 256‑bit entropy estimate.
 ///
 /// # Errors
-/// - [MFKDF2Error::MissingFactorId](`crate::error::MFKDF2Error::MissingFactorId`) if `options.id`
+/// - [`MFKDF2Error::MissingFactorId`](`crate::error::MFKDF2Error::MissingFactorId`) if `options.id`
 ///   is present but empty
 ///
 /// # Example

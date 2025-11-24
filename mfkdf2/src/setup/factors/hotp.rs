@@ -239,10 +239,7 @@ pub fn mod_positive(n: i64, m: i64) -> u32 { (((n % m) + m) % m) as u32 }
 /// ```rust
 /// use mfkdf2::{
 ///   otpauth::HashAlgorithm,
-///   setup::{
-///     FactorSetup,
-///     factors::hotp::{HOTPOptions, hotp},
-///   },
+///   setup::factors::hotp::{HOTPOptions, hotp},
 /// };
 ///
 /// let options = HOTPOptions {
@@ -254,8 +251,6 @@ pub fn mod_positive(n: i64, m: i64) -> u32 { (((n % m) + m) % m) as u32 }
 ///   label:  Some("user@example.com".into()),
 /// };
 /// let factor = hotp(options)?;
-/// let output = factor.factor_type.output();
-/// assert_eq!(output["type"], "hotp");
 /// # Ok::<(), mfkdf2::error::MFKDF2Error>(())
 /// ```
 ///
@@ -264,7 +259,6 @@ pub fn mod_positive(n: i64, m: i64) -> u32 { (((n % m) + m) % m) as u32 }
 /// ```rust
 /// # use mfkdf2::setup::factors::hotp::{hotp, HOTPOptions};
 /// # use mfkdf2::otpauth::HashAlgorithm;
-/// # use mfkdf2::setup::FactorSetup;
 ///
 /// let options = HOTPOptions { digits: Some(4), ..Default::default() };
 /// let result = hotp(options);

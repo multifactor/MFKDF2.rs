@@ -1,14 +1,14 @@
 //! # MFKDF2 Key Derivation
 //!
-//! For i+1-th derivation of [MFKDF2DerivedKey](`crate::definitions::MFKDF2DerivedKey`),
-//! [KeyDerive](`crate::derive::key::key`) takes every factor witnesses Wᵢⱼ and public state
+//! For i+1-th derivation of [`MFKDF2DerivedKey`](`crate::definitions::MFKDF2DerivedKey`),
+//! [`KeyDerive`](`crate::derive::key::key`) takes every factor witnesses Wᵢⱼ and public state
 //! βᵢⱼ (from key's inner state) and produces the updated key K and next state βᵢ₊₁
 //!
 //! # Factor Derive
 //!
 //! Derive algorithm for i-th derivation takes a j-th factor's witness Wᵢⱼ and the public
 //! parameter βᵢⱼ and outputs the next state βᵢ₊₁,ⱼ and the source key material κⱼ.
-//! KeyDerive performs this for every factor (up to the threshold). During Derive, the factor's
+//! `KeyDerive` performs this for every factor (up to the threshold). During Derive, the factor's
 //! witness W is combined with public helper data to reconstruct the static κ. Thus, σ is the
 //! underlying secret that "powers" the factor, while κ is the consistent value that the factor
 //! contributes to the final key derivation.
@@ -24,7 +24,7 @@ use crate::{
 };
 
 /// Trait for factor derive.  
-pub trait FactorDerive: Send + Sync + std::fmt::Debug {
+pub(crate) trait FactorDerive: Send + Sync + std::fmt::Debug {
   /// Public parameters for the factor derive.
   type Params: serde::Serialize + serde::de::DeserializeOwned + std::fmt::Debug + Default;
   /// Public output for the factor derive.

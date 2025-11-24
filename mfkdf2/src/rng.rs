@@ -3,7 +3,8 @@
 //! RNG is used to generate random bytes for the MFKDF2 algorithm. It is implemented using the
 //! `rand` crate. The reason for having a separate RNG module is to allow for differential testing.
 //!
-//! [`GlobalRng`] is a facade around the `rand` crate's OsRng to provide the same interface.
+//! [`GlobalRng`] is a facade around the `rand` crate's [`rand::rngs::OsRng`] to provide the same
+//! interface.
 //!
 //! ## Differential Testing
 //!
@@ -24,7 +25,7 @@ mod global_rng {
     static RNG: RefCell<ChaCha20Rng> = RefCell::new(ChaCha20Rng::from_seed(DEFAULT_SEED));
   }
 
-  pub struct GlobalRng;
+  pub(crate) struct GlobalRng;
 
   impl RngCore for GlobalRng {
     fn next_u32(&mut self) -> u32 { RNG.with(|rng| rng.borrow_mut().next_u32()) }
@@ -39,10 +40,12 @@ mod global_rng {
   }
   impl CryptoRng for GlobalRng {}
 
-  pub fn fill_bytes(dst: &mut [u8]) { RNG.with(|rng| rng.borrow_mut().fill_bytes(dst)); }
-  pub fn next_u32() -> u32 { RNG.with(|rng| rng.borrow_mut().next_u32()) }
-  pub fn gen_range_u32(max: u32) -> u32 { if max == 0 { 0 } else { next_u32() % max } }
-  pub fn gen_range_u8(max: u8) -> u8 { if max == 0 { 0 } else { (next_u32() % max as u32) as u8 } }
+  pub(crate) fn fill_bytes(dst: &mut [u8]) { RNG.with(|rng| rng.borrow_mut().fill_bytes(dst)); }
+  pub(crate) fn next_u32() -> u32 { RNG.with(|rng| rng.borrow_mut().next_u32()) }
+  pub(crate) fn gen_range_u32(max: u32) -> u32 { if max == 0 { 0 } else { next_u32() % max } }
+  pub(crate) fn gen_range_u8(max: u8) -> u8 {
+    if max == 0 { 0 } else { (next_u32() % max as u32) as u8 }
+  }
 }
 
 #[cfg(not(feature = "differential-test"))]

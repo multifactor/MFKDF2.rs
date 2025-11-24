@@ -35,7 +35,7 @@ suite('features/reconstitution', () => {
         },
         false
       )
-      .should.be.rejectedWith(Mfkdf2Error.ShareRecoveryError);
+      .should.be.rejectedWith(Mfkdf2Error.ShareRecovery);
 
     await setup.setThreshold(2);
 
@@ -82,7 +82,7 @@ suite('features/reconstitution', () => {
         password1: await mfkdf.derive.factors.password('password1'),
         password2: await mfkdf.derive.factors.password('password2')
       })
-      .should.be.rejectedWith(Mfkdf2Error.ShareRecoveryError)
+      .should.be.rejectedWith(Mfkdf2Error.ShareRecovery)
 
     await derive2.removeFactor('password2').should.be.rejectedWith(Mfkdf2Error.InvalidThreshold)
 
@@ -99,7 +99,7 @@ suite('features/reconstitution', () => {
       .key(derive2.policy, {
         password2: await mfkdf.derive.factors.password('password2')
       })
-      .should.be.rejectedWith(Mfkdf2Error.ShareRecoveryError)
+      .should.be.rejectedWith(Mfkdf2Error.ShareRecovery)
   })
 
   test('removeFactors', async () => {
@@ -133,7 +133,7 @@ suite('features/reconstitution', () => {
         password1: await mfkdf.derive.factors.password('password1'),
         password4: await mfkdf.derive.factors.password('password4')
       })
-      .should.be.rejectedWith(Mfkdf2Error.ShareRecoveryError)
+      .should.be.rejectedWith(Mfkdf2Error.ShareRecovery)
 
     const derive3 = await mfkdf.derive.key(setup.policy, {
       password2: await mfkdf.derive.factors.password('password2'),

@@ -66,7 +66,7 @@ impl FactorSetup for Question {
 
 /// Creates a [`Question`] factor from a raw user answer.
 ///
-/// The `answer`` is normalized (lower‑cased, punctuation removed, surrounding whitespace trimmed)
+/// The `answer` is normalized (lower‑cased, punctuation removed, surrounding whitespace trimmed)
 /// to reduce accidental mismatches. Entropy is computed using `zxcvbn` on the normalized answer and
 /// stored on the factor.
 ///

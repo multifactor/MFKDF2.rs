@@ -71,12 +71,12 @@ impl FactorDerive for HOTP {
 /// # Errors
 ///
 /// - [`MFKDF2Error::Serialize`](`crate::error::MFKDF2Error::Serialize`) if the stored policy
-///   parameters cannot be decoded into [HOTPParams](`crate::setup::factors::hotp::HOTPParams`) (for
-///   example, missing or malformed fields)
+///   parameters cannot be decoded into [`HOTPParams`](`crate::setup::factors::hotp::HOTPParams`)
+///   (for example, missing or malformed fields)
 ///
 /// # Example
 ///
-/// Single‑factor setup/derive using HOTP within KeySetup/KeyDerive:
+/// Single‑factor setup/derive using HOTP within `KeySetup`/`KeyDerive`:
 ///
 /// ```rust
 /// # use std::collections::HashMap;

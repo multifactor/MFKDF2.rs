@@ -1,7 +1,7 @@
 //! # Factor Setup
 //!
-//! Every [Factor](`crate::definitions::MFKDF2Factor`) instance is constructed using Witness
-//! Wᵢ and parameters βᵢ. Each factor uses [FactorSetup](`crate::setup::FactorSetup`) that takes
+//! Every [`MFKDF2Factor`](`crate::definitions::MFKDF2Factor`) instance is constructed using Witness
+//! Wᵢ and parameters βᵢ. Each factor uses [`FactorSetup`](`crate::setup::FactorSetup`) that takes
 //! secret material σᵢ to produce the initial parameters β₀ given some configuration and randomly
 //! generated static source material κᵢ. The factor’s public state βᵢ then stores an encrypted
 //! version of σᵢ (using the key feedback mechanism) and public helper data.
@@ -34,7 +34,7 @@ use crate::{
 
 impl FactorType {
   /// Returns the setup implementation for the factor type.
-  pub fn setup(&self) -> &dyn FactorSetup<Params = Value, Output = Value> {
+  pub(crate) fn setup(&self) -> &dyn FactorSetup<Params = Value, Output = Value> {
     match self {
       FactorType::Password(password) => password,
       FactorType::HOTP(hotp) => hotp,
@@ -62,7 +62,7 @@ impl FactorSetup for FactorType {
 
 #[cfg(feature = "bindings")]
 #[cfg_attr(feature = "bindings", uniffi::export)]
-pub fn factor_type_kind(factor_type: &FactorType) -> String { factor_type.kind() }
+fn factor_type_kind(factor_type: &FactorType) -> String { factor_type.kind() }
 
 #[cfg(feature = "bindings")]
 #[cfg_attr(feature = "bindings", uniffi::export)]

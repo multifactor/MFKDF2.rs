@@ -1,5 +1,5 @@
 //! Factor construction derive phase for the HMAC‑SHA1 factor from
-//! [HMAC-SHA1](`crate::setup::factors::hmacsha1`).
+//! [`HMAC-SHA1`](`crate::setup::factors::hmacsha1`).
 //!
 //! - During setup, the factor stores a padded HMAC key and a challenge in the policy.
 //! - During derive, this module consumes an HMAC response over that challenge and reconstructs the
@@ -75,15 +75,15 @@ impl FactorDerive for HmacSha1 {
 ///
 /// # Errors
 ///
-/// - [MFKDF2Error::MissingDeriveParams](`crate::error::MFKDF2Error::MissingDeriveParams`) if the
+/// - [`MFKDF2Error::MissingDeriveParams`](`crate::error::MFKDF2Error::MissingDeriveParams`) if the
 ///   setup policy omits the `"pad"` parameter when `include_params` is invoked
-/// - [MFKDF2Error::InvalidDeriveParams](`crate::error::MFKDF2Error::InvalidDeriveParams`) if the
+/// - [`MFKDF2Error::InvalidDeriveParams`](`crate::error::MFKDF2Error::InvalidDeriveParams`) if the
 ///   `"pad"` field is not valid hex or has an unexpected shape
 ///
 /// # Example
 ///
 /// Single‑factor setup and factor construction derive phase using the HMAC‑SHA1 factor within
-/// KeySetup/KeyDerive:
+/// `KeySetup`/`KeyDerive`:
 ///
 /// ```rust
 /// # use std::collections::HashMap;

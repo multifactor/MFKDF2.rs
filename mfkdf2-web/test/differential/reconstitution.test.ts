@@ -73,7 +73,7 @@ suite('differential/reconstitution', () => {
         },
         false
       )
-      .should.be.rejectedWith(Mfkdf2Error.ShareRecoveryError);
+      .should.be.rejectedWith(Mfkdf2Error.ShareRecovery);
 
     await setup2.setThreshold(2);
 
@@ -207,7 +207,7 @@ suite('differential/reconstitution', () => {
         password1: await mfkdf2.derive.factors.password('password1'),
         password4: await mfkdf2.derive.factors.password('password4')
       })
-      .should.be.rejectedWith(Mfkdf2Error.ShareRecoveryError);
+      .should.be.rejectedWith(Mfkdf2Error.ShareRecovery);
 
     const d5 = await mfkdf.derive.key(setup.policy, {
       password2: await mfkdf.derive.factors.password('password2'),

@@ -308,22 +308,13 @@ impl FactorSetup for TOTP {
 /// ```rust
 /// # use mfkdf2::setup::factors::totp::{totp, TOTPOptions};
 /// # use mfkdf2::otpauth::HashAlgorithm;
-/// # use mfkdf2::setup::FactorSetup;
 /// let options = TOTPOptions {
-///   id:     Some("login-totp".into()),
+///   id: Some("login-totp".into()),
 ///   secret: Some(b"shared-totp-secret!!".to_vec()), // 20 bytes
 ///   digits: Some(6),
-///   hash:   Some(HashAlgorithm::Sha1),
-///   issuer: Some("ExampleApp".into()),
-///   label:  Some("user@example.com".into()),
-///   time:   None,
-///   window: None,
-///   step:   None,
-///   oracle: None,
+///   ..Default::default()
 /// };
 /// let factor = totp(options)?;
-/// let output = factor.factor_type.output();
-/// assert_eq!(output["type"], "totp");
 /// # Ok::<(), mfkdf2::error::MFKDF2Error>(())
 /// ```
 ///
@@ -331,14 +322,14 @@ impl FactorSetup for TOTP {
 ///
 /// ```rust
 /// # use mfkdf2::setup::factors::totp::{totp, TOTPOptions};
-/// # use mfkdf2::otpauth::HashAlgorithm;
+/// # use mfkdf2::error::MFKDF2Error;
 /// let options = TOTPOptions {
 ///   secret: Some(b"my-secret-is-super-secret-123456".to_vec()),
 ///   ..Default::default()
 /// };
 /// let result = totp(options);
-/// assert!(matches!(result, Err(mfkdf2::error::MFKDF2Error::InvalidSecretLength(_))));
-/// # Ok::<(), mfkdf2::error::MFKDF2Error>(())
+/// assert!(matches!(result, Err(MFKDF2Error::InvalidSecretLength(_))));
+/// # Ok::<(), MFKDF2Error>(())
 /// ```
 pub fn totp(options: TOTPOptions) -> MFKDF2Result<MFKDF2Factor> {
   let mut options = options;

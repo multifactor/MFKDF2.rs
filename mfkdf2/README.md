@@ -3,7 +3,7 @@
 Multi-Factor Key Derivation Function (MFKDF) extends traditional password-based key derivation
 by incorporating all of a user’s authentication factors, not just a single secret into the
 derivation process. This crate enables constructing high-entropy cryptographic keys from
-combinations of passwords, HOTP/TOTP codes, and hardware-backed authenticators such as YubiKeys.
+combinations of passwords, HOTP/TOTP codes, and hardware-backed authenticators such as `YubiKeys`.
 
 Key capabilities include:
 - **Multi-source entropy**: Derive key material from multiple independent factors (passwords,
@@ -33,21 +33,21 @@ Examples:
 
 # Supported factors
 - Constant entropy factors:
-  - [UUID](`crate::setup::factors::uuid::UUIDFactor`)
-  - [Password](`crate::setup::factors::password::Password`)
-  - [Question](`crate::setup::factors::question::Question`)
+  - [`UUID`](`crate::setup::factors::uuid::UUIDFactor`)
+  - [`Password`](`crate::setup::factors::password::Password`)
+  - [`Question`](`crate::setup::factors::question::Question`)
 - Software Tokens:
-  - [HOTP](`crate::setup::factors::hotp::HOTP`)
-  - [TOTP](`crate::setup::factors::totp::TOTP`)
+  - [`HOTP`](`crate::setup::factors::hotp::HOTP`)
+  - [`TOTP`](`crate::setup::factors::totp::TOTP`)
 - Hardware Tokens:
-  - [HMACSHA1](`crate::setup::factors::hmacsha1::HmacSha1`)
+  - [`HMACSHA1`](`crate::setup::factors::hmacsha1::HmacSha1`)
 - Out-of-band Authentication:
-  - [OOBA](`crate::setup::factors::ooba::Ooba`)
-- WebAuthn factors:
-  - [Passkey](`crate::setup::factors::passkey::Passkey`)
+  - [`OOBA`](`crate::setup::factors::ooba::Ooba`)
+- `WebAuthn` factors:
+  - [`Passkey`](`crate::setup::factors::passkey::Passkey`)
 
-Additionally, [Stack](`crate::setup::factors::stack::Stack`) and
-[Persisted](`crate::derive::factors::persisted::Persisted`) factors can be used to modify how a
+Additionally, [`Stack`](`crate::setup::factors::stack::Stack`) and
+[`Persisted`](`crate::derive::factors::persisted::Persisted`) factors can be used to modify how a
 key is derived.
 
 # Factor Construction
@@ -95,7 +95,7 @@ let totp_factor = totp(123456, None)?;
 # KDF construction
 
 The MFKDF derivation combines all factor outputs into a single deterministic static key using
-MFKDFSetup and MFKDFDerive algorithms.
+`MFKDFSetup` and `MFKDFDerive` algorithms.
 
 ## Setup Key
 
@@ -145,7 +145,7 @@ After you have setup a key policy, you can derive the key from the policy and th
 ### Password + HOTP + HMACSHA1
 
 Derive a composite key with password, hmacsha1 and hotp factors. Derive returns the
-[MFKDF2DerivedKey](`crate::definitions::MFKDF2DerivedKey`) and updated [Policy](`crate::policy::Policy`).
+[`MFKDF2DerivedKey`](`crate::definitions::MFKDF2DerivedKey`) and updated [`Policy`](`crate::policy::Policy`).
 
 ```rust
 # use std::collections::HashMap;
@@ -283,25 +283,21 @@ recovery code. Any 2 of these 3 factors are sufficient to reproduce the key.
 
 ```rust
 # use std::collections::HashMap;
-#
 # use mfkdf2::error::MFKDF2Error;
-# use mfkdf2::setup;
-# use mfkdf2::setup::FactorSetup;
-# use mfkdf2::setup::factors::{password as setup_password, password::PasswordOptions};
-# use mfkdf2::setup::factors::{hotp as setup_hotp, hotp::HOTPOptions};
-# use mfkdf2::setup::factors::{uuid as setup_uuid, uuid::UUIDOptions};
+# use mfkdf2::{setup, derive};
+# use mfkdf2::setup::factors::{password::PasswordOptions, hotp::HOTPOptions};
+# use mfkdf2::setup::factors::{uuid::UUIDOptions};
 # use mfkdf2::derive::factors::hotp as derive_hotp;
 # use mfkdf2::derive::factors::uuid as derive_uuid;
-# use mfkdf2::derive;
-# use mfkdf2::otpauth::{generate_otp_token as generate_hotp_code, HashAlgorithm};
+# use mfkdf2::otpauth::{generate_otp_token, HashAlgorithm};
 # use mfkdf2::definitions::MFKDF2Options;
 # use uuid::Uuid;
 #
 // setup phase: construct factors
-let password_factor = setup_password("password123", PasswordOptions::default())?;
+let password_factor = setup::factors::password("password123", PasswordOptions::default())?;
 
 // HOTP uses a random secret and 6‑digit codes by default
-let setup_hotp_factor = setup_hotp(HOTPOptions::default())?;
+let setup_hotp_factor = setup::factors::hotp(HOTPOptions::default())?;
 let hotp_state = match &setup_hotp_factor.factor_type {
   mfkdf2::definitions::FactorType::HOTP(h) => h.clone(),
   _ => unreachable!("HOTPOptions always produce an HOTP factor"),
@@ -309,7 +305,7 @@ let hotp_state = match &setup_hotp_factor.factor_type {
 
 // UUID factor uses a stable UUID as a recovery code
 let setup_uuid_factor =
-  setup_uuid(UUIDOptions { uuid: Some(Uuid::nil()), ..UUIDOptions::default() })?;
+  setup::factors::uuid(UUIDOptions { uuid: Some(Uuid::nil()), ..UUIDOptions::default() })?;
 
 // configure a 2‑of‑3 threshold policy
 let options = MFKDF2Options { threshold: Some(2), ..MFKDF2Options::default() };
@@ -328,7 +324,7 @@ let hash: HashAlgorithm =
   serde_json::from_value(policy_hotp_factor.params["hash"].clone()).expect("hash must decode");
 let digits = policy_hotp_factor.params["digits"].as_u64().expect("digits must be present") as u32;
 let hotp_secret = &hotp_state.config.secret[..20];
-let correct_code = generate_hotp_code(hotp_secret, counter, &hash, digits);
+let correct_code = generate_otp_token(hotp_secret, counter, &hash, digits);
 
 let mut derive_factors = HashMap::new();
 
@@ -349,7 +345,7 @@ assert_eq!(derived.key, setup_derived.key);
 ```
 
 Threshold value must be between 1 and the number of factors, otherwise
-[MFKDF2Error::InvalidThreshold](`crate::error::MFKDF2Error::InvalidThreshold`) is returned.
+[`MFKDF2Error::InvalidThreshold`](`crate::error::MFKDF2Error::InvalidThreshold`) is returned.
 
 ```rust
 # use mfkdf2::error::{MFKDF2Error, MFKDF2Result};
@@ -365,7 +361,7 @@ assert!(matches!(result, Err(MFKDF2Error::InvalidThreshold)));
 ```
 
 If insufficient factors are provided, share recovery fails and
-[MFKDF2Error::ShareRecovery](`crate::error::MFKDF2Error::ShareRecovery`) is returned.
+[`MFKDF2Error::ShareRecovery`](`crate::error::MFKDF2Error::ShareRecovery`) is returned.
 
 ```rust
 # use std::collections::HashMap;
@@ -406,7 +402,7 @@ Key stacking treats a derived key from one MFKDF2 policy as a reusable factor in
 A stack factor wraps a complete inner policy and derived key, enabling nested constructions such
 as `(password₁ ∧ password₂) ∨ password₃` or more elaborate hierarchies.
 
-Direct use of [Stack](`crate::setup::factors::stack::stack`) Factor mainly serves advanced use cases; most
+Direct use of [`Stack`](`crate::setup::factors::stack::stack`) Factor mainly serves advanced use cases; most
 applications prefer configuring policies through higher‑level factor combinations and
 thresholds.
 

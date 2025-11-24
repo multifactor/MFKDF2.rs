@@ -68,7 +68,7 @@ pub struct MFKDF2Factor {
   pub id:          Option<String>,
   /// Concrete factor implementation (password, TOTP, passkey, etc.).
   pub factor_type: FactorType,
-  /// Optional estimated real [MFKDF2Entropy](`crate::definitions::MFKDF2Entropy`) of this factor
+  /// Optional estimated real [`MFKDF2Entropy`](`crate::definitions::MFKDF2Entropy`) of this factor
   /// instance (in bits).
   pub entropy:     Option<f64>,
 }

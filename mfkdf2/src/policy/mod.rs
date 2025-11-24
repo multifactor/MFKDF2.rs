@@ -52,7 +52,7 @@ pub struct PolicyFactor {
 /// salt, etc.), per-factor public parameters (encrypted shares, secret), and factor public state
 /// (params).
 ///
-/// See [policy::setup](`setup::setup`), [policy::derive](`derive::derive`) on how to derive a
+/// See [`policy::setup`](`setup::setup`), [`policy::derive`](`derive::derive`) on how to derive a
 /// policy enforced key.
 #[cfg_attr(feature = "bindings", derive(uniffi::Record))]
 #[derive(Clone, Debug, Default, Serialize, Deserialize, Eq, PartialEq)]

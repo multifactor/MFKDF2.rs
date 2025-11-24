@@ -8,6 +8,9 @@ pub type MFKDF2Result<T> = Result<T, MFKDF2Error>;
 #[cfg_attr(feature = "bindings", derive(uniffi::Error), uniffi(flat_error))]
 #[derive(thiserror::Error, Debug)]
 pub enum MFKDF2Error {
+  #[error("too many factors! maximum is 255")]
+  TooManyFactors,
+
   #[error("password cannot be empty!")]
   PasswordEmpty,
 

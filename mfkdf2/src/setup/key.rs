@@ -35,10 +35,10 @@ use crate::{
 ///
 /// # Arguments
 ///
-/// * `factors`: Slice of `MFKDF2Factor` setup instances that define the multi‑factor access
+/// * `factors`: Slice of [`MFKDF2Factor`] setup instances that define the multi‑factor access
 ///   structure; each factor must contains suitable secret material for the factor type
-/// * `options`: `MFKDF2Options` controlling policy metadata, threshold, salt, stack mode, integrity
-///   checks, and key‑derivation cost parameters
+/// * `options`: [`MFKDF2Options`] controlling policy metadata, threshold, salt, stack mode,
+///   integrity checks, and key‑derivation cost parameters
 ///
 /// # Returns
 ///
@@ -133,7 +133,7 @@ use crate::{
 /// # Errors
 ///
 /// The function returns
-/// [MFKDF2Error::InvalidThreshold](`crate::error::MFKDF2Error::InvalidThreshold`) when the
+/// [`MFKDF2Error::InvalidThreshold`](`crate::error::MFKDF2Error::InvalidThreshold`) when the
 /// requested threshold is outside the closed interval [1, n], where n is the number of provided
 /// factors; this includes the case where `factors` is empty
 ///
@@ -155,7 +155,7 @@ use crate::{
 /// ```
 ///
 /// The function returns
-/// [MFKDF2Error::DuplicateFactorId](`crate::error::MFKDF2Error::DuplicateFactorId`) when two or
+/// [`MFKDF2Error::DuplicateFactorId`](`crate::error::MFKDF2Error::DuplicateFactorId`) when two or
 /// more factors share the same identifier, causing the policy factor set to violate the uniqueness
 /// constraint on ids
 /// ```rust
@@ -176,7 +176,9 @@ use crate::{
 /// # Ok::<(), mfkdf2::error::MFKDF2Error>(())
 /// ```
 pub fn key(factors: &[MFKDF2Factor], options: MFKDF2Options) -> MFKDF2Result<MFKDF2DerivedKey> {
-  assert!(factors.len() < 256, "MFKDF2 supports at most 255 factors");
+  if factors.len() > 255 {
+    return Err(MFKDF2Error::TooManyFactors);
+  }
 
   // Sets the threshold to be the number of factors (n of n) if not provided.
   let threshold = options.threshold.unwrap_or(factors.len() as u8);

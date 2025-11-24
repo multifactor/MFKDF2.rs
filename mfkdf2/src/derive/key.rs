@@ -25,7 +25,7 @@ use crate::{
 ///
 /// # Arguments
 ///
-/// * `policy`: [`Policy`] βᵢ produced during KeySetup that encodes threshold, helper data, and
+/// * `policy`: [`Policy`] βᵢ produced during `KeySetup` that encodes threshold, helper data, and
 ///   encrypted Shamir shares
 /// * `factors`: Derived [`MFKDF2Factor`] witnesses Wᵢⱼ
 /// * `verify`: Policy verification flag to check the stored policy HMAC against the derived key
@@ -271,7 +271,9 @@ pub fn key(
   verify: bool,
   stack: bool,
 ) -> MFKDF2Result<MFKDF2DerivedKey> {
-  assert!(factors.len() < 256, "MFKDF2 supports at most 255 factors");
+  if factors.len() > 255 {
+    return Err(MFKDF2Error::TooManyFactors);
+  }
 
   let mut shares_bytes = Vec::new();
   let mut outputs = HashMap::new();
