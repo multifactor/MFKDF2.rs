@@ -8,7 +8,7 @@ use serde_json::{Value, json};
 use zxcvbn::zxcvbn;
 
 use crate::{
-  definitions::{FactorMetadata, FactorType, MFKDF2Factor},
+  definitions::{FactorType, MFKDF2Factor, factor::FactorMetadata},
   error::{MFKDF2Error, MFKDF2Result},
   setup::FactorSetup,
 };

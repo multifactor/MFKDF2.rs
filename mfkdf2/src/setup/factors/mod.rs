@@ -1,10 +1,10 @@
 //! # Factor Setup
 //!
 //! Every [`MFKDF2Factor`](`crate::definitions::MFKDF2Factor`) instance is constructed using Witness
-//! Wᵢ and parameters βᵢ. Each factor uses [`FactorSetup`](`crate::setup::FactorSetup`) that takes
-//! secret material σᵢ to produce the initial parameters β₀ given some configuration and randomly
-//! generated static source material κᵢ. The factor’s public state βᵢ then stores an encrypted
-//! version of σᵢ (using the key feedback mechanism) and public helper data.
+//! Wᵢ and parameters βᵢ. Each factor performs `FactorSetup` that takes secret material σᵢ to
+//! produce the initial parameters β₀ given some configuration and randomly generated static source
+//! material κᵢ. The factor’s public state βᵢ then stores an encrypted version of σᵢ (using the key
+//! feedback mechanism) and public helper data.
 pub mod hmacsha1;
 pub mod hotp;
 pub mod ooba;
@@ -27,7 +27,7 @@ pub use totp::totp;
 pub use uuid::uuid;
 
 use crate::{
-  definitions::{FactorMetadata, FactorType, Key},
+  definitions::{FactorType, Key, factor::FactorMetadata},
   error::MFKDF2Result,
   setup::FactorSetup,
 };

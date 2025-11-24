@@ -1,5 +1,5 @@
 //! Factor construction derive phase for the HMAC‑SHA1 factor from
-//! [`HMAC-SHA1`](`crate::setup::factors::hmacsha1`).
+//! [`HMAC-SHA1`](`crate::setup::factors::hmacsha1()`).
 //!
 //! - During setup, the factor stores a padded HMAC key and a challenge in the policy.
 //! - During derive, this module consumes an HMAC response over that challenge and reconstructs the
@@ -70,8 +70,7 @@ impl FactorDerive for HmacSha1 {
 /// The caller is expected to compute `response = HMAC-SHA1(secret, challenge)` using the secret
 /// key material stored by the application and the `challenge` value provided in the setup policy
 /// parameters. This helper wraps the response in an [`MFKDF2Factor`] witness Wᵢⱼ that, once
-/// combined with the policy via [`FactorDerive::include_params`], recovers the same padded secret
-/// as in setup.
+/// combined with the policy, recovers the same padded secret as in setup.
 ///
 /// # Errors
 ///

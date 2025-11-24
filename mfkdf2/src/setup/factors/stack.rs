@@ -10,7 +10,7 @@ use serde_json::Value;
 
 use crate::{
   definitions::{
-    FactorMetadata, FactorType, Key, MFKDF2DerivedKey, MFKDF2Factor, MFKDF2Options, Salt,
+    FactorType, Key, MFKDF2DerivedKey, MFKDF2Factor, MFKDF2Options, Salt, factor::FactorMetadata,
   },
   error::{MFKDF2Error, MFKDF2Result},
   setup::{FactorSetup, key},

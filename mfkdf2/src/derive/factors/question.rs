@@ -1,4 +1,4 @@
-//! Derive phase [Question](`crate::setup::factors::question`) construction. It accepts a raw user
+//! Derive phase [Question](`crate::setup::factors::question()`) construction. It accepts a raw user
 //! answer, normalizes it, and returns an [`MFKDF2Factor`] used in the derive phase. The factor also
 //! exposes a strength estimate via `output()` so callers can compare entropy between setup and
 //! derive
@@ -32,7 +32,7 @@ impl FactorDerive for Question {
 /// The answer is normalized (lower‑cased, punctuation removed, and surrounding whitespace trimmed)
 /// to match the behaviour of the setup‑time [question](`crate::setup::factors::question::question`)
 /// helper. The resulting [`MFKDF2Factor`] has no id or entropy assigned during the derive phase;
-/// those are pulled from the policy when combining factors with [`crate::derive::key`]
+/// those are pulled from the policy when combining factors with [`crate::derive::key()`]
 ///
 /// # Errors
 ///

@@ -34,7 +34,7 @@ use sha2::Sha256;
 
 use crate::{
   crypto::{encrypt, hkdf_sha256_with_info},
-  definitions::{FactorMetadata, FactorType, Key, MFKDF2Factor},
+  definitions::{FactorType, Key, MFKDF2Factor, factor::FactorMetadata},
   error::{MFKDF2Error, MFKDF2Result},
   setup::FactorSetup,
 };

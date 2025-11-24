@@ -1,4 +1,4 @@
-//! Derive phase [Password](`crate::setup::factors::password`) construction. Takes a
+//! Derive phase [Password](`crate::setup::factors::password()`) construction. Takes a
 //! user‑supplied password answer and computes an [`MFKDF2Factor`] witness Wᵢⱼ.
 use serde_json::{Value, json};
 use zxcvbn::zxcvbn;
@@ -22,7 +22,7 @@ impl FactorDerive for Password {
 /// Factor construction derive phase
 ///
 /// Derives a password factor from a string. Validates the password and returns an [`MFKDF2Factor`]
-/// suitable for use with [`crate::derive::key`]. Unlike setup, the factor constructed for the
+/// suitable for use with [`crate::derive::key()`]. Unlike setup, the factor constructed for the
 /// derive phase does not assign an id or entropy estimate. Those are recovered from the policy
 /// during derivation
 ///
@@ -32,7 +32,7 @@ impl FactorDerive for Password {
 ///
 /// # Example
 ///
-/// Single‑factor setup/derive using the password factor within KeySetup/KeyDerive:
+/// Single‑factor setup/derive using the password factor within `KeySetup`/`KeyDerive`:
 ///
 /// ```rust
 /// # use std::collections::HashMap;

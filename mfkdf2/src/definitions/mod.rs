@@ -6,7 +6,6 @@
 //! - [`MFKDF2Entropy`]: Entropy estimation for the derived key.
 //! - [`MFKDF2Factor`]: Factor type.
 //! - [`MFKDF2DerivedKey`]: Derived key after setup or derive operation.
-//! - [`FactorMetadata`]: Trait for factor metadata.
 //! - [`FactorType`]: Factor type enum.
 //! - [`ByteArray`]: Generic byte array type.
 //! - [`Key`]: 32 byte key.
@@ -19,7 +18,7 @@ pub mod mfkdf_derived_key;
 
 pub use bytearray::{ByteArray, Key, Salt};
 pub use entropy::MFKDF2Entropy;
-pub use factor::{FactorMetadata, FactorType, MFKDF2Factor};
+pub use factor::{FactorType, MFKDF2Factor};
 pub use mfkdf_derived_key::MFKDF2DerivedKey;
 use serde::{Deserialize, Serialize};
 

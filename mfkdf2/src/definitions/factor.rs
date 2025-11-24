@@ -11,7 +11,7 @@ use crate::setup::factors::{hmacsha1, hotp, ooba, passkey, password, question, s
 
 /// Trait for factor metadata.
 #[cfg_attr(feature = "bindings", uniffi::export)]
-pub trait FactorMetadata: Send + Sync + std::fmt::Debug {
+pub(crate) trait FactorMetadata: Send + Sync + std::fmt::Debug {
   /// Returns the bytes of the factor material.
   fn bytes(&self) -> Vec<u8>;
   /// Returns the type of the factor.
@@ -26,11 +26,10 @@ pub trait FactorMetadata: Send + Sync + std::fmt::Debug {
 /// be reused across multiple key derivations.
 ///
 /// Each factor has two core operations:
-/// - [setup](`crate::setup::FactorSetup`): creates an initial factor instance from a
-///   factor-specific configuration (e.g., password policy, TOTP parameters, hardware token IDs).
-/// - [derive](`crate::derive::FactorDerive`): given a fresh user "witness" (e.g., the current
-///   password or OTP) and the current public state, produces new factor material and updated public
-///   state for the next use.
+/// - `setup`: creates an initial factor instance from a factor-specific configuration (e.g.,
+///   password policy, TOTP parameters, hardware token IDs)
+/// - `derive`: given a fresh user "witness" (e.g., the current password or OTP) and the current
+///   public state, produces new factor material and updated public state for the next use.
 ///
 /// # Example
 ///
@@ -97,9 +96,8 @@ impl std::fmt::Debug for MFKDF2Factor {
 /// Factor type enum representing all supported authentication factors.
 ///
 /// Each variant corresponds to a concrete factor type (such as password, TOTP, passkey,
-/// etc.). Every factor implement the [`FactorMetadata`], [`crate::setup::FactorSetup`], and
-/// [`crate::derive::FactorDerive`] traits, which define the common interface for factor management,
-/// setup, and derivation.
+/// etc.). Every factor implement the `FactorMetadata`, `FactorSetup`, and `FactorDerive` traits,
+/// which define the common interface for factor management, setup, and derivation.
 #[cfg_attr(feature = "bindings", derive(uniffi::Enum))]
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub enum FactorType {

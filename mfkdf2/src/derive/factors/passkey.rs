@@ -1,4 +1,4 @@
-//! Derive phase [`Passkey`](`crate::setup::factors::passkey`) construction. It accepts the same
+//! Derive phase [`Passkey`](`crate::setup::factors::passkey()`) construction. It accepts the same
 //! 32‑byte secret produced by a `WebAuthn` PRF extension or equivalent hardware‑backed primitive
 //! and wraps it as an [`MFKDF2Factor`] used during the derive phase so that the passkey contributes
 //! stable 256‑bit entropy across `KeySetup` and `KeyDerive`
@@ -24,7 +24,7 @@ impl FactorDerive for Passkey {
 /// Factor construction derive phase for a passkey factor
 ///
 /// Takes the same 32‑byte secret that was stored at setup time and wraps it in an
-/// [`MFKDF2Factor`] suitable for [`crate::derive::key`]. The factor uses a fixed id `"passkey"`
+/// [`MFKDF2Factor`] suitable for [`crate::derive::key()`]. The factor uses a fixed id `"passkey"`
 /// during the derive phase.
 ///
 /// # Errors
@@ -34,7 +34,7 @@ impl FactorDerive for Passkey {
 ///
 /// # Example
 ///
-/// Single‑factor setup/derive using a passkey within KeySetup/KeyDerive:
+/// Single‑factor setup/derive using a passkey within `KeySetup`/`KeyDerive`:
 ///
 /// ```rust
 /// # use std::collections::HashMap;

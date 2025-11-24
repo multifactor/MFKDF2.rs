@@ -1,5 +1,5 @@
 //! This module constructs [`MFKDF2Factor`] witnesses Wᵢⱼ for the derive phase corresponding
-//! to the setup factors defined in [hotp](`crate::setup::factors::hotp`).
+//! to the setup factors defined in [hotp](`crate::setup::factors::hotp()`).
 //! - During setup, the HOTP factor chooses a secret target code and encodes an offset and encrypted
 //!   pad into the policy;
 //! - During derive, this module consumes the HOTP code Wᵢⱼ and reconstructs the same target value

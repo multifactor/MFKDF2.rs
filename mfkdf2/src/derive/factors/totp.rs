@@ -151,13 +151,13 @@ impl FactorDerive for TOTP {
 ///
 /// # Errors
 ///
-/// - [`MFKDF2Error::MissingDeriveParams`] if required fields such as `"time"` are missing when
+/// - [`MFKDF2Error::MissingDeriveParams`] if required fields such as "time" are missing when
 ///   converting [`TOTPDeriveOptions`] into [`TOTPConfig`] (this is avoided when `options` is `None`
 ///   and the default time is used)
-/// - [`MFKDF2Error::TOTPWindowExceeded`] from [`FactorDerive::include_params`] when the effective
-///   time lies outside the precomputed window encoded in the policy
-/// - [`MFKDF2Error::InvalidDeriveParams`] from [`FactorDerive::include_params`] when the offsets
-///   buffer is malformed or too small for the computed index
+/// - [`MFKDF2Error::TOTPWindowExceeded`] when the effective time lies outside the precomputed
+///   window encoded in the policy
+/// - [`MFKDF2Error::InvalidDeriveParams`] when the offsets buffer is malformed or too small for the
+///   computed index
 ///
 /// # Example
 ///

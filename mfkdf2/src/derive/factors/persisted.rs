@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 use crate::{
-  definitions::{FactorMetadata, FactorType, MFKDF2Factor},
+  definitions::{FactorType, MFKDF2Factor, factor::FactorMetadata},
   derive::FactorDerive,
   error::MFKDF2Result,
 };
@@ -36,8 +36,8 @@ impl FactorDerive for Persisted {
 /// Factor construction derive phase for a persisted Shamir share
 ///
 /// The `share` should be the byte slice previously obtained from a derived key via
-/// `MFKDF2DerivedKey::persist_factor`. This factor constructs a [`Persisted`] factor that can be
-/// passed directly to [`crate::derive::key`] without requiring any additional user interaction.
+/// [`MFKDF2DerivedKey::persist_factor()`](`crate::definitions::MFKDF2DerivedKey::persist_factor()`). This factor constructs a [`Persisted`] factor that can be
+/// passed directly to [`crate::derive::key()`] without requiring any additional user interaction.
 ///
 /// # Example
 ///

@@ -49,7 +49,7 @@ use web_time::{SystemTime, UNIX_EPOCH};
 
 use crate::{
   crypto::encrypt,
-  definitions::{FactorMetadata, FactorType, Key, MFKDF2Factor},
+  definitions::{FactorType, Key, MFKDF2Factor, factor::FactorMetadata},
   error::{MFKDF2Error, MFKDF2Result},
   otpauth::{self, HashAlgorithm, OtpAuthUrlOptions, generate_otp_token},
   setup::{FactorSetup, factors::hotp::mod_positive},

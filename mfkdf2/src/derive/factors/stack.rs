@@ -1,7 +1,7 @@
 //! Stack factor derive
 //!
 //! This module implements the factor construction derive phase for the stack factor from
-//! [`Stack`](`crate::setup::factors::stack`). A stack factor treats an entire derived key (built
+//! [`Stack`](`crate::setup::factors::stack()`). A stack factor treats an entire derived key (built
 //! from one or more underlying factors) as a single higher‑level factor. During derive it accepts a
 //! map of inner witnesses Wᵢⱼ, reconstructs the stacked key using [`crate::derive::key::key`] in
 //! stack mode, and exposes the resulting policy and key material as a single factor
@@ -48,8 +48,8 @@ impl FactorDerive for Stack {
 /// # Errors
 ///
 /// - [`MFKDF2Error::InvalidDeriveParams`] with `"factors"` when `factors` is empty
-/// - [`MFKDF2Error::InvalidDeriveParams`] from [`FactorDerive::include_params`] when the provided
-///   policy JSON cannot be deserialized into a [`crate::policy::Policy`]
+/// - [`MFKDF2Error::InvalidDeriveParams`] when the provided policy JSON cannot be deserialized into
+///   a [`crate::policy::Policy`]
 ///
 /// # Example
 ///

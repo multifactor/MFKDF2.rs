@@ -1,5 +1,5 @@
 //! This module implements the factor construction derive phase for the OOBA construction from
-//! `crate::setup::factors::ooba`.
+//! [`OOBA`](`crate::setup::factors::ooba()`).
 //! - During setup, the factor samples a random 32‑byte target, encrypts it under a channel‑specific
 //!   RSA key, and embeds an initial code and metadata in the policy.
 //! - During derive, this module consumes a user‑entered OOBA code Wᵢⱼ, decrypts the target using
@@ -85,14 +85,14 @@ impl FactorDerive for Ooba {
 /// # Errors
 ///
 /// - [`MFKDF2Error::InvalidOobaCode`] if `code` is empty
-/// - [`MFKDF2Error::MissingDeriveParams`] from [`FactorDerive::include_params`] when required
-///   fields such as `"pad"` or `"length"` are absent in the policy parameters
-/// - [`MFKDF2Error::InvalidDeriveParams`] from [`FactorDerive::include_params`] when fields such as
-///   `"pad"`, `"params"`, or `"key"` are malformed or have the wrong type
+/// - [`MFKDF2Error::MissingDeriveParams`] when required fields such as "pad" or "length" are absent
+///   in the policy parameters
+/// - [`MFKDF2Error::InvalidDeriveParams`] when fields such as "pad", "params", or "key" are
+///   malformed or have the wrong type
 ///
 /// # Example
 ///
-/// Single‑factor setup/derive using OOBA within KeySetup/KeyDerive:
+/// Single‑factor setup/derive using OOBA within `KeySetup`/`KeyDerive`:
 ///
 /// ```rust
 /// # use std::collections::HashMap;

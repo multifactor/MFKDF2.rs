@@ -1,6 +1,6 @@
 //! UUID factor derive
 //!
-//! Derive phase [UUID](`crate::setup::factors::uuid`) construction. It turns a stable
+//! Derive phase [UUID](`crate::setup::factors::uuid()`) construction. It turns a stable
 //! UUID value into an [`MFKDF2Factor`] used during the derive phase. It is typically used in flows
 //! where a device, account, or hardware identifier is known at both setup and derive and acts as a
 //! non‑interactive high‑entropy factor
