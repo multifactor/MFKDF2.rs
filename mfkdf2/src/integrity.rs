@@ -62,6 +62,7 @@ pub fn extract_factor_core(factor: &PolicyFactor) -> [u8; 32] {
   hasher.update(factor.pad.as_bytes());
   hasher.update(factor.salt.as_bytes());
   hasher.update(factor.secret.as_bytes());
+  hasher.update(factor.hint.as_ref().unwrap_or(&String::new()).as_bytes());
 
   hasher.finalize().into()
 }
