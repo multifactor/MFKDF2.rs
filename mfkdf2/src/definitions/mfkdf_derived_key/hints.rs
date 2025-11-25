@@ -10,9 +10,13 @@
 //! correct before attempting a full derivation.
 use std::fmt::Write;
 
-use base64::engine::general_purpose;
+use base64::{Engine, engine::general_purpose};
 
-use crate::{definitions::MFKDF2DerivedKey, error::MFKDF2Error};
+use crate::{
+  crypto::{hkdf_sha256_with_info, hmacsha256},
+  definitions::MFKDF2DerivedKey,
+  error::MFKDF2Error,
+};
 
 impl MFKDF2DerivedKey {
   /// Compute a probabilistic hint for a single factor.
@@ -135,10 +139,34 @@ impl MFKDF2DerivedKey {
   /// # Ok::<(), mfkdf2::error::MFKDF2Error>(())
   /// ```
   pub fn add_hint(&mut self, factor_id: &str, bits: Option<u8>) -> Result<(), MFKDF2Error> {
+    // verify policy integrity
+    if !self.policy.hmac.is_empty() {
+      let integrity_data = self.policy.extract();
+      let salt = general_purpose::STANDARD.decode(&self.policy.salt)?;
+      let integrity_key = hkdf_sha256_with_info(&self.key, &salt, "mfkdf2:integrity".as_bytes());
+      let digest = hmacsha256(&integrity_key, &integrity_data);
+      let hmac = general_purpose::STANDARD.encode(digest);
+      if self.policy.hmac != hmac {
+        return Err(MFKDF2Error::PolicyIntegrityCheckFailed);
+      }
+    }
+
     let bits = bits.unwrap_or(7);
     let hint = self.get_hint(factor_id, bits);
     let factor_data = self.policy.factors.iter_mut().find(|f| f.id == factor_id).unwrap();
     factor_data.hint = Some(hint?);
+
+    // update the hmac of the policy
+    if !self.policy.hmac.is_empty() {
+      // compute the new hmac of the policy
+      let integrity_data = self.policy.extract();
+      let salt = general_purpose::STANDARD.decode(&self.policy.salt)?;
+      let integrity_key = hkdf_sha256_with_info(&self.key, &salt, "mfkdf2:integrity".as_bytes());
+      let digest = hmacsha256(&integrity_key, &integrity_data);
+      let hmac = general_purpose::STANDARD.encode(digest);
+      self.policy.hmac = hmac;
+    }
+
     Ok(())
   }
 }
@@ -269,11 +297,131 @@ mod tests {
       &[crate::setup::factors::password("password1", PasswordOptions {
         id: Some("password1".to_string()),
       })?],
-      MFKDF2Options { integrity: Some(false), ..Default::default() },
+      MFKDF2Options { integrity: Some(true), ..Default::default() },
     )?;
 
     let result = setup_key.get_hint("password1", 0);
     assert!(matches!(result, Err(error::MFKDF2Error::InvalidHintLength(_))));
+
+    Ok(())
+  }
+
+  // Below tests demonstrate the entropy leakage of the hint feature. With integrity turned off, an
+  // adversary can modify the hint and derive the key successfully. If hint mismatches, then
+  // derivation fails with `HintMismatch` error. This leaks 1 bit of information for each
+  // derivation. The adversary can repeatedly guess the hint, launching a brute-force attack on the
+  // factor.
+  // If integrity is turned on, then the adversary cannot modify the hint and derive the key
+  // successfully. If hint mismatches, then derivation fails with `PolicyIntegrityCheckFailed`
+  // error. This does not leak any information about the factor.
+  #[test]
+  fn hint_entropy_leakage_no_integrity() -> Result<(), error::MFKDF2Error> {
+    let mut setup_key = setup::key(
+      &[crate::setup::factors::password("password1", PasswordOptions {
+        id: Some("password1".to_string()),
+      })?],
+      MFKDF2Options { integrity: Some(false), ..Default::default() },
+    )?;
+
+    // 7 bit hint added to the policy
+    setup_key.add_hint("password1", None)?;
+
+    // derive the key with the correct password
+    let derive_key = derive::key(
+      &setup_key.policy,
+      HashMap::from([("password1".to_string(), derive_factors::password("password1")?)]),
+      false,
+      false,
+    )?;
+
+    assert_eq!(derive_key.key, setup_key.key);
+
+    // modify hint
+    let mut hint = setup_key.get_hint("password1", 7)?;
+    hint.insert(0, '0');
+
+    let mut modified_setup_key_policy = setup_key.policy.clone();
+    modified_setup_key_policy.factors[0].hint = Some(hint);
+
+    // derive the key with the modified hint
+    let mut modified_derive_key = derive::key(
+      &modified_setup_key_policy,
+      HashMap::from([("password1".to_string(), derive_factors::password("password1")?)]),
+      false,
+      false,
+    );
+
+    if matches!(modified_derive_key, Err(error::MFKDF2Error::HintMismatch(_))) {
+      let mut hint = setup_key.get_hint("password1", 7)?;
+      hint.insert(0, '1');
+      modified_setup_key_policy.factors[0].hint = Some(hint);
+      modified_derive_key = derive::key(
+        &modified_setup_key_policy,
+        HashMap::from([("password1".to_string(), derive_factors::password("password1")?)]),
+        false,
+        false,
+      );
+    }
+
+    assert_eq!(modified_derive_key.unwrap().key, derive_key.key);
+
+    Ok(())
+  }
+
+  #[test]
+  fn hint_entropy_leakage_with_integrity() -> Result<(), error::MFKDF2Error> {
+    // This test demonstrates
+
+    let mut setup_key = setup::key(
+      &[crate::setup::factors::password("password1", PasswordOptions {
+        id: Some("password1".to_string()),
+      })?],
+      MFKDF2Options { integrity: Some(true), ..Default::default() },
+    )?;
+
+    // 7 bit hint added to the policy
+    setup_key.add_hint("password1", None)?;
+
+    // derive the key with the correct password
+    let derive_key = derive::key(
+      &setup_key.policy,
+      HashMap::from([("password1".to_string(), derive_factors::password("password1")?)]),
+      true,
+      false,
+    )?;
+
+    assert_eq!(derive_key.key, setup_key.key);
+
+    // modify hint
+    let mut hint = setup_key.get_hint("password1", 7)?;
+    hint.insert(0, '0');
+
+    let mut modified_setup_key_policy = setup_key.policy.clone();
+    modified_setup_key_policy.factors[0].hint = Some(hint);
+
+    // derive the key with the modified hint
+    let modified_derive_key1 = derive::key(
+      &modified_setup_key_policy,
+      HashMap::from([("password1".to_string(), derive_factors::password("password1")?)]),
+      true,
+      false,
+    );
+
+    let mut modified_hint = setup_key.get_hint("password1", 7)?;
+    modified_hint.insert(0, '1');
+    modified_setup_key_policy.factors[0].hint = Some(modified_hint);
+
+    let modified_derive_key2 = derive::key(
+      &modified_setup_key_policy,
+      HashMap::from([("password1".to_string(), derive_factors::password("password1")?)]),
+      true,
+      false,
+    );
+
+    assert!(
+      matches!(modified_derive_key1, Err(error::MFKDF2Error::PolicyIntegrityCheckFailed))
+        || matches!(modified_derive_key2, Err(error::MFKDF2Error::PolicyIntegrityCheckFailed))
+    );
 
     Ok(())
   }
