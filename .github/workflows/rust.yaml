@@ -119,6 +119,9 @@ jobs:
 
       - name: Run tests (JUnit)
         run: cargo nextest run --release --profile ci
+      
+      - name: Run doctests
+        run: cargo test --release --doc
 
       - name: Publish JUnit test report
         if: always()
