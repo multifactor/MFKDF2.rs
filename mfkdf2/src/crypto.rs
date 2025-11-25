@@ -1,6 +1,6 @@
 //! Cryptographic functions for the MFKDF2 library.
 use aes::Aes256;
-use cipher::{BlockDecryptMut, BlockEncryptMut, KeyInit, block_padding::NoPadding};
+use cipher::{BlockDecryptMut, BlockEncryptMut, KeyInit, KeyIvInit, block_padding::NoPadding};
 use ecb::{Decryptor, Encryptor};
 use hkdf::Hkdf;
 use hmac::{Hmac, Mac};
@@ -33,12 +33,42 @@ pub(crate) fn encrypt(data: &[u8], key: &[u8; 32]) -> Vec<u8> {
   buf
 }
 
+pub(crate) fn encrypt_cbc(data: &[u8], key: &[u8; 32], iv: &[u8; 16]) -> Vec<u8> {
+  type AesCbcEnc = cbc::Encryptor<Aes256>;
+
+  let mut buf = {
+    let mut v = data.to_vec();
+    let rem = v.len() % 16;
+    if rem != 0 {
+      v.extend(vec![0u8; 16 - rem]);
+    }
+    v
+  };
+  let padded_len = buf.len();
+
+  let ct = AesCbcEnc::new_from_slices(key, iv)
+    .expect("Invalid AES-256 key")
+    .encrypt_padded_mut::<NoPadding>(&mut buf, padded_len)
+    .expect("CBC encryption");
+  ct.to_vec()
+}
+
 /// Decrypts a buffer using AES256-ECB with the given 32-byte key.
 // TODO (@lonerapier): check every use of decrypt and unpad properly or use assert.
 pub(crate) fn decrypt(mut data: Vec<u8>, key: &[u8; 32]) -> Vec<u8> {
   let cipher = Decryptor::<Aes256>::new_from_slice(key).expect("Invalid AES key");
   let _ = cipher.decrypt_padded_mut::<NoPadding>(&mut data).expect("ECB decrypt");
   data
+}
+
+pub(crate) fn decrypt_cbc(data: &[u8], key: &[u8; 32], iv: &[u8; 16]) -> Vec<u8> {
+  type AesCbcDec = cbc::Decryptor<Aes256>;
+  let mut buf = data.to_vec();
+  let ct = AesCbcDec::new_from_slices(key, iv)
+    .expect("Invalid AES-256 key")
+    .decrypt_padded_mut::<NoPadding>(&mut buf)
+    .expect("CBC decryption");
+  ct.to_vec()
 }
 
 /// Computes an HMAC-SHA1 over the given challenge using the provided secret.

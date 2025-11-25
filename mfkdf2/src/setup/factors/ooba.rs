@@ -33,7 +33,7 @@ use serde_json::{Value, json};
 use sha2::Sha256;
 
 use crate::{
-  crypto::{encrypt, hkdf_sha256_with_info},
+  crypto::{encrypt_cbc, hkdf_sha256_with_info},
   definitions::{FactorType, Key, MFKDF2Factor, factor::FactorMetadata},
   error::{MFKDF2Error, MFKDF2Result},
   setup::FactorSetup,
@@ -87,6 +87,8 @@ pub struct Ooba {
   pub target: Vec<u8>,
   /// Number of alphanumeric characters in the OOBA code bound to this factor
   pub length: u8,
+  /// Initialization vector for CBC encryption
+  pub iv:     Vec<u8>,
   /// OOBA factor material as the last issued code value
   pub code:   String,
   /// RSA public key used to encrypt the next OOBA payload
@@ -136,11 +138,21 @@ impl FactorSetup for Ooba {
     let code = generate_alphanumeric_characters(self.length.into()).to_uppercase();
 
     let prev_key = hkdf_sha256_with_info(code.as_bytes(), &[], &[]);
-    let pad = encrypt(&self.target, &prev_key);
+    println!("target: {:?}", self.target);
+    // let pad = encrypt(&self.target, &prev_key);
+    let pad = encrypt_cbc(&self.target, &prev_key, &self.iv.as_slice().try_into().unwrap());
+    println!("pad: {:?}", pad);
 
+    // store the secret code for the next derivation
     let mut params = self.params.clone();
     params["code"] = json!(code);
+    params["iv"] = json!(general_purpose::STANDARD.encode(self.iv.clone()));
 
+    // store the iv in public params for the next derivation
+    let mut pub_params = self.params.clone();
+    pub_params["iv"] = json!(general_purpose::STANDARD.encode(self.iv.clone()));
+
+    // encrypt the params and store the ciphertext for the next derivation
     let plaintext = serde_json::to_vec(&params)?;
     let key = OobaPublicKey::try_from(self.jwk.as_ref().ok_or(MFKDF2Error::MissingOobaKey)?)?;
     let ciphertext = key.0.encrypt(&mut OsRng, Oaep::new::<Sha256>(), &plaintext)?;
@@ -148,7 +160,7 @@ impl FactorSetup for Ooba {
     Ok(json!({
         "length": self.length,
         "key": self.jwk,
-        "params": self.params,
+        "params": pub_params,
         "next": hex::encode(ciphertext),
         "pad": general_purpose::STANDARD.encode(pad),
     }))
@@ -227,10 +239,14 @@ pub fn ooba(options: OobaOptions) -> MFKDF2Result<MFKDF2Factor> {
   let mut target = [0u8; 32];
   crate::rng::fill_bytes(&mut target);
 
+  let mut iv = [0u8; 16];
+  crate::rng::fill_bytes(&mut iv);
+
   Ok(MFKDF2Factor {
     id:          Some(options.id.unwrap_or("ooba".to_string())),
     factor_type: FactorType::OOBA(Ooba {
       target: target.to_vec(),
+      iv: iv.to_vec(),
       length,
       code: String::new(),
       jwk: Some(key),
@@ -249,7 +265,6 @@ mod tests {
   use rsa::{RsaPrivateKey, traits::PublicKeyParts};
 
   use super::*;
-  use crate::crypto::decrypt;
 
   fn keypair() -> (RsaPrivateKey, RsaPublicKey) {
     let bits = 2048;
@@ -392,10 +407,11 @@ mod tests {
     )
     .unwrap();
     let code = decrypted["code"].as_str().unwrap();
+    let iv = general_purpose::STANDARD.decode(decrypted["iv"].as_str().unwrap()).unwrap();
 
     let prev_key = hkdf_sha256_with_info(code.as_bytes(), &[], &[]);
     let pad = general_purpose::STANDARD.decode(params["pad"].as_str().unwrap()).unwrap();
-    let target = decrypt(pad, &prev_key);
+    let target = crate::crypto::decrypt_cbc(&pad, &prev_key, &iv.as_slice().try_into().unwrap());
 
     assert_eq!(ooba.target, target);
   }
