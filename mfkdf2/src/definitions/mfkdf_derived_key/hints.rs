@@ -370,8 +370,6 @@ mod tests {
 
   #[test]
   fn hint_entropy_leakage_with_integrity() -> Result<(), error::MFKDF2Error> {
-    // This test demonstrates
-
     let mut setup_key = setup::key(
       &[crate::setup::factors::password("password1", PasswordOptions {
         id: Some("password1".to_string()),
