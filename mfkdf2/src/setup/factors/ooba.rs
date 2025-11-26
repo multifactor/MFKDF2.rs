@@ -24,7 +24,10 @@
 //! login. Even if the OOBA channel is only partially trusted, the resulting factor
 //! material remains uniformly distributed and provides the same information‑theoretic
 //! guarantees as the HOTP and TOTP constructions.
+use aes::Aes256;
 use base64::{Engine, engine::general_purpose};
+use cbc::Encryptor;
+use cipher::KeyIvInit;
 use jsonwebtoken::jwk::Jwk;
 use rand::rngs::OsRng;
 use rsa::{Oaep, RsaPublicKey};
@@ -36,6 +39,7 @@ use crate::{
   crypto::{encrypt_cbc, hkdf_sha256_with_info},
   definitions::{FactorType, Key, MFKDF2Factor, factor::FactorMetadata},
   error::{MFKDF2Error, MFKDF2Result},
+  rng::GlobalRng,
   setup::FactorSetup,
 };
 
@@ -87,8 +91,6 @@ pub struct Ooba {
   pub target: Vec<u8>,
   /// Number of alphanumeric characters in the OOBA code bound to this factor
   pub length: u8,
-  /// Initialization vector for CBC encryption
-  pub iv:     Vec<u8>,
   /// OOBA factor material as the last issued code value
   pub code:   String,
   /// RSA public key used to encrypt the next OOBA payload
@@ -138,19 +140,19 @@ impl FactorSetup for Ooba {
     let code = generate_alphanumeric_characters(self.length.into()).to_uppercase();
 
     let prev_key = hkdf_sha256_with_info(code.as_bytes(), &[], &[]);
-    println!("target: {:?}", self.target);
-    // let pad = encrypt(&self.target, &prev_key);
-    let pad = encrypt_cbc(&self.target, &prev_key, &self.iv.as_slice().try_into().unwrap());
-    println!("pad: {:?}", pad);
+
+    let key = cipher::Key::<Encryptor<Aes256>>::from(prev_key);
+    let iv = Encryptor::<Aes256>::generate_iv(&mut GlobalRng);
+    let pad = encrypt_cbc::<Aes256>(&self.target, &key, &iv)?;
 
     // store the secret code for the next derivation
     let mut params = self.params.clone();
     params["code"] = json!(code);
-    params["iv"] = json!(general_purpose::STANDARD.encode(self.iv.clone()));
+    params["iv"] = json!(general_purpose::STANDARD.encode(iv));
 
     // store the iv in public params for the next derivation
     let mut pub_params = self.params.clone();
-    pub_params["iv"] = json!(general_purpose::STANDARD.encode(self.iv.clone()));
+    pub_params["iv"] = json!(general_purpose::STANDARD.encode(iv));
 
     // encrypt the params and store the ciphertext for the next derivation
     let plaintext = serde_json::to_vec(&params)?;
@@ -239,14 +241,10 @@ pub fn ooba(options: OobaOptions) -> MFKDF2Result<MFKDF2Factor> {
   let mut target = [0u8; 32];
   crate::rng::fill_bytes(&mut target);
 
-  let mut iv = [0u8; 16];
-  crate::rng::fill_bytes(&mut iv);
-
   Ok(MFKDF2Factor {
     id:          Some(options.id.unwrap_or("ooba".to_string())),
     factor_type: FactorType::OOBA(Ooba {
       target: target.to_vec(),
-      iv: iv.to_vec(),
       length,
       code: String::new(),
       jwk: Some(key),
@@ -411,7 +409,9 @@ mod tests {
 
     let prev_key = hkdf_sha256_with_info(code.as_bytes(), &[], &[]);
     let pad = general_purpose::STANDARD.decode(params["pad"].as_str().unwrap()).unwrap();
-    let target = crate::crypto::decrypt_cbc(&pad, &prev_key, &iv.as_slice().try_into().unwrap());
+    let key = cipher::Key::<cbc::Decryptor<Aes256>>::from(prev_key);
+    let iv = cipher::Iv::<cbc::Decryptor<Aes256>>::from_iter(iv);
+    let target = crate::crypto::decrypt_cbc::<Aes256>(&pad, &key, &iv).unwrap();
 
     assert_eq!(ooba.target, target);
   }

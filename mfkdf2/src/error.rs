@@ -113,4 +113,10 @@ pub enum MFKDF2Error {
 
   #[error(transparent)]
   Regex(#[from] rand_regex::Error),
+
+  #[error(transparent)]
+  Encrypt(#[from] cipher::inout::PadError),
+
+  #[error(transparent)]
+  Decrypt(#[from] cipher::inout::block_padding::UnpadError),
 }

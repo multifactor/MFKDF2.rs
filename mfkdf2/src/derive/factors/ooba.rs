@@ -4,7 +4,10 @@
 //!   RSA key, and embeds an initial code and metadata in the policy.
 //! - During derive, this module consumes a user‑entered OOBA code Wᵢⱼ, decrypts the target using
 //!   the stored pad, and prepares the next encrypted payload and code for the following login
+use aes::Aes256;
 use base64::{Engine, engine::general_purpose};
+use cbc::Encryptor;
+use cipher::KeyIvInit;
 use rsa::Oaep;
 use serde_json::{Value, json};
 use sha2::Sha256;
@@ -14,6 +17,7 @@ use crate::{
   definitions::{FactorType, Key, MFKDF2Factor},
   derive::FactorDerive,
   error::{MFKDF2Error, MFKDF2Result},
+  rng::GlobalRng,
   setup::factors::ooba::{Ooba, OobaPublicKey, generate_alphanumeric_characters},
 };
 
@@ -35,11 +39,11 @@ impl FactorDerive for Ooba {
       return Err(MFKDF2Error::InvalidDeriveParams("params".to_string()));
     }
 
-    println!("derive pad: {:?}", pad);
     let key = hkdf_sha256_with_info(self.code.as_bytes(), &[], &[]);
     let iv = general_purpose::STANDARD.decode(config["iv"].as_str().unwrap()).unwrap();
-    self.target = decrypt_cbc(&pad, &key, &iv.as_slice().try_into().unwrap());
-    println!("derive target: {:?}", self.target);
+    let key = cipher::Key::<cbc::Decryptor<Aes256>>::from(key);
+    let iv = cipher::Iv::<cbc::Decryptor<Aes256>>::from_iter(iv);
+    self.target = decrypt_cbc::<Aes256>(&pad, &key, &iv)?;
 
     self.length = params["length"]
       .as_u64()
@@ -58,9 +62,9 @@ impl FactorDerive for Ooba {
     let code = generate_alphanumeric_characters(self.length.into()).to_uppercase();
 
     let next_key = hkdf_sha256_with_info(code.as_bytes(), &[], &[]);
-    let mut iv = [0u8; 16];
-    crate::rng::fill_bytes(&mut iv);
-    let pad = encrypt_cbc(&self.target, &next_key, &iv.as_slice().try_into().unwrap());
+    let key = cipher::Key::<Encryptor<Aes256>>::from(next_key);
+    let iv = Encryptor::<Aes256>::generate_iv(&mut GlobalRng);
+    let pad = encrypt_cbc::<Aes256>(&self.target, &key, &iv)?;
 
     let mut params = self.params.clone();
     params["code"] = Value::String(code);
@@ -170,7 +174,6 @@ pub fn ooba(code: &str) -> MFKDF2Result<MFKDF2Factor> {
     id:          Some("ooba".to_string()),
     factor_type: FactorType::OOBA(Ooba {
       target: vec![],
-      iv:     vec![],
       length: 0,
       code:   code.to_uppercase(),
       jwk:    None,
@@ -263,7 +266,9 @@ mod tests {
 
     let prev_key = hkdf_sha256_with_info(code.as_bytes(), &[], &[]);
     let pad = general_purpose::STANDARD.decode(derive_params["pad"].as_str().unwrap()).unwrap();
-    let target = crate::crypto::decrypt_cbc(&pad, &prev_key, &iv.as_slice().try_into().unwrap());
+    let key = cipher::Key::<cbc::Decryptor<Aes256>>::from(prev_key);
+    let iv = cipher::Iv::<cbc::Decryptor<Aes256>>::from_iter(iv);
+    let target = crate::crypto::decrypt_cbc::<Aes256>(&pad, &key, &iv).unwrap();
 
     assert_eq!(ooba.target, target);
   }
