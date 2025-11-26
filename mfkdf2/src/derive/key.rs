@@ -304,33 +304,6 @@ pub fn key(
       let pad = general_purpose::STANDARD.decode(&factor.pad)?;
       let plaintext = decrypt(pad, &stretched);
 
-      if let Some(ref factor_hint) = factor.hint {
-        let buffer = hkdf_sha256_with_info(
-          &stretched,
-          &salt_bytes,
-          format!("mfkdf2:factor:hint:{}", factor.id).as_bytes(),
-        );
-
-        let binary_string = buffer.iter().fold(String::new(), |mut acc, byte| {
-          write!(&mut acc, "{byte:08b}").unwrap();
-          acc
-        });
-
-        // Take the last `hint_len` characters
-        let hint = binary_string
-          .chars()
-          .rev()
-          .take(factor_hint.len())
-          .collect::<Vec<_>>()
-          .into_iter()
-          .rev()
-          .collect::<String>();
-
-        if hint != *factor_hint {
-          return Err(MFKDF2Error::HintMismatch(factor.id.clone()));
-        }
-      }
-
       // TODO (autoparallel): It would be preferred to know the size of this array at compile
       // time.
       shares_bytes.push(Some(plaintext));
@@ -374,10 +347,56 @@ pub fn key(
   let policy_key_bytes = general_purpose::STANDARD.decode(policy.key.as_bytes())?;
   let key = decrypt(policy_key_bytes, &kek);
 
+  // Perform integrity check
+  let integrity_key = hkdf_sha256_with_info(&key, &salt_bytes, "mfkdf2:integrity".as_bytes());
+  if verify {
+    let integrity_data = policy.extract();
+    let digest = hmacsha256(&integrity_key, &integrity_data);
+    let hmac = general_purpose::STANDARD.encode(digest);
+    if policy.hmac != hmac {
+      return Err(MFKDF2Error::PolicyIntegrityCheckFailed);
+    }
+  }
+
   for factor in &mut new_policy.factors {
     let Some(material) = factors.get(factor.id.as_str()) else {
       continue;
     };
+
+    // Perform hint verification after policy integrity check
+    if let Some(ref factor_hint) = factor.hint {
+      let salt = general_purpose::STANDARD.decode(&factor.salt)?;
+      let stretched = hkdf_sha256_with_info(
+        &material.data(),
+        &salt,
+        format!("mfkdf2:factor:pad:{}", factor.id).as_bytes(),
+      );
+
+      let buffer = hkdf_sha256_with_info(
+        &stretched,
+        &salt,
+        format!("mfkdf2:factor:hint:{}", factor.id).as_bytes(),
+      );
+
+      let binary_string = buffer.iter().fold(String::new(), |mut acc, byte| {
+        write!(&mut acc, "{byte:08b}").unwrap();
+        acc
+      });
+
+      // Take the last `hint_len` characters
+      let hint = binary_string
+        .chars()
+        .rev()
+        .take(factor_hint.len())
+        .collect::<Vec<_>>()
+        .into_iter()
+        .rev()
+        .collect::<String>();
+
+      if hint != *factor_hint {
+        return Err(MFKDF2Error::HintMismatch(factor.id.clone()));
+      }
+    }
 
     let params_key = hkdf_sha256_with_info(
       &key,
@@ -388,15 +407,7 @@ pub fn key(
     factor.params = params;
   }
 
-  let integrity_key = hkdf_sha256_with_info(&key, &salt_bytes, "mfkdf2:integrity".as_bytes());
-  if verify {
-    let integrity_data = policy.extract();
-    let digest = hmacsha256(&integrity_key, &integrity_data);
-    let hmac = general_purpose::STANDARD.encode(digest);
-    if policy.hmac != hmac {
-      return Err(MFKDF2Error::PolicyIntegrityCheckFailed);
-    }
-  }
+  // Update the policy HMAC
   if !policy.hmac.is_empty() {
     let integrity_data = new_policy.extract();
     let digest = hmacsha256(&integrity_key, &integrity_data);
