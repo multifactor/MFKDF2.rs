@@ -1,11 +1,15 @@
 //! Cryptographic functions for the MFKDF2 library.
 use aes::Aes256;
-use cipher::{BlockDecryptMut, BlockEncryptMut, KeyInit, block_padding::NoPadding};
+use cipher::{
+  BlockDecryptMut, BlockEncryptMut, Iv, Key, KeyInit, KeyIvInit, block_padding::NoPadding,
+};
 use ecb::{Decryptor, Encryptor};
 use hkdf::Hkdf;
 use hmac::{Hmac, Mac};
 use sha1::Sha1;
 use sha2::Sha256;
+
+use crate::error::MFKDF2Error;
 
 /// Derives a 32-byte key using HKDF-SHA256 with the given salt and info.
 pub(crate) fn hkdf_sha256_with_info(input: &[u8], salt: &[u8], info: &[u8]) -> [u8; 32] {
@@ -33,12 +37,50 @@ pub(crate) fn encrypt(data: &[u8], key: &[u8; 32]) -> Vec<u8> {
   buf
 }
 
+pub(crate) fn encrypt_cbc<C>(
+  data: &[u8],
+  key: &Key<cbc::Encryptor<C>>,
+  iv: &Iv<cbc::Encryptor<C>>,
+) -> Result<Vec<u8>, MFKDF2Error>
+where
+  C: cipher::BlockCipher + cipher::BlockEncrypt,
+  cbc::Encryptor<C>: KeyIvInit + cipher::IvSizeUser + BlockEncryptMut,
+{
+  let mut buf = {
+    let mut v = data.to_vec();
+    let rem = v.len() % 16;
+    if rem != 0 {
+      v.extend(vec![0u8; 16 - rem]);
+    }
+    v
+  };
+  let padded_len = buf.len();
+
+  let ct =
+    cbc::Encryptor::<C>::new(key, iv).encrypt_padded_mut::<NoPadding>(&mut buf, padded_len)?;
+  Ok(ct.to_vec())
+}
+
 /// Decrypts a buffer using AES256-ECB with the given 32-byte key.
 // TODO (@lonerapier): check every use of decrypt and unpad properly or use assert.
 pub(crate) fn decrypt(mut data: Vec<u8>, key: &[u8; 32]) -> Vec<u8> {
   let cipher = Decryptor::<Aes256>::new_from_slice(key).expect("Invalid AES key");
   let _ = cipher.decrypt_padded_mut::<NoPadding>(&mut data).expect("ECB decrypt");
   data
+}
+
+pub(crate) fn decrypt_cbc<C>(
+  data: &[u8],
+  key: &Key<cbc::Decryptor<C>>,
+  iv: &Iv<cbc::Decryptor<C>>,
+) -> Result<Vec<u8>, MFKDF2Error>
+where
+  C: cipher::BlockCipher + cipher::BlockDecrypt,
+  cbc::Decryptor<C>: KeyIvInit + cipher::IvSizeUser + BlockDecryptMut,
+{
+  let mut buf = data.to_vec();
+  let ct = cbc::Decryptor::<C>::new(key, iv).decrypt_padded_mut::<NoPadding>(&mut buf)?;
+  Ok(ct.to_vec())
 }
 
 /// Computes an HMAC-SHA1 over the given challenge using the provided secret.

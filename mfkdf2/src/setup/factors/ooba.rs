@@ -24,7 +24,10 @@
 //! login. Even if the OOBA channel is only partially trusted, the resulting factor
 //! material remains uniformly distributed and provides the same information‑theoretic
 //! guarantees as the HOTP and TOTP constructions.
+use aes::Aes256;
 use base64::{Engine, engine::general_purpose};
+use cbc::Encryptor;
+use cipher::KeyIvInit;
 use jsonwebtoken::jwk::Jwk;
 use rand::rngs::OsRng;
 use rsa::{Oaep, RsaPublicKey};
@@ -33,9 +36,10 @@ use serde_json::{Value, json};
 use sha2::Sha256;
 
 use crate::{
-  crypto::{encrypt, hkdf_sha256_with_info},
+  crypto::{encrypt_cbc, hkdf_sha256_with_info},
   definitions::{FactorType, Key, MFKDF2Factor, factor::FactorMetadata},
   error::{MFKDF2Error, MFKDF2Result},
+  rng::GlobalRng,
   setup::FactorSetup,
 };
 
@@ -136,11 +140,21 @@ impl FactorSetup for Ooba {
     let code = generate_alphanumeric_characters(self.length.into()).to_uppercase();
 
     let prev_key = hkdf_sha256_with_info(code.as_bytes(), &[], &[]);
-    let pad = encrypt(&self.target, &prev_key);
 
+    let key = cipher::Key::<Encryptor<Aes256>>::from(prev_key);
+    let iv = Encryptor::<Aes256>::generate_iv(&mut GlobalRng);
+    let pad = encrypt_cbc::<Aes256>(&self.target, &key, &iv)?;
+
+    // store the secret code for the next derivation
     let mut params = self.params.clone();
     params["code"] = json!(code);
+    params["iv"] = json!(general_purpose::STANDARD.encode(iv));
 
+    // store the iv in public params for the next derivation
+    let mut pub_params = self.params.clone();
+    pub_params["iv"] = json!(general_purpose::STANDARD.encode(iv));
+
+    // encrypt the params and store the ciphertext for the next derivation
     let plaintext = serde_json::to_vec(&params)?;
     let key = OobaPublicKey::try_from(self.jwk.as_ref().ok_or(MFKDF2Error::MissingOobaKey)?)?;
     let ciphertext = key.0.encrypt(&mut OsRng, Oaep::new::<Sha256>(), &plaintext)?;
@@ -148,7 +162,7 @@ impl FactorSetup for Ooba {
     Ok(json!({
         "length": self.length,
         "key": self.jwk,
-        "params": self.params,
+        "params": pub_params,
         "next": hex::encode(ciphertext),
         "pad": general_purpose::STANDARD.encode(pad),
     }))
@@ -249,7 +263,6 @@ mod tests {
   use rsa::{RsaPrivateKey, traits::PublicKeyParts};
 
   use super::*;
-  use crate::crypto::decrypt;
 
   fn keypair() -> (RsaPrivateKey, RsaPublicKey) {
     let bits = 2048;
@@ -392,10 +405,13 @@ mod tests {
     )
     .unwrap();
     let code = decrypted["code"].as_str().unwrap();
+    let iv = general_purpose::STANDARD.decode(decrypted["iv"].as_str().unwrap()).unwrap();
 
     let prev_key = hkdf_sha256_with_info(code.as_bytes(), &[], &[]);
     let pad = general_purpose::STANDARD.decode(params["pad"].as_str().unwrap()).unwrap();
-    let target = decrypt(pad, &prev_key);
+    let key = cipher::Key::<cbc::Decryptor<Aes256>>::from(prev_key);
+    let iv = cipher::Iv::<cbc::Decryptor<Aes256>>::from_iter(iv);
+    let target = crate::crypto::decrypt_cbc::<Aes256>(&pad, &key, &iv).unwrap();
 
     assert_eq!(ooba.target, target);
   }
