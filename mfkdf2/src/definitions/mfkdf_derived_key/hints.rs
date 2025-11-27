@@ -41,6 +41,9 @@ impl MFKDF2DerivedKey {
       return Err(MFKDF2Error::InvalidHintLength("bits must be greater than 0"));
     }
 
+    // derive internal key
+    let internal_key = self.derive_internal_key()?;
+
     let factor_data = self
       .policy
       .factors
@@ -50,7 +53,7 @@ impl MFKDF2DerivedKey {
     let pad = base64::Engine::decode(&general_purpose::STANDARD, factor_data.secret.as_bytes())?;
     let salt = base64::Engine::decode(&general_purpose::STANDARD, factor_data.salt.as_bytes())?;
     let secret_key = crate::crypto::hkdf_sha256_with_info(
-      &self.key,
+      &internal_key,
       &salt,
       format!("mfkdf2:factor:secret:{factor_id}").as_bytes(),
     );

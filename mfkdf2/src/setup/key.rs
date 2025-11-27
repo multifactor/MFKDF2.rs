@@ -217,8 +217,9 @@ pub fn key(factors: &[MFKDF2Factor], options: MFKDF2Options) -> MFKDF2Result<MFK
   let mut secret: [u8; 32] = [0u8; 32];
   crate::rng::fill_bytes(&mut secret);
 
-  let mut key = [0u8; 32];
-  crate::rng::fill_bytes(&mut key);
+  // Create an internal key for deriving separate keys for parameters, secret, and integrity
+  let mut internal_key = [0u8; 32];
+  crate::rng::fill_bytes(&mut internal_key);
 
   // Generate key
   let mut kek = [0u8; 32];
@@ -241,7 +242,7 @@ pub fn key(factors: &[MFKDF2Factor], options: MFKDF2Options) -> MFKDF2Result<MFK
   }
 
   // policy key
-  let policy_key = encrypt(&key, &kek);
+  let policy_key = encrypt(&internal_key, &kek);
 
   // Split secret into Shamir shares
   let dealer =
@@ -273,13 +274,13 @@ pub fn key(factors: &[MFKDF2Factor], options: MFKDF2Options) -> MFKDF2Result<MFK
 
     // Generate factor key
     let params_key =
-      hkdf_sha256_with_info(&key, &salt, format!("mfkdf2:factor:params:{id}").as_bytes());
+      hkdf_sha256_with_info(&internal_key, &salt, format!("mfkdf2:factor:params:{id}").as_bytes());
     let params = factor.factor_type.setup().params(params_key.into())?;
 
     outputs.insert(id.clone(), factor.factor_type.output());
 
     let secret_key =
-      hkdf_sha256_with_info(&key, &salt, format!("mfkdf2:factor:secret:{id}").as_bytes());
+      hkdf_sha256_with_info(&internal_key, &salt, format!("mfkdf2:factor:secret:{id}").as_bytes());
     let factor_secret = encrypt(&stretched, &secret_key);
 
     // Record entropy statistics (in bits) for this factor.
@@ -313,7 +314,7 @@ pub fn key(factors: &[MFKDF2Factor], options: MFKDF2Options) -> MFKDF2Result<MFK
   // Derive an integrity key specific to the policy and compute a policy HMAC
   if options.integrity.unwrap_or(true) {
     let integrity_data = policy.extract();
-    let integrity_key = hkdf_sha256_with_info(&key, &salt, "mfkdf2:integrity".as_bytes());
+    let integrity_key = hkdf_sha256_with_info(&internal_key, &salt, "mfkdf2:integrity".as_bytes());
     let digest = hmacsha256(&integrity_key, &integrity_data);
     policy.hmac = general_purpose::STANDARD.encode(digest);
   }
@@ -328,9 +329,14 @@ pub fn key(factors: &[MFKDF2Factor], options: MFKDF2Options) -> MFKDF2Result<MFK
   let entropy_theoretical = theoretical_sum.min(256);
   let entropy_real = real_sum.min(256.0);
 
+  // derive a dedicated final key to ensure domain separation between internal and external keys
+  if !options.stack.unwrap_or(false) {
+    internal_key = hkdf_sha256_with_info(&internal_key, &salt, "mfkdf2:key:final".as_bytes());
+  }
+
   Ok(MFKDF2DerivedKey {
     policy,
-    key: key.into(),
+    key: internal_key.into(),
     secret: secret.to_vec(),
     shares,
     outputs,
@@ -464,7 +470,8 @@ mod tests {
     .unwrap();
 
     let policy_key = general_purpose::STANDARD.decode(derived_key.policy.key.clone()).unwrap();
-    let key = decrypt(policy_key, &kek);
+    let internal_key = decrypt(policy_key, &kek);
+    let key = hkdf_sha256_with_info(&internal_key, &salt, "mfkdf2:key:final".as_bytes());
 
     assert_eq!(derived_key.policy.id, options.id.unwrap());
     assert_eq!(derived_key.policy.threshold as usize, factors.len());
@@ -472,13 +479,13 @@ mod tests {
     assert_eq!(derived_key.policy.time, options.time.unwrap());
     assert_eq!(derived_key.policy.memory, options.memory.unwrap());
 
-    assert_eq!(derived_key.key, key.clone().try_into().unwrap());
+    assert_eq!(derived_key.key, key.try_into().unwrap());
 
     // verify factor secret is encrypted with key
     let mut shares = Vec::new();
     for factor in &derived_key.policy.factors {
       let secret_key = hkdf_sha256_with_info(
-        &key,
+        &internal_key,
         &general_purpose::STANDARD.decode(factor.salt.clone()).unwrap(),
         format!("mfkdf2:factor:secret:{}", &factor.id).as_bytes(),
       );
@@ -533,8 +540,9 @@ mod tests {
     .unwrap();
 
     let policy_key = general_purpose::STANDARD.decode(derived_key.policy.key.clone()).unwrap();
-    let key = decrypt(policy_key, &kek);
-    assert_eq!(derived_key.key, key.clone().try_into().unwrap());
+    let internal_key = decrypt(policy_key, &kek);
+    let key = hkdf_sha256_with_info(&internal_key, &salt, "mfkdf2:key:final".as_bytes());
+    assert_eq!(derived_key.key, key.try_into().unwrap());
 
     let shares_to_recover: Vec<Vec<u8>> =
       derived_key.shares.iter().take(threshold as usize).cloned().collect();

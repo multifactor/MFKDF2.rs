@@ -11,12 +11,15 @@
 //! underlying multi-factor construction.
 use std::collections::HashMap;
 
+use argon2::Argon2;
 use base64::{Engine, engine::general_purpose};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 use crate::{
+  crypto::decrypt,
   definitions::{bytearray::Key, entropy::MFKDF2Entropy},
+  error::MFKDF2Result,
   policy::Policy,
 };
 
@@ -62,5 +65,30 @@ impl std::fmt::Display for MFKDF2DerivedKey {
       general_purpose::STANDARD.encode(self.key.as_ref()),
       general_purpose::STANDARD.encode(self.secret.clone()),
     )
+  }
+}
+
+impl MFKDF2DerivedKey {
+  /// Derive an internal key for deriving separate keys for parameters, secret, and integrity
+  /// using the policy salt and secret.
+  fn derive_internal_key(&self) -> MFKDF2Result<Key> {
+    let salt = general_purpose::STANDARD.decode(&self.policy.salt)?;
+
+    let mut kek = [0u8; 32];
+    Argon2::new(
+      argon2::Algorithm::Argon2id,
+      argon2::Version::default(),
+      argon2::Params::new(
+        argon2::Params::DEFAULT_M_COST + self.policy.memory,
+        argon2::Params::DEFAULT_T_COST + self.policy.time,
+        1,
+        Some(32),
+      )?,
+    )
+    .hash_password_into(&self.secret, &salt, &mut kek)?;
+
+    let policy_key = general_purpose::STANDARD.decode(&self.policy.key)?;
+    let key = decrypt(policy_key, &kek);
+    Ok(key.try_into()?)
   }
 }

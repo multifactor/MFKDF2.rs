@@ -73,7 +73,7 @@ suite('factors/hmacsha1', () => {
     derive.key
       .toString('hex')
       .should.equal(
-        '2747ebf65219aee6630a758e40fd05ccbb39ab465745ea1c9a6c5adb6673d2d3'
+        'e1e67a0a2118867d8baf660d87500e650211855d2eff4c557ef2c8ae26ab5b6f'
       );
   });
 

@@ -159,13 +159,16 @@ impl MFKDF2DerivedKey {
 
     let threshold = threshold.unwrap_or(self.policy.threshold);
 
+    // derive internal key for deriving separate keys for parameters, secret, and integrity
+    let internal_key = self.derive_internal_key()?;
+
     for factor in &self.policy.factors {
       factors.insert(factor.id.clone(), factor.clone());
 
       let pad = general_purpose::STANDARD.decode(&factor.secret)?;
       let salt = general_purpose::STANDARD.decode(&factor.salt)?;
       let secret_key = hkdf_sha256_with_info(
-        &self.key,
+        &internal_key,
         &salt,
         format!("mfkdf2:factor:secret:{}", factor.id).as_bytes(),
       );
@@ -192,8 +195,11 @@ impl MFKDF2DerivedKey {
 
       let id = factor.id.clone().ok_or(MFKDF2Error::MissingFactorId)?;
 
-      let params_key =
-        hkdf_sha256_with_info(&self.key, &salt, format!("mfkdf2:factor:params:{id}").as_bytes());
+      let params_key = hkdf_sha256_with_info(
+        &internal_key,
+        &salt,
+        format!("mfkdf2:factor:params:{id}").as_bytes(),
+      );
       let params = factor.factor_type.setup().params(params_key.into())?;
 
       let new_factor = PolicyFactor {
@@ -253,7 +259,7 @@ impl MFKDF2DerivedKey {
       };
 
       let secret_key = hkdf_sha256_with_info(
-        &self.key,
+        &internal_key,
         &salt,
         format!("mfkdf2:factor:secret:{}", factor.id).as_bytes(),
       );
@@ -271,7 +277,8 @@ impl MFKDF2DerivedKey {
 
     if !self.policy.hmac.is_empty() {
       let salt = general_purpose::STANDARD.decode(&self.policy.salt)?;
-      let integrity_key = hkdf_sha256_with_info(&self.key, &salt, "mfkdf2:integrity".as_bytes());
+      let integrity_key =
+        hkdf_sha256_with_info(&internal_key, &salt, "mfkdf2:integrity".as_bytes());
       let integrity_data = self.policy.extract();
       let digest = hmacsha256(&integrity_key, &integrity_data);
       self.policy.hmac = general_purpose::STANDARD.encode(digest);
