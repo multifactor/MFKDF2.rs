@@ -358,7 +358,5 @@ suite('features/reconstitution', () => {
 
       await setup.reconstitute([], [], 4).should.be.rejectedWith(Mfkdf2Error.InvalidThreshold)
     })
-
-    // TODO: type error tests are not added
   })
 });
