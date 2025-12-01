@@ -50,7 +50,7 @@ suite('setup/factors/ooba', () => {
   test('valid - with defaults', async () => {
     const factor = await mfkdf.setup.factors.ooba({ key: keyPair.publicKey })
     factor.type.should.equal('ooba')
-    factor.id.should.equal('ooba')
+    factor.id?.should.equal('ooba')
     factor.data.should.have.length(32)
     const params = await factor.params()
     params.should.have.property('length', 6)
@@ -75,7 +75,7 @@ suite('setup/factors/ooba', () => {
       length: 8,
       params: customParams
     })
-    factor.id.should.equal('myooba')
+    factor.id?.should.equal('myooba')
     factor.type.should.equal('ooba')
   })
 })

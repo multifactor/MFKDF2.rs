@@ -78,7 +78,7 @@ function wrapDeriveFactor(factor: raw.Mfkdf2Factor) {
   }
 }
 
-function wrapPolicy(policy: raw.Policy) {
+function wrapPolicy(policy: raw.Policy): any {
   const factors = policy.factors.map((f) => {
     const factor: any = { ...f };
     // use `type` instead of `kind`
@@ -93,7 +93,7 @@ function wrapPolicy(policy: raw.Policy) {
     ...policy,
     factors,
     /**
-     * Unique identifier for this policy.
+     * unique identifier for this policy.
      */
     $id: policy.id,
     /**
@@ -617,7 +617,7 @@ function wrapDerivedKey(key: raw.Mfkdf2DerivedKey) {
      * @returns The hint.
      * @throws {TypeError} If the bits is not an integer.
      */
-    async getHint(factorId: string, bits: number) {
+    async getHint(factorId: string, bits: number = 7) {
       // check for integer otherwise uniffi will cast to integer
       if (bits && !Number.isInteger(bits)) {
         throw new TypeError('bits must be an integer');

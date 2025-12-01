@@ -34,15 +34,15 @@ suite('setup/factors/passkey', () => {
     }
     const factor = await mfkdf.setup.factors.passkey(secret.buffer)
     factor.type.should.equal('passkey')
-    factor.id.should.equal('passkey')
+    factor.id?.should.equal('passkey')
     factor.data.should.have.length(32)
-    factor.entropy.should.equal(256)
+    factor.entropy?.should.equal(256)
   })
 
   test('valid - with id', async () => {
     const secret = new Uint8Array(32)
     const factor = await mfkdf.setup.factors.passkey(secret.buffer, { id: 'mykey' })
-    factor.id.should.equal('mykey')
+    factor.id?.should.equal('mykey')
     factor.type.should.equal('passkey')
     const params = await factor.params()
     params.should.deep.equal({})

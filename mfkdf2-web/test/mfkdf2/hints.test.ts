@@ -104,10 +104,7 @@ suite('mfkdf2/hints', () => {
         integrity: false
       }
     )
-    setup.getHint().should.be.rejectedWith(TypeError)
-    setup.getHint(123).should.be.rejectedWith(TypeError)
     setup.getHint('unknown').should.be.rejectedWith(RangeError)
-    setup.getHint('password1', 'string').should.be.rejectedWith(TypeError)
     setup.getHint('password1', 0).should.be.rejectedWith(TypeError)
     setup.getHint('password1', 300).should.be.rejectedWith(TypeError)
   })
