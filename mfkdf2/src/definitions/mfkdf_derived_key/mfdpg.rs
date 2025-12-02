@@ -11,7 +11,7 @@
 use rand::{SeedableRng, distributions::Distribution};
 use rand_regex::Regex;
 
-use crate::error::MFKDF2Error;
+use crate::error::MFKDF2Result;
 
 impl crate::definitions::MFKDF2DerivedKey {
   /// Derives a deterministic, policy-compliant password from an `MFKDF2DerivedKey`
@@ -64,8 +64,8 @@ impl crate::definitions::MFKDF2DerivedKey {
     purpose: Option<&str>,
     salt: Option<&[u8]>,
     regex: &str,
-  ) -> Result<String, MFKDF2Error> {
-    let password_key = self.get_subkey(purpose, salt);
+  ) -> MFKDF2Result<String> {
+    let password_key = self.get_subkey(purpose, salt)?;
     // seed and rng with password_key
     let mut rng = rand_chacha::ChaCha20Rng::from_seed(password_key);
     let dfa = Regex::compile(regex, 10000)?;
@@ -80,7 +80,7 @@ fn derived_key_derive_password(
   purpose: Option<String>,
   salt: Option<Vec<u8>>,
   regex: &str,
-) -> Result<String, MFKDF2Error> {
+) -> MFKDF2Result<String> {
   let purpose = purpose.as_deref();
   let salt = salt.as_deref();
   derived_key.derive_password(purpose, salt, regex)
