@@ -12,6 +12,7 @@ Please check here before filing new reports.
 | Affected Version(s) | Description                                                            | Status       | CVE / Advisory |
 | ------------------- | ---------------------------------------------------------------------- | ------------ | -------------- |
 | 0.0.1               | RSA Marvin Attack: potential key recovery through timing sidechannels. | 🔴 Unresolved | 2023-49092     |
+| 0.0.1               | Generic-Array: v0.14.9 is deprecated but used by aes-v0.8.4            | 🔴 Unresolved | -              |
 
 Legend:
 - 🟢 Fixed
