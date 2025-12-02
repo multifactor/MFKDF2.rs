@@ -41,6 +41,9 @@ impl MFKDF2DerivedKey {
       return Err(MFKDF2Error::InvalidHintLength("bits must be greater than 0"));
     }
 
+    // derive internal key
+    let internal_key = self.derive_internal_key()?;
+
     let factor_data = self
       .policy
       .factors
@@ -50,7 +53,7 @@ impl MFKDF2DerivedKey {
     let pad = base64::Engine::decode(&general_purpose::STANDARD, factor_data.secret.as_bytes())?;
     let salt = base64::Engine::decode(&general_purpose::STANDARD, factor_data.salt.as_bytes())?;
     let secret_key = crate::crypto::hkdf_sha256_with_info(
-      &self.key,
+      &internal_key,
       &salt,
       format!("mfkdf2:factor:secret:{factor_id}").as_bytes(),
     );
@@ -139,11 +142,15 @@ impl MFKDF2DerivedKey {
   /// # Ok::<(), mfkdf2::error::MFKDF2Error>(())
   /// ```
   pub fn add_hint(&mut self, factor_id: &str, bits: Option<u8>) -> Result<(), MFKDF2Error> {
+    // derive internal key
+    let internal_key = self.derive_internal_key()?;
+
     // verify policy integrity
     if !self.policy.hmac.is_empty() {
       let integrity_data = self.policy.extract();
       let salt = general_purpose::STANDARD.decode(&self.policy.salt)?;
-      let integrity_key = hkdf_sha256_with_info(&self.key, &salt, "mfkdf2:integrity".as_bytes());
+      let integrity_key =
+        hkdf_sha256_with_info(&internal_key, &salt, "mfkdf2:integrity".as_bytes());
       let digest = hmacsha256(&integrity_key, &integrity_data);
       let hmac = general_purpose::STANDARD.encode(digest);
       if self.policy.hmac != hmac {
@@ -161,7 +168,8 @@ impl MFKDF2DerivedKey {
       // compute the new hmac of the policy
       let integrity_data = self.policy.extract();
       let salt = general_purpose::STANDARD.decode(&self.policy.salt)?;
-      let integrity_key = hkdf_sha256_with_info(&self.key, &salt, "mfkdf2:integrity".as_bytes());
+      let integrity_key =
+        hkdf_sha256_with_info(&internal_key, &salt, "mfkdf2:integrity".as_bytes());
       let digest = hmacsha256(&integrity_key, &integrity_data);
       let hmac = general_purpose::STANDARD.encode(digest);
       self.policy.hmac = hmac;
@@ -369,29 +377,32 @@ mod tests {
   }
 
   #[test]
-  fn hint_entropy_leakage_with_integrity() -> Result<(), error::MFKDF2Error> {
+  fn hint_entropy_leakage_with_integrity() {
     let mut setup_key = setup::key(
       &[crate::setup::factors::password("password1", PasswordOptions {
         id: Some("password1".to_string()),
-      })?],
+      })
+      .unwrap()],
       MFKDF2Options { integrity: Some(true), ..Default::default() },
-    )?;
+    )
+    .unwrap();
 
     // 7 bit hint added to the policy
-    setup_key.add_hint("password1", None)?;
+    setup_key.add_hint("password1", None).unwrap();
 
     // derive the key with the correct password
     let derive_key = derive::key(
       &setup_key.policy,
-      HashMap::from([("password1".to_string(), derive_factors::password("password1")?)]),
+      HashMap::from([("password1".to_string(), derive_factors::password("password1").unwrap())]),
       true,
       false,
-    )?;
+    )
+    .unwrap();
 
     assert_eq!(derive_key.key, setup_key.key);
 
     // modify hint
-    let mut hint = setup_key.get_hint("password1", 7)?;
+    let mut hint = setup_key.get_hint("password1", 7).unwrap();
     hint.insert(0, '0');
 
     let mut modified_setup_key_policy = setup_key.policy.clone();
@@ -400,18 +411,18 @@ mod tests {
     // derive the key with the modified hint
     let modified_derive_key1 = derive::key(
       &modified_setup_key_policy,
-      HashMap::from([("password1".to_string(), derive_factors::password("password1")?)]),
+      HashMap::from([("password1".to_string(), derive_factors::password("password1").unwrap())]),
       true,
       false,
     );
 
-    let mut modified_hint = setup_key.get_hint("password1", 7)?;
+    let mut modified_hint = setup_key.get_hint("password1", 7).unwrap();
     modified_hint.insert(0, '1');
     modified_setup_key_policy.factors[0].hint = Some(modified_hint);
 
     let modified_derive_key2 = derive::key(
       &modified_setup_key_policy,
-      HashMap::from([("password1".to_string(), derive_factors::password("password1")?)]),
+      HashMap::from([("password1".to_string(), derive_factors::password("password1").unwrap())]),
       true,
       false,
     );
@@ -420,7 +431,5 @@ mod tests {
       matches!(modified_derive_key1, Err(error::MFKDF2Error::PolicyIntegrityCheckFailed))
         || matches!(modified_derive_key2, Err(error::MFKDF2Error::PolicyIntegrityCheckFailed))
     );
-
-    Ok(())
   }
 }

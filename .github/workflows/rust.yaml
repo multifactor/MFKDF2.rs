@@ -187,7 +187,7 @@ jobs:
         uses: taiki-e/install-action@cargo-llvm-cov
 
       - name: Run cargo-llvm-cov
-        run: cargo llvm-cov --all-features --workspace --html --output-dir target/coverage
+        run: cargo llvm-cov --workspace --html --output-dir target/coverage
 
       - name: Upload coverage to Artifacts
         uses: actions/upload-artifact@v4
