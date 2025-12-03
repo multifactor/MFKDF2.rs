@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use hmac::{Hmac, Mac};
-use mfkdf2::{policy::Policy, setup::factors::hmacsha1::HmacSha1Response};
+use mfkdf2::policy::Policy;
 use sha1::Sha1;
 
 const HMACSHA1_SECRET: [u8; 20] = [
@@ -122,10 +122,7 @@ fn stack_derive() {
           )
           .unwrap(),
         ),
-        (
-          "hmacsha1_1".to_string(),
-          mfkdf2::derive::factors::hmacsha1(HmacSha1Response::from(response)).unwrap(),
-        ),
+        ("hmacsha1_1".to_string(), mfkdf2::derive::factors::hmacsha1(response).unwrap()),
       ]))
       .unwrap(),
     )]),

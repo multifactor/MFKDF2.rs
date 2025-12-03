@@ -7,8 +7,9 @@
 ///
 /// We recommend using "real" for most practical purposes. Entropy is only provided on key setup and
 /// is not available on subsequent derivations.
-#[cfg_attr(feature = "bindings", derive(uniffi::Record))]
 #[derive(Clone, Debug, Default, serde::Serialize, serde::Deserialize, PartialEq)]
+#[cfg_attr(feature = "bindings", derive(uniffi::Record))]
+#[cfg_attr(feature = "zeroize", derive(zeroize::Zeroize, zeroize::ZeroizeOnDrop))]
 pub struct MFKDF2Entropy {
   /// Conservative estimate based on how the factor is actually produced or used. Calculated
   /// using Dropbox's `zxcvbn` estimator.

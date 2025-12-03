@@ -1001,6 +1001,7 @@ dependencies = [
  "uniffi",
  "uuid",
  "web-time",
+ "zeroize",
  "zxcvbn",
 ]
 
