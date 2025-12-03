@@ -59,8 +59,9 @@ pub(crate) trait FactorMetadata: Send + Sync + std::fmt::Debug {
 /// assert_eq!(derive.data(), "password123".as_bytes());
 /// # Ok::<(), mfkdf2::error::MFKDF2Error>(())
 /// ```
-#[cfg_attr(feature = "bindings", derive(uniffi::Record))]
 #[derive(Clone, Serialize, Deserialize)]
+#[cfg_attr(feature = "bindings", derive(uniffi::Record))]
+#[cfg_attr(feature = "zeroize", derive(zeroize::Zeroize))]
 pub struct MFKDF2Factor {
   /// Optional application-defined identifier for the factor.
   pub id:          Option<String>,
@@ -99,6 +100,7 @@ impl std::fmt::Debug for MFKDF2Factor {
 /// which define the common interface for factor management, setup, and derivation.
 #[cfg_attr(feature = "bindings", derive(uniffi::Enum))]
 #[derive(Clone, Debug, Serialize, Deserialize)]
+#[cfg_attr(feature = "zeroize", derive(zeroize::Zeroize))]
 pub enum FactorType {
   /// [`password::Password`] factor.
   Password(password::Password),

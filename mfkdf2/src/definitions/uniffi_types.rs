@@ -15,7 +15,7 @@ uniffi::custom_type!(HmacSha1Response, Vec<u8>, {
     if v.len() == 20 {
       let mut arr = [0u8; 20];
       arr.copy_from_slice(&v);
-      Ok(HmacSha1Response(arr))
+      Ok(arr.into())
     } else {
       Err(uniffi::deps::anyhow::anyhow!(
         "Expected Vec<u8> of length 20, got {}",
