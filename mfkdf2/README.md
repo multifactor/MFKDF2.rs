@@ -195,7 +195,7 @@ let derive_password_factor = derive_password("password123")?;
 #    .finalize()
 #    .into_bytes()
 #    .into();
-let derive_hmac_factor = derive_hmacsha1(response.into())?;
+let derive_hmac_factor = derive_hmacsha1(response)?;
 #
 # let policy_hotp_factor = setup_derived_key
 #   .policy

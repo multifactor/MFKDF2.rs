@@ -268,18 +268,18 @@ pub fn key(factors: &[MFKDF2Factor], options: MFKDF2Options) -> MFKDF2Result<MFK
     crate::rng::fill_bytes(&mut salt);
 
     // HKDF stretch & AES-encrypt share
-    let stretched =
+    let mut stretched =
       hkdf_sha256_with_info(&factor.data(), &salt, format!("mfkdf2:factor:pad:{id}").as_bytes());
     let pad = encrypt(share, &stretched);
 
     // Generate factor key
-    let params_key =
+    let mut params_key =
       hkdf_sha256_with_info(&internal_key, &salt, format!("mfkdf2:factor:params:{id}").as_bytes());
     let params = factor.factor_type.setup().params(params_key.into())?;
 
     outputs.insert(id.clone(), factor.factor_type.output());
 
-    let secret_key =
+    let mut secret_key =
       hkdf_sha256_with_info(&internal_key, &salt, format!("mfkdf2:factor:secret:{id}").as_bytes());
     let factor_secret = encrypt(&stretched, &secret_key);
 
@@ -297,13 +297,21 @@ pub fn key(factors: &[MFKDF2Factor], options: MFKDF2Options) -> MFKDF2Result<MFK
       params,
       hint: None,
     });
+
+    #[cfg(feature = "zeroize")]
+    {
+      use zeroize::Zeroize;
+      stretched.zeroize();
+      params_key.zeroize();
+      secret_key.zeroize();
+    }
   }
 
   let mut policy = Policy {
     schema: "https://mfkdf.com/schema/v2.0.0/policy.json".to_string(),
     id: policy_id,
     threshold,
-    salt: general_purpose::STANDARD.encode(&salt),
+    salt: general_purpose::STANDARD.encode(salt.as_ref()),
     factors: policy_factors,
     hmac: String::new(),
     time,
@@ -334,17 +342,27 @@ pub fn key(factors: &[MFKDF2Factor], options: MFKDF2Options) -> MFKDF2Result<MFK
     internal_key = hkdf_sha256_with_info(&internal_key, &salt, "mfkdf2:key:final".as_bytes());
   }
 
-  Ok(MFKDF2DerivedKey {
+  let result = MFKDF2DerivedKey {
     policy,
     key: internal_key.into(),
-    secret: secret.to_vec(),
+    secret: secret.into(),
     shares,
     outputs,
     entropy: crate::definitions::MFKDF2Entropy {
       real:        entropy_real,
       theoretical: entropy_theoretical,
     },
-  })
+  };
+
+  #[cfg(feature = "zeroize")]
+  {
+    use zeroize::Zeroize;
+    secret.zeroize();
+    internal_key.zeroize();
+    kek.zeroize();
+  }
+
+  Ok(result)
 }
 
 #[cfg(feature = "bindings")]
@@ -475,7 +493,10 @@ mod tests {
 
     assert_eq!(derived_key.policy.id, options.id.unwrap());
     assert_eq!(derived_key.policy.threshold as usize, factors.len());
-    assert_eq!(derived_key.policy.salt, general_purpose::STANDARD.encode(options.salt.unwrap()));
+    assert_eq!(
+      derived_key.policy.salt,
+      general_purpose::STANDARD.encode(options.salt.unwrap().as_ref())
+    );
     assert_eq!(derived_key.policy.time, options.time.unwrap());
     assert_eq!(derived_key.policy.memory, options.memory.unwrap());
 
@@ -490,7 +511,7 @@ mod tests {
         format!("mfkdf2:factor:secret:{}", &factor.id).as_bytes(),
       );
       let factor_secret = general_purpose::STANDARD.decode(factor.secret.clone()).unwrap();
-      let stretched = decrypt(factor_secret, &secret_key).try_into().unwrap();
+      let stretched: [u8; 32] = decrypt(factor_secret, &secret_key).try_into().unwrap();
 
       let pad = general_purpose::STANDARD.decode(factor.pad.clone()).unwrap();
       let factor_share = decrypt(pad, &stretched);
@@ -505,7 +526,7 @@ mod tests {
     let sss = SecretSharing(derived_key.policy.threshold);
     let secret = sss.recover(&shares_vec).unwrap();
 
-    assert_eq!(secret[..32], derived_key.secret);
+    assert_eq!(&secret[..32], derived_key.secret.as_ref());
   }
 
   #[rstest]
@@ -553,7 +574,7 @@ mod tests {
     let sss = SecretSharing(threshold);
     let recovered_secret = sss.recover(&shares_vec).unwrap();
 
-    assert_eq!(recovered_secret[..32], derived_key.secret);
+    assert_eq!(&recovered_secret[..32], derived_key.secret.as_ref());
   }
 
   #[rstest]
