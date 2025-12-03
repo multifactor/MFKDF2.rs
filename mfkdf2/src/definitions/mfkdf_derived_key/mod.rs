@@ -9,6 +9,7 @@
 //! key, while the embedded [`Policy`] and threshold secret-sharing scheme enable flexible recovery
 //! flows (such as `t`‑of‑`n` factor policies) without weakening the guarantees provided by the
 //! underlying multi-factor construction.
+#![cfg_attr(not(feature = "zeroize"), allow(unused_mut))]
 use std::collections::HashMap;
 
 use argon2::Argon2;

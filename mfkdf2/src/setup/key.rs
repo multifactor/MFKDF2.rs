@@ -4,6 +4,8 @@
 //!
 //! Master secret `M` is split into Shamir shares `Sᵢ` over the configured polynomial, and encrypted
 //! to produce encrypted shares `Cᵢ` which is then stored in the [`Policy`].
+
+#![cfg_attr(not(feature = "zeroize"), allow(unused_mut))]
 // TODO (autoparallel): If we use `no-std`, then this use of `HashSet` will need to be
 // replaced.
 use std::collections::{HashMap, HashSet};
