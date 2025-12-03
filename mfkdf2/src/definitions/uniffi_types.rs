@@ -10,7 +10,7 @@ use crate::{
 };
 
 uniffi::custom_type!(HmacSha1Response, Vec<u8>, {
-  lower: |r| r.0.to_vec(),
+  lower: |r| r.to_vec(),
   try_lift: |v: Vec<u8>| {
     if v.len() == 20 {
       let mut arr = [0u8; 20];

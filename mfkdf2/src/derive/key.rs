@@ -320,7 +320,7 @@ pub fn key(
 
   let sss = SecretSharing(policy.threshold);
   let secret = sss.recover(&shares_vec).map_err(|_| MFKDF2Error::ShareRecovery)?;
-  let mut secret_arr: [u8; 32] = secret.try_into().map_err(|_| MFKDF2Error::TryFromVec)?;
+  let mut secret_arr: [u8; 32] = secret[..32].try_into().map_err(|_| MFKDF2Error::TryFromVec)?;
   let salt_bytes = general_purpose::STANDARD.decode(&policy.salt)?;
 
   // Generate key
