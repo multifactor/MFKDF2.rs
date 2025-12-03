@@ -163,7 +163,7 @@ impl MFKDF2DerivedKey {
     let threshold = threshold.unwrap_or(self.policy.threshold);
 
     // derive internal key for deriving separate keys for parameters, secret, and integrity
-    let internal_key = self.derive_internal_key()?;
+    let mut internal_key = self.derive_internal_key()?;
 
     for factor in &self.policy.factors {
       factors.insert(factor.id.clone(), factor.clone());
@@ -261,7 +261,7 @@ impl MFKDF2DerivedKey {
         return Err(MFKDF2Error::TryFromVec);
       };
 
-      let secret_key = hkdf_sha256_with_info(
+      let mut secret_key = hkdf_sha256_with_info(
         &internal_key,
         &salt,
         format!("mfkdf2:factor:secret:{}", factor.id).as_bytes(),
@@ -271,6 +271,12 @@ impl MFKDF2DerivedKey {
       factor.secret = general_purpose::STANDARD.encode(encrypt(stretched, &secret_key));
 
       new_factors.push(factor);
+
+      #[cfg(feature = "zeroize")]
+      {
+        use zeroize::Zeroize;
+        secret_key.zeroize();
+      }
     }
 
     self.policy.factors = new_factors;
@@ -285,6 +291,12 @@ impl MFKDF2DerivedKey {
       let integrity_data = self.policy.extract();
       let digest = hmacsha256(&integrity_key, &integrity_data);
       self.policy.hmac = general_purpose::STANDARD.encode(digest);
+
+      #[cfg(feature = "zeroize")]
+      {
+        use zeroize::Zeroize;
+        internal_key.zeroize();
+      }
     }
 
     Ok(())

@@ -18,7 +18,10 @@ use serde_json::Value;
 
 use crate::{
   crypto::decrypt,
-  definitions::{bytearray::Key, entropy::MFKDF2Entropy},
+  definitions::{
+    bytearray::{ByteArray, Key},
+    entropy::MFKDF2Entropy,
+  },
   error::MFKDF2Result,
   policy::Policy,
 };
@@ -29,6 +32,9 @@ pub mod mfdpg;
 mod persistence;
 pub mod reconstitution;
 mod strengthening;
+
+/// Internal secret material that is split into per‑factor shares for threshold recovery
+pub type MFKDF2DerivedSecret = ByteArray<32>;
 
 /// MFKDF2 Derived key after the setup or derive operation.
 ///
@@ -45,7 +51,7 @@ pub struct MFKDF2DerivedKey {
   /// Final 32‑byte key output of the KDF
   pub key:     Key,
   /// Internal secret material that is split into per‑factor shares for threshold recovery
-  pub secret:  Vec<u8>,
+  pub secret:  MFKDF2DerivedSecret,
   /// Shamir‑style shares of `secret`, one per factor, used by reconstitution and
   /// threshold‑management routines.
   pub shares:  Vec<Vec<u8>>,
@@ -63,7 +69,7 @@ impl std::fmt::Display for MFKDF2DerivedKey {
       f,
       "MFKDF2DerivedKey {{ key: {}, secret: {} }}",
       general_purpose::STANDARD.encode(self.key.as_ref()),
-      general_purpose::STANDARD.encode(self.secret.clone()),
+      general_purpose::STANDARD.encode(self.secret.as_ref()),
     )
   }
 }
@@ -75,14 +81,6 @@ impl zeroize::Zeroize for MFKDF2DerivedKey {
     self.secret.zeroize();
     self.shares.zeroize();
     self.policy.zeroize();
-  }
-}
-
-#[cfg(feature = "zeroize")]
-impl Drop for MFKDF2DerivedKey {
-  fn drop(&mut self) {
-    use zeroize::Zeroize;
-    self.zeroize();
   }
 }
 
@@ -105,8 +103,16 @@ impl MFKDF2DerivedKey {
     )
     .hash_password_into(&self.secret, &salt, &mut kek)?;
 
-    let policy_key = general_purpose::STANDARD.decode(&self.policy.key)?;
-    let key = decrypt(policy_key, &kek);
+    let mut policy_key = general_purpose::STANDARD.decode(&self.policy.key)?;
+    let key = decrypt(policy_key.clone(), &kek);
+
+    #[cfg(feature = "zeroize")]
+    {
+      use zeroize::Zeroize;
+      kek.zeroize();
+      policy_key.zeroize();
+    }
+
     key.try_into()
   }
 }
