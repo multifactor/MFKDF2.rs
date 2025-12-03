@@ -68,6 +68,24 @@ impl std::fmt::Display for MFKDF2DerivedKey {
   }
 }
 
+#[cfg(feature = "zeroize")]
+impl zeroize::Zeroize for MFKDF2DerivedKey {
+  fn zeroize(&mut self) {
+    self.key.zeroize();
+    self.secret.zeroize();
+    self.shares.zeroize();
+    self.policy.zeroize();
+  }
+}
+
+#[cfg(feature = "zeroize")]
+impl Drop for MFKDF2DerivedKey {
+  fn drop(&mut self) {
+    use zeroize::Zeroize;
+    self.zeroize();
+  }
+}
+
 impl MFKDF2DerivedKey {
   /// Derive an internal key for deriving separate keys for parameters, secret, and integrity
   /// using the policy salt and secret.

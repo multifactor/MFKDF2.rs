@@ -135,7 +135,7 @@ fn create_policy_basic_1() -> policy::Policy {
   let or2 = or(h1, t1).unwrap();
   let policy_factor = and(or1, or2).unwrap();
 
-  policy::setup::setup(policy_factor, PolicySetupOptions::default()).unwrap().policy
+  policy::setup::setup(policy_factor, PolicySetupOptions::default()).unwrap().policy.clone()
 }
 
 #[test]
@@ -205,7 +205,7 @@ fn create_policy_basic_2() -> policy::Policy {
   let and2 = and(h1, t1).unwrap();
   let policy_factor = or(and1, and2).unwrap();
 
-  policy::setup::setup(policy_factor, PolicySetupOptions::default()).unwrap().policy
+  policy::setup::setup(policy_factor, PolicySetupOptions::default()).unwrap().policy.clone()
 }
 
 #[test]
