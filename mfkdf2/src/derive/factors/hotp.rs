@@ -42,6 +42,7 @@ impl FactorDerive for HOTP {
 
     // Decrypt the secret using the factor key
     let pad = base64::prelude::BASE64_STANDARD.decode(&params.pad)?;
+    #[cfg_attr(not(feature = "zeroize"), allow(unused_mut))]
     let mut padded_secret = decrypt(pad, key);
 
     // Generate HOTP code with incremented counter

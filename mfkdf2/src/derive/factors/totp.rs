@@ -102,6 +102,7 @@ impl FactorDerive for TOTP {
     let params: TOTPParams = serde_json::from_value(self.params.clone())?;
 
     let pad = base64::prelude::BASE64_STANDARD.decode(params.pad)?;
+    #[cfg_attr(not(feature = "zeroize"), allow(unused_mut))]
     let mut padded_secret = decrypt(pad.clone(), key.as_ref());
 
     let time = params.start;

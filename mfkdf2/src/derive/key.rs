@@ -320,6 +320,7 @@ pub fn key(
 
   let sss = SecretSharing(policy.threshold);
   let secret = sss.recover(&shares_vec).map_err(|_| MFKDF2Error::ShareRecovery)?;
+  #[cfg_attr(not(feature = "zeroize"), allow(unused_mut))]
   let mut secret_arr: [u8; 32] = secret[..32].try_into().map_err(|_| MFKDF2Error::TryFromVec)?;
   let salt_bytes = general_purpose::STANDARD.decode(&policy.salt)?;
 
@@ -352,6 +353,7 @@ pub fn key(
   let internal_key = decrypt(policy_key_bytes, &kek);
 
   // Perform integrity check
+  #[cfg_attr(not(feature = "zeroize"), allow(unused_mut))]
   let mut integrity_key =
     hkdf_sha256_with_info(&internal_key, &salt_bytes, "mfkdf2:integrity".as_bytes());
   if verify {
