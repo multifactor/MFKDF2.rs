@@ -102,7 +102,7 @@ impl FactorDerive for TOTP {
     let params: TOTPParams = serde_json::from_value(self.params.clone())?;
 
     let pad = base64::prelude::BASE64_STANDARD.decode(params.pad)?;
-    let padded_secret = decrypt(pad.clone(), &key.0);
+    let mut padded_secret = decrypt(pad.clone(), key.as_ref());
 
     let time = params.start;
     let mut new_offsets = Vec::with_capacity((4 * params.window) as usize);
@@ -137,6 +137,13 @@ impl FactorDerive for TOTP {
       pad:     base64::prelude::BASE64_STANDARD.encode(&pad),
       offsets: base64::prelude::BASE64_STANDARD.encode(&new_offsets),
     };
+
+    #[cfg(feature = "zeroize")]
+    {
+      use zeroize::Zeroize;
+      padded_secret.zeroize();
+      new_offsets.zeroize();
+    }
 
     Ok(serde_json::to_value(params)?)
   }

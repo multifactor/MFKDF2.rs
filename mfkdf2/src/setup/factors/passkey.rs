@@ -22,24 +22,28 @@
 use serde::{Deserialize, Serialize};
 
 use crate::{
-  definitions::{FactorType, MFKDF2Factor, factor::FactorMetadata},
+  definitions::{ByteArray, FactorType, MFKDF2Factor, factor::FactorMetadata},
   error::MFKDF2Result,
   setup::FactorSetup,
 };
 
+/// 32 byte passkey secret
+pub type PasskeySecret = ByteArray<32>;
+
 /// Passkey factor state
 #[cfg_attr(feature = "bindings", derive(uniffi::Record))]
 #[derive(Clone, Debug, Serialize, Deserialize)]
+#[cfg_attr(feature = "zeroize", derive(zeroize::Zeroize))]
 pub struct Passkey {
   /// 32‑byte secret derived from the passkey’s `WebAuthn` PRF output or equivalent
   /// hardware‑protected key
-  pub secret: Vec<u8>,
+  pub secret: PasskeySecret,
 }
 
 impl FactorMetadata for Passkey {
   fn kind(&self) -> String { "passkey".to_string() }
 
-  fn bytes(&self) -> Vec<u8> { self.secret.clone() }
+  fn bytes(&self) -> Vec<u8> { self.secret.to_vec() }
 }
 
 impl FactorSetup for Passkey {
@@ -98,7 +102,7 @@ pub fn passkey(secret: [u8; 32], options: PasskeyOptions) -> MFKDF2Result<MFKDF2
 
   Ok(MFKDF2Factor {
     id:          Some(id),
-    factor_type: FactorType::Passkey(Passkey { secret: secret.to_vec() }),
+    factor_type: FactorType::Passkey(Passkey { secret: secret.into() }),
     entropy:     Some(256.0),
   })
 }

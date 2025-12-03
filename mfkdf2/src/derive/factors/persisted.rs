@@ -11,8 +11,9 @@ use crate::{
 };
 
 /// Persisted share factor state.
-#[cfg_attr(feature = "bindings", derive(uniffi::Record))]
 #[derive(Clone, Debug, Serialize, Deserialize)]
+#[cfg_attr(feature = "bindings", derive(uniffi::Record))]
+#[cfg_attr(feature = "zeroize", derive(zeroize::Zeroize))]
 pub struct Persisted {
   /// Base-64 encoded Shamir share to recover the master secret.
   pub share: Vec<u8>,

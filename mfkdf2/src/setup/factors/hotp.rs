@@ -99,17 +99,22 @@ pub struct HOTPConfig {
   pub label:  String,
 }
 
+#[cfg(feature = "zeroize")]
+impl zeroize::Zeroize for HOTPConfig {
+  fn zeroize(&mut self) { self.secret.zeroize(); }
+}
+
 impl TryFrom<HOTPOptions> for HOTPConfig {
   type Error = MFKDF2Error;
 
-  fn try_from(value: HOTPOptions) -> Result<Self, Self::Error> {
+  fn try_from(mut value: HOTPOptions) -> Result<Self, Self::Error> {
     Ok(HOTPConfig {
-      id:     value.id.ok_or(MFKDF2Error::MissingFactorId)?,
-      secret: value.secret.ok_or(MFKDF2Error::MissingSetupParams("secret".to_string()))?,
+      id:     value.id.take().ok_or(MFKDF2Error::MissingFactorId)?,
+      secret: value.secret.take().ok_or(MFKDF2Error::MissingSetupParams("secret".to_string()))?,
       digits: value.digits.ok_or(MFKDF2Error::InvalidHOTPDigits)?,
-      hash:   value.hash.unwrap_or(HashAlgorithm::Sha1),
-      issuer: value.issuer.unwrap_or("MFKDF".to_string()),
-      label:  value.label.unwrap_or("mfkdf.com".to_string()),
+      hash:   value.hash.take().unwrap_or(HashAlgorithm::Sha1),
+      issuer: value.issuer.take().unwrap_or("MFKDF".to_string()),
+      label:  value.label.take().unwrap_or("mfkdf.com".to_string()),
     })
   }
 }
@@ -138,8 +143,17 @@ pub struct HOTP {
   pub params: Value,
   /// HOTP code.
   pub code:   u32,
-  /// HOTP factor material. The target code that is used to derive the key.
+  /// HOTP secret factor material. The target code that is used to derive the key.
   pub target: u32,
+}
+
+#[cfg(feature = "zeroize")]
+impl zeroize::Zeroize for HOTP {
+  fn zeroize(&mut self) {
+    self.config.zeroize();
+    self.target.zeroize();
+    self.code.zeroize();
+  }
 }
 
 /// HOTP public parameters.
@@ -177,7 +191,7 @@ impl FactorSetup for HOTP {
     let offset =
       mod_positive(i64::from(self.target) - i64::from(code), 10_i64.pow(self.config.digits));
 
-    let pad = encrypt(&self.config.secret, &key.0);
+    let pad = encrypt(&self.config.secret, key.as_ref());
 
     let params = HOTPParams {
       hash: self.config.hash.clone(),
@@ -265,16 +279,14 @@ pub fn mod_positive(n: i64, m: i64) -> u32 { (((n % m) + m) % m) as u32 }
 /// assert!(matches!(result, Err(mfkdf2::error::MFKDF2Error::InvalidHOTPDigits)));
 /// # Ok::<(), mfkdf2::error::MFKDF2Error>(())
 /// ```
-pub fn hotp(options: HOTPOptions) -> MFKDF2Result<MFKDF2Factor> {
-  let mut options = options;
-
+pub fn hotp(mut options: HOTPOptions) -> MFKDF2Result<MFKDF2Factor> {
   // Validation
   if let Some(ref id) = options.id
     && id.is_empty()
   {
     return Err(crate::error::MFKDF2Error::MissingFactorId);
   }
-  let id = options.id.clone().unwrap_or("hotp".to_string());
+  let id = options.id.take().unwrap_or("hotp".to_string());
 
   if let Some(digits) = options.digits
     && !(6..=8).contains(&digits)
@@ -290,7 +302,8 @@ pub fn hotp(options: HOTPOptions) -> MFKDF2Result<MFKDF2Factor> {
   {
     return Err(crate::error::MFKDF2Error::InvalidSecretLength(id));
   }
-  let secret = options.secret.unwrap_or_else(|| {
+  // consume the secret from options and generate a random one if none is provided
+  let secret = options.secret.take().unwrap_or_else(|| {
     let mut secret = [0u8; 20];
     crate::rng::fill_bytes(&mut secret);
     secret.to_vec()

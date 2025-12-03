@@ -14,8 +14,9 @@ use crate::{
 };
 
 /// Password factor state
-#[cfg_attr(feature = "bindings", derive(uniffi::Record))]
 #[derive(Clone, Debug, Serialize, Deserialize)]
+#[cfg_attr(feature = "bindings", derive(uniffi::Record))]
+#[cfg_attr(feature = "zeroize", derive(zeroize::Zeroize))]
 pub struct Password {
   /// User-chosen password string.
   pub password: String,
@@ -89,7 +90,7 @@ pub fn password(
     return Err(crate::error::MFKDF2Error::MissingFactorId);
   }
 
-  let password = std::convert::Into::<String>::into(password);
+  let password = password.into();
   if password.is_empty() {
     return Err(MFKDF2Error::PasswordEmpty);
   }

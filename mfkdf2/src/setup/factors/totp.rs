@@ -81,7 +81,7 @@ pub struct TOTPOptions {
   pub window: Option<u32>,
   /// Step size in seconds (the TOTP "period", default 30s)
   pub step:   Option<u32>,
-  /// Optional per‑time overrides for debugging or advanced flows
+  /// Optional timing oracle to harden TOTP factor construction
   pub oracle: Option<HashMap<u64, u32>>,
 }
 
@@ -130,6 +130,11 @@ pub struct TOTPConfig {
   pub step:   u32,
   /// Optional timing oracle to harden TOTP factor construction
   pub oracle: Option<HashMap<u64, u32>>,
+}
+
+#[cfg(feature = "zeroize")]
+impl zeroize::Zeroize for TOTPConfig {
+  fn zeroize(&mut self) { self.secret.zeroize(); }
 }
 
 impl TryFrom<TOTPOptions> for TOTPConfig {
@@ -205,6 +210,15 @@ pub struct TOTP {
   pub target: u32,
 }
 
+#[cfg(feature = "zeroize")]
+impl zeroize::Zeroize for TOTP {
+  fn zeroize(&mut self) {
+    self.config.zeroize();
+    self.target.zeroize();
+    self.code.zeroize();
+  }
+}
+
 impl FactorMetadata for TOTP {
   fn kind(&self) -> String { "totp".to_string() }
 
@@ -249,7 +263,7 @@ impl FactorSetup for TOTP {
       offsets.extend_from_slice(&offset.to_be_bytes());
     }
 
-    let pad = encrypt(&self.config.secret, &key.0);
+    let pad = encrypt(&self.config.secret, &key);
 
     let params = TOTPParams {
       start:   time as u64,
@@ -331,16 +345,14 @@ impl FactorSetup for TOTP {
 /// assert!(matches!(result, Err(MFKDF2Error::InvalidSecretLength(_))));
 /// # Ok::<(), MFKDF2Error>(())
 /// ```
-pub fn totp(options: TOTPOptions) -> MFKDF2Result<MFKDF2Factor> {
-  let mut options = options;
-
+pub fn totp(mut options: TOTPOptions) -> MFKDF2Result<MFKDF2Factor> {
   // Validation
   if let Some(ref id) = options.id
     && id.is_empty()
   {
     return Err(crate::error::MFKDF2Error::MissingFactorId);
   }
-  let id = options.id.clone().unwrap_or("totp".to_string());
+  let id = options.id.take().unwrap_or("totp".to_string());
 
   if let Some(digits) = options.digits
     && !(6..=8).contains(&digits)
@@ -349,17 +361,14 @@ pub fn totp(options: TOTPOptions) -> MFKDF2Result<MFKDF2Factor> {
   }
   options.digits = Some(options.digits.unwrap_or(6));
 
-  // secret length validation
-  if let Some(ref secret) = options.secret
-    && secret.len() != 20
-  {
-    return Err(crate::error::MFKDF2Error::InvalidSecretLength(id));
-  }
-  let secret = options.secret.unwrap_or_else(|| {
+  let secret = options.secret.take().unwrap_or_else(|| {
     let mut secret = [0u8; 20];
     crate::rng::fill_bytes(&mut secret);
     secret.to_vec()
   });
+  if secret.len() != 20 {
+    return Err(crate::error::MFKDF2Error::InvalidSecretLength(id));
+  }
 
   if options.time.is_none() {
     let now_ms = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_millis() as u64;

@@ -41,6 +41,14 @@ pub struct Question {
   pub question: String,
 }
 
+#[cfg(feature = "zeroize")]
+impl zeroize::Zeroize for Question {
+  fn zeroize(&mut self) {
+    self.answer.zeroize();
+    self.question.zeroize();
+  }
+}
+
 impl FactorMetadata for Question {
   fn kind(&self) -> String { "question".to_string() }
 
@@ -86,7 +94,10 @@ impl FactorSetup for Question {
 /// assert_eq!(factor.id.as_deref(), Some("recovery-question"));
 /// # Ok::<(), mfkdf2::error::MFKDF2Error>(())
 /// ```
-pub fn question(answer: impl Into<String>, options: QuestionOptions) -> MFKDF2Result<MFKDF2Factor> {
+pub fn question(
+  answer: impl Into<String>,
+  mut options: QuestionOptions,
+) -> MFKDF2Result<MFKDF2Factor> {
   let answer = answer.into();
   if answer.is_empty() {
     return Err(MFKDF2Error::AnswerEmpty);
@@ -98,12 +109,9 @@ pub fn question(answer: impl Into<String>, options: QuestionOptions) -> MFKDF2Re
   {
     return Err(crate::error::MFKDF2Error::MissingFactorId);
   }
-  let id = Some(options.id.clone().unwrap_or("question".to_string()));
+  let id = Some(options.id.take().unwrap_or("question".to_string()));
 
-  let question = match options.question {
-    None => String::new(),
-    Some(ref ques) => ques.clone(),
-  };
+  let question = options.question.take().unwrap_or_default();
 
   let answer = answer
     .to_lowercase()
