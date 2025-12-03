@@ -36,6 +36,11 @@ pub struct UUIDFactor {
   pub uuid: Uuid,
 }
 
+#[cfg(feature = "zeroize")]
+impl zeroize::Zeroize for UUIDFactor {
+  fn zeroize(&mut self) {}
+}
+
 impl FactorMetadata for UUIDFactor {
   fn kind(&self) -> String { "uuid".to_string() }
 
@@ -71,7 +76,7 @@ impl FactorSetup for UUIDFactor {
 /// assert_eq!(factor.id.as_deref(), Some("uuid"));
 /// # Ok::<(), mfkdf2::error::MFKDF2Error>(())
 /// ```
-pub fn uuid(options: UUIDOptions) -> MFKDF2Result<MFKDF2Factor> {
+pub fn uuid(mut options: UUIDOptions) -> MFKDF2Result<MFKDF2Factor> {
   // Validation
   if let Some(ref id) = options.id
     && id.is_empty()
@@ -79,7 +84,7 @@ pub fn uuid(options: UUIDOptions) -> MFKDF2Result<MFKDF2Factor> {
     return Err(crate::error::MFKDF2Error::MissingFactorId);
   }
 
-  let uuid = options.uuid.unwrap_or(Uuid::new_v4());
+  let uuid = options.uuid.take().unwrap_or(Uuid::new_v4());
 
   Ok(MFKDF2Factor {
     id:          Some(options.id.unwrap_or("uuid".to_string())),

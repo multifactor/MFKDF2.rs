@@ -42,7 +42,7 @@ impl FactorDerive for HOTP {
 
     // Decrypt the secret using the factor key
     let pad = base64::prelude::BASE64_STANDARD.decode(&params.pad)?;
-    let padded_secret = decrypt(pad, &key.0);
+    let mut padded_secret = decrypt(pad, key);
 
     // Generate HOTP code with incremented counter
     let counter = params.counter + 1;
@@ -52,6 +52,12 @@ impl FactorDerive for HOTP {
     // Calculate new offset
     let new_offset =
       mod_positive(i64::from(self.target) - i64::from(generated_code), 10_i64.pow(params.digits));
+
+    #[cfg(feature = "zeroize")]
+    {
+      use zeroize::Zeroize;
+      padded_secret.zeroize();
+    }
 
     Ok(json!({
       "hash": params.hash.to_string(),

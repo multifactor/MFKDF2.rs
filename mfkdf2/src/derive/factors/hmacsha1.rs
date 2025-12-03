@@ -23,7 +23,7 @@ impl FactorDerive for HmacSha1 {
   fn include_params(&mut self, params: Self::Params) -> MFKDF2Result<()> {
     let response = self.response.as_ref().unwrap();
     let mut padded_key = [0u8; 32];
-    padded_key[..response.0.len()].copy_from_slice(&response.0);
+    padded_key[..response.len()].copy_from_slice(&response);
 
     let pad = hex::decode(
       params
@@ -117,7 +117,7 @@ impl FactorDerive for HmacSha1 {
 ///   .into();
 ///
 /// // Build the derive‑time HMAC witness and run KeyDerive
-/// let derive_factor = derive::factors::hmacsha1(response.into())?;
+/// let derive_factor = derive::factors::hmacsha1(response)?;
 /// let derived_key = derive::key(
 ///   &setup_key.policy,
 ///   HashMap::from([("hmacsha1".to_string(), derive_factor)]),

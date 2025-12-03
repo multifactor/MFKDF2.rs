@@ -27,14 +27,14 @@ impl FactorDerive for Ooba {
 
   /// Includes the public parameters for in factor state and decrypts the secret material from
   /// public parameters.
-  fn include_params(&mut self, params: Self::Params) -> MFKDF2Result<()> {
+  fn include_params(&mut self, mut params: Self::Params) -> MFKDF2Result<()> {
     let pad_b64 =
       params["pad"].as_str().ok_or(MFKDF2Error::MissingDeriveParams("pad".to_string()))?;
     let pad = general_purpose::STANDARD
       .decode(pad_b64)
       .map_err(|_| MFKDF2Error::InvalidDeriveParams("pad".to_string()))?;
 
-    let config = params["params"].clone();
+    let config = params["params"].take();
     if !config.is_object() {
       return Err(MFKDF2Error::InvalidDeriveParams("params".to_string()));
     }
@@ -48,7 +48,7 @@ impl FactorDerive for Ooba {
     self.length = params["length"]
       .as_u64()
       .ok_or(MFKDF2Error::MissingDeriveParams("length".to_string()))? as u8;
-    let jwk = serde_json::from_value::<jsonwebtoken::jwk::Jwk>(params["key"].clone())
+    let jwk = serde_json::from_value::<jsonwebtoken::jwk::Jwk>(params["key"].take())
       .map_err(|_| MFKDF2Error::InvalidDeriveParams("key".to_string()))?;
     self.jwk = Some(jwk);
 
