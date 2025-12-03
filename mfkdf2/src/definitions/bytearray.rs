@@ -4,6 +4,7 @@ use serde::{Deserialize, Serialize};
 
 /// Generic fixed-size byte array used as the basis for key-like types.
 #[derive(Debug, Clone, PartialEq)]
+#[cfg_attr(feature = "zeroize", derive(zeroize::Zeroize, zeroize::ZeroizeOnDrop))]
 pub struct ByteArray<const N: usize>(pub [u8; N]);
 
 /// 32 byte key

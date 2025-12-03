@@ -21,8 +21,6 @@ impl FactorDerive for HmacSha1 {
 
   /// Includes the public parameters for in factor state and decrypts the secret material.
   fn include_params(&mut self, params: Self::Params) -> MFKDF2Result<()> {
-    self.params = Some(serde_json::to_string(&params).unwrap());
-
     let response = self.response.as_ref().unwrap();
     let mut padded_key = [0u8; 32];
     padded_key[..response.0.len()].copy_from_slice(&response.0);
@@ -130,12 +128,11 @@ impl FactorDerive for HmacSha1 {
 /// assert_eq!(derived_key.key, setup_key.key);
 /// # Ok::<(), mfkdf2::error::MFKDF2Error>(())
 /// ```
-pub fn hmacsha1(response: HmacSha1Response) -> MFKDF2Result<MFKDF2Factor> {
+pub fn hmacsha1(response: impl Into<HmacSha1Response>) -> MFKDF2Result<MFKDF2Factor> {
   Ok(MFKDF2Factor {
     id:          None,
     factor_type: FactorType::HmacSha1(HmacSha1 {
-      response:      Some(response),
-      params:        None,
+      response:      Some(response.into()),
       padded_secret: [0u8; 32].to_vec(),
     }),
     entropy:     None,
@@ -180,7 +177,7 @@ mod tests {
       .collect::<Vec<u8>>();
     let response = crate::crypto::hmacsha1(&secret, &challenge);
 
-    let result = hmacsha1(response.into());
+    let result = hmacsha1(response);
     assert!(result.is_ok());
     result.unwrap().factor_type
   }

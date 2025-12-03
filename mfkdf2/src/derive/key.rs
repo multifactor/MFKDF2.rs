@@ -590,7 +590,7 @@ mod tests {
       panic!()
     };
     let response = crate::crypto::hmacsha1(secret, &challenge);
-    let mut derive_hmac_factor = derive_hmacsha1(response.into()).unwrap();
+    let mut derive_hmac_factor = derive_hmacsha1(response).unwrap();
     derive_hmac_factor.id = Some("hmac".to_string());
     derive_factors_map.insert("hmac".to_string(), derive_hmac_factor);
 
@@ -822,7 +822,7 @@ mod tests {
     let challenge = hex::decode(params["challenge"].as_str().unwrap()).unwrap();
     let secret = &hmac_setup.padded_secret[..20];
     let response = crate::crypto::hmacsha1(secret, &challenge);
-    let mut derive_hmac_factor = derive_hmacsha1(response.into()).unwrap();
+    let mut derive_hmac_factor = derive_hmacsha1(response).unwrap();
     derive_hmac_factor.id = Some("hmac".to_string());
     derive_factors_map.insert("hmac".to_string(), derive_hmac_factor);
 

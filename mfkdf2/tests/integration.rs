@@ -139,8 +139,7 @@ fn key_derive_hmacsha1() -> Result<(), mfkdf2::error::MFKDF2Error> {
     .into_bytes()
     .into();
 
-  let factor =
-    ("hmacsha1_1".to_string(), mfkdf2::derive::factors::hmacsha1(response.into()).unwrap());
+  let factor = ("hmacsha1_1".to_string(), mfkdf2::derive::factors::hmacsha1(response).unwrap());
   let factors = HashMap::from([factor]);
 
   let derived_key = mfkdf2::derive::key(&key.policy, factors, true, false)?;
@@ -357,7 +356,7 @@ fn key_derivation_combinations(
         combo, i
       );
 
-      policy_for_run = derived_key.policy;
+      policy_for_run = derived_key.policy.clone();
     }
   }
 
