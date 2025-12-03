@@ -20,7 +20,7 @@ pub(crate) fn hkdf_sha256_with_info(input: &[u8], salt: &[u8], info: &[u8]) -> [
 }
 
 /// Encrypts a buffer using AES256-ECB with the given 32-byte key.
-pub(crate) fn encrypt(data: &[u8], key: &[u8; 32]) -> Vec<u8> {
+pub(crate) fn encrypt(data: &[u8], key: impl AsRef<[u8]>) -> Vec<u8> {
   // Ensure the input is a multiple of 16 by zero-padding if necessary.
   let mut buf = {
     let mut v = data.to_vec();
@@ -31,7 +31,7 @@ pub(crate) fn encrypt(data: &[u8], key: &[u8; 32]) -> Vec<u8> {
     v
   };
 
-  let cipher = Encryptor::<Aes256>::new_from_slice(key).expect("Invalid AES-256 key");
+  let cipher = Encryptor::<Aes256>::new_from_slice(key.as_ref()).expect("Invalid AES-256 key");
   let padded_len = buf.len(); // now guaranteed multiple of 16
   cipher.encrypt_padded_mut::<NoPadding>(&mut buf, padded_len).expect("ECB encryption");
   buf
@@ -63,8 +63,8 @@ where
 
 /// Decrypts a buffer using AES256-ECB with the given 32-byte key.
 // TODO (@lonerapier): check every use of decrypt and unpad properly or use assert.
-pub(crate) fn decrypt(mut data: Vec<u8>, key: &[u8; 32]) -> Vec<u8> {
-  let cipher = Decryptor::<Aes256>::new_from_slice(key).expect("Invalid AES key");
+pub(crate) fn decrypt(mut data: Vec<u8>, key: impl AsRef<[u8]>) -> Vec<u8> {
+  let cipher = Decryptor::<Aes256>::new_from_slice(key.as_ref()).expect("Invalid AES key");
   let _ = cipher.decrypt_padded_mut::<NoPadding>(&mut data).expect("ECB decrypt");
   data
 }

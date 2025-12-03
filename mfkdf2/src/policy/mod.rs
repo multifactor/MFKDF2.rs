@@ -47,6 +47,14 @@ pub struct PolicyFactor {
   pub hint:   Option<String>,
 }
 
+#[cfg(feature = "zeroize")]
+impl zeroize::Zeroize for PolicyFactor {
+  fn zeroize(&mut self) {
+    self.salt.zeroize();
+    self.secret.zeroize();
+  }
+}
+
 /// MFKDF policy is a set of all allowable factor combinations that can be used to derive the final
 /// key. MFKDF instance after i-th derivation consists of public construction parameters (threshold,
 /// salt, etc.), per-factor public parameters (encrypted shares, secret), and factor public state
@@ -80,6 +88,16 @@ pub struct Policy {
   /// Base-64 encoded policy key encrypted using KEK (key encapsulation key).
   /// It is used to derive other keys (params, integrity, etc.) in the policy.
   pub key:       String,
+}
+
+#[cfg(feature = "zeroize")]
+impl zeroize::Zeroize for Policy {
+  fn zeroize(&mut self) {
+    self.salt.zeroize();
+    self.factors.zeroize();
+    self.hmac.zeroize();
+    self.key.zeroize();
+  }
 }
 
 impl Policy {

@@ -18,7 +18,7 @@ use serde_json::{Value, json};
 
 use crate::{
   crypto::encrypt,
-  definitions::{Key, MFKDF2Factor},
+  definitions::{ByteArray, Key, MFKDF2Factor},
   error::MFKDF2Result,
   rng,
   setup::factors::{FactorMetadata, FactorSetup, FactorType},
@@ -31,8 +31,8 @@ use crate::{
 ///   resulting key into a dedicated HMAC‑SHA1 slot on the token;
 /// - or supply a 20‑byte key that you have already provisioned into the device so that both MFKDF2
 ///   and the token agree on the same `kₜ`.
-#[cfg_attr(feature = "bindings", derive(uniffi::Record))]
 #[derive(Clone, Debug, Serialize, Deserialize)]
+#[cfg_attr(feature = "bindings", derive(uniffi::Record))]
 pub struct HmacSha1Options {
   /// Optional application-defined identifier for the factor. Defaults to `"hmacsha1"`. If
   /// provided, it must be non-empty.
@@ -46,12 +46,7 @@ impl Default for HmacSha1Options {
 }
 
 /// HMAC‑SHA1 response
-#[derive(Clone, Debug, Serialize, Deserialize)]
-pub struct HmacSha1Response(pub [u8; 20]);
-
-impl From<[u8; 20]> for HmacSha1Response {
-  fn from(value: [u8; 20]) -> Self { HmacSha1Response(value) }
-}
+pub(crate) type HmacSha1Response = ByteArray<20>;
 
 /// HMAC‑SHA1 factor state.
 ///
@@ -60,11 +55,10 @@ impl From<[u8; 20]> for HmacSha1Response {
 /// that the derive side can use to confirm it has the same secret.
 #[cfg_attr(feature = "bindings", derive(uniffi::Record))]
 #[derive(Clone, Debug, Serialize, Deserialize)]
+#[cfg_attr(feature = "zeroize", derive(zeroize::Zeroize))]
 pub struct HmacSha1 {
   /// HMAC‑SHA1 response
   pub response:      Option<HmacSha1Response>,
-  /// Public parameters for the factor
-  pub params:        Option<String>,
   /// Padded HMAC key. 20 bytes of secret + 12 bytes of padding.
   pub padded_secret: Vec<u8>,
 }
@@ -87,6 +81,12 @@ impl FactorSetup for HmacSha1 {
     let mut padded_key = [0u8; 32];
     padded_key[..response.len()].copy_from_slice(&response);
     let pad = encrypt(&self.padded_secret, &padded_key);
+
+    #[cfg(feature = "zeroize")]
+    {
+      use zeroize::Zeroize;
+      padded_key.zeroize();
+    }
 
     Ok(json!({
       "challenge": hex::encode(challenge),
@@ -144,22 +144,21 @@ impl FactorSetup for HmacSha1 {
 /// let setup_key = setup::key(&[factor], MFKDF2Options::default())?;
 /// # Ok::<(), mfkdf2::error::MFKDF2Error>(())
 /// ```
-pub fn hmacsha1(options: HmacSha1Options) -> MFKDF2Result<MFKDF2Factor> {
+pub fn hmacsha1(mut options: HmacSha1Options) -> MFKDF2Result<MFKDF2Factor> {
   // Validation
   if let Some(ref id) = options.id
     && id.is_empty()
   {
     return Err(crate::error::MFKDF2Error::MissingFactorId);
   }
-  let id = options.id.clone().unwrap_or("hmacsha1".to_string());
+  let id = options.id.take().unwrap_or("hmacsha1".to_string());
 
-  let secret = if let Some(secret) = options.secret {
-    secret
-  } else {
+  // consume the secret from options and generate a random one if none is provided
+  let secret = options.secret.take().unwrap_or_else(|| {
     let mut secret = [0u8; 20];
     rng::fill_bytes(&mut secret);
     secret.to_vec()
-  };
+  });
   if secret.len() != 20 {
     return Err(crate::error::MFKDF2Error::InvalidSecretLength(id));
   }
@@ -169,7 +168,7 @@ pub fn hmacsha1(options: HmacSha1Options) -> MFKDF2Result<MFKDF2Factor> {
 
   Ok(MFKDF2Factor {
     id:          Some(id),
-    factor_type: FactorType::HmacSha1(HmacSha1 { padded_secret, response: None, params: None }),
+    factor_type: FactorType::HmacSha1(HmacSha1 { padded_secret, response: None }),
     entropy:     Some(160.0),
   })
 }

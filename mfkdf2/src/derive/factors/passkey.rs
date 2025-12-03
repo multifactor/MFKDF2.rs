@@ -8,7 +8,7 @@ use crate::{
   definitions::{FactorType, MFKDF2Factor},
   derive::FactorDerive,
   error::MFKDF2Result,
-  setup::factors::passkey::Passkey,
+  setup::factors::passkey::{Passkey, PasskeySecret},
 };
 
 impl FactorDerive for Passkey {
@@ -65,10 +65,10 @@ impl FactorDerive for Passkey {
 /// assert_eq!(derived_key.key, setup_key.key);
 /// # Ok::<(), mfkdf2::error::MFKDF2Error>(())
 /// ```
-pub fn passkey(secret: [u8; 32]) -> MFKDF2Result<MFKDF2Factor> {
+pub fn passkey(secret: impl Into<PasskeySecret>) -> MFKDF2Result<MFKDF2Factor> {
   Ok(MFKDF2Factor {
     id:          Some("passkey".to_string()),
-    factor_type: FactorType::Passkey(Passkey { secret: secret.to_vec() }),
+    factor_type: FactorType::Passkey(Passkey { secret: secret.into() }),
     entropy:     None,
   })
 }
@@ -79,6 +79,7 @@ async fn derive_passkey(secret: Vec<u8>) -> MFKDF2Result<MFKDF2Factor> {
   if secret.len() != 32 {
     return Err(crate::error::MFKDF2Error::InvalidSecretLength("passkey".to_string()));
   }
+  let secret: PasskeySecret = secret.try_into().unwrap();
 
-  passkey(secret.try_into().unwrap())
+  passkey(secret)
 }

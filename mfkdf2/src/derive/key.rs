@@ -93,7 +93,7 @@ use crate::{
 ///   .finalize()
 ///   .into_bytes()
 ///   .into();
-/// let derive_hmac = derive_hmacsha1(response.into())?;
+/// let derive_hmac = derive_hmacsha1(response)?;
 ///
 /// let derived_key = derive::key(
 ///   &setup_key.policy,
@@ -320,15 +320,19 @@ pub fn key(
 
   let sss = SecretSharing(policy.threshold);
   let secret = sss.recover(&shares_vec).map_err(|_| MFKDF2Error::ShareRecovery)?;
-  let secret_arr: [u8; 32] = secret[..32].try_into().map_err(|_| MFKDF2Error::TryFromVec)?;
+  #[cfg_attr(not(feature = "zeroize"), allow(unused_mut))]
+  let mut secret_arr: [u8; 32] = secret[..32].try_into().map_err(|_| MFKDF2Error::TryFromVec)?;
   let salt_bytes = general_purpose::STANDARD.decode(&policy.salt)?;
 
   // Generate key
   let mut kek = [0u8; 32];
   if stack {
     // stack key
-    kek =
-      hkdf_sha256_with_info(&secret, &salt_bytes, format!("mfkdf2:stack:{}", policy.id).as_bytes());
+    kek = hkdf_sha256_with_info(
+      &secret_arr,
+      &salt_bytes,
+      format!("mfkdf2:stack:{}", policy.id).as_bytes(),
+    );
   } else {
     // default key
     Argon2::new(
@@ -344,13 +348,13 @@ pub fn key(
     .hash_password_into(&secret_arr, &salt_bytes, &mut kek)?;
   }
 
-  let policy_key_bytes = general_purpose::STANDARD.decode(policy.key.as_bytes())?;
-
   // Create an internal key for deriving separate keys for parameters, secret, and integrity
-  let internal_key = decrypt(policy_key_bytes.clone(), &kek);
+  let policy_key_bytes = general_purpose::STANDARD.decode(policy.key.as_bytes())?;
+  let internal_key = decrypt(policy_key_bytes, &kek);
 
   // Perform integrity check
-  let integrity_key =
+  #[cfg_attr(not(feature = "zeroize"), allow(unused_mut))]
+  let mut integrity_key =
     hkdf_sha256_with_info(&internal_key, &salt_bytes, "mfkdf2:integrity".as_bytes());
   if verify {
     let integrity_data = policy.extract();
@@ -426,20 +430,30 @@ pub fn key(
     .map_err(|_| MFKDF2Error::ShareRecovery)?;
 
   // derive a dedicated final key to ensure domain separation between internal and external keys
-  let final_key = if !stack {
+  let final_key: [u8; 32] = if !stack {
     hkdf_sha256_with_info(&internal_key, &salt_bytes, "mfkdf2:key:final".as_bytes())
   } else {
     internal_key.try_into().map_err(|_| MFKDF2Error::TryFromVec)?
   };
 
-  Ok(MFKDF2DerivedKey {
+  let result = MFKDF2DerivedKey {
     policy: new_policy,
     key: final_key.into(),
-    secret: secret_arr.to_vec(),
+    secret: secret_arr.into(),
     shares: original_shares.into_iter().map(|s| Vec::from(&s)).collect(),
     outputs,
     entropy: MFKDF2Entropy { real: 0.0, theoretical: 0 },
-  })
+  };
+
+  #[cfg(feature = "zeroize")]
+  {
+    use zeroize::Zeroize;
+    secret_arr.zeroize();
+    kek.zeroize();
+    integrity_key.zeroize();
+  }
+
+  Ok(result)
 }
 
 #[cfg(feature = "bindings")]
@@ -590,7 +604,7 @@ mod tests {
       panic!()
     };
     let response = crate::crypto::hmacsha1(secret, &challenge);
-    let mut derive_hmac_factor = derive_hmacsha1(response.into()).unwrap();
+    let mut derive_hmac_factor = derive_hmacsha1(response).unwrap();
     derive_hmac_factor.id = Some("hmac".to_string());
     derive_factors_map.insert("hmac".to_string(), derive_hmac_factor);
 
@@ -822,7 +836,7 @@ mod tests {
     let challenge = hex::decode(params["challenge"].as_str().unwrap()).unwrap();
     let secret = &hmac_setup.padded_secret[..20];
     let response = crate::crypto::hmacsha1(secret, &challenge);
-    let mut derive_hmac_factor = derive_hmacsha1(response.into()).unwrap();
+    let mut derive_hmac_factor = derive_hmacsha1(response).unwrap();
     derive_hmac_factor.id = Some("hmac".to_string());
     derive_factors_map.insert("hmac".to_string(), derive_hmac_factor);
 

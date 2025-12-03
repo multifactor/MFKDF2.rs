@@ -68,7 +68,7 @@ fn integrity_enabled_clean_liveness() {
   // integrity enabled; clean policy should derive and remain stable across runs
   let setup_derived_key = make_policy(&["password", "hotp", "totp", "uuid"], 4, true);
 
-  let policy = setup_derived_key.policy;
+  let policy = setup_derived_key.policy.clone();
 
   let d1 = derive_once(&policy, &["password", "hotp", "totp", "uuid"], true);
   let d2 = derive_once(&d1.policy, &["password", "hotp", "totp", "uuid"], true);
@@ -81,7 +81,7 @@ fn integrity_enabled_clean_liveness() {
 fn integrity_enabled_rejects_policy_id_tamper() {
   let setup_derived_key = make_policy(&["password", "uuid"], 2, true);
 
-  let mut policy = setup_derived_key.policy;
+  let mut policy = setup_derived_key.policy.clone();
 
   policy.id = "tampered".to_string();
 
@@ -96,7 +96,7 @@ fn integrity_enabled_rejects_policy_id_tamper() {
 fn integrity_enabled_rejects_threshold_tamper() {
   let setup_derived_key = make_policy(&["password", "question"], 2, true);
 
-  let mut policy = setup_derived_key.policy;
+  let mut policy = setup_derived_key.policy.clone();
 
   // Tamper threshold
   policy.threshold += 1;
@@ -112,7 +112,7 @@ fn integrity_enabled_rejects_threshold_tamper() {
 fn integrity_enabled_rejects_salt_tamper() {
   let setup_derived_key = make_policy(&["password", "totp"], 2, true);
 
-  let mut policy = setup_derived_key.policy;
+  let mut policy = setup_derived_key.policy.clone();
 
   // Tamper salt (base64)
   policy.salt = "Ny9+L9LQHOKh1x3Acqy7pMb9JaEIfNfxU/TsDON+Ht4=".to_string();
@@ -128,7 +128,7 @@ fn integrity_enabled_rejects_salt_tamper() {
 fn integrity_enabled_rejects_factor_id_tamper() {
   let setup_derived_key = make_policy(&["password", "uuid"], 2, true);
 
-  let mut policy = setup_derived_key.policy;
+  let mut policy = setup_derived_key.policy.clone();
 
   // Tamper a factor id (password)
   if let Some(f) = policy.factors.iter_mut().find(|f| f.id == "password_1") {
@@ -156,7 +156,7 @@ fn integrity_enabled_rejects_derived_policy_tamper() {
   // Start clean with integrity=true
   let setup_derived_key = make_policy(&["password", "hotp", "totp", "uuid"], 4, true);
 
-  let policy = setup_derived_key.policy;
+  let policy = setup_derived_key.policy.clone();
 
   // First derive succeeds
   let derived = derive_once(&policy, &["password", "hotp", "uuid", "totp"], true);
