@@ -55,14 +55,6 @@ impl zeroize::Zeroize for PolicyFactor {
   }
 }
 
-#[cfg(feature = "zeroize")]
-impl Drop for PolicyFactor {
-  fn drop(&mut self) {
-    use zeroize::Zeroize;
-    self.zeroize();
-  }
-}
-
 /// MFKDF policy is a set of all allowable factor combinations that can be used to derive the final
 /// key. MFKDF instance after i-th derivation consists of public construction parameters (threshold,
 /// salt, etc.), per-factor public parameters (encrypted shares, secret), and factor public state
@@ -105,17 +97,6 @@ impl zeroize::Zeroize for Policy {
     self.factors.zeroize();
     self.hmac.zeroize();
     self.key.zeroize();
-  }
-}
-
-#[cfg(feature = "zeroize")]
-impl Drop for Policy {
-  fn drop(&mut self) {
-    use zeroize::Zeroize;
-    self.salt.zeroize();
-    self.hmac.zeroize();
-    self.key.zeroize();
-    self.factors.zeroize();
   }
 }
 
