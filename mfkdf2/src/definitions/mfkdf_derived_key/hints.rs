@@ -42,7 +42,7 @@ impl MFKDF2DerivedKey {
     }
 
     // derive internal key
-    let internal_key = self.derive_internal_key()?;
+    let mut internal_key = self.derive_internal_key()?;
 
     let factor_data = self
       .policy
@@ -52,13 +52,13 @@ impl MFKDF2DerivedKey {
       .ok_or_else(|| MFKDF2Error::MissingFactor(factor_id.to_string()))?;
     let pad = base64::Engine::decode(&general_purpose::STANDARD, factor_data.secret.as_bytes())?;
     let salt = base64::Engine::decode(&general_purpose::STANDARD, factor_data.salt.as_bytes())?;
-    let secret_key = crate::crypto::hkdf_sha256_with_info(
+    let mut secret_key = crate::crypto::hkdf_sha256_with_info(
       &internal_key,
       &salt,
       format!("mfkdf2:factor:secret:{factor_id}").as_bytes(),
     );
 
-    let factor_material = crate::crypto::decrypt(pad, &secret_key);
+    let mut factor_material = crate::crypto::decrypt(pad, &secret_key);
     let buffer = crate::crypto::hkdf_sha256_with_info(
       &factor_material,
       &salt,
@@ -69,6 +69,14 @@ impl MFKDF2DerivedKey {
       write!(&mut acc, "{byte:08b}").unwrap();
       acc
     });
+
+    #[cfg(feature = "zeroize")]
+    {
+      use zeroize::Zeroize;
+      internal_key.zeroize();
+      secret_key.zeroize();
+      factor_material.zeroize();
+    }
 
     Ok(
       binary_string
@@ -143,7 +151,7 @@ impl MFKDF2DerivedKey {
   /// ```
   pub fn add_hint(&mut self, factor_id: &str, bits: Option<u8>) -> Result<(), MFKDF2Error> {
     // derive internal key
-    let internal_key = self.derive_internal_key()?;
+    let mut internal_key = self.derive_internal_key()?;
 
     // verify policy integrity
     if !self.policy.hmac.is_empty() {
@@ -173,6 +181,12 @@ impl MFKDF2DerivedKey {
       let digest = hmacsha256(&integrity_key, &integrity_data);
       let hmac = general_purpose::STANDARD.encode(digest);
       self.policy.hmac = hmac;
+    }
+
+    #[cfg(feature = "zeroize")]
+    {
+      use zeroize::Zeroize;
+      internal_key.zeroize();
     }
 
     Ok(())
