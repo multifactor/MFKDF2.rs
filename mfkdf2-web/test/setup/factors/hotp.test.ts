@@ -54,7 +54,7 @@ suite('setup/factors/hotp', () => {
       issuer: 'TestCorp',
       label: 'test@example.com'
     })
-    factor.id.should.equal('myhotp')
+    factor.id?.should.equal('myhotp')
     factor.type.should.equal('hotp')
     const output = await factor.output()
     output.should.have.property('issuer', 'TestCorp')

@@ -28,7 +28,7 @@ suite('setup/factors/question', () => {
   test('valid - with defaults', async () => {
     const factor = await mfkdf.setup.factors.question('Paris')
     factor.type.should.equal('question')
-    factor.id.should.equal('question')
+    factor.id?.should.equal('question')
     // Answer is normalized: lowercase, alphanumeric only
     factor.data.toString().should.equal('paris')
     const params = await factor.params()
@@ -54,7 +54,7 @@ suite('setup/factors/question', () => {
       id: 'color',
       question: 'Favorite color?'
     })
-    factor.id.should.equal('color')
+    factor.id?.should.equal('color')
     const output = await factor.output()
     output.should.have.property('strength')
   })

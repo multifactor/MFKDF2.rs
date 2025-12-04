@@ -30,7 +30,7 @@ suite('setup/factors/stack', () => {
     const factor1 = await mfkdf.setup.factors.password('password1', { id: 'pwd1' })
     const stackFactor = await mfkdf.setup.factors.stack([factor1])
     stackFactor.type.should.equal('stack')
-    stackFactor.id.should.equal('stack')
+    stackFactor.id?.should.equal('stack')
     stackFactor.should.have.property('data')
     const params = await stackFactor.params()
     params.should.have.property('threshold', 1)
@@ -43,7 +43,7 @@ suite('setup/factors/stack', () => {
       id: 'mystack'
     })
     stackFactor.type.should.equal('stack')
-    stackFactor.id.should.equal('mystack')
+    stackFactor.id?.should.equal('mystack')
     const params = await stackFactor.params()
     params.should.have.property('threshold', 2)
     params.should.have.property('factors')

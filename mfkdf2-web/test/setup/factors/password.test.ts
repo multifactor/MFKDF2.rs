@@ -69,7 +69,7 @@ suite('setup/factors/password - with key parameter', () => {
     const params = await factor.params(customKey.buffer);
     params.should.deep.equal({});
 
-    const output = await factor.output(customKey.buffer);
+    const output = await factor.output();
     output.should.have.property('strength');
   });
 
@@ -83,7 +83,7 @@ suite('setup/factors/password - with key parameter', () => {
     paramsNoKey.should.deep.equal(paramsWithKey);
 
     const outputNoKey = await factor.output();
-    const outputWithKey = await factor.output(new Uint8Array(32).buffer);
+    const outputWithKey = await factor.output();
 
     // Both should have strength property (value might differ slightly but structure same)
     outputNoKey.should.have.property('strength');

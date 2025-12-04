@@ -106,5 +106,9 @@ impl Policy {
 }
 
 #[cfg(feature = "bindings")]
+#[cfg_attr(feature = "bindings", uniffi::export(name = "policy_ids"))]
+fn policy_ids(policy: &Policy) -> Vec<String> { policy.ids() }
+
+#[cfg(feature = "bindings")]
 #[cfg_attr(feature = "bindings", uniffi::export(name = "policy_validate"))]
 fn validate(policy: &Policy) -> bool { policy.validate() }

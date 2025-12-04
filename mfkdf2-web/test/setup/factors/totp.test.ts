@@ -57,7 +57,7 @@ suite('setup/factors/totp', () => {
       label: 'test@example.com',
       step: 60
     })
-    factor.id.should.equal('mytotp')
+    factor.id?.should.equal('mytotp')
     factor.type.should.equal('totp')
     const output = await factor.output()
     output.should.have.property('issuer', 'TestCorp')

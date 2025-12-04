@@ -118,10 +118,6 @@ suite('mfkdf2/security', () => {
         await mfkdf.setup.factors.password('password2', { id: 'password2' })
       ])
 
-      // TODO (@lonerapier): current ts api doesn't return closure
-      // const materialp1 = await mfkdf.derive.factors.password('password1')(
-      //   setup.policy.factors[0].params
-      // )
       const materialp1 = await mfkdf.derive.factors.password('password1')
       const padp1 = Buffer.from(setup.policy.factors[0].pad, 'base64')
       const stretchedp1 = Buffer.from(
@@ -159,10 +155,6 @@ suite('mfkdf2/security', () => {
       })
       derive2.key.toString('hex').should.equal(setup.key.toString('hex'))
 
-      // TODO (@lonerapier): current ts api doesn't return closure
-      // const materialp3 = await mfkdf.derive.factors.password('newPassword1')(
-      //   derive.policy.factors[0].params
-      // )
       const materialp3 = await mfkdf.derive.factors.password('newPassword1')
       const padp3 = Buffer.from(derive.policy.factors[0].pad, 'base64')
       const stretchedp3 = Buffer.from(
