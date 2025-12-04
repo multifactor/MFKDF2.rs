@@ -6,6 +6,9 @@
 //! Consider a key derived from a password, a TOTP factor, and a UUID factor. Using threshold
 //! recovery, the user can derive the key with only a subset of factors inside the policy.
 //!
+//! **Note**: MFKDF2 provides no mechanism to invalidate old policies. When threshold is increased
+//! via reconstitution, old policies can still be used to derive keys.
+//!
 //! ```rust
 //! # use std::collections::HashMap;
 //! # use uuid::Uuid;
