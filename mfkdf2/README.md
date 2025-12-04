@@ -276,6 +276,8 @@ a Shamir‑style secret sharing scheme, one share per factor. During derive, any
 that supplies at least `threshold` valid shares can reconstruct the same secret and therefore
 the same derived key.
 
+**Note**: MFKDF2 provides no mechanism to invalidate old policies. When threshold is increased via [reconstitution](`crate::definitions::mfkdf_derived_key::reconstitution`), old policies can still be used to derive keys.
+
 ## Setup: configuring a 2‑of‑3 recovery policy
 
 The snippet below constructs a 2‑of‑3 key from a password, an HOTP soft token, and a UUID
@@ -462,6 +464,13 @@ let derived = derive::key(
 
 The same outer key can also be derived with only `password3` by supplying a single password
 factor keyed by `"password3"` to [setup key](`crate::derive::key`).
+
+# Integrity Protetion
+
+
+MFKDF2 allows policy integrity to be enforced between each subsequent derives, and is enabled by default. An honest client will only accept a state if the key it derives from that state correctly validates the state’s integrity. Before deriving the final key, current policy's self-referential tag is checked. This is enabled using `verify` flag in [setup](`crate::setup::key`) and [derive](`crate::derive::key`). If any mismatch is detected, the [PolicyIntegrityCheckFailed](`crate::error::MFKDF2Error::PolicyIntegrityCheckFailed`) error is returned.
+
+When integrity is disabled, adversary can modify factor public state like threshold, factor parameters, encrypted shares. This may expose underlying keys and factor secrets, reducing the overall entropy of the key.
 
 # Feature Flags
 

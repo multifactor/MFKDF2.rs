@@ -14,8 +14,11 @@ required-features = ["bindings"]
 [dependencies]
 # Cryptography
 aes = { version = "0.8", default-features = false }
+cbc = { version = "0.1.2", default-features = false }
 cipher = { version = "0.4", default-features = false, features = [
   "block-padding",
+  "rand_core",
+  "std",
 ] }
 ecb = { version = "0.1", default-features = false }
 hkdf = { version = "0.12", default-features = false }
@@ -83,6 +86,7 @@ data-encoding = { version = "2.9.0", default-features = false, features = [
   "alloc",
 ] }
 regex = { version = "1.11.3", default-features = false }
+
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 console_log = { version = "1.0", default-features = false }

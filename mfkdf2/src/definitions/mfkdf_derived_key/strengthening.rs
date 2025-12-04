@@ -93,6 +93,10 @@ impl MFKDF2DerivedKey {
   /// [`crate::error::MFKDF2Error::PolicyIntegrityCheckFailed`] if an attacker attempts to
   /// weaken or roll back the policy, as that invalidates the integrity MAC.
   pub fn strengthen(&mut self, time: u32, memory: u32) -> MFKDF2Result<()> {
+    // derive internal key
+    let internal_key = self.derive_internal_key()?;
+
+    // update policy time and memory
     self.policy.time = time;
     self.policy.memory = memory;
 
@@ -112,7 +116,7 @@ impl MFKDF2DerivedKey {
     )
     .hash_password_into(&self.secret, &salt, &mut kek)?;
 
-    let policy_key = encrypt(self.key.as_ref(), &kek);
+    let policy_key = encrypt(&internal_key, &kek);
     self.policy.key = general_purpose::STANDARD.encode(policy_key);
     Ok(())
   }

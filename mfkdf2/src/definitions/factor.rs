@@ -35,7 +35,7 @@ pub(crate) trait FactorMetadata: Send + Sync + std::fmt::Debug {
 ///
 /// ```rust
 /// use mfkdf2::{
-///   definitions::{FactorMetadata, FactorType},
+///   definitions::FactorType,
 ///   derive::factors::password as derive_password,
 ///   setup::factors::password::{PasswordOptions, password},
 /// };
@@ -48,7 +48,6 @@ pub(crate) trait FactorMetadata: Send + Sync + std::fmt::Debug {
 ///   _ => panic!("Wrong factor type"),
 /// };
 /// assert_eq!(p.password, "password123");
-/// assert_eq!(p.bytes(), "password123".as_bytes());
 ///
 /// // derive a key using the password factor
 /// let derive = derive_password("password123")?;
