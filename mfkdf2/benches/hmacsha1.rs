@@ -6,7 +6,7 @@ use mfkdf2::{
   derive,
   setup::{
     self,
-    factors::hmacsha1::{HmacSha1Options, HmacSha1Response, hmacsha1},
+    factors::hmacsha1::{HmacSha1Options, hmacsha1},
   },
 };
 
@@ -44,7 +44,7 @@ fn bench_hmacsha1(c: &mut Criterion) {
     b.iter(|| {
       let factors_map = black_box(HashMap::from([(
         "hmac".to_string(),
-        derive::factors::hmacsha1(HmacSha1Response(SECRET20)).unwrap(),
+        derive::factors::hmacsha1(SECRET20).unwrap(),
       )]));
       let result = black_box(derive::key(&single_setup_key.policy, factors_map, false, false));
       result.unwrap()
@@ -107,19 +107,19 @@ fn bench_hmacsha1(c: &mut Criterion) {
   group.bench_function("multiple_derive_3", |b| {
     b.iter(|| {
       let factors_map = black_box(HashMap::from([
-        ("hmac1".to_string(), derive::factors::hmacsha1(HmacSha1Response(SECRET20)).unwrap()),
+        ("hmac1".to_string(), derive::factors::hmacsha1(SECRET20).unwrap()),
         (
           "hmac2".to_string(),
-          derive::factors::hmacsha1(HmacSha1Response([
+          derive::factors::hmacsha1([
             1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20,
-          ]))
+          ])
           .unwrap(),
         ),
         (
           "hmac3".to_string(),
-          derive::factors::hmacsha1(HmacSha1Response([
+          derive::factors::hmacsha1([
             21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40,
-          ]))
+          ])
           .unwrap(),
         ),
       ]));
@@ -156,12 +156,12 @@ fn bench_hmacsha1(c: &mut Criterion) {
   group.bench_function("threshold_derive_2_of_3", |b| {
     b.iter(|| {
       let factors_map = black_box(HashMap::from([
-        ("hmac1".to_string(), derive::factors::hmacsha1(HmacSha1Response(SECRET20)).unwrap()),
+        ("hmac1".to_string(), derive::factors::hmacsha1(SECRET20).unwrap()),
         (
           "hmac2".to_string(),
-          derive::factors::hmacsha1(HmacSha1Response([
+          derive::factors::hmacsha1([
             1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20,
-          ]))
+          ])
           .unwrap(),
         ),
       ]));

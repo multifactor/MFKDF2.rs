@@ -93,6 +93,19 @@ pub struct OtpAuthUrlOptions {
   pub algorithm: Option<HashAlgorithm>,
 }
 
+#[cfg(feature = "zeroize")]
+impl zeroize::Zeroize for OtpAuthUrlOptions {
+  fn zeroize(&mut self) { self.secret.zeroize(); }
+}
+
+#[cfg(feature = "zeroize")]
+impl Drop for OtpAuthUrlOptions {
+  fn drop(&mut self) {
+    use zeroize::Zeroize;
+    self.zeroize();
+  }
+}
+
 /// Convert an input secret (with a declared encoding) into Base32 (no padding),
 /// removing spaces and normalizing case where needed.
 fn secret_to_base32_no_pad(secret: &str, enc: &Encoding) -> Result<String, String> {

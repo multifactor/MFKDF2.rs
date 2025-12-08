@@ -100,6 +100,13 @@ pub struct Ooba {
   pub params: Value,
 }
 
+#[cfg(feature = "zeroize")]
+impl zeroize::Zeroize for Ooba {
+  fn zeroize(&mut self) {
+    self.target.zeroize();
+    self.code.zeroize();
+  }
+}
 impl TryFrom<&Jwk> for OobaPublicKey {
   type Error = MFKDF2Error;
 
@@ -218,7 +225,7 @@ impl FactorSetup for Ooba {
 /// assert!(matches!(result, Err(MFKDF2Error::InvalidOobaLength)));
 /// # Ok::<(), MFKDF2Error>(())
 /// ```
-pub fn ooba(options: OobaOptions) -> MFKDF2Result<MFKDF2Factor> {
+pub fn ooba(mut options: OobaOptions) -> MFKDF2Result<MFKDF2Factor> {
   // Validation
   if let Some(ref id) = options.id
     && id.is_empty()
@@ -230,8 +237,8 @@ pub fn ooba(options: OobaOptions) -> MFKDF2Result<MFKDF2Factor> {
     return Err(MFKDF2Error::InvalidOobaLength);
   }
 
-  let params = options.params.unwrap_or(json!({}));
-  let key = options.key.ok_or(MFKDF2Error::MissingOobaKey)?;
+  let params = options.params.take().unwrap_or_default();
+  let key = options.key.take().ok_or(MFKDF2Error::MissingOobaKey)?;
   // verify that key is rsa public key
   if !matches!(key.algorithm, jsonwebtoken::jwk::AlgorithmParameters::RSA(_)) {
     return Err(MFKDF2Error::InvalidOobaKey);
@@ -242,7 +249,7 @@ pub fn ooba(options: OobaOptions) -> MFKDF2Result<MFKDF2Factor> {
   crate::rng::fill_bytes(&mut target);
 
   Ok(MFKDF2Factor {
-    id:          Some(options.id.unwrap_or("ooba".to_string())),
+    id:          Some(options.id.take().unwrap_or("ooba".to_string())),
     factor_type: FactorType::OOBA(Ooba {
       target: target.to_vec(),
       length,

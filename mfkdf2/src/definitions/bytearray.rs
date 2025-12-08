@@ -3,8 +3,9 @@
 use serde::{Deserialize, Serialize};
 
 /// Generic fixed-size byte array used as the basis for key-like types.
-#[derive(Debug, Clone, PartialEq)]
-pub struct ByteArray<const N: usize>(pub [u8; N]);
+#[derive(Debug, Clone, PartialEq, Eq)]
+#[cfg_attr(feature = "zeroize", derive(zeroize::Zeroize, zeroize::ZeroizeOnDrop))]
+pub struct ByteArray<const N: usize>([u8; N]);
 
 /// 32 byte key
 pub type Key = ByteArray<32>;
@@ -42,38 +43,45 @@ impl<const N: usize> std::ops::Deref for ByteArray<N> {
   fn deref(&self) -> &Self::Target { &self.0 }
 }
 
-// Implement traits specifically for 32‑byte keys to satisfy serde and default bounds.
+// Macro to implement Default, Serialize, and Deserialize for fixed-size ByteArrays
+macro_rules! impl_bytearray {
+  ($N:expr) => {
+    impl Default for ByteArray<$N> {
+      fn default() -> Self { ByteArray([0u8; $N]) }
+    }
 
-impl Default for ByteArray<32> {
-  fn default() -> Self { ByteArray([0u8; 32]) }
-}
-
-impl Serialize for ByteArray<32> {
-  fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-  where S: serde::Serializer {
-    serializer.serialize_newtype_struct("Key", &self.0)
-  }
-}
-
-impl<'de> Deserialize<'de> for ByteArray<32> {
-  fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-  where D: serde::Deserializer<'de> {
-    struct KeyVisitor;
-
-    impl<'de> serde::de::Visitor<'de> for KeyVisitor {
-      type Value = ByteArray<32>;
-
-      fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
-        formatter.write_str("a 32-byte array for Key")
-      }
-
-      fn visit_newtype_struct<D>(self, deserializer: D) -> Result<Self::Value, D::Error>
-      where D: serde::Deserializer<'de> {
-        let bytes = <[u8; 32]>::deserialize(deserializer)?;
-        Ok(ByteArray(bytes))
+    impl Serialize for ByteArray<$N> {
+      fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+      where S: serde::Serializer {
+        serializer.serialize_newtype_struct(stringify!(ByteArray), &self.0)
       }
     }
 
-    deserializer.deserialize_newtype_struct("Key", KeyVisitor)
-  }
+    impl<'de> Deserialize<'de> for ByteArray<$N> {
+      fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+      where D: serde::Deserializer<'de> {
+        struct ByteArrayVisitor;
+
+        impl<'de> serde::de::Visitor<'de> for ByteArrayVisitor {
+          type Value = ByteArray<$N>;
+
+          fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+            write!(formatter, "a {}-byte array", $N)
+          }
+
+          fn visit_newtype_struct<D>(self, deserializer: D) -> Result<Self::Value, D::Error>
+          where D: serde::Deserializer<'de> {
+            let bytes = <[u8; $N]>::deserialize(deserializer)?;
+            Ok(ByteArray(bytes))
+          }
+        }
+
+        deserializer.deserialize_newtype_struct(stringify!(ByteArray), ByteArrayVisitor)
+      }
+    }
+  };
 }
+
+// Implement for 20-byte and 32-byte arrays
+impl_bytearray!(20);
+impl_bytearray!(32);

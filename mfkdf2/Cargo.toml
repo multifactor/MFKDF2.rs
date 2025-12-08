@@ -86,6 +86,10 @@ data-encoding = { version = "2.9.0", default-features = false, features = [
   "alloc",
 ] }
 regex = { version = "1.11.3", default-features = false }
+zeroize = { version = "1.8.2", optional = true, default-features = false, features = [
+  "zeroize_derive",
+  "alloc",
+] }
 
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
@@ -159,10 +163,11 @@ name    = "reconstitution"
 path    = "benches/reconstitution.rs"
 
 [features]
-default = []
+default = ["zeroize"]
 # Enable UniFFI bindings (FFI exports, scaffolding, bin, etc.)
 bindings          = ["dep:uniffi"]
 differential-test = []
+zeroize           = ["dep:zeroize"]
 
 [package.metadata.docs.rs]
 rustdoc-args = ["--html-in-header", "katex-header.html"]

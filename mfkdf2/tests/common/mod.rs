@@ -262,7 +262,7 @@ pub fn create_derive_factor(
         .finalize()
         .into_bytes()
         .into();
-      ("hmacsha1_1".to_string(), mfkdf2::derive::factors::hmacsha1(response.into()).unwrap())
+      ("hmacsha1_1".to_string(), mfkdf2::derive::factors::hmacsha1(response).unwrap())
     },
     "question" =>
       ("question_1".to_string(), mfkdf2::derive::factors::question("my secret answer").unwrap()),

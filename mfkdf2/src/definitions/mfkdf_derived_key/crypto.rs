@@ -7,9 +7,17 @@ impl crate::definitions::MFKDF2DerivedKey {
     let purpose = purpose.unwrap_or("");
 
     // derive internal key
-    let internal_key = self.derive_internal_key()?;
+    let mut internal_key = self.derive_internal_key()?;
     // derive subkey
-    Ok(crate::crypto::hkdf_sha256_with_info(&internal_key, salt, purpose.as_bytes()))
+    let subkey = crate::crypto::hkdf_sha256_with_info(&internal_key, salt, purpose.as_bytes());
+
+    #[cfg(feature = "zeroize")]
+    {
+      use zeroize::Zeroize;
+      internal_key.zeroize();
+    }
+
+    Ok(subkey)
   }
 }
 

@@ -30,17 +30,15 @@ pub struct StackOptions {
 }
 
 impl From<StackOptions> for MFKDF2Options {
-  fn from(value: StackOptions) -> Self {
-    let StackOptions { id, threshold, salt } = value;
-
+  fn from(mut value: StackOptions) -> Self {
     MFKDF2Options {
-      id,
-      threshold,
-      salt,
-      stack: Some(true),
+      id:        value.id.take(),
+      threshold: value.threshold.take(),
+      salt:      value.salt.take(),
+      stack:     Some(true),
       integrity: Some(false),
-      time: None,
-      memory: None,
+      time:      None,
+      memory:    None,
     }
   }
 }
@@ -56,6 +54,14 @@ pub struct Stack {
   pub factors: HashMap<String, MFKDF2Factor>,
   /// Final Derived key.
   pub key:     MFKDF2DerivedKey,
+}
+
+#[cfg(feature = "zeroize")]
+impl zeroize::Zeroize for Stack {
+  fn zeroize(&mut self) {
+    self.factors.values_mut().for_each(|factor| factor.zeroize());
+    self.key.zeroize();
+  }
 }
 
 impl FactorMetadata for Stack {
