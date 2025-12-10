@@ -14,14 +14,12 @@ use crate::{definitions::Key, error::MFKDF2Result};
 /// Trait for factor setup.
 pub(crate) trait FactorSetup {
   /// Public parameters for the factor setup.
-  type Params: Serialize + for<'de> Deserialize<'de> + Default;
+  type Params: Serialize + for<'de> Deserialize<'de>;
   /// Public output for the factor setup.
-  type Output: Serialize + for<'de> Deserialize<'de> + Default;
+  type Output: Serialize + for<'de> Deserialize<'de>;
 
   /// Returns the public parameters for the factor setup.
-  fn params(&self, _key: Key) -> MFKDF2Result<Self::Params> {
-    Ok(serde_json::from_value(serde_json::json!({}))?)
-  }
+  fn params(&self, _key: Key) -> MFKDF2Result<Self::Params>;
   /// Returns the public output for the factor setup.
-  fn output(&self) -> Self::Output { serde_json::from_value(serde_json::json!({})).unwrap() }
+  fn output(&self) -> Self::Output;
 }

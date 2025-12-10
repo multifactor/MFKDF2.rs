@@ -21,7 +21,6 @@ use crate::{
   definitions::{MFKDF2DerivedKey, MFKDF2Factor, MFKDF2Options, Salt},
   error::{MFKDF2Error, MFKDF2Result},
   policy::{Policy, PolicyFactor},
-  setup::FactorSetup,
 };
 
 /// Initializes a derived key from a list of factors and options.
@@ -279,7 +278,7 @@ pub fn key(factors: &[MFKDF2Factor], options: MFKDF2Options) -> MFKDF2Result<MFK
       hkdf_sha256_with_info(&internal_key, &salt, format!("mfkdf2:factor:params:{id}").as_bytes());
     let params = factor.factor_type.setup().params(params_key.into())?;
 
-    outputs.insert(id.clone(), factor.factor_type.output());
+    outputs.insert(id.clone(), factor.factor_type.setup().output());
 
     let mut secret_key =
       hkdf_sha256_with_info(&internal_key, &salt, format!("mfkdf2:factor:secret:{id}").as_bytes());
