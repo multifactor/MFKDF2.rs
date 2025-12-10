@@ -6,13 +6,13 @@
 use std::collections::HashMap;
 
 use serde::{Deserialize, Serialize};
-use serde_json::Value;
 
 use crate::{
   definitions::{
     FactorType, Key, MFKDF2DerivedKey, MFKDF2Factor, MFKDF2Options, Salt, factor::FactorMetadata,
   },
   error::{MFKDF2Error, MFKDF2Result},
+  policy::Policy,
   setup::{FactorSetup, key},
 };
 
@@ -59,7 +59,7 @@ pub struct Stack {
 #[cfg(feature = "zeroize")]
 impl zeroize::Zeroize for Stack {
   fn zeroize(&mut self) {
-    self.factors.values_mut().for_each(|factor| factor.zeroize());
+    self.factors.values_mut().for_each(zeroize::Zeroize::zeroize);
     self.key.zeroize();
   }
 }
@@ -70,15 +70,31 @@ impl FactorMetadata for Stack {
   fn bytes(&self) -> Vec<u8> { self.key.key.clone().into() }
 }
 
+/// Stack factor parameters.
+#[cfg_attr(feature = "bindings", derive(uniffi::Record))]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+pub struct StackParams {
+  /// Policy for the stacked key.
+  pub policy: Policy,
+}
+
+/// Stack factor output.
+#[cfg_attr(feature = "bindings", derive(uniffi::Record))]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+pub struct StackOutput {
+  /// Derived key information.
+  pub key: MFKDF2DerivedKey,
+}
+
 impl FactorSetup for Stack {
-  type Output = Value;
-  type Params = Value;
+  type Output = StackOutput;
+  type Params = StackParams;
 
   fn params(&self, _key: Key) -> MFKDF2Result<Self::Params> {
-    Ok(serde_json::to_value(&self.key.policy)?)
+    Ok(StackParams { policy: self.key.policy.clone() })
   }
 
-  fn output(&self) -> Self::Output { serde_json::to_value(&self.key).unwrap() }
+  fn output(&self) -> Self::Output { StackOutput { key: self.key.clone() } }
 }
 
 /// Creates a stack factor from existing factors.
@@ -146,7 +162,10 @@ async fn setup_stack(
 #[cfg(test)]
 mod tests {
   use super::*;
-  use crate::setup::factors::password::{PasswordOptions, password};
+  use crate::{
+    definitions::factor::{FactorOutput, FactorParams},
+    setup::factors::password::{PasswordOptions, password},
+  };
 
   #[test]
   fn setup_stack_construction() {
@@ -195,13 +214,11 @@ mod tests {
     let key = [0u8; 32];
 
     let params = stack_factor.factor_type.setup().params(key.into()).unwrap();
-    let output = stack_factor.factor_type.output();
+    let output = stack_factor.factor_type.setup().output();
 
     if let FactorType::Stack(stack) = stack_factor.factor_type {
-      let expected_params = serde_json::to_value(&stack.key.policy).unwrap();
-      let expected_output = serde_json::to_value(&stack.key).unwrap();
-      assert_eq!(params, expected_params);
-      assert_eq!(output, expected_output);
+      assert_eq!(params, FactorParams::Stack(StackParams { policy: stack.key.policy.clone() }));
+      assert_eq!(output, FactorOutput::Stack(StackOutput { key: stack.key }));
     } else {
       panic!("Expected Stack factor type");
     }

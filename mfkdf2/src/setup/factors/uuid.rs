@@ -4,7 +4,6 @@
 //! device binding or opaque identifiers where you want stable, high‑entropy bytes that are not
 //! intended to be memorized by a user.
 use serde::{Deserialize, Serialize};
-use serde_json::{Value, json};
 pub use uuid::Uuid;
 
 use crate::{
@@ -47,15 +46,28 @@ impl FactorMetadata for UUIDFactor {
   fn bytes(&self) -> Vec<u8> { self.uuid.as_bytes().to_vec() }
 }
 
-impl FactorSetup for UUIDFactor {
-  type Output = Value;
-  type Params = Value;
+/// UUID factor parameters.
+#[cfg_attr(feature = "bindings", derive(uniffi::Record))]
+#[derive(Clone, Debug, Default, Serialize, Deserialize, Eq, PartialEq)]
+pub struct UUIDFactorParams {}
 
-  fn output(&self) -> Self::Output {
-    json!({
-      "uuid": self.uuid,
-    })
+/// UUID factor output.
+#[cfg_attr(feature = "bindings", derive(uniffi::Record))]
+#[derive(Clone, Debug, Default, Serialize, Deserialize, Eq, PartialEq)]
+pub struct UUIDFactorOutput {
+  /// UUID used as factor material.
+  pub uuid: Uuid,
+}
+
+impl FactorSetup for UUIDFactor {
+  type Output = UUIDFactorOutput;
+  type Params = UUIDFactorParams;
+
+  fn params(&self, _key: crate::definitions::Key) -> MFKDF2Result<Self::Params> {
+    Ok(UUIDFactorParams::default())
   }
+
+  fn output(&self) -> Self::Output { UUIDFactorOutput { uuid: self.uuid } }
 }
 
 /// Creates a UUID factor from the given options.

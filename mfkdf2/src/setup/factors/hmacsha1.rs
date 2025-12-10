@@ -8,13 +8,12 @@
 //!   initial challenge + encrypted pad is produced that can later be stored with the policy;
 //! - during **derive**, the policy provides a fresh challenge for this factor. The challenge is
 //!   sent to the hardware token, collecting the 20‑byte HMAC‑SHA1 response, and passes it back to
-//!   MFKDF2 as [`HmacSha1Response`], which lets the library recover the same secret key material
-//!   without the token ever exposing `kₜ` again.
+//!   MFKDF2, which lets the library recover the same secret key material without the token ever
+//!   exposing `kₜ` again.
 //!
 //! The resulting factor gives you a stable 160‑bit secret that is only re‑derivable by a client
 //! that can answer the HMAC‑SHA1 challenge‑response protocol.
 use serde::{Deserialize, Serialize};
-use serde_json::{Value, json};
 
 use crate::{
   crypto::encrypt,
@@ -69,11 +68,29 @@ impl FactorMetadata for HmacSha1 {
   fn bytes(&self) -> Vec<u8> { self.padded_secret.clone() }
 }
 
-impl FactorSetup for HmacSha1 {
-  type Output = Value;
-  type Params = Value;
+/// HMAC-SHA1 factor parameters.
+#[cfg_attr(feature = "bindings", derive(uniffi::Record))]
+#[derive(Clone, Debug, Default, Serialize, Deserialize, Eq, PartialEq)]
+pub struct HmacSha1Params {
+  /// Hex-encoded challenge bytes (64 bytes).
+  pub challenge: String,
+  /// Hex-encoded encrypted pad.
+  pub pad:       String,
+}
 
-  fn params(&self, _key: Key) -> MFKDF2Result<Value> {
+/// HMAC-SHA1 factor output.
+#[cfg_attr(feature = "bindings", derive(uniffi::Record))]
+#[derive(Clone, Debug, Default, Serialize, Deserialize, Eq, PartialEq)]
+pub struct HmacSha1Output {
+  /// HMAC-SHA1 secret (20 bytes).
+  pub secret: Vec<u8>,
+}
+
+impl FactorSetup for HmacSha1 {
+  type Output = HmacSha1Output;
+  type Params = HmacSha1Params;
+
+  fn params(&self, _key: Key) -> MFKDF2Result<Self::Params> {
     let mut challenge = [0u8; 64];
     rng::fill_bytes(&mut challenge);
 
@@ -88,17 +105,10 @@ impl FactorSetup for HmacSha1 {
       padded_key.zeroize();
     }
 
-    Ok(json!({
-      "challenge": hex::encode(challenge),
-      "pad": hex::encode(pad),
-    }))
+    Ok(HmacSha1Params { challenge: hex::encode(challenge), pad: hex::encode(pad) })
   }
 
-  fn output(&self) -> Self::Output {
-    json!({
-      "secret": self.padded_secret[..20],
-    })
-  }
+  fn output(&self) -> Self::Output { HmacSha1Output { secret: self.padded_secret[..20].to_vec() } }
 }
 
 /// Creates an HMAC‑SHA1 factor from the given options.
@@ -107,9 +117,8 @@ impl FactorSetup for HmacSha1 {
 /// returns an [`MFKDF2Factor`] with 160 bits of entropy.
 ///
 /// The factor is consumed by the derive side via
-/// [`derive::hmacsha1`](`crate::derive::factors::hmacsha1`) which accepts an
-/// [`HmacSha1Response`] (the 20‑byte HMAC‑SHA1 output from the hardware token for the current
-/// challenge) and reconstructs the original secret.
+/// [`derive::hmacsha1`](`crate::derive::factors::hmacsha1`) which accepts the 20‑byte HMAC‑SHA1
+/// output from the hardware token for the current challenge and reconstructs the original secret.
 ///
 /// # Errors
 /// - [`crate::error::MFKDF2Error::MissingFactorId`] if `id` is provided but empty.
@@ -182,6 +191,7 @@ async fn setup_hmacsha1(options: HmacSha1Options) -> MFKDF2Result<MFKDF2Factor> 
 #[cfg(test)]
 mod tests {
   use super::*;
+  use crate::definitions::factor::FactorParams;
 
   const SECRET: [u8; 20] = [
     0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f, 0x10,
@@ -205,10 +215,10 @@ mod tests {
     // Get the challenge and pad from params
     let params = factor.factor_type.setup().params([0u8; 32].into()).unwrap();
 
-    assert!(params.is_object());
+    let params = if let FactorParams::HmacSha1(p) = params { p } else { unreachable!() };
 
-    let challenge = hex::decode(params["challenge"].as_str().unwrap()).unwrap();
-    let pad = hex::decode(params["pad"].as_str().unwrap()).unwrap();
+    let challenge = hex::decode(params.challenge).unwrap();
+    let pad = hex::decode(params.pad).unwrap();
 
     // Compute HMAC-SHA1 response externally to verify
     let expected_response = crate::crypto::hmacsha1(&SECRET, &challenge);
@@ -230,8 +240,13 @@ mod tests {
     assert_eq!(factor.kind(), "hmacsha1");
     assert_eq!(factor.id, Some("hmacsha1".to_string()));
     assert_eq!(factor.data().len(), 32); // Secret should be 20 bytes + 12 bytes of padding
-    assert!(factor.factor_type.setup().params([0u8; 32].into()).unwrap().is_object());
-    assert!(factor.factor_type.output().is_object());
+    assert!(factor.factor_type.setup().params([0u8; 32].into()).is_ok());
+    if let crate::definitions::factor::FactorOutput::HmacSha1(output) =
+      factor.factor_type.setup().output()
+    {
+      assert_eq!(output.secret.len(), 20);
+      assert_eq!(output.secret, factor.data()[..20]);
+    }
     assert_eq!(factor.entropy, Some(160.0)); // 20 bytes * 8 bits = 160 bits
   }
 
@@ -239,22 +254,6 @@ mod tests {
   fn invalid_secret() {
     let result = hmacsha1(HmacSha1Options { id: None, secret: Some(vec![0u8; 19]) });
     assert!(matches!(result, Err(crate::error::MFKDF2Error::InvalidSecretLength(_))));
-  }
-
-  #[test]
-  fn output_setup() {
-    let factor = mock_construction();
-    let output = factor.factor_type.output();
-    assert!(output.is_object());
-
-    let secret = output["secret"]
-      .as_array()
-      .unwrap()
-      .iter()
-      .map(|v| v.as_u64().unwrap() as u8)
-      .collect::<Vec<u8>>();
-
-    assert_eq!(secret, factor.data()[..20]);
   }
 
   #[test]

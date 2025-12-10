@@ -30,9 +30,8 @@
 //! the library's setup/derive machinery. The authenticator app is only ever asked to display otpₜ,ᵢ
 //! once per login, exactly as it does today; it does not participate directly in the key-derivation
 //! logic.
-use base64::prelude::*;
+use base64::engine::Engine;
 use serde::{Deserialize, Serialize};
-use serde_json::{Value, json};
 
 use crate::{
   crypto::encrypt,
@@ -140,7 +139,7 @@ pub struct HOTP {
   /// HOTP configuration.
   pub config: HOTPConfig,
   /// HOTP public parameters.
-  pub params: Value,
+  pub params: Option<HOTPParams>,
   /// HOTP code.
   pub code:   u32,
   /// HOTP secret factor material. The target code that is used to derive the key.
@@ -158,7 +157,7 @@ impl zeroize::Zeroize for HOTP {
 
 /// HOTP public parameters.
 #[cfg_attr(feature = "bindings", derive(uniffi::Record))]
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 pub struct HOTPParams {
   /// Hash algorithm used by the HOTP generator.
   pub hash:    HashAlgorithm,
@@ -172,6 +171,43 @@ pub struct HOTPParams {
   pub offset:  u32,
 }
 
+impl Default for HOTPParams {
+  fn default() -> Self {
+    Self {
+      hash:    HashAlgorithm::Sha1,
+      digits:  6,
+      pad:     String::new(),
+      counter: 1,
+      offset:  0,
+    }
+  }
+}
+
+/// HOTP factor output.
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+#[cfg_attr(feature = "bindings", derive(uniffi::Record))]
+pub struct HOTPOutput {
+  /// OTP authentication scheme.
+  pub scheme:    String,
+  /// Factor type.
+  #[serde(rename = "type")]
+  pub type_:     String,
+  /// Account label.
+  pub label:     String,
+  /// HOTP secret (20 bytes).
+  pub secret:    Vec<u8>,
+  /// Issuer name.
+  pub issuer:    String,
+  /// Hash algorithm.
+  pub algorithm: String,
+  /// Number of digits.
+  pub digits:    u32,
+  /// Initial counter value.
+  pub counter:   u64,
+  /// `OTPAuth` URI for QR code generation.
+  pub uri:       String,
+}
+
 impl FactorMetadata for HOTP {
   fn kind(&self) -> String { "hotp".to_string() }
 
@@ -179,8 +215,8 @@ impl FactorMetadata for HOTP {
 }
 
 impl FactorSetup for HOTP {
-  type Output = Value;
-  type Params = Value;
+  type Output = HOTPOutput;
+  type Params = HOTPParams;
 
   fn params(&self, key: Key) -> MFKDF2Result<Self::Params> {
     // Generate HOTP code with counter = 1
@@ -193,39 +229,38 @@ impl FactorSetup for HOTP {
 
     let pad = encrypt(&self.config.secret, key.as_ref());
 
-    let params = HOTPParams {
+    Ok(HOTPParams {
       hash: self.config.hash.clone(),
       digits: self.config.digits,
       pad: base64::prelude::BASE64_STANDARD.encode(&pad),
       counter: 1,
       offset,
-    };
-
-    Ok(serde_json::to_value(params)?)
+    })
   }
 
   fn output(&self) -> Self::Output {
-    json!({
-      "scheme": "otpauth",
-      "type": "hotp",
-      "label": self.config.label,
-      "secret": &self.config.secret[..20],
-      "issuer": self.config.issuer,
-      "algorithm": self.config.hash.to_string(),
-      "digits": self.config.digits,
-      "counter": 1,
-      "uri": otpauth::otpauth_url(&OtpAuthUrlOptions {
-        secret: hex::encode(&self.config.secret[..20]),
-        label: self.config.label.clone(),
-        kind: Some(otpauth::Kind::Hotp),
-        counter: Some(1),
-        issuer: Some(self.config.issuer.clone()),
-        digits: Some(self.config.digits),
-        period: None,
-        encoding: Some(otpauth::Encoding::Hex),
+    HOTPOutput {
+      scheme:    "otpauth".to_string(),
+      type_:     "hotp".to_string(),
+      label:     self.config.label.clone(),
+      secret:    self.config.secret[..20].to_vec(),
+      issuer:    self.config.issuer.clone(),
+      algorithm: self.config.hash.to_string(),
+      digits:    self.config.digits,
+      counter:   1,
+      uri:       otpauth::otpauth_url(&OtpAuthUrlOptions {
+        secret:    hex::encode(&self.config.secret[..20]),
+        label:     self.config.label.clone(),
+        kind:      Some(otpauth::Kind::Hotp),
+        counter:   Some(1),
+        issuer:    Some(self.config.issuer.clone()),
+        digits:    Some(self.config.digits),
+        period:    None,
+        encoding:  Some(otpauth::Encoding::Hex),
         algorithm: Some(self.config.hash.clone()),
-      }).unwrap()
-    })
+      })
+      .unwrap(),
+    }
   }
 }
 
@@ -328,7 +363,7 @@ pub fn hotp(mut options: HOTPOptions) -> MFKDF2Result<MFKDF2Factor> {
     id: Some(id),
     factor_type: FactorType::HOTP(HOTP {
       config: options.try_into()?,
-      params: Value::Null,
+      params: None,
       code: 0,
       target,
     }),
@@ -342,7 +377,10 @@ async fn setup_hotp(options: HOTPOptions) -> MFKDF2Result<MFKDF2Factor> { hotp(o
 
 #[cfg(test)]
 mod tests {
+  use base64::prelude::BASE64_STANDARD;
+
   use super::*;
+  use crate::definitions::factor::FactorParams;
 
   #[test]
   fn hotp_setup_with_known_secret() {
@@ -360,13 +398,11 @@ mod tests {
 
     // Test that params can be generated
     let params = factor.factor_type.setup().params(key.into()).unwrap();
-    assert!(params.is_object());
-
-    assert!(params["hash"].is_string());
-    assert!(params["digits"].is_number());
-    assert!(params["pad"].is_string());
-    assert!(params["counter"].is_number());
-    assert!(params["offset"].is_number());
+    if let FactorParams::HOTP(params) = params {
+      assert_eq!(params.hash, HashAlgorithm::Sha1);
+      assert_eq!(params.digits, 6);
+      assert_eq!(params.counter, 1);
+    }
   }
 
   #[test]
@@ -379,11 +415,8 @@ mod tests {
     assert_eq!(factor.id, Some("hotp".to_string()));
     assert_eq!(factor.data().len(), 4);
     assert!(factor.entropy.is_some());
-    let params = factor.factor_type.setup().params(key.into()).unwrap();
-    assert!(params.is_object());
-
-    let output = factor.factor_type.output();
-    assert!(output.is_object());
+    let params = factor.factor_type.setup().params(key.into());
+    assert!(params.is_ok());
   }
 
   #[test]
@@ -448,10 +481,8 @@ mod tests {
     };
 
     let params = hotp_factor.params(key.into()).unwrap();
-    assert!(params.is_object());
 
-    let pad_b64 = params["pad"].as_str().unwrap();
-    let pad = BASE64_STANDARD.decode(pad_b64).unwrap();
+    let pad = BASE64_STANDARD.decode(params.pad).unwrap();
 
     let decrypted_secret = crate::crypto::decrypt(pad, &key);
 
@@ -474,9 +505,6 @@ mod tests {
     };
 
     let params = hotp_factor.params(key.into()).unwrap();
-    assert!(params.is_object());
-
-    let offset = params["offset"].as_u64().unwrap() as u32;
 
     let code = generate_otp_token(
       &hotp_factor.config.secret[..20],
@@ -490,7 +518,7 @@ mod tests {
       10_i64.pow(hotp_factor.config.digits),
     );
 
-    assert_eq!(offset, expected_offset);
+    assert_eq!(params.offset, expected_offset);
   }
 
   #[test]

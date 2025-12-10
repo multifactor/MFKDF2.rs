@@ -2,10 +2,9 @@
 //! setup a multi-factor derived key (eg. as browser cookies) so that they do not need to be used to
 //! derive the key in the future.
 use serde::{Deserialize, Serialize};
-use serde_json::Value;
 
 use crate::{
-  definitions::{FactorType, MFKDF2Factor, factor::FactorMetadata},
+  definitions::{FactorType, Key, MFKDF2Factor, factor::FactorMetadata},
   derive::FactorDerive,
   error::MFKDF2Result,
 };
@@ -25,13 +24,25 @@ impl FactorMetadata for Persisted {
   fn bytes(&self) -> Vec<u8> { self.share.clone() }
 }
 
+/// Persisted factor parameters.
+#[cfg_attr(feature = "bindings", derive(uniffi::Record))]
+#[derive(Clone, Debug, Default, Serialize, Deserialize, Eq, PartialEq)]
+pub struct PersistedParams {}
+
+/// Persisted factor output.
+#[cfg_attr(feature = "bindings", derive(uniffi::Record))]
+#[derive(Clone, Debug, Default, Serialize, Deserialize, Eq, PartialEq)]
+pub struct PersistedOutput {}
+
 impl FactorDerive for Persisted {
-  type Output = Value;
-  type Params = Value;
+  type Output = PersistedOutput;
+  type Params = PersistedParams;
 
   fn include_params(&mut self, _params: Self::Params) -> MFKDF2Result<()> { Ok(()) }
 
-  fn output(&self) -> Self::Output { Value::Null }
+  fn params(&self, _key: Key) -> MFKDF2Result<Self::Params> { Ok(PersistedParams::default()) }
+
+  fn output(&self) -> Self::Output { PersistedOutput::default() }
 }
 
 /// Factor construction derive phase for a persisted Shamir share

@@ -4,7 +4,7 @@
 //! an entropy estimate derived from Dropbox's [`mod@zxcvbn`] crate, which can be used to enforce
 //! security question strength policies.
 use serde::{Deserialize, Serialize};
-use serde_json::{Value, json};
+use serde_json::Value;
 use zxcvbn::zxcvbn;
 
 use crate::{
@@ -36,7 +36,7 @@ pub struct Question {
   /// Normalized answer string used as factor material.
   pub answer:   String,
   /// Factor public state that is used to derive the factor material.
-  pub params:   Value,
+  pub params:   QuestionParams,
   /// Human‑readable prompt shown to the user (e.g., _"What is your favorite teacher's name?"_).
   pub question: String,
 }
@@ -55,20 +55,32 @@ impl FactorMetadata for Question {
   fn bytes(&self) -> Vec<u8> { self.answer.as_bytes().to_vec() }
 }
 
+/// Question factor parameters.
+#[cfg_attr(feature = "bindings", derive(uniffi::Record))]
+#[derive(Clone, Debug, Default, Serialize, Deserialize, PartialEq)]
+pub struct QuestionParams {
+  /// Human-readable security question prompt.
+  pub question: String,
+}
+
+/// Question factor output.
+#[cfg_attr(feature = "bindings", derive(uniffi::Record))]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+pub struct QuestionOutput {
+  /// Answer strength estimate from zxcvbn.
+  pub strength: Value,
+}
+
 impl FactorSetup for Question {
-  type Output = Value;
-  type Params = Value;
+  type Output = QuestionOutput;
+  type Params = QuestionParams;
 
   fn params(&self, _key: Key) -> MFKDF2Result<Self::Params> {
-    Ok(json!({
-      "question": self.question,
-    }))
+    Ok(QuestionParams { question: self.question.clone() })
   }
 
   fn output(&self) -> Self::Output {
-    json!({
-      "strength": zxcvbn(&self.answer, &[]),
-    })
+    QuestionOutput { strength: serde_json::to_value(zxcvbn(&self.answer, &[])).unwrap() }
   }
 }
 
@@ -122,7 +134,11 @@ pub fn question(
 
   Ok(MFKDF2Factor {
     id,
-    factor_type: FactorType::Question(Question { question, params: Value::Null, answer }),
+    factor_type: FactorType::Question(Question {
+      question,
+      params: QuestionParams::default(),
+      answer,
+    }),
     entropy: Some((strength.guesses() as f64).log2()),
   })
 }
@@ -136,6 +152,7 @@ async fn setup_question(answer: String, options: QuestionOptions) -> MFKDF2Resul
 #[cfg(test)]
 mod tests {
   use super::*;
+  use crate::setup::factors::FactorOutput;
 
   fn mock_construction() -> MFKDF2Factor {
     let options = QuestionOptions {
@@ -191,19 +208,19 @@ mod tests {
     let params = question_factor.params([0u8; 32].into());
     assert!(params.is_ok());
     let params = params.unwrap();
-    assert!(params.is_object());
-    assert_eq!(params["question"], "What is your favorite color?");
+    assert_eq!(params.question, "What is your favorite color?");
   }
 
   #[test]
   fn output() {
     let factor = mock_construction();
-    let output = factor.factor_type.output();
-    assert!(output.is_object());
-    assert!(output["strength"].is_object());
-    assert!(output["strength"]["score"].is_number());
-    assert!(output["strength"]["guesses"].is_number());
-    assert!(output["strength"]["guesses_log10"].is_number());
+    let output = factor.factor_type.setup().output();
+    if let FactorOutput::Question(output) = output {
+      assert!(output.strength.is_object());
+      assert!(output.strength["score"].is_number());
+      assert!(output.strength["guesses"].is_number());
+      assert!(output.strength["guesses_log10"].is_number());
+    }
   }
 
   #[test]

@@ -7,35 +7,35 @@
 //! stack mode, and exposes the resulting policy and key material as a single factor
 use std::collections::HashMap;
 
-use serde_json::{Value, json};
-
 use crate::{
   definitions::{FactorType, Key, MFKDF2DerivedKey, MFKDF2Factor},
   derive::FactorDerive,
   error::{MFKDF2Error, MFKDF2Result},
-  policy::Policy,
-  setup::factors::stack::Stack,
+  setup::factors::stack::{Stack, StackOutput, StackParams},
 };
 
 impl FactorDerive for Stack {
-  type Output = Value;
-  type Params = Value;
+  type Output = StackOutput;
+  type Params = StackParams;
 
   fn include_params(&mut self, params: Self::Params) -> MFKDF2Result<()> {
     // Stack factors don't need to include params during derivation
     // The key derivation is handled by the derive_key function
-    let policy: Policy = serde_json::from_value(params)
-      .map_err(|_| MFKDF2Error::InvalidDeriveParams("params".to_string()))?;
-    self.key = crate::derive::key(&policy, self.factors.clone(), false, true)?;
+    self.key = crate::derive::key(&params.policy, self.factors.clone(), false, true)?;
     Ok(())
   }
 
   fn params(&self, _key: Key) -> MFKDF2Result<Self::Params> {
-    serde_json::to_value(&self.key.policy)
-      .map_err(|_| MFKDF2Error::InvalidDeriveParams("policy".to_string()))
+    Ok(StackParams {
+      policy: self.key.policy.clone(),
+    })
   }
 
-  fn output(&self) -> Self::Output { serde_json::to_value(&self.key).unwrap_or(json!({})) }
+  fn output(&self) -> Self::Output {
+    StackOutput {
+      key: self.key.clone(),
+    }
+  }
 }
 
 /// Factor construction derive phase for a stack factor
@@ -175,14 +175,11 @@ mod tests {
 
   #[test]
   fn derive_stack_invalid_params() {
-    let mut derive_stack_factor =
+    let _derive_stack_factor =
       stack(HashMap::from([("pwd1".to_string(), password("p".to_string()).unwrap())])).unwrap();
 
-    let invalid_params = json!("not a policy");
-    let result = derive_stack_factor.factor_type.include_params(invalid_params);
-    assert!(matches!(
-        result,
-        Err(MFKDF2Error::InvalidDeriveParams(s)) if s == "params"
-    ));
+    // Try to create invalid params - this will fail at deserialization
+    let invalid_params_result: Result<StackParams, _> = serde_json::from_value(serde_json::json!("not a policy"));
+    assert!(invalid_params_result.is_err());
   }
 }

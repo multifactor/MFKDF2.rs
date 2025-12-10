@@ -43,7 +43,6 @@ use std::time::{SystemTime, UNIX_EPOCH};
 
 use base64::Engine;
 use serde::{Deserialize, Serialize};
-use serde_json::{Value, json};
 #[cfg(target_arch = "wasm32")]
 use web_time::{SystemTime, UNIX_EPOCH};
 
@@ -177,7 +176,7 @@ impl Default for TOTPConfig {
 
 /// TOTP public parameters.
 #[cfg_attr(feature = "bindings", derive(uniffi::Record))]
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize, Eq, PartialEq)]
 pub struct TOTPParams {
   /// Starting Unix time in milliseconds used to anchor the TOTP window
   pub start:   u64,
@@ -203,7 +202,7 @@ pub struct TOTP {
   /// TOTP configuration
   pub config: TOTPConfig,
   /// TOTP public parameters
-  pub params: Value,
+  pub params: Option<TOTPParams>,
   /// TOTP code
   pub code:   u32,
   /// TOTP factor material. The target code that is used to derive the key
@@ -226,8 +225,8 @@ impl FactorMetadata for TOTP {
 }
 
 impl FactorSetup for TOTP {
-  type Output = Value;
-  type Params = Value;
+  type Output = TOTPOutput;
+  type Params = TOTPParams;
 
   fn params(&self, key: Key) -> MFKDF2Result<Self::Params> {
     let time = u128::from(self.config.time);
@@ -265,7 +264,7 @@ impl FactorSetup for TOTP {
 
     let pad = encrypt(&self.config.secret, &key);
 
-    let params = TOTPParams {
+    Ok(TOTPParams {
       start:   time as u64,
       hash:    self.config.hash.clone(),
       digits:  self.config.digits,
@@ -273,34 +272,58 @@ impl FactorSetup for TOTP {
       window:  self.config.window,
       pad:     base64::prelude::BASE64_STANDARD.encode(&pad),
       offsets: base64::prelude::BASE64_STANDARD.encode(&offsets),
-    };
-
-    Ok(serde_json::to_value(params)?)
+    })
   }
 
   fn output(&self) -> Self::Output {
-    json!({
-      "scheme": "otpauth",
-      "type": "totp",
-        "label": self.config.label,
-      "secret": &self.config.secret[..20],
-      "issuer": self.config.issuer,
-      "algorithm": self.config.hash.to_string(),
-      "digits": self.config.digits,
-      "period": self.config.step,
-      "uri": otpauth::otpauth_url(&OtpAuthUrlOptions {
-        secret: hex::encode(&self.config.secret[..20]),
-        label: self.config.label.clone(),
-        kind: Some(otpauth::Kind::Totp),
-        counter: None,
-        issuer: Some(self.config.issuer.clone()),
-        digits: Some(self.config.digits),
-        period: Some(self.config.step),
-        encoding: Some(otpauth::Encoding::Hex),
+    TOTPOutput {
+      scheme:    "otpauth".to_string(),
+      type_:     "totp".to_string(),
+      label:     self.config.label.clone(),
+      secret:    self.config.secret[..20].to_vec(),
+      issuer:    self.config.issuer.clone(),
+      algorithm: self.config.hash.to_string(),
+      digits:    self.config.digits,
+      period:    self.config.step,
+      uri:       otpauth::otpauth_url(&OtpAuthUrlOptions {
+        secret:    hex::encode(&self.config.secret[..20]),
+        label:     self.config.label.clone(),
+        kind:      Some(otpauth::Kind::Totp),
+        counter:   None,
+        issuer:    Some(self.config.issuer.clone()),
+        digits:    Some(self.config.digits),
+        period:    Some(self.config.step),
+        encoding:  Some(otpauth::Encoding::Hex),
         algorithm: Some(self.config.hash.clone()),
-      }).unwrap()
-    })
+      })
+      .unwrap(),
+    }
   }
+}
+
+/// TOTP factor output.
+#[cfg_attr(feature = "bindings", derive(uniffi::Record))]
+#[derive(Clone, Debug, Serialize, Deserialize, Eq, PartialEq)]
+pub struct TOTPOutput {
+  /// OTP authentication scheme.
+  pub scheme:    String,
+  /// Factor type.
+  #[serde(rename = "type")]
+  pub type_:     String,
+  /// Account label.
+  pub label:     String,
+  /// TOTP secret (20 bytes).
+  pub secret:    Vec<u8>,
+  /// Issuer name.
+  pub issuer:    String,
+  /// Hash algorithm.
+  pub algorithm: String,
+  /// Number of digits.
+  pub digits:    u32,
+  /// Time step period in seconds.
+  pub period:    u32,
+  /// `OTPAuth` URI for QR code generation.
+  pub uri:       String,
 }
 
 /// Initializes a TOTP factor from the given options.
@@ -391,7 +414,7 @@ pub fn totp(mut options: TOTPOptions) -> MFKDF2Result<MFKDF2Factor> {
     id: Some(id),
     factor_type: FactorType::TOTP(TOTP {
       config: options.try_into()?,
-      params: Value::Null,
+      params: None,
       code: 0,
       target,
     }),
@@ -509,22 +532,18 @@ mod tests {
     let params = totp_factor.params(key.into());
     assert!(params.is_ok());
     let params = params.unwrap();
-    assert!(params.is_object());
 
-    assert_eq!(params["start"], 1672531200000_u64);
-    assert_eq!(params["hash"], "sha1");
-    assert_eq!(params["digits"], 8);
-    assert_eq!(params["step"], 30);
-    assert_eq!(params["window"], 87600);
+    assert_eq!(params.start, 1672531200000_u64);
+    assert_eq!(params.hash, HashAlgorithm::Sha1);
+    assert_eq!(params.digits, 8);
+    assert_eq!(params.step, 30);
+    assert_eq!(params.window, 87600);
 
-    let pad_b64 = params["pad"].as_str().unwrap();
-    let pad = base64::prelude::BASE64_STANDARD.decode(pad_b64).unwrap();
+    let pad = base64::prelude::BASE64_STANDARD.decode(params.pad).unwrap();
     let decrypted_secret = decrypt(pad, &key);
     let original_secret = totp_factor.config.secret.as_slice();
     assert_eq!(&decrypted_secret[..original_secret.len()], original_secret);
-
-    let offsets_b64 = params["offsets"].as_str().unwrap();
-    let offsets = base64::prelude::BASE64_STANDARD.decode(offsets_b64).unwrap();
+    let offsets = base64::prelude::BASE64_STANDARD.decode(params.offsets).unwrap();
     assert_eq!(offsets.len(), 4 * 87600);
   }
 
@@ -538,24 +557,15 @@ mod tests {
     };
 
     let output = totp_factor.output();
-    assert!(output.is_object());
-
-    assert_eq!(output["scheme"], "otpauth");
-    assert_eq!(output["type"], "totp");
-    assert_eq!(output["label"], "mfkdf.com");
-    assert_eq!(output["issuer"], "MFKDF");
-    assert_eq!(output["algorithm"], "sha1");
-    assert_eq!(output["digits"], 8);
-    assert_eq!(output["period"], 30);
-
-    let secret = output["secret"]
-      .as_array()
-      .unwrap()
-      .iter()
-      .map(|v| v.as_u64().unwrap() as u8)
-      .collect::<Vec<u8>>();
-    assert_eq!(secret.len(), 20);
-    assert_eq!(secret, totp_factor.config.secret[..20]);
+    assert_eq!(output.scheme, "otpauth");
+    assert_eq!(output.type_, "totp");
+    assert_eq!(output.label, "mfkdf.com");
+    assert_eq!(output.issuer, "MFKDF");
+    assert_eq!(output.algorithm, "sha1");
+    assert_eq!(output.digits, 8);
+    assert_eq!(output.period, 30);
+    assert_eq!(output.secret.len(), 20);
+    assert_eq!(output.secret, totp_factor.config.secret[..20]);
   }
 
   #[test]

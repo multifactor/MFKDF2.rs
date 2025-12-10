@@ -2,22 +2,29 @@
 //! 32‑byte secret produced by a `WebAuthn` PRF extension or equivalent hardware‑backed primitive
 //! and wraps it as an [`MFKDF2Factor`] used during the derive phase so that the passkey contributes
 //! stable 256‑bit entropy across `KeySetup` and `KeyDerive`
-use serde_json::Value;
 
 use crate::{
   definitions::{FactorType, MFKDF2Factor},
   derive::FactorDerive,
   error::MFKDF2Result,
-  setup::factors::passkey::{Passkey, PasskeySecret},
+  setup::factors::passkey::{Passkey, PasskeyOutput, PasskeyParams, PasskeySecret},
 };
 
 impl FactorDerive for Passkey {
-  type Output = Value;
-  type Params = Value;
+  type Output = PasskeyOutput;
+  type Params = PasskeyParams;
 
   fn include_params(&mut self, _params: Self::Params) -> MFKDF2Result<()> {
     // Passkey factor has no parameters from setup
     Ok(())
+  }
+
+  fn params(&self, _key: crate::definitions::Key) -> MFKDF2Result<Self::Params> {
+    Ok(PasskeyParams::default())
+  }
+
+  fn output(&self) -> Self::Output {
+    PasskeyOutput::default()
   }
 }
 

@@ -4,7 +4,6 @@
 //! an entropy estimate derived from Dropbox's [`mod@zxcvbn`] crate, which can be used to enforce
 //! password strength policies.
 use serde::{Deserialize, Serialize};
-use serde_json::{Value, json};
 use zxcvbn::zxcvbn;
 
 use crate::{
@@ -28,14 +27,29 @@ impl FactorMetadata for Password {
   fn bytes(&self) -> Vec<u8> { self.password.as_bytes().to_vec() }
 }
 
+/// Password factor parameters.
+#[derive(Clone, Debug, Default, Serialize, Deserialize, PartialEq)]
+#[cfg_attr(feature = "bindings", derive(uniffi::Record))]
+pub struct PasswordParams {}
+
+/// Password factor output.
+#[derive(Clone, Debug, Default, Serialize, Deserialize, PartialEq)]
+#[cfg_attr(feature = "bindings", derive(uniffi::Record))]
+pub struct PasswordOutput {
+  /// Password strength estimate from zxcvbn.
+  pub strength: serde_json::Value,
+}
+
 impl FactorSetup for Password {
-  type Output = Value;
-  type Params = Value;
+  type Output = PasswordOutput;
+  type Params = PasswordParams;
+
+  fn params(&self, _key: crate::definitions::Key) -> MFKDF2Result<Self::Params> {
+    Ok(PasswordParams::default())
+  }
 
   fn output(&self) -> Self::Output {
-    json!({
-      "strength": zxcvbn(&self.password, &[]),
-    })
+    PasswordOutput { strength: serde_json::to_value(zxcvbn(&self.password, &[])).unwrap() }
   }
 }
 
@@ -111,9 +125,6 @@ async fn setup_password(password: String, options: PasswordOptions) -> MFKDF2Res
 
 #[cfg(test)]
 mod tests {
-
-  use serde_json::json;
-
   use super::*;
   use crate::{error::MFKDF2Error, setup::FactorSetup};
 
@@ -150,6 +161,6 @@ mod tests {
     assert_eq!(p.password, "hello");
     assert_eq!(p.bytes(), "hello".as_bytes());
     let params = p.params([0; 32].into()).unwrap();
-    assert_eq!(params, json!({}));
+    assert_eq!(params, PasswordParams::default());
   }
 }

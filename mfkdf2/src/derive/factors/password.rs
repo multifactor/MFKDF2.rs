@@ -1,22 +1,25 @@
 //! Derive phase [Password](`crate::setup::factors::password()`) construction. Takes a
 //! user‑supplied password answer and computes an [`MFKDF2Factor`] witness Wᵢⱼ.
-use serde_json::{Value, json};
 use zxcvbn::zxcvbn;
 
 use crate::{
   definitions::{FactorType, MFKDF2Factor},
   derive::FactorDerive,
   error::{MFKDF2Error, MFKDF2Result},
-  setup::factors::password::Password,
+  setup::factors::password::{Password, PasswordOutput, PasswordParams},
 };
 
 impl FactorDerive for Password {
-  type Output = Value;
-  type Params = Value;
+  type Output = PasswordOutput;
+  type Params = PasswordParams;
 
   fn include_params(&mut self, _params: Self::Params) -> MFKDF2Result<()> { Ok(()) }
 
-  fn output(&self) -> Self::Output { json!({"strength": zxcvbn(&self.password, &[])}) }
+  fn params(&self, _key: crate::definitions::Key) -> MFKDF2Result<Self::Params> {
+    Ok(PasswordParams::default())
+  }
+
+  fn output(&self) -> Self::Output { PasswordOutput {strength: serde_json::to_value(zxcvbn(&self.password, &[])).unwrap()} }
 }
 
 /// Factor construction derive phase
@@ -82,7 +85,7 @@ async fn derive_password(password: String) -> MFKDF2Result<MFKDF2Factor> {
 #[cfg(test)]
 mod tests {
   use super::*;
-  use crate::{error::MFKDF2Error, setup::FactorSetup};
+  use crate::error::MFKDF2Error;
 
   #[test]
   fn test_password_empty() {
@@ -99,9 +102,8 @@ mod tests {
       FactorType::Password(p) => {
         assert_eq!(p.password, "hello");
         assert_eq!(factor.data(), "hello".as_bytes());
-        let params: Value = <Password as FactorSetup>::params(p, [0u8; 32].into()).unwrap();
-
-        assert_eq!(params, json!({}));
+        let params = p.params([0u8; 32].into()).unwrap();
+        assert_eq!(params, crate::setup::factors::password::PasswordParams::default());
       },
       _ => panic!("Wrong factor type"),
     }

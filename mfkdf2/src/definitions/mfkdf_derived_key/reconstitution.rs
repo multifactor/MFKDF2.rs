@@ -109,7 +109,6 @@ use crate::{
   definitions::{MFKDF2DerivedKey, MFKDF2Factor},
   error::{MFKDF2Error, MFKDF2Result},
   policy::PolicyFactor,
-  setup::FactorSetup,
 };
 
 impl MFKDF2DerivedKey {
@@ -216,7 +215,7 @@ impl MFKDF2DerivedKey {
       };
 
       factors.insert(id.clone(), new_factor);
-      outputs.insert(id.clone(), factor.factor_type.output());
+      outputs.insert(id.clone(), factor.factor_type.setup().output());
       data.insert(id.clone(), factor.data());
       if material.contains_key(id.as_str()) {
         material.remove(id.as_str());

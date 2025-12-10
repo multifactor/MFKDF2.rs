@@ -46,9 +46,25 @@ impl FactorMetadata for Passkey {
   fn bytes(&self) -> Vec<u8> { self.secret.to_vec() }
 }
 
+/// Passkey factor parameters.
+#[cfg_attr(feature = "bindings", derive(uniffi::Record))]
+#[derive(Clone, Debug, Default, Serialize, Deserialize, Eq, PartialEq)]
+pub struct PasskeyParams {}
+
+/// Passkey factor output.
+#[cfg_attr(feature = "bindings", derive(uniffi::Record))]
+#[derive(Clone, Debug, Default, Serialize, Deserialize, Eq, PartialEq)]
+pub struct PasskeyOutput {}
+
 impl FactorSetup for Passkey {
-  type Output = serde_json::Value;
-  type Params = serde_json::Value;
+  type Output = PasskeyOutput;
+  type Params = PasskeyParams;
+
+  fn params(&self, _key: crate::definitions::Key) -> crate::error::MFKDF2Result<Self::Params> {
+    Ok(PasskeyParams::default())
+  }
+
+  fn output(&self) -> Self::Output { PasskeyOutput::default() }
 }
 
 /// Options for configuring a passkey factor

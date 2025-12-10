@@ -37,7 +37,7 @@ use sha2::Sha256;
 
 use crate::{
   crypto::{encrypt_cbc, hkdf_sha256_with_info},
-  definitions::{FactorType, Key, MFKDF2Factor, factor::FactorMetadata},
+  definitions::{ByteArray, FactorType, Key, MFKDF2Factor, factor::FactorMetadata},
   error::{MFKDF2Error, MFKDF2Result},
   rng::GlobalRng,
   setup::FactorSetup,
@@ -82,13 +82,15 @@ impl Default for OobaOptions {
   }
 }
 
+/// 32-byte randomly generated OOBA factor secret material
+pub(crate) type OobaTarget = ByteArray<32>;
+
 /// OOBA factor state
 #[cfg_attr(feature = "bindings", derive(uniffi::Record))]
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Default, Serialize, Deserialize)]
 pub struct Ooba {
   /// Randomly generated 32‑byte target used as the factor’s underlying secret
-  // TODO (@lonerapier): use uniffi custom type
-  pub target: Vec<u8>,
+  pub target: OobaTarget,
   /// Number of alphanumeric characters in the OOBA code bound to this factor
   pub length: u8,
   /// OOBA factor material as the last issued code value
@@ -136,12 +138,33 @@ impl TryFrom<&Jwk> for OobaPublicKey {
 impl FactorMetadata for Ooba {
   fn kind(&self) -> String { "ooba".to_string() }
 
-  fn bytes(&self) -> Vec<u8> { self.target.clone() }
+  fn bytes(&self) -> Vec<u8> { self.target.to_vec() }
 }
 
+/// OOBA factor parameters.
+#[cfg_attr(feature = "bindings", derive(uniffi::Record))]
+#[derive(Clone, Debug, Default, Serialize, Deserialize, Eq, PartialEq)]
+pub struct OobaParams {
+  /// Number of alphanumeric characters in the OOBA code.
+  pub length: u8,
+  /// RSA public key as a JWK.
+  pub key:    Option<Jwk>,
+  /// Public parameters metadata.
+  pub params: Value,
+  /// Hex-encoded RSA-encrypted next OOBA payload.
+  pub next:   String,
+  /// Base64-encoded encrypted pad.
+  pub pad:    String,
+}
+
+/// OOBA factor output.
+#[cfg_attr(feature = "bindings", derive(uniffi::Record))]
+#[derive(Clone, Debug, Default, Serialize, Deserialize, Eq, PartialEq)]
+pub struct OobaOutput {}
+
 impl FactorSetup for Ooba {
-  type Output = Value;
-  type Params = Value;
+  type Output = OobaOutput;
+  type Params = OobaParams;
 
   fn params(&self, _key: Key) -> MFKDF2Result<Self::Params> {
     let code = generate_alphanumeric_characters(self.length.into()).to_uppercase();
@@ -166,14 +189,16 @@ impl FactorSetup for Ooba {
     let key = OobaPublicKey::try_from(self.jwk.as_ref().ok_or(MFKDF2Error::MissingOobaKey)?)?;
     let ciphertext = key.0.encrypt(&mut OsRng, Oaep::new::<Sha256>(), &plaintext)?;
 
-    Ok(json!({
-        "length": self.length,
-        "key": self.jwk,
-        "params": pub_params,
-        "next": hex::encode(ciphertext),
-        "pad": general_purpose::STANDARD.encode(pad),
-    }))
+    Ok(OobaParams {
+      length: self.length,
+      key:    self.jwk.clone(),
+      params: pub_params,
+      next:   hex::encode(ciphertext),
+      pad:    general_purpose::STANDARD.encode(pad),
+    })
   }
+
+  fn output(&self) -> Self::Output { OobaOutput {} }
 }
 
 /// Creates an OOBA factor from the given options
@@ -251,7 +276,7 @@ pub fn ooba(mut options: OobaOptions) -> MFKDF2Result<MFKDF2Factor> {
   Ok(MFKDF2Factor {
     id:          Some(options.id.take().unwrap_or("ooba".to_string())),
     factor_type: FactorType::OOBA(Ooba {
-      target: target.to_vec(),
+      target: target.into(),
       length,
       code: String::new(),
       jwk: Some(key),
@@ -270,6 +295,7 @@ mod tests {
   use rsa::{RsaPrivateKey, traits::PublicKeyParts};
 
   use super::*;
+  use crate::definitions::factor::FactorOutput;
 
   fn keypair() -> (RsaPrivateKey, RsaPublicKey) {
     let bits = 2048;
@@ -404,9 +430,8 @@ mod tests {
     };
 
     let params = ooba.params([0u8; 32].into()).unwrap();
-    assert!(params.is_object());
 
-    let ciphertext = hex::decode(params["next"].as_str().unwrap()).unwrap();
+    let ciphertext = hex::decode(params.next).unwrap();
     let decrypted = serde_json::from_slice::<Value>(
       &private_key.decrypt(Oaep::new::<Sha256>(), &ciphertext).unwrap(),
     )
@@ -415,19 +440,19 @@ mod tests {
     let iv = general_purpose::STANDARD.decode(decrypted["iv"].as_str().unwrap()).unwrap();
 
     let prev_key = hkdf_sha256_with_info(code.as_bytes(), &[], &[]);
-    let pad = general_purpose::STANDARD.decode(params["pad"].as_str().unwrap()).unwrap();
+    let pad = general_purpose::STANDARD.decode(params.pad).unwrap();
     let key = cipher::Key::<cbc::Decryptor<Aes256>>::from(prev_key);
     let iv = cipher::Iv::<cbc::Decryptor<Aes256>>::from_iter(iv);
     let target = crate::crypto::decrypt_cbc::<Aes256>(&pad, &key, &iv).unwrap();
 
-    assert_eq!(ooba.target, target);
+    assert_eq!(ooba.target.as_ref(), target);
   }
 
   #[test]
   fn output() {
     let (_, public_key) = keypair();
     let factor = mock_construction(&public_key);
-    let output = factor.factor_type.output();
-    assert_eq!(output, json!({}));
+    let output = factor.factor_type.setup().output();
+    assert_eq!(output, FactorOutput::OOBA(OobaOutput::default()));
   }
 }

@@ -98,8 +98,8 @@ impl std::fmt::Debug for MFKDF2Factor {
 /// Each variant corresponds to a concrete factor type (such as password, TOTP, passkey,
 /// etc.). Every factor implement the `FactorMetadata`, `FactorSetup`, and `FactorDerive` traits,
 /// which define the common interface for factor management, setup, and derivation.
-#[cfg_attr(feature = "bindings", derive(uniffi::Enum))]
 #[derive(Clone, Debug, Serialize, Deserialize)]
+#[cfg_attr(feature = "bindings", derive(uniffi::Enum))]
 #[cfg_attr(feature = "zeroize", derive(zeroize::Zeroize))]
 pub enum FactorType {
   /// [`password::Password`] factor.
@@ -122,6 +122,62 @@ pub enum FactorType {
   Stack(stack::Stack),
   /// [Persisted](`crate::derive::factors::persisted::Persisted`) factor.
   Persisted(crate::derive::factors::persisted::Persisted),
+}
+
+/// Public, serializable parameters for each supported authentication factor.
+/// Each variant corresponds to its respective factor type's parameter struct.
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+#[cfg_attr(feature = "bindings", derive(uniffi::Enum))]
+pub enum FactorParams {
+  /// Parameters for the [`password::Password`] factor.
+  Password(password::PasswordParams),
+  /// Parameters for the [`hotp::HOTP`] factor.
+  HOTP(hotp::HOTPParams),
+  /// Parameters for the [`question::Question`] factor.
+  Question(question::QuestionParams),
+  /// Parameters for the [`uuid::UUIDFactor`] factor.
+  UUID(uuid::UUIDFactorParams),
+  /// Parameters for the [`hmacsha1::HmacSha1`] factor.
+  HmacSha1(hmacsha1::HmacSha1Params),
+  /// Parameters for the [`totp::TOTP`] factor.
+  TOTP(totp::TOTPParams),
+  /// Parameters for the [`ooba::Ooba`] factor.
+  OOBA(ooba::OobaParams),
+  /// Parameters for the [`passkey::Passkey`] factor.
+  Passkey(passkey::PasskeyParams),
+  /// Parameters for the [`stack::Stack`] factor.
+  Stack(stack::StackParams),
+  /// Parameters for the [`persisted::Persisted`](`crate::derive::factors::persisted::Persisted`)
+  /// derived factor.
+  Persisted(crate::derive::factors::persisted::PersistedParams),
+}
+
+/// Public, serializable output for each supported authentication factor.
+/// Each variant corresponds to its respective factor type's output struct.
+
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+#[cfg_attr(feature = "bindings", derive(uniffi::Enum))]
+pub enum FactorOutput {
+  /// Output for the [`password::Password`] factor.
+  Password(password::PasswordOutput),
+  /// Output for the [`hotp::HOTP`] factor.
+  HOTP(hotp::HOTPOutput),
+  /// Output for the [`question::Question`] factor.
+  Question(question::QuestionOutput),
+  /// Output for the [`uuid::UUIDFactor`] factor.
+  UUID(uuid::UUIDFactorOutput),
+  /// Output for the [`hmacsha1::HmacSha1`] factor.
+  HmacSha1(hmacsha1::HmacSha1Output),
+  /// Output for the [`totp::TOTP`] factor.
+  TOTP(totp::TOTPOutput),
+  /// Output for the [`ooba::Ooba`] factor.
+  OOBA(ooba::OobaOutput),
+  /// Output for the [`passkey::Passkey`] factor.
+  Passkey(passkey::PasskeyOutput),
+  /// Output for the [`stack::Stack`] factor.
+  Stack(stack::StackOutput),
+  /// Output for the [persisted](`crate::derive::factors::persisted::Persisted`)
+  Persisted(crate::derive::factors::persisted::PersistedOutput),
 }
 
 impl FactorMetadata for FactorType {

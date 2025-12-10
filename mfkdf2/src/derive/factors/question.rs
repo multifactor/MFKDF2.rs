@@ -2,19 +2,18 @@
 //! answer, normalizes it, and returns an [`MFKDF2Factor`] used in the derive phase. The factor also
 //! exposes a strength estimate via `output()` so callers can compare entropy between setup and
 //! derive
-use serde_json::{Value, json};
 use zxcvbn::zxcvbn;
 
 use crate::{
   definitions::{FactorType, Key, MFKDF2Factor},
   derive::FactorDerive,
   error::{MFKDF2Error, MFKDF2Result},
-  setup::factors::question::Question,
+  setup::factors::question::{Question, QuestionOutput, QuestionParams},
 };
 
 impl FactorDerive for Question {
-  type Output = Value;
-  type Params = Value;
+  type Output = QuestionOutput;
+  type Params = QuestionParams;
 
   fn include_params(&mut self, params: Self::Params) -> MFKDF2Result<()> {
     self.params = params;
@@ -24,7 +23,9 @@ impl FactorDerive for Question {
   fn params(&self, _key: Key) -> MFKDF2Result<Self::Params> { Ok(self.params.clone()) }
 
   /// Returns a strength estimate for the answer using `zxcvbn`.
-  fn output(&self) -> Self::Output { json!({"strength": zxcvbn(&self.answer, &[])}) }
+  fn output(&self) -> Self::Output {
+    Self::Output { strength: serde_json::to_value(zxcvbn(&self.answer, &[])).unwrap() }
+  }
 }
 
 /// Factor construction derive phase for a security‑question factor
@@ -88,7 +89,7 @@ pub fn question(answer: impl Into<String>) -> MFKDF2Result<MFKDF2Factor> {
     // [`crate::derive::FactorDeriveTrait::include_params`]
     factor_type: FactorType::Question(Question {
       question: String::new(),
-      params: Value::Null,
+      params: QuestionParams::default(),
       answer,
     }),
     entropy:     None,
@@ -148,7 +149,6 @@ mod tests {
   fn include_and_derive_params() {
     // 1. Setup a factor to get setup_params
     let setup_factor = mock_question_setup();
-    let setup_params = setup_factor.factor_type.setup().params([0u8; 32].into()).unwrap();
 
     // 2. Create a derive factor
     let derive_factor_result = question("my answer");
@@ -156,7 +156,12 @@ mod tests {
     let mut derive_factor = derive_factor_result.unwrap();
 
     // 3. Call include_params
-    let result = derive_factor.factor_type.include_params(setup_params.clone());
+    let setup_params_enum = setup_factor.factor_type.setup().params([0u8; 32].into()).unwrap();
+    let setup_params = match setup_params_enum {
+      crate::definitions::factor::FactorParams::Question(p) => p,
+      _ => panic!("Expected Question params"),
+    };
+    let result = derive_factor.factor_type.include_params(crate::definitions::factor::FactorParams::Question(setup_params.clone()));
     assert!(result.is_ok());
 
     // 4. Get the inner Question struct
@@ -185,9 +190,8 @@ mod tests {
     };
 
     let output = question_struct.output();
-    assert!(output.is_object());
-    assert!(output["strength"].is_object());
-    let score = output["strength"]["score"].as_u64();
+    assert!(output.strength.is_object());
+    let score = output.strength["score"].as_u64();
     assert!(score.is_some());
     // zxcvbn score for "password123" is low
     assert!(score.unwrap() <= 2);
