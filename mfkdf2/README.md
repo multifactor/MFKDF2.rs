@@ -187,8 +187,10 @@ let derive_password_factor = derive_password("password123")?;
 #   .factors
 #   .iter()
 #   .find(|f| f.id == "hmacsha1").unwrap();
-# let challenge =
-#   hex::decode(&policy_hmac_factor.params["challenge"].as_str().unwrap()).unwrap();
+# let challenge = match &policy_hmac_factor.params {
+#   mfkdf2::definitions::factor::FactorParams::HmacSha1(p) => hex::decode(&p.challenge).unwrap(),
+#   _ => unreachable!(),
+# };
 # let response: [u8; 20] = <Hmac<Sha1> as Mac>::new_from_slice(&HMACSHA1_SECRET)
 #    .unwrap()
 #    .chain_update(challenge)
@@ -202,9 +204,10 @@ let derive_hmac_factor = derive_hmacsha1(response)?;
 #   .factors
 #   .iter()
 #   .find(|f| f.id == "hotp").unwrap();
-# let counter = policy_hotp_factor.params["counter"].as_u64().unwrap();
-# let hash = serde_json::from_value(policy_hotp_factor.params["hash"].clone())?;
-# let digits = policy_hotp_factor.params["digits"].as_u64().unwrap() as u32;
+# let (counter, digits, hash) = match &policy_hotp_factor.params {
+#   mfkdf2::definitions::factor::FactorParams::HOTP(p) => (p.counter, p.digits, p.hash.clone()),
+#   _ => unreachable!(),
+# };
 # let correct_code = generate_otp_token(&HOTP_SECRET, counter, &hash, digits);
 let derive_hotp_factor = derive_hotp(correct_code as u32)?;
 
@@ -215,7 +218,7 @@ let derived_key = derive::key(
     (String::from("hmacsha1"), derive_hmac_factor),
     (String::from("hotp"), derive_hotp_factor),
   ]),
-  false,
+  true,
   false,
 )?;
 
@@ -321,12 +324,14 @@ let policy_hotp_factor: &mfkdf2::policy::PolicyFactor = setup_derived
   .find(|f| f.id == "hotp")
   .expect("policy must contain an HOTP factor");
 
-let counter = policy_hotp_factor.params["counter"].as_u64().expect("counter must be present");
-let hash: HashAlgorithm =
-  serde_json::from_value(policy_hotp_factor.params["hash"].clone()).expect("hash must decode");
-let digits = policy_hotp_factor.params["digits"].as_u64().expect("digits must be present") as u32;
+// get hotp params
+let hotp_params = match &policy_hotp_factor.params {
+  mfkdf2::definitions::factor::FactorParams::HOTP(p) => p,
+  _ => unreachable!("HOTP factor always gives HOTP params"),
+};
+
 let hotp_secret = &hotp_state.config.secret[..20];
-let correct_code = generate_otp_token(hotp_secret, counter, &hash, digits);
+let correct_code = generate_otp_token(hotp_secret, hotp_params.counter, &hotp_params.hash, hotp_params.digits);
 
 let mut derive_factors = HashMap::new();
 
@@ -468,7 +473,7 @@ factor keyed by `"password3"` to [setup key](`crate::derive::key`).
 # Integrity Protetion
 
 
-MFKDF2 allows policy integrity to be enforced between each subsequent derives, and is enabled by default. An honest client will only accept a state if the key it derives from that state correctly validates the state’s integrity. Before deriving the final key, current policy's self-referential tag is checked. This is enabled using `verify` flag in [setup](`crate::setup::key`) and [derive](`crate::derive::key`). If any mismatch is detected, the [PolicyIntegrityCheckFailed](`crate::error::MFKDF2Error::PolicyIntegrityCheckFailed`) error is returned.
+MFKDF2 allows policy integrity to be enforced between each subsequent derives, and is enabled by default. An honest client will only accept a state if the key it derives from that state correctly validates the state’s integrity. Before deriving the final key, current policy's self-referential tag is checked. This is enabled using `verify` flag in [setup](`crate::setup::key`) and [derive](`crate::derive::key`). If any mismatch is detected, the [`PolicyIntegrityCheckFailed`](`crate::error::MFKDF2Error::PolicyIntegrityCheckFailed`) error is returned.
 
 When integrity is disabled, adversary can modify factor public state like threshold, factor parameters, encrypted shares. This may expose underlying keys and factor secrets, reducing the overall entropy of the key.
 
