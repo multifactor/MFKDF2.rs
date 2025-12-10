@@ -1,6 +1,7 @@
 #![doc = include_str!("../README.md")]
 #![warn(missing_docs)]
 #![warn(unused_extern_crates, unreachable_pub, nonstandard_style)]
+#![allow(clippy::cast_possible_truncation)]
 
 pub mod constants;
 mod crypto;

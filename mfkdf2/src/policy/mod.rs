@@ -19,12 +19,13 @@ pub use setup::{PolicySetupOptions, setup};
 use std::collections::HashSet;
 
 use serde::{Deserialize, Serialize};
-use serde_json::Value;
+
+use crate::{definitions::factor::FactorParams, setup::factors::stack::StackParams};
 
 /// Policy factor contains the public parameters (encrypted secret, factor share) , construction
 /// parameters (like salt, params), and other auxiliary state (kind, hint).
 // TODO (autoparallel): We probably can just use the MFKDF2Factor struct directly here.
-#[derive(Clone, Serialize, Deserialize, Debug, Eq, PartialEq)]
+#[derive(Clone, Serialize, Deserialize, Debug, PartialEq)]
 #[cfg_attr(feature = "bindings", derive(uniffi::Record))]
 pub struct PolicyFactor {
   /// Unique identifier for the factor
@@ -40,7 +41,7 @@ pub struct PolicyFactor {
   pub secret: String,
   /// Parameters required by the factor
   // TODO (@lonerapier): convert it into a factor based enum
-  pub params: Value,
+  pub params: FactorParams,
   /// Optional [hint](`crate::definitions::mfkdf_derived_key::hints`) for the factor (in binary
   /// string format)
   #[serde(skip_serializing_if = "Option::is_none")]
@@ -63,7 +64,7 @@ impl zeroize::Zeroize for PolicyFactor {
 /// See [`policy::setup`](`setup::setup`), [`policy::derive`](`derive::derive`) on how to derive a
 /// policy enforced key.
 #[cfg_attr(feature = "bindings", derive(uniffi::Record))]
-#[derive(Clone, Debug, Default, Serialize, Deserialize, Eq, PartialEq)]
+#[derive(Clone, Debug, Default, Serialize, Deserialize, PartialEq)]
 pub struct Policy {
   /// JSON schema URL to validate the key policy.
   #[serde(rename = "$schema")]
@@ -107,7 +108,7 @@ impl Policy {
     for factor in &self.factors {
       list.push(factor.id.clone());
       if factor.kind == "stack"
-        && let Ok(nested) = serde_json::from_value::<Policy>(factor.params.clone())
+        && let FactorParams::Stack(StackParams { policy: nested }) = &factor.params
       {
         list.extend(nested.ids());
       }

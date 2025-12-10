@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use hmac::{Hmac, Mac};
-use mfkdf2::policy::Policy;
+use mfkdf2::{definitions::factor::FactorParams, setup::factors::stack::StackParams};
 use sha1::Sha1;
 
 const HMACSHA1_SECRET: [u8; 20] = [
@@ -97,13 +97,17 @@ fn stack_derive() {
   .unwrap();
   assert_eq!(derived_key.key, key.key);
 
-  let stack_factor_policy = serde_json::from_value::<Policy>(
-    derived_key.policy.factors.iter().find(|f| f.id == "stack_2").unwrap().params.clone(),
-  )
-  .unwrap();
+  let stack_factor_policy =
+    match &derived_key.policy.factors.iter().find(|f| f.id == "stack_2").unwrap().params {
+      FactorParams::Stack(StackParams { policy }) => policy,
+      _ => unreachable!(),
+    };
   let factor_policy = stack_factor_policy.factors.iter().find(|f| f.id == "hmacsha1_1").unwrap();
-  let params = &factor_policy.params;
-  let challenge = hex::decode(params["challenge"].as_str().unwrap()).unwrap();
+  let params = match &factor_policy.params {
+    FactorParams::HmacSha1(h) => h,
+    _ => unreachable!(),
+  };
+  let challenge = hex::decode(params.challenge.clone()).unwrap();
   let response: [u8; 20] = <Hmac<Sha1> as Mac>::new_from_slice(&HMACSHA1_SECRET)
     .unwrap()
     .chain_update(challenge)

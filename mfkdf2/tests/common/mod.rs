@@ -3,7 +3,7 @@
 use base64::Engine;
 use hkdf::Hkdf;
 use hmac::{Hmac, Mac};
-use mfkdf2::definitions::{MFKDF2DerivedKey, MFKDF2Options};
+use mfkdf2::definitions::{MFKDF2DerivedKey, MFKDF2Options, factor::FactorParams};
 use rsa::{
   RsaPrivateKey, RsaPublicKey,
   pkcs1::{DecodeRsaPrivateKey, DecodeRsaPublicKey},
@@ -230,10 +230,10 @@ pub fn create_derive_factor(
       ("password_1".to_string(), mfkdf2::derive::factors::password("Tr0ubd4dour").unwrap()),
     "hotp" => {
       let factor_policy = policy.factors.iter().find(|f| f.id == "hotp_1").unwrap();
-      let params = &factor_policy.params;
-      let counter = params["counter"].as_u64().unwrap();
-      let digits = params["digits"].as_u64().unwrap() as u32;
-      let hash = serde_json::from_value(params["hash"].clone()).unwrap();
+      let (counter, digits, hash) = match &factor_policy.params {
+        FactorParams::HOTP(p) => (p.counter, p.digits, p.hash.clone()),
+        _ => panic!("Unexpected factor params for HOTP"),
+      };
 
       let generated_code =
         mfkdf2::otpauth::generate_otp_token(&HOTP_SECRET, counter, &hash, digits);
@@ -241,12 +241,12 @@ pub fn create_derive_factor(
     },
     "totp" => {
       let factor_policy = policy.factors.iter().find(|f| f.id == "totp_1").unwrap();
-      let params = &factor_policy.params;
       let time =
         std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_millis();
-      let step = params["step"].as_u64().unwrap();
-      let hash = serde_json::from_value(params["hash"].clone()).unwrap();
-      let digits = params["digits"].as_u64().unwrap() as u32;
+      let (step, hash, digits) = match &factor_policy.params {
+        FactorParams::TOTP(p) => (u64::from(p.step), p.hash.clone(), p.digits),
+        _ => panic!("Unexpected factor params for TOTP"),
+      };
       let counter = time as u64 / (step * 1000);
 
       let totp_code = mfkdf2::otpauth::generate_otp_token(&TOTP_SECRET, counter, &hash, digits);
@@ -254,8 +254,10 @@ pub fn create_derive_factor(
     },
     "hmacsha1" => {
       let factor_policy = policy.factors.iter().find(|f| f.id == "hmacsha1_1").unwrap();
-      let params = &factor_policy.params;
-      let challenge = hex::decode(params["challenge"].as_str().unwrap()).unwrap();
+      let challenge = match &factor_policy.params {
+        FactorParams::HmacSha1(p) => hex::decode(&p.challenge).unwrap(),
+        _ => panic!("Unexpected factor params for HmacSha1"),
+      };
       let response: [u8; 20] = <Hmac<Sha1> as Mac>::new_from_slice(&HMACSHA1_SECRET)
         .unwrap()
         .chain_update(challenge)
@@ -278,8 +280,10 @@ pub fn create_derive_factor(
         RsaPrivateKey::from_pkcs1_der(&hex::decode(RSA_PRIVATE_KEY).unwrap()).unwrap();
 
       let factor_policy = policy.factors.iter().find(|f| f.id == "ooba_1").unwrap();
-      let params = &factor_policy.params;
-      let ciphertext = hex::decode(params["next"].as_str().unwrap()).unwrap();
+      let ciphertext = match &factor_policy.params {
+        FactorParams::OOBA(p) => hex::decode(&p.next).unwrap(),
+        _ => panic!("Unexpected factor params for OOBA"),
+      };
       let decrypted = serde_json::from_slice::<serde_json::Value>(
         &rsa_private_key.decrypt(rsa::Oaep::new::<sha2::Sha256>(), &ciphertext).unwrap(),
       )

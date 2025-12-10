@@ -3,6 +3,7 @@ mod common;
 use std::collections::HashMap;
 
 use hmac::{Hmac, Mac};
+use mfkdf2::definitions::factor::FactorParams;
 use rstest::rstest;
 use sha1::Sha1;
 
@@ -122,15 +123,12 @@ fn key_derive_hmacsha1() -> Result<(), mfkdf2::error::MFKDF2Error> {
   let key = mock_hmacsha1_mfkdf2().unwrap();
   println!("Setup key: {}", key);
 
-  let challenge = hex::decode(
-    serde_json::from_value::<serde_json::Value>(
-      key.policy.factors.iter().find(|f| f.kind == "hmacsha1").unwrap().params.clone(),
-    )
-    .unwrap()["challenge"]
-      .as_str()
-      .unwrap(),
-  )
-  .unwrap();
+  let challenge =
+    hex::decode(match &key.policy.factors.iter().find(|f| f.kind == "hmacsha1").unwrap().params {
+      FactorParams::HmacSha1(p) => p.challenge.as_str(),
+      _ => panic!("Unexpected params for hmacsha1"),
+    })
+    .unwrap();
 
   let response: [u8; 20] = <Hmac<Sha1> as Mac>::new_from_slice(&HMACSHA1_SECRET)
     .unwrap()
@@ -201,10 +199,10 @@ fn key_derive_hotp() -> Result<(), mfkdf2::error::MFKDF2Error> {
 
   // Extract HOTP parameters from the policy
   let hotp_factor = key.policy.factors.iter().find(|f| f.kind == "hotp").unwrap();
-  let params = &hotp_factor.params;
-  let counter = params["counter"].as_u64().unwrap();
-  let digits = params["digits"].as_u64().unwrap() as u32;
-  let hash = serde_json::from_value(params["hash"].clone()).unwrap();
+  let (counter, digits, hash) = match &hotp_factor.params {
+    FactorParams::HOTP(p) => (p.counter, p.digits, p.hash.clone()),
+    _ => panic!("Unexpected params for HOTP"),
+  };
 
   // Generate the HOTP code that the user would need to provide
   // This simulates what would come from an authenticator app
@@ -297,10 +295,10 @@ fn key_derive_mixed_password_hotp() -> Result<(), mfkdf2::error::MFKDF2Error> {
 
   // Extract HOTP parameters
   let hotp_factor = key.policy.factors.iter().find(|f| f.kind == "hotp").unwrap();
-  let params = &hotp_factor.params;
-  let counter = params["counter"].as_u64().unwrap();
-  let digits = params["digits"].as_u64().unwrap() as u32;
-  let hash = serde_json::from_value(params["hash"].clone()).unwrap();
+  let (counter, digits, hash) = match &hotp_factor.params {
+    FactorParams::HOTP(p) => (p.counter, p.digits, p.hash.clone()),
+    _ => panic!("Unexpected params for HOTP"),
+  };
 
   // Generate the correct HOTP code using SHA256 (different from previous test)
   let generated_code = mfkdf2::otpauth::generate_otp_token(&HOTP_SECRET, counter, &hash, digits);

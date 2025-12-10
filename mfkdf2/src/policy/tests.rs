@@ -5,11 +5,11 @@ use rstest::rstest;
 use crate::{
   derive, otpauth,
   policy::{
-    self, Policy,
+    self,
     logic::{all, and, any, at_least, or},
     setup::PolicySetupOptions,
   },
-  setup::factors,
+  setup::factors::{self, stack::StackParams},
 };
 
 // Helper to create a factor by name and id for policy tests
@@ -52,27 +52,27 @@ fn create_policy_derive_factor(
       let policy_ids: Vec<_> = policy.factors.iter().map(|f| f.id.as_str()).collect();
       println!("[DEBUG] Looking for id '{}' in policy ids: {:?}", id, policy_ids);
       let factor_policy = policy.factors.iter().find(|f| f.id == id).unwrap();
-      let params = &factor_policy.params;
-      let counter = params["counter"].as_u64().unwrap();
-      let digits = params["digits"].as_u64().unwrap() as u32;
-      let hash = serde_json::from_value(params["hash"].clone()).unwrap();
+      let params = match &factor_policy.params {
+        crate::definitions::factor::FactorParams::HOTP(hotp_params) => hotp_params,
+        _ => unreachable!(),
+      };
       let secret = vec![0u8; 20];
-      let code = otpauth::generate_otp_token(&secret, counter, &hash, digits);
+      let code = otpauth::generate_otp_token(&secret, params.counter, &params.hash, params.digits);
       (id.to_string(), derive::factors::hotp(code).unwrap())
     },
     "totp" => {
       let policy_ids: Vec<_> = policy.factors.iter().map(|f| f.id.as_str()).collect();
       println!("[DEBUG] Looking for id '{}' in policy ids: {:?}", id, policy_ids);
       let factor_policy = policy.factors.iter().find(|f| f.id == id).unwrap();
-      let params = &factor_policy.params;
+      let params = match &factor_policy.params {
+        crate::definitions::factor::FactorParams::TOTP(totp_params) => totp_params,
+        _ => unreachable!(),
+      };
       let time =
         std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_millis();
-      let step = params["step"].as_u64().unwrap();
-      let hash = serde_json::from_value(params["hash"].clone()).unwrap();
-      let digits = params["digits"].as_u64().unwrap() as u32;
-      let counter = time as u64 / (step * 1000);
+      let counter = time as u64 / (params.step as u64 * 1000);
       let secret = vec![0u8; 20];
-      let code = otpauth::generate_otp_token(&secret, counter, &hash, digits);
+      let code = otpauth::generate_otp_token(&secret, counter, &params.hash, params.digits);
       (id.to_string(), derive::factors::totp(code, None).unwrap())
     },
     _ => panic!("Unknown factor type: {}", name),
@@ -99,13 +99,16 @@ fn policy_derivation_combinations(
   let policy_factor = at_least(threshold as u8, factors).unwrap();
   let setup = policy::setup::setup(policy_factor, PolicySetupOptions::default()).unwrap();
 
-  let factors_policy: Policy =
-    serde_json::from_value(setup.policy.factors[0].params.clone()).unwrap();
+  let factors_policy = match &setup.policy.factors[0].params {
+    crate::definitions::factor::FactorParams::Stack(StackParams { policy: stack_params }) =>
+      stack_params,
+    _ => unreachable!(),
+  };
 
   for combo in derive_combinations {
     for _ in 0..derivation_runs {
       let derive_factors: HashMap<_, _> =
-        combo.iter().map(|name| create_policy_derive_factor(name, name, &factors_policy)).collect();
+        combo.iter().map(|name| create_policy_derive_factor(name, name, factors_policy)).collect();
 
       let derived = policy::derive::derive(&setup.policy, &derive_factors, None).unwrap();
       assert_eq!(derived.key, setup.key, "Failed for combination: {:?}", combo);

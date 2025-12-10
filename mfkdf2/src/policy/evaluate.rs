@@ -1,6 +1,7 @@
 use std::collections::HashSet;
 
 use super::Policy;
+use crate::{policy::FactorParams, setup::factors::stack::StackParams};
 
 impl Policy {
   /// Evaluates the policy by checking if the given factor IDs are valid and sufficient to derive
@@ -51,8 +52,8 @@ pub(super) fn evaluate_internal(policy: &Policy, factor_set: &HashSet<String>) -
 
   for factor in &policy.factors {
     if factor.kind == "stack" {
-      if let Ok(nested_policy) = serde_json::from_value::<Policy>(factor.params.clone())
-        && evaluate_internal(&nested_policy, factor_set)
+      if let FactorParams::Stack(StackParams { policy: nested }) = &factor.params
+        && evaluate_internal(nested, factor_set)
       {
         actual += 1;
       }
