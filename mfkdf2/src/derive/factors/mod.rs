@@ -39,7 +39,7 @@ pub use uuid::uuid;
 use crate::{
   definitions::{
     FactorType, Key,
-    factor::{FactorMetadata, FactorOutput, FactorParams},
+    factor::{FactorMetadata, FactorParams},
   },
   derive::FactorDerive,
   error::MFKDF2Result,
@@ -90,18 +90,18 @@ impl FactorDeriveCtx<'_> {
   }
 
   /// Get output for the factor during derivation.
-  pub(crate) fn output(&self) -> FactorOutput {
+  pub(crate) fn output(&self) -> serde_json::Value {
     match self.0 {
-      FactorType::Password(password) => FactorOutput::Password(password.output()),
-      FactorType::HOTP(hotp) => FactorOutput::HOTP(hotp.output()),
-      FactorType::Question(question) => FactorOutput::Question(question.output()),
-      FactorType::UUID(uuid) => FactorOutput::UUID(uuid.output()),
-      FactorType::HmacSha1(hmacsha1) => FactorOutput::HmacSha1(hmacsha1.output()),
-      FactorType::TOTP(totp) => FactorOutput::TOTP(totp.output()),
-      FactorType::OOBA(ooba) => FactorOutput::OOBA(ooba.output()),
-      FactorType::Passkey(passkey) => FactorOutput::Passkey(passkey.output()),
-      FactorType::Stack(stack) => FactorOutput::Stack(stack.output()),
-      FactorType::Persisted(persisted) => FactorOutput::Persisted(persisted.output()),
+      FactorType::Password(password) => serde_json::to_value(password.output()).unwrap(),
+      FactorType::HOTP(hotp) => serde_json::to_value(hotp.output()).unwrap(),
+      FactorType::Question(question) => serde_json::to_value(question.output()).unwrap(),
+      FactorType::UUID(uuid) => serde_json::to_value(uuid.output()).unwrap(),
+      FactorType::HmacSha1(hmacsha1) => serde_json::to_value(hmacsha1.output()).unwrap(),
+      FactorType::TOTP(totp) => serde_json::to_value(totp.output()).unwrap(),
+      FactorType::OOBA(ooba) => serde_json::to_value(ooba.output()).unwrap(),
+      FactorType::Passkey(passkey) => serde_json::to_value(passkey.output()).unwrap(),
+      FactorType::Stack(stack) => serde_json::to_value(stack.output()).unwrap(),
+      FactorType::Persisted(persisted) => serde_json::to_value(persisted.output()).unwrap(),
     }
   }
 }

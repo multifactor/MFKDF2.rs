@@ -96,12 +96,7 @@ mod tests {
     let valid_uuid = "f9bf78b9-54e7-4696-97dc-5e750de4c592";
     let factor = uuid(Uuid::parse_str(valid_uuid).unwrap()).unwrap();
     let output = factor.factor_type.derive().output();
-    match output {
-      crate::definitions::factor::FactorOutput::UUID(o) => {
-        assert_eq!(o.uuid, Uuid::parse_str(valid_uuid).unwrap());
-      },
-      _ => panic!("Expected UUID output"),
-    }
+    assert_eq!(output["uuid"], valid_uuid);
   }
 
   #[test]

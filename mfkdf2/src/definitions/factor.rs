@@ -152,34 +152,6 @@ pub enum FactorParams {
   Persisted(crate::derive::factors::persisted::PersistedParams),
 }
 
-/// Public, serializable output for each supported authentication factor.
-/// Each variant corresponds to its respective factor type's output struct.
-
-#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
-#[cfg_attr(feature = "bindings", derive(uniffi::Enum))]
-pub enum FactorOutput {
-  /// Output for the [`password::Password`] factor.
-  Password(password::PasswordOutput),
-  /// Output for the [`hotp::HOTP`] factor.
-  HOTP(hotp::HOTPOutput),
-  /// Output for the [`question::Question`] factor.
-  Question(question::QuestionOutput),
-  /// Output for the [`uuid::UUIDFactor`] factor.
-  UUID(uuid::UUIDFactorOutput),
-  /// Output for the [`hmacsha1::HmacSha1`] factor.
-  HmacSha1(hmacsha1::HmacSha1Output),
-  /// Output for the [`totp::TOTP`] factor.
-  TOTP(totp::TOTPOutput),
-  /// Output for the [`ooba::Ooba`] factor.
-  OOBA(ooba::OobaOutput),
-  /// Output for the [`passkey::Passkey`] factor.
-  Passkey(passkey::PasskeyOutput),
-  /// Output for the [`stack::Stack`] factor.
-  Stack(stack::StackOutput),
-  /// Output for the [persisted](`crate::derive::factors::persisted::Persisted`)
-  Persisted(crate::derive::factors::persisted::PersistedOutput),
-}
-
 impl FactorMetadata for FactorType {
   fn bytes(&self) -> Vec<u8> {
     match self {

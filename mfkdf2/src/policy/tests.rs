@@ -9,7 +9,7 @@ use crate::{
     logic::{all, and, any, at_least, or},
     setup::PolicySetupOptions,
   },
-  setup::factors::{self, stack::StackParams},
+  setup::factors::{self},
 };
 
 // Helper to create a factor by name and id for policy tests
@@ -100,8 +100,7 @@ fn policy_derivation_combinations(
   let setup = policy::setup::setup(policy_factor, PolicySetupOptions::default()).unwrap();
 
   let factors_policy = match &setup.policy.factors[0].params {
-    crate::definitions::factor::FactorParams::Stack(StackParams { policy: stack_params }) =>
-      stack_params,
+    crate::definitions::factor::FactorParams::Stack(stack_params) => stack_params,
     _ => unreachable!(),
   };
 

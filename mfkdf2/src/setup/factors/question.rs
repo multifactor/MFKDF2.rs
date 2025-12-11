@@ -152,7 +152,6 @@ async fn setup_question(answer: String, options: QuestionOptions) -> MFKDF2Resul
 #[cfg(test)]
 mod tests {
   use super::*;
-  use crate::setup::factors::FactorOutput;
 
   fn mock_construction() -> MFKDF2Factor {
     let options = QuestionOptions {
@@ -215,12 +214,11 @@ mod tests {
   fn output() {
     let factor = mock_construction();
     let output = factor.factor_type.setup().output();
-    if let FactorOutput::Question(output) = output {
-      assert!(output.strength.is_object());
-      assert!(output.strength["score"].is_number());
-      assert!(output.strength["guesses"].is_number());
-      assert!(output.strength["guesses_log10"].is_number());
-    }
+    assert!(output.is_object());
+    assert!(output["strength"].is_object());
+    assert!(output["strength"]["score"].is_number());
+    assert!(output["strength"]["guesses"].is_number());
+    assert!(output["strength"]["guesses_log10"].is_number());
   }
 
   #[test]

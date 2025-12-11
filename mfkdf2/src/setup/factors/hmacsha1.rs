@@ -241,12 +241,15 @@ mod tests {
     assert_eq!(factor.id, Some("hmacsha1".to_string()));
     assert_eq!(factor.data().len(), 32); // Secret should be 20 bytes + 12 bytes of padding
     assert!(factor.factor_type.setup().params([0u8; 32].into()).is_ok());
-    if let crate::definitions::factor::FactorOutput::HmacSha1(output) =
-      factor.factor_type.setup().output()
-    {
-      assert_eq!(output.secret.len(), 20);
-      assert_eq!(output.secret, factor.data()[..20]);
-    }
+    let output = factor.factor_type.setup().output();
+    let secret = output["secret"]
+      .as_array()
+      .unwrap()
+      .iter()
+      .map(|v| v.as_u64().unwrap() as u8)
+      .collect::<Vec<u8>>();
+    assert_eq!(secret.len(), 20);
+    assert_eq!(secret, factor.data()[..20]);
     assert_eq!(factor.entropy, Some(160.0)); // 20 bytes * 8 bits = 160 bits
   }
 

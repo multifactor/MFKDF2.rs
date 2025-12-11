@@ -15,13 +15,13 @@ use std::collections::HashMap;
 use argon2::Argon2;
 use base64::{Engine, engine::general_purpose};
 use serde::{Deserialize, Serialize};
+use serde_json::Value;
 
 use crate::{
   crypto::decrypt,
   definitions::{
     bytearray::{ByteArray, Key},
     entropy::MFKDF2Entropy,
-    factor::FactorOutput,
   },
   error::MFKDF2Result,
   policy::Policy,
@@ -58,7 +58,7 @@ pub struct MFKDF2DerivedKey {
   pub shares:  Vec<Vec<u8>>,
   /// Per‑factor public outputs produced during setup or derive (such as strength metrics or
   /// factor‑specific metadata).
-  pub outputs: HashMap<String, FactorOutput>,
+  pub outputs: HashMap<String, Value>,
   /// Measured and theoretical entropy estimates for the derived key, useful for auditing and
   /// security analysis.
   pub entropy: MFKDF2Entropy,

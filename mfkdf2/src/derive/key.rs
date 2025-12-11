@@ -310,7 +310,8 @@ pub fn key(
       // TODO (autoparallel): It would be preferred to know the size of this array at compile
       // time.
       shares_bytes.push(Some(plaintext));
-      outputs.insert(factor.id.clone(), material.factor_type.derive().output());
+      outputs
+        .insert(factor.id.clone(), serde_json::to_value(material.factor_type.derive().output())?);
     }
   }
 

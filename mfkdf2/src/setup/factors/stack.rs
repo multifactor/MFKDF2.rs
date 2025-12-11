@@ -71,30 +71,18 @@ impl FactorMetadata for Stack {
 }
 
 /// Stack factor parameters.
-#[cfg_attr(feature = "bindings", derive(uniffi::Record))]
-#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
-pub struct StackParams {
-  /// Policy for the stacked key.
-  pub policy: Policy,
-}
+pub type StackParams = Policy;
 
 /// Stack factor output.
-#[cfg_attr(feature = "bindings", derive(uniffi::Record))]
-#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
-pub struct StackOutput {
-  /// Derived key information.
-  pub key: MFKDF2DerivedKey,
-}
+pub type StackOutput = MFKDF2DerivedKey;
 
 impl FactorSetup for Stack {
   type Output = StackOutput;
   type Params = StackParams;
 
-  fn params(&self, _key: Key) -> MFKDF2Result<Self::Params> {
-    Ok(StackParams { policy: self.key.policy.clone() })
-  }
+  fn params(&self, _key: Key) -> MFKDF2Result<Self::Params> { Ok(self.key.policy.clone()) }
 
-  fn output(&self) -> Self::Output { StackOutput { key: self.key.clone() } }
+  fn output(&self) -> Self::Output { self.key.clone() }
 }
 
 /// Creates a stack factor from existing factors.
@@ -163,7 +151,7 @@ async fn setup_stack(
 mod tests {
   use super::*;
   use crate::{
-    definitions::factor::{FactorOutput, FactorParams},
+    definitions::factor::FactorParams,
     setup::factors::password::{PasswordOptions, password},
   };
 
@@ -217,8 +205,8 @@ mod tests {
     let output = stack_factor.factor_type.setup().output();
 
     if let FactorType::Stack(stack) = stack_factor.factor_type {
-      assert_eq!(params, FactorParams::Stack(StackParams { policy: stack.key.policy.clone() }));
-      assert_eq!(output, FactorOutput::Stack(StackOutput { key: stack.key }));
+      assert_eq!(params, FactorParams::Stack(stack.key.policy.clone()));
+      assert_eq!(output, serde_json::to_value(stack.key).unwrap());
     } else {
       panic!("Expected Stack factor type");
     }

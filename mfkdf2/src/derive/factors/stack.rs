@@ -21,21 +21,13 @@ impl FactorDerive for Stack {
   fn include_params(&mut self, params: Self::Params) -> MFKDF2Result<()> {
     // Stack factors don't need to include params during derivation
     // The key derivation is handled by the derive_key function
-    self.key = crate::derive::key(&params.policy, self.factors.clone(), false, true)?;
+    self.key = crate::derive::key(&params, self.factors.clone(), false, true)?;
     Ok(())
   }
 
-  fn params(&self, _key: Key) -> MFKDF2Result<Self::Params> {
-    Ok(StackParams {
-      policy: self.key.policy.clone(),
-    })
-  }
+  fn params(&self, _key: Key) -> MFKDF2Result<Self::Params> { Ok(self.key.policy.clone()) }
 
-  fn output(&self) -> Self::Output {
-    StackOutput {
-      key: self.key.clone(),
-    }
-  }
+  fn output(&self) -> Self::Output { self.key.clone() }
 }
 
 /// Factor construction derive phase for a stack factor
@@ -179,7 +171,8 @@ mod tests {
       stack(HashMap::from([("pwd1".to_string(), password("p".to_string()).unwrap())])).unwrap();
 
     // Try to create invalid params - this will fail at deserialization
-    let invalid_params_result: Result<StackParams, _> = serde_json::from_value(serde_json::json!("not a policy"));
+    let invalid_params_result: Result<StackParams, _> =
+      serde_json::from_value(serde_json::json!("not a policy"));
     assert!(invalid_params_result.is_err());
   }
 }

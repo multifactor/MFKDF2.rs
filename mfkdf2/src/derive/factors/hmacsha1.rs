@@ -157,10 +157,12 @@ mod tests {
   fn mock_hmac_derive(setup_factor: &MFKDF2Factor, setup_params: &HmacSha1Params) -> FactorType {
     let challenge = hex::decode(&setup_params.challenge).unwrap();
     let output = setup_factor.factor_type.setup().output();
-    let secret = match output {
-      crate::definitions::factor::FactorOutput::HmacSha1(o) => o.secret,
-      _ => panic!("Expected HmacSha1 output"),
-    };
+    let secret = output["secret"]
+      .as_array()
+      .unwrap()
+      .iter()
+      .map(|v| v.as_u64().unwrap() as u8)
+      .collect::<Vec<u8>>();
     let response = crate::crypto::hmacsha1(&secret, &challenge);
 
     let result = hmacsha1(response);
@@ -291,10 +293,12 @@ mod tests {
       .unwrap();
 
     let output = derive_hmac.derive().output();
-    let secret = match output {
-      crate::definitions::factor::FactorOutput::HmacSha1(o) => o.secret,
-      _ => panic!("Expected HmacSha1 output"),
-    };
+    let secret = output["secret"]
+      .as_array()
+      .unwrap()
+      .iter()
+      .map(|v| v.as_u64().unwrap() as u8)
+      .collect::<Vec<u8>>();
 
     let derive_hmac_factor = match &derive_hmac {
       FactorType::HmacSha1(h) => h,

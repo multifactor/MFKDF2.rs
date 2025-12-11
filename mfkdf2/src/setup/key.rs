@@ -278,7 +278,7 @@ pub fn key(factors: &[MFKDF2Factor], options: MFKDF2Options) -> MFKDF2Result<MFK
       hkdf_sha256_with_info(&internal_key, &salt, format!("mfkdf2:factor:params:{id}").as_bytes());
     let params = factor.factor_type.setup().params(params_key.into())?;
 
-    outputs.insert(id.clone(), factor.factor_type.setup().output());
+    outputs.insert(id.clone(), serde_json::to_value(factor.factor_type.setup().output()).unwrap());
 
     let mut secret_key =
       hkdf_sha256_with_info(&internal_key, &salt, format!("mfkdf2:factor:secret:{id}").as_bytes());

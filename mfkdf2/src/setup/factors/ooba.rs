@@ -295,7 +295,6 @@ mod tests {
   use rsa::{RsaPrivateKey, traits::PublicKeyParts};
 
   use super::*;
-  use crate::definitions::factor::FactorOutput;
 
   fn keypair() -> (RsaPrivateKey, RsaPublicKey) {
     let bits = 2048;
@@ -453,6 +452,6 @@ mod tests {
     let (_, public_key) = keypair();
     let factor = mock_construction(&public_key);
     let output = factor.factor_type.setup().output();
-    assert_eq!(output, FactorOutput::OOBA(OobaOutput::default()));
+    assert_eq!(output, serde_json::to_value(OobaOutput::default()).unwrap());
   }
 }

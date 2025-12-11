@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use hmac::{Hmac, Mac};
-use mfkdf2::{definitions::factor::FactorParams, setup::factors::stack::StackParams};
+use mfkdf2::definitions::factor::FactorParams;
 use sha1::Sha1;
 
 const HMACSHA1_SECRET: [u8; 20] = [
@@ -99,7 +99,7 @@ fn stack_derive() {
 
   let stack_factor_policy =
     match &derived_key.policy.factors.iter().find(|f| f.id == "stack_2").unwrap().params {
-      FactorParams::Stack(StackParams { policy }) => policy,
+      FactorParams::Stack(policy) => policy,
       _ => unreachable!(),
     };
   let factor_policy = stack_factor_policy.factors.iter().find(|f| f.id == "hmacsha1_1").unwrap();

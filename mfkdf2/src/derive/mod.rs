@@ -46,31 +46,28 @@ fn derive_factor_params(
 
 #[cfg(feature = "bindings")]
 #[cfg_attr(feature = "bindings", uniffi::export)]
-fn derive_factor_output(
-  factor: &crate::definitions::FactorType,
-) -> crate::definitions::factor::FactorOutput {
+fn derive_factor_output(factor: &crate::definitions::FactorType) -> serde_json::Value {
   factor.derive().output()
 }
 
 #[cfg(test)]
 mod tests {
-  use std::{collections::HashMap, str::FromStr};
+  use std::collections::HashMap;
 
   use base64::Engine;
   use rsa::traits::PublicKeyParts;
   use serde_json::json;
-  use uuid::Uuid;
 
   use crate::{
-    definitions::{MFKDF2Options, factor::FactorOutput},
+    definitions::{MFKDF2DerivedKey, MFKDF2Options},
     derive,
     setup::{
       self,
       factors::{
-        hmacsha1::{HmacSha1Options, HmacSha1Response},
+        hmacsha1::{HmacSha1Options, HmacSha1Output, HmacSha1Response},
         ooba::OobaOptions,
         stack::StackOptions,
-        uuid::{UUIDFactorOutput, UUIDOptions},
+        uuid::UUIDOptions,
       },
     },
   };
@@ -103,10 +100,8 @@ mod tests {
     )
     .unwrap();
 
-    let mut setup_key = match &setup.outputs["stack"] {
-      crate::definitions::factor::FactorOutput::Stack(o) => o.key.clone(),
-      _ => panic!("Expected Stack output"),
-    };
+    let mut setup_key: MFKDF2DerivedKey =
+      serde_json::from_value(setup.outputs["stack"].clone()).unwrap();
     setup_key.entropy.real = 0.0;
     setup_key.entropy.theoretical = 0;
 
@@ -144,12 +139,9 @@ mod tests {
     )
     .unwrap();
 
-    let derive_key = match &derive.outputs["stack"] {
-      crate::definitions::factor::FactorOutput::Stack(o) => o.key.clone(),
-      _ => panic!("Expected Stack output"),
-    };
-
-    assert_eq!(setup_key, derive_key);
+    let factor_output: MFKDF2DerivedKey =
+      serde_json::from_value(derive.outputs["stack"].clone()).unwrap();
+    assert_eq!(setup_key, factor_output);
   }
 
   #[test]
@@ -160,10 +152,8 @@ mod tests {
     )
     .unwrap();
 
-    let setup_output = match &setup.outputs["hmacsha1"] {
-      crate::definitions::factor::FactorOutput::HmacSha1(o) => o,
-      _ => panic!("Expected HmacSha1 output"),
-    };
+    let setup_output: HmacSha1Output =
+      serde_json::from_value(setup.outputs["hmacsha1"].clone()).unwrap();
     let params = &setup.policy.factors.iter().find(|f| f.id == "hmacsha1").unwrap().params;
     let challenge = match params {
       crate::definitions::factor::FactorParams::HmacSha1(p) => hex::decode(&p.challenge).unwrap(),
@@ -235,18 +225,15 @@ mod tests {
     )
     .unwrap();
 
-    let setup_output_json = match &setup.outputs["question"] {
-      crate::definitions::factor::FactorOutput::Question(o) => serde_json::to_value(o).unwrap(),
-      _ => panic!("Expected Question output"),
-    };
-    let derive_output_json = match &derive.outputs["question"] {
-      crate::definitions::factor::FactorOutput::Question(o) => serde_json::to_value(o).unwrap(),
-      _ => panic!("Expected Question output"),
-    };
+    let setup_output_json = serde_json::to_value(setup.outputs["question"].clone()).unwrap();
+    let derive_output_json = serde_json::to_value(derive.outputs["question"].clone()).unwrap();
+
+    // remove calc_time from both outputs
     let mut setup_output = setup_output_json["strength"].clone();
     let mut derive_output = derive_output_json["strength"].clone();
     setup_output.as_object_mut().unwrap().remove("calc_time");
     derive_output.as_object_mut().unwrap().remove("calc_time");
+
     assert_eq!(setup_output, derive_output);
   }
 
@@ -326,14 +313,8 @@ mod tests {
     )
     .unwrap();
 
-    let setup_output_json = match &setup.outputs["password"] {
-      crate::definitions::factor::FactorOutput::Password(o) => serde_json::to_value(o).unwrap(),
-      _ => panic!("Expected Password output"),
-    };
-    let derive_output_json = match &derive.outputs["password"] {
-      crate::definitions::factor::FactorOutput::Password(o) => serde_json::to_value(o).unwrap(),
-      _ => panic!("Expected Password output"),
-    };
+    let setup_output_json = serde_json::to_value(setup.outputs["password"].clone()).unwrap();
+    let derive_output_json = serde_json::to_value(derive.outputs["password"].clone()).unwrap();
     let mut setup_output = setup_output_json["strength"].clone();
     let mut derive_output = derive_output_json["strength"].clone();
     setup_output.as_object_mut().unwrap().remove("calc_time");
@@ -370,20 +351,20 @@ mod tests {
       HashMap::from([
         (
           "uuid1".to_string(),
-          FactorOutput::UUID(UUIDFactorOutput {
-            uuid: Uuid::from_str("9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6d").unwrap(),
+          serde_json::json!({
+            "uuid": "9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6d",
           })
         ),
         (
           "uuid2".to_string(),
-          FactorOutput::UUID(UUIDFactorOutput {
-            uuid: Uuid::from_str("1b9d6bcd-bbfd-4b2d-9b5d-ab8dfbbd4bed").unwrap(),
+          serde_json::json!({
+            "uuid": "1b9d6bcd-bbfd-4b2d-9b5d-ab8dfbbd4bed",
           })
         ),
         (
           "uuid3".to_string(),
-          FactorOutput::UUID(UUIDFactorOutput {
-            uuid: Uuid::from_str("6ec0bd7f-11c0-43da-975e-2a8ad9ebae0b").unwrap(),
+          serde_json::json!({
+            "uuid": "6ec0bd7f-11c0-43da-975e-2a8ad9ebae0b",
           })
         ),
       ])
@@ -417,14 +398,14 @@ mod tests {
       HashMap::from([
         (
           "uuid1".to_string(),
-          FactorOutput::UUID(UUIDFactorOutput {
-            uuid: Uuid::from_str("9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6d").unwrap(),
+          serde_json::json!({
+            "uuid": "9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6d",
           })
         ),
         (
           "uuid3".to_string(),
-          FactorOutput::UUID(UUIDFactorOutput {
-            uuid: Uuid::from_str("6ec0bd7f-11c0-43da-975e-2a8ad9ebae0b").unwrap(),
+          serde_json::json!({
+            "uuid": "6ec0bd7f-11c0-43da-975e-2a8ad9ebae0b",
           })
         ),
       ])

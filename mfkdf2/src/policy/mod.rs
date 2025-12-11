@@ -20,7 +20,7 @@ use std::collections::HashSet;
 
 use serde::{Deserialize, Serialize};
 
-use crate::{definitions::factor::FactorParams, setup::factors::stack::StackParams};
+use crate::definitions::factor::FactorParams;
 
 /// Policy factor contains the public parameters (encrypted secret, factor share) , construction
 /// parameters (like salt, params), and other auxiliary state (kind, hint).
@@ -40,7 +40,6 @@ pub struct PolicyFactor {
   /// Base-64 encrypted factor secret value used to reconstitute ke
   pub secret: String,
   /// Parameters required by the factor
-  // TODO (@lonerapier): convert it into a factor based enum
   pub params: FactorParams,
   /// Optional [hint](`crate::definitions::mfkdf_derived_key::hints`) for the factor (in binary
   /// string format)
@@ -108,7 +107,7 @@ impl Policy {
     for factor in &self.factors {
       list.push(factor.id.clone());
       if factor.kind == "stack"
-        && let FactorParams::Stack(StackParams { policy: nested }) = &factor.params
+        && let FactorParams::Stack(nested) = &factor.params
       {
         list.extend(nested.ids());
       }

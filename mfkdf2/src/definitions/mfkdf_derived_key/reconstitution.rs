@@ -215,7 +215,7 @@ impl MFKDF2DerivedKey {
       };
 
       factors.insert(id.clone(), new_factor);
-      outputs.insert(id.clone(), factor.factor_type.setup().output());
+      outputs.insert(id.clone(), serde_json::to_value(factor.factor_type.setup().output())?);
       data.insert(id.clone(), factor.data());
       if material.contains_key(id.as_str()) {
         material.remove(id.as_str());
