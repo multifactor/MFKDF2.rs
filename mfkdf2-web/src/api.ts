@@ -11,6 +11,57 @@ export type {
   Mfkdf2Options,
 } from './generated/web/mfkdf2.js';
 
+const factorParamConstructors: Record<string, any> = {
+  password: raw.FactorParams.Password,
+  hotp: raw.FactorParams.Hotp,
+  question: raw.FactorParams.Question,
+  uuid: raw.FactorParams.Uuid,
+  hmacsha1: raw.FactorParams.HmacSha1,
+  totp: raw.FactorParams.Totp,
+  ooba: raw.FactorParams.Ooba,
+  passkey: raw.FactorParams.Passkey,
+  stack: raw.FactorParams.Stack,
+  persisted: raw.FactorParams.Persisted,
+};
+
+function flattenFactorParams(value: any): any {
+  if (value && typeof value === 'object' && Array.isArray((value as any).inner) && 'tag' in value) {
+    if ((value as any).tag === raw.FactorParams_Tags.Stack) {
+      return wrapPolicy((value as any).inner[0]);
+    }
+    return deepParse((value as any).inner[0]);
+  }
+  return deepParse(value);
+}
+
+function toFactorParams(kind: string, params: any): raw.FactorParams {
+  if (params && typeof params === 'object' && Array.isArray((params as any).inner)) {
+    return params as raw.FactorParams;
+  }
+
+  const ctor = factorParamConstructors[kind.toLowerCase()];
+  if (!ctor) {
+    throw new Error(`Unsupported factor kind: ${kind}`);
+  }
+
+  // Stack wraps a policy; allow plain policy objects
+  if (kind.toLowerCase() === 'stack') {
+    return new ctor(unwrapPolicy(params));
+  }
+
+  // Special handling for ooba: key (Jwk) and params (Value) must be JSON strings
+  if (kind.toLowerCase() === 'ooba' && params && typeof params === 'object' && !Array.isArray(params)) {
+    const processedParams = { ...params };
+    if (processedParams.key !== undefined && processedParams.key !== null && typeof processedParams.key === 'object') {
+      processedParams.key = JSON.stringify(processedParams.key);
+    }
+    processedParams.params = JSON.stringify(processedParams.params);
+    return new ctor(processedParams);
+  }
+
+  return new ctor(params);
+}
+
 // Wrap factor to add type and data properties
 function wrapFactor(factor: raw.Mfkdf2Factor) {
   const getKind = () => raw.factorTypeKind(factor.factorType);
@@ -41,16 +92,14 @@ function wrapSetupFactor(factor: raw.Mfkdf2Factor) {
      */
     async params(key?: ArrayBuffer) {
       const result = raw.setupFactorTypeParams(factor.factorType, key);
-      // Parse JSON string returned by UniFFI (Value is serialized as string)
-      return typeof result === 'string' ? JSON.parse(result) : result;
+      return flattenFactorParams(result);
     },
     /**
      * Setup public outputs for the factor.
      */
     async output() {
       const result = raw.setupFactorTypeOutput(factor.factorType);
-      // Parse JSON string returned by UniFFI (Value is serialized as string)
-      return typeof result === 'string' ? JSON.parse(result) : result;
+      return JSON.parse(result);
     }
   }
 }
@@ -64,16 +113,14 @@ function wrapDeriveFactor(factor: raw.Mfkdf2Factor) {
      */
     async params(key?: ArrayBuffer) {
       const result = raw.deriveFactorParams(factor.factorType, key);
-      // Parse JSON string returned by UniFFI (Value is serialized as string)
-      return typeof result === 'string' ? JSON.parse(result) : result;
+      return flattenFactorParams(result);
     },
     /**
      * Derive public outputs for the factor.
      */
     async output() {
       const result = raw.deriveFactorOutput(factor.factorType);
-      // Parse JSON string returned by UniFFI (Value is serialized as string)
-      return typeof result === 'string' ? JSON.parse(result) : result;
+      return JSON.parse(result);
     }
   }
 }
@@ -84,8 +131,7 @@ function wrapPolicy(policy: raw.Policy): any {
     // use `type` instead of `kind`
     factor.type = f.kind;
     delete factor.kind;
-    // parse params from string to object
-    factor.params = deepParse(factor.params);
+    factor.params = flattenFactorParams(factor.params);
     return factor;
   });
 
@@ -112,8 +158,7 @@ function unwrapPolicy(policy: any): raw.Policy {
       // delete `type` and use `kind` instead
       factor.kind = factor.type ? factor.type : factor.kind;
       delete factor.type;
-      // params is a Value object, convert back to string for UniFFI transport
-      factor.params = stringifyFactorParams(factor.params);
+      factor.params = toFactorParams(factor.kind, factor.params);
       return factor;
     })
   };

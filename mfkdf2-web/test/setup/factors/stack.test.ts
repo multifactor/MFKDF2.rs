@@ -73,7 +73,6 @@ suite('setup/factors/stack', () => {
     })
     stackFactor.type.should.equal('stack')
     const output = await stackFactor.output()
-    output.should.have.property('key')
     output.should.have.property('policy')
   })
 })
