@@ -8,12 +8,11 @@ use std::collections::HashMap;
 use serde::{Deserialize, Serialize};
 
 use crate::{
-  definitions::{
-    FactorType, Key, MFKDF2DerivedKey, MFKDF2Factor, MFKDF2Options, Salt, factor::FactorMetadata,
-  },
+  definitions::{FactorType, Key, MFKDF2DerivedKey, MFKDF2Factor, MFKDF2Options, Salt},
   error::{MFKDF2Error, MFKDF2Result},
   policy::Policy,
   setup::{FactorSetup, key},
+  traits::Factor,
 };
 
 /// Options for constructing a stack factor.
@@ -64,8 +63,11 @@ impl zeroize::Zeroize for Stack {
   }
 }
 
-impl FactorMetadata for Stack {
-  fn kind(&self) -> String { "stack".to_string() }
+impl Factor for Stack {
+  type Output = StackOutput;
+  type Params = StackParams;
+
+  fn kind(&self) -> &'static str { "stack" }
 
   fn bytes(&self) -> Vec<u8> { self.key.key.clone().into() }
 }
@@ -77,9 +79,6 @@ pub type StackParams = Policy;
 pub type StackOutput = MFKDF2DerivedKey;
 
 impl FactorSetup for Stack {
-  type Output = StackOutput;
-  type Params = StackParams;
-
   fn params(&self, _key: Key) -> MFKDF2Result<Self::Params> { Ok(self.key.policy.clone()) }
 
   fn output(&self) -> Self::Output { self.key.clone() }

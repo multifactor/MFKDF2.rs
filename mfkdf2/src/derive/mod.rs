@@ -17,15 +17,10 @@ mod key;
 
 pub use key::key;
 
-use crate::{definitions::Key, error::MFKDF2Result};
+use crate::{definitions::Key, error::MFKDF2Result, traits::Factor};
 
 /// Trait for factor derive.  
-pub(crate) trait FactorDerive {
-  /// Public parameters for the factor derive.
-  type Params: serde::Serialize + for<'de> serde::Deserialize<'de>;
-  /// Public output for the factor derive.
-  type Output: serde::Serialize + for<'de> serde::Deserialize<'de>;
-
+pub(crate) trait FactorDerive: Factor {
   /// Includes the public parameters and witness for the factor derive in factor state
   fn include_params(&mut self, params: Self::Params) -> MFKDF2Result<()>;
   /// Returns the public parameters for the factor derive.

@@ -8,13 +8,10 @@ use crate::{
   definitions::{FactorType, Key, MFKDF2Factor},
   derive::FactorDerive,
   error::{MFKDF2Error, MFKDF2Result},
-  setup::factors::question::{Question, QuestionOutput, QuestionParams},
+  setup::factors::question::{Question, QuestionParams},
 };
 
 impl FactorDerive for Question {
-  type Output = QuestionOutput;
-  type Params = QuestionParams;
-
   fn include_params(&mut self, params: Self::Params) -> MFKDF2Result<()> {
     self.params = params;
     Ok(())
@@ -161,7 +158,9 @@ mod tests {
       crate::definitions::factor::FactorParams::Question(p) => p,
       _ => panic!("Expected Question params"),
     };
-    let result = derive_factor.factor_type.include_params(crate::definitions::factor::FactorParams::Question(setup_params.clone()));
+    let result = derive_factor
+      .factor_type
+      .include_params(crate::definitions::factor::FactorParams::Question(setup_params.clone()));
     assert!(result.is_ok());
 
     // 4. Get the inner Question struct

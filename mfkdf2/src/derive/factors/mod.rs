@@ -37,10 +37,7 @@ pub use totp::totp;
 pub use uuid::uuid;
 
 use crate::{
-  definitions::{
-    FactorType, Key,
-    factor::{FactorMetadata, FactorParams},
-  },
+  definitions::{FactorType, Key, factor::FactorParams},
   derive::FactorDerive,
   error::MFKDF2Result,
 };

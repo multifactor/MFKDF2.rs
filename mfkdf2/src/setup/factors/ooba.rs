@@ -37,10 +37,11 @@ use sha2::Sha256;
 
 use crate::{
   crypto::{encrypt_cbc, hkdf_sha256_with_info},
-  definitions::{ByteArray, FactorType, Key, MFKDF2Factor, factor::FactorMetadata},
+  definitions::{ByteArray, FactorType, Key, MFKDF2Factor},
   error::{MFKDF2Error, MFKDF2Result},
   rng::GlobalRng,
   setup::FactorSetup,
+  traits::Factor,
 };
 
 /// Generates a random alphanumeric string of the given length.
@@ -135,8 +136,11 @@ impl TryFrom<&Jwk> for OobaPublicKey {
   }
 }
 
-impl FactorMetadata for Ooba {
-  fn kind(&self) -> String { "ooba".to_string() }
+impl Factor for Ooba {
+  type Output = OobaOutput;
+  type Params = OobaParams;
+
+  fn kind(&self) -> &'static str { "ooba" }
 
   fn bytes(&self) -> Vec<u8> { self.target.to_vec() }
 }
@@ -163,9 +167,6 @@ pub struct OobaParams {
 pub struct OobaOutput {}
 
 impl FactorSetup for Ooba {
-  type Output = OobaOutput;
-  type Params = OobaParams;
-
   fn params(&self, _key: Key) -> MFKDF2Result<Self::Params> {
     let code = generate_alphanumeric_characters(self.length.into()).to_uppercase();
 

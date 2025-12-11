@@ -26,10 +26,7 @@ pub use totp::totp;
 pub use uuid::uuid;
 
 use crate::{
-  definitions::{
-    FactorType, Key,
-    factor::{FactorMetadata, FactorParams},
-  },
+  definitions::{FactorType, Key, factor::FactorParams},
   error::MFKDF2Result,
   setup::FactorSetup,
 };
@@ -77,7 +74,7 @@ impl FactorSetupCtx<'_> {
 
 #[cfg(feature = "bindings")]
 #[cfg_attr(feature = "bindings", uniffi::export)]
-fn factor_type_kind(factor_type: &FactorType) -> String { factor_type.kind() }
+fn factor_type_kind(factor_type: &FactorType) -> String { factor_type.kind().to_string() }
 
 #[cfg(feature = "bindings")]
 #[cfg_attr(feature = "bindings", uniffi::export)]

@@ -7,9 +7,10 @@ use serde::{Deserialize, Serialize};
 pub use uuid::Uuid;
 
 use crate::{
-  definitions::{FactorType, MFKDF2Factor, factor::FactorMetadata},
+  definitions::{FactorType, MFKDF2Factor},
   error::MFKDF2Result,
   setup::FactorSetup,
+  traits::Factor,
 };
 
 /// Options for configuring a [`UUIDFactor`].
@@ -40,8 +41,11 @@ impl zeroize::Zeroize for UUIDFactor {
   fn zeroize(&mut self) {}
 }
 
-impl FactorMetadata for UUIDFactor {
-  fn kind(&self) -> String { "uuid".to_string() }
+impl Factor for UUIDFactor {
+  type Output = UUIDFactorOutput;
+  type Params = UUIDFactorParams;
+
+  fn kind(&self) -> &'static str { "uuid" }
 
   fn bytes(&self) -> Vec<u8> { self.uuid.as_bytes().to_vec() }
 }
@@ -60,9 +64,6 @@ pub struct UUIDFactorOutput {
 }
 
 impl FactorSetup for UUIDFactor {
-  type Output = UUIDFactorOutput;
-  type Params = UUIDFactorParams;
-
   fn params(&self, _key: crate::definitions::Key) -> MFKDF2Result<Self::Params> {
     Ok(UUIDFactorParams::default())
   }

@@ -11,9 +11,6 @@ use crate::{
 };
 
 impl FactorDerive for Passkey {
-  type Output = PasskeyOutput;
-  type Params = PasskeyParams;
-
   fn include_params(&mut self, _params: Self::Params) -> MFKDF2Result<()> {
     // Passkey factor has no parameters from setup
     Ok(())
@@ -23,9 +20,7 @@ impl FactorDerive for Passkey {
     Ok(PasskeyParams::default())
   }
 
-  fn output(&self) -> Self::Output {
-    PasskeyOutput::default()
-  }
+  fn output(&self) -> Self::Output { PasskeyOutput::default() }
 }
 
 /// Factor construction derive phase for a passkey factor

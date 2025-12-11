@@ -24,9 +24,6 @@ use crate::{
 };
 
 impl FactorDerive for Ooba {
-  type Output = OobaOutput;
-  type Params = OobaParams;
-
   /// Includes the public parameters for in factor state and decrypts the secret material from
   /// public parameters.
   fn include_params(&mut self, params: Self::Params) -> MFKDF2Result<()> {

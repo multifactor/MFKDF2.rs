@@ -4,9 +4,10 @@
 use serde::{Deserialize, Serialize};
 
 use crate::{
-  definitions::{FactorType, Key, MFKDF2Factor, factor::FactorMetadata},
+  definitions::{FactorType, Key, MFKDF2Factor},
   derive::FactorDerive,
   error::MFKDF2Result,
+  traits::Factor,
 };
 
 /// Persisted share factor state.
@@ -18,8 +19,11 @@ pub struct Persisted {
   pub share: Vec<u8>,
 }
 
-impl FactorMetadata for Persisted {
-  fn kind(&self) -> String { "persisted".to_string() }
+impl Factor for Persisted {
+  type Output = PersistedOutput;
+  type Params = PersistedParams;
+
+  fn kind(&self) -> &'static str { "persisted" }
 
   fn bytes(&self) -> Vec<u8> { self.share.clone() }
 }
@@ -35,9 +39,6 @@ pub struct PersistedParams {}
 pub struct PersistedOutput {}
 
 impl FactorDerive for Persisted {
-  type Output = PersistedOutput;
-  type Params = PersistedParams;
-
   fn include_params(&mut self, _params: Self::Params) -> MFKDF2Result<()> { Ok(()) }
 
   fn params(&self, _key: Key) -> MFKDF2Result<Self::Params> { Ok(PersistedParams::default()) }

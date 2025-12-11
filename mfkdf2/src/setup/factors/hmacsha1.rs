@@ -20,7 +20,8 @@ use crate::{
   definitions::{ByteArray, Key, MFKDF2Factor},
   error::MFKDF2Result,
   rng,
-  setup::factors::{FactorMetadata, FactorSetup, FactorType},
+  setup::factors::{FactorSetup, FactorType},
+  traits::Factor,
 };
 
 /// Options for configuring an [`HmacSha1`] factor.
@@ -62,8 +63,11 @@ pub struct HmacSha1 {
   pub padded_secret: Vec<u8>,
 }
 
-impl FactorMetadata for HmacSha1 {
-  fn kind(&self) -> String { "hmacsha1".to_string() }
+impl Factor for HmacSha1 {
+  type Output = HmacSha1Output;
+  type Params = HmacSha1Params;
+
+  fn kind(&self) -> &'static str { "hmacsha1" }
 
   fn bytes(&self) -> Vec<u8> { self.padded_secret.clone() }
 }
@@ -87,9 +91,6 @@ pub struct HmacSha1Output {
 }
 
 impl FactorSetup for HmacSha1 {
-  type Output = HmacSha1Output;
-  type Params = HmacSha1Params;
-
   fn params(&self, _key: Key) -> MFKDF2Result<Self::Params> {
     let mut challenge = [0u8; 64];
     rng::fill_bytes(&mut challenge);

@@ -7,9 +7,10 @@ use serde::{Deserialize, Serialize};
 use zxcvbn::zxcvbn;
 
 use crate::{
-  definitions::{FactorType, MFKDF2Factor, factor::FactorMetadata},
+  definitions::{FactorType, MFKDF2Factor},
   error::{MFKDF2Error, MFKDF2Result},
   setup::FactorSetup,
+  traits::Factor,
 };
 
 /// Password factor state
@@ -21,8 +22,11 @@ pub struct Password {
   pub password: String,
 }
 
-impl FactorMetadata for Password {
-  fn kind(&self) -> String { "password".to_string() }
+impl Factor for Password {
+  type Output = PasswordOutput;
+  type Params = PasswordParams;
+
+  fn kind(&self) -> &'static str { "password" }
 
   fn bytes(&self) -> Vec<u8> { self.password.as_bytes().to_vec() }
 }
@@ -41,9 +45,6 @@ pub struct PasswordOutput {
 }
 
 impl FactorSetup for Password {
-  type Output = PasswordOutput;
-  type Params = PasswordParams;
-
   fn params(&self, _key: crate::definitions::Key) -> MFKDF2Result<Self::Params> {
     Ok(PasswordParams::default())
   }

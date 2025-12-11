@@ -10,16 +10,15 @@ use crate::{
 };
 
 impl FactorDerive for Password {
-  type Output = PasswordOutput;
-  type Params = PasswordParams;
-
   fn include_params(&mut self, _params: Self::Params) -> MFKDF2Result<()> { Ok(()) }
 
   fn params(&self, _key: crate::definitions::Key) -> MFKDF2Result<Self::Params> {
     Ok(PasswordParams::default())
   }
 
-  fn output(&self) -> Self::Output { PasswordOutput {strength: serde_json::to_value(zxcvbn(&self.password, &[])).unwrap()} }
+  fn output(&self) -> Self::Output {
+    PasswordOutput { strength: serde_json::to_value(zxcvbn(&self.password, &[])).unwrap() }
+  }
 }
 
 /// Factor construction derive phase

@@ -8,9 +8,10 @@ use serde_json::Value;
 use zxcvbn::zxcvbn;
 
 use crate::{
-  definitions::{FactorType, Key, MFKDF2Factor, factor::FactorMetadata},
+  definitions::{FactorType, Key, MFKDF2Factor},
   error::{MFKDF2Error, MFKDF2Result},
   setup::FactorSetup,
+  traits::Factor,
 };
 
 /// Options for configuring a security‑question factor.
@@ -49,8 +50,11 @@ impl zeroize::Zeroize for Question {
   }
 }
 
-impl FactorMetadata for Question {
-  fn kind(&self) -> String { "question".to_string() }
+impl Factor for Question {
+  type Output = QuestionOutput;
+  type Params = QuestionParams;
+
+  fn kind(&self) -> &'static str { "question" }
 
   fn bytes(&self) -> Vec<u8> { self.answer.as_bytes().to_vec() }
 }
@@ -72,9 +76,6 @@ pub struct QuestionOutput {
 }
 
 impl FactorSetup for Question {
-  type Output = QuestionOutput;
-  type Params = QuestionParams;
-
   fn params(&self, _key: Key) -> MFKDF2Result<Self::Params> {
     Ok(QuestionParams { question: self.question.clone() })
   }

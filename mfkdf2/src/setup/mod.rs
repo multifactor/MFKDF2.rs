@@ -7,17 +7,11 @@ pub mod factors;
 mod key;
 
 pub use key::key;
-use serde::{Deserialize, Serialize};
 
-use crate::{definitions::Key, error::MFKDF2Result};
+use crate::{definitions::Key, error::MFKDF2Result, traits::Factor};
 
 /// Trait for factor setup.
-pub(crate) trait FactorSetup {
-  /// Public parameters for the factor setup.
-  type Params: Serialize + for<'de> Deserialize<'de>;
-  /// Public output for the factor setup.
-  type Output: Serialize + for<'de> Deserialize<'de>;
-
+pub(crate) trait FactorSetup: Factor {
   /// Returns the public parameters for the factor setup.
   fn params(&self, _key: Key) -> MFKDF2Result<Self::Params>;
   /// Returns the public output for the factor setup.

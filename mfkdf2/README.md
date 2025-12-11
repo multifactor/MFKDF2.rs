@@ -296,7 +296,7 @@ recovery code. Any 2 of these 3 factors are sufficient to reproduce the key.
 # use mfkdf2::derive::factors::uuid as derive_uuid;
 # use mfkdf2::otpauth::{generate_otp_token, HashAlgorithm};
 # use mfkdf2::definitions::MFKDF2Options;
-# use uuid::Uuid;
+# use mfkdf2::setup::factors::uuid::Uuid;
 #
 // setup phase: construct factors
 let password_factor = setup::factors::password("password123", PasswordOptions::default())?;

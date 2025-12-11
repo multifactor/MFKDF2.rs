@@ -22,9 +22,10 @@
 use serde::{Deserialize, Serialize};
 
 use crate::{
-  definitions::{ByteArray, FactorType, MFKDF2Factor, factor::FactorMetadata},
+  definitions::{ByteArray, FactorType, MFKDF2Factor},
   error::MFKDF2Result,
   setup::FactorSetup,
+  traits::Factor,
 };
 
 /// 32 byte passkey secret
@@ -40,8 +41,11 @@ pub struct Passkey {
   pub secret: PasskeySecret,
 }
 
-impl FactorMetadata for Passkey {
-  fn kind(&self) -> String { "passkey".to_string() }
+impl Factor for Passkey {
+  type Output = PasskeyOutput;
+  type Params = PasskeyParams;
+
+  fn kind(&self) -> &'static str { "passkey" }
 
   fn bytes(&self) -> Vec<u8> { self.secret.to_vec() }
 }
@@ -57,9 +61,6 @@ pub struct PasskeyParams {}
 pub struct PasskeyOutput {}
 
 impl FactorSetup for Passkey {
-  type Output = PasskeyOutput;
-  type Params = PasskeyParams;
-
   fn params(&self, _key: crate::definitions::Key) -> crate::error::MFKDF2Result<Self::Params> {
     Ok(PasskeyParams::default())
   }

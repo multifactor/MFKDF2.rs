@@ -17,9 +17,6 @@ use crate::{
 };
 
 impl FactorDerive for HOTP {
-  type Output = HOTPOutput;
-  type Params = HOTPParams;
-
   /// Includes the public parameters for in factor state and calculates the target value.
   fn include_params(&mut self, params: Self::Params) -> MFKDF2Result<()> {
     // Store the policy parameters for derive phase

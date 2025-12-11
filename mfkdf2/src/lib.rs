@@ -14,6 +14,7 @@ pub mod otpauth;
 pub mod policy;
 mod rng;
 pub mod setup;
+mod traits;
 
 #[cfg(feature = "bindings")]
 uniffi::setup_scaffolding!();

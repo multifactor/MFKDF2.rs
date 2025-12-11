@@ -11,13 +11,10 @@ use crate::{
   definitions::{FactorType, Key, MFKDF2DerivedKey, MFKDF2Factor},
   derive::FactorDerive,
   error::{MFKDF2Error, MFKDF2Result},
-  setup::factors::stack::{Stack, StackOutput, StackParams},
+  setup::factors::stack::Stack,
 };
 
 impl FactorDerive for Stack {
-  type Output = StackOutput;
-  type Params = StackParams;
-
   fn include_params(&mut self, params: Self::Params) -> MFKDF2Result<()> {
     // Stack factors don't need to include params during derivation
     // The key derivation is handled by the derive_key function
@@ -110,7 +107,7 @@ mod tests {
     derive::factors::password::password,
     setup::factors::{
       password::{PasswordOptions, password as setup_password},
-      stack::{StackOptions, stack as setup_stack},
+      stack::{StackOptions, StackParams, stack as setup_stack},
     },
   };
 

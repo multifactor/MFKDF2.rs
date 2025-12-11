@@ -35,10 +35,11 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
   crypto::encrypt,
-  definitions::{FactorType, Key, MFKDF2Factor, factor::FactorMetadata},
+  definitions::{FactorType, Key, MFKDF2Factor},
   error::{MFKDF2Error, MFKDF2Result},
   otpauth::{self, HashAlgorithm, OtpAuthUrlOptions, generate_otp_token},
   setup::FactorSetup,
+  traits::Factor,
 };
 
 /// Options for configuring a HOTP factor before setup
@@ -208,16 +209,16 @@ pub struct HOTPOutput {
   pub uri:       String,
 }
 
-impl FactorMetadata for HOTP {
-  fn kind(&self) -> String { "hotp".to_string() }
+impl Factor for HOTP {
+  type Output = HOTPOutput;
+  type Params = HOTPParams;
+
+  fn kind(&self) -> &'static str { "hotp" }
 
   fn bytes(&self) -> Vec<u8> { self.target.to_be_bytes().to_vec() }
 }
 
 impl FactorSetup for HOTP {
-  type Output = HOTPOutput;
-  type Params = HOTPParams;
-
   fn params(&self, key: Key) -> MFKDF2Result<Self::Params> {
     // Generate HOTP code with counter = 1
     let code =

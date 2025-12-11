@@ -49,9 +49,6 @@ impl TryFrom<TOTPDeriveOptions> for TOTPConfig {
 }
 
 impl FactorDerive for TOTP {
-  type Output = TOTPOutput;
-  type Params = TOTPParams;
-
   /// Stores the public parameters for the TOTP factor.
   /// Calculates the offset index from start time and current time, and derives the target code.
   fn include_params(&mut self, params: Self::Params) -> MFKDF2Result<()> {

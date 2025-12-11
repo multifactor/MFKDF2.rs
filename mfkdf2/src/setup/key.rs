@@ -291,7 +291,7 @@ pub fn key(factors: &[MFKDF2Factor], options: MFKDF2Options) -> MFKDF2Result<MFK
 
     policy_factors.push(PolicyFactor {
       id,
-      kind: factor.kind(),
+      kind: factor.kind().to_string(),
       pad: general_purpose::STANDARD.encode(pad),
       salt: general_purpose::STANDARD.encode(salt),
       secret: general_purpose::STANDARD.encode(factor_secret),

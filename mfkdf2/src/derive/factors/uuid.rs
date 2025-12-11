@@ -14,9 +14,6 @@ use crate::{
 };
 
 impl FactorDerive for UUIDFactor {
-  type Output = UUIDFactorOutput;
-  type Params = UUIDFactorParams;
-
   fn include_params(&mut self, _params: Self::Params) -> MFKDF2Result<()> { Ok(()) }
 
   fn params(&self, _key: crate::definitions::Key) -> MFKDF2Result<Self::Params> {

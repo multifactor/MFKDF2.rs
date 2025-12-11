@@ -7,16 +7,10 @@
 //!   identifiers)
 use serde::{Deserialize, Serialize};
 
-use crate::setup::factors::{hmacsha1, hotp, ooba, passkey, password, question, stack, totp, uuid};
-
-/// Trait for factor metadata.
-#[cfg_attr(feature = "bindings", uniffi::export)]
-pub(crate) trait FactorMetadata: Send + Sync + std::fmt::Debug {
-  /// Returns the bytes of the factor material.
-  fn bytes(&self) -> Vec<u8>;
-  /// Returns the type of the factor.
-  fn kind(&self) -> String;
-}
+use crate::{
+  setup::factors::{hmacsha1, hotp, ooba, passkey, password, question, stack, totp, uuid},
+  traits::Factor,
+};
 
 /// MFKDF2 factor instance.
 ///
@@ -74,7 +68,7 @@ pub struct MFKDF2Factor {
 
 impl MFKDF2Factor {
   /// Returns the type of the factor.
-  pub fn kind(&self) -> String { self.factor_type.kind() }
+  pub fn kind(&self) -> &'static str { self.factor_type.kind() }
 
   /// Returns the bytes of the factor material.
   pub fn data(&self) -> Vec<u8> { self.factor_type.bytes() }
@@ -152,8 +146,8 @@ pub enum FactorParams {
   Persisted(crate::derive::factors::persisted::PersistedParams),
 }
 
-impl FactorMetadata for FactorType {
-  fn bytes(&self) -> Vec<u8> {
+impl FactorType {
+  pub(crate) fn bytes(&self) -> Vec<u8> {
     match self {
       FactorType::Password(password) => password.bytes(),
       FactorType::HOTP(hotp) => hotp.bytes(),
@@ -168,7 +162,7 @@ impl FactorMetadata for FactorType {
     }
   }
 
-  fn kind(&self) -> String {
+  pub(crate) fn kind(&self) -> &'static str {
     match self {
       FactorType::Password(password) => password.kind(),
       FactorType::HOTP(hotp) => hotp.kind(),

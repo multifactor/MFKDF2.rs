@@ -15,9 +15,6 @@ use crate::{
 };
 
 impl FactorDerive for HmacSha1 {
-  type Output = HmacSha1Output;
-  type Params = HmacSha1Params;
-
   /// Includes the public parameters for in factor state and decrypts the secret material.
   fn include_params(&mut self, params: Self::Params) -> MFKDF2Result<()> {
     if params.pad.is_empty() {

@@ -48,10 +48,11 @@ use web_time::{SystemTime, UNIX_EPOCH};
 
 use crate::{
   crypto::encrypt,
-  definitions::{FactorType, Key, MFKDF2Factor, factor::FactorMetadata},
+  definitions::{FactorType, Key, MFKDF2Factor},
   error::{MFKDF2Error, MFKDF2Result},
   otpauth::{self, HashAlgorithm, OtpAuthUrlOptions, generate_otp_token},
   setup::{FactorSetup, factors::hotp::mod_positive},
+  traits::Factor,
 };
 
 /// Options for configuring a TOTP factor setup
@@ -218,16 +219,16 @@ impl zeroize::Zeroize for TOTP {
   }
 }
 
-impl FactorMetadata for TOTP {
-  fn kind(&self) -> String { "totp".to_string() }
+impl Factor for TOTP {
+  type Output = TOTPOutput;
+  type Params = TOTPParams;
+
+  fn kind(&self) -> &'static str { "totp" }
 
   fn bytes(&self) -> Vec<u8> { self.target.to_be_bytes().to_vec() }
 }
 
 impl FactorSetup for TOTP {
-  type Output = TOTPOutput;
-  type Params = TOTPParams;
-
   fn params(&self, key: Key) -> MFKDF2Result<Self::Params> {
     let time = u128::from(self.config.time);
     let mut offsets = Vec::with_capacity(4 * self.config.window as usize);

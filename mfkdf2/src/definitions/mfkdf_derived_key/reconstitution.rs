@@ -206,7 +206,7 @@ impl MFKDF2DerivedKey {
 
       let new_factor = PolicyFactor {
         id: id.clone(),
-        kind: factor.kind(),
+        kind: factor.kind().to_string(),
         salt: general_purpose::STANDARD.encode(salt),
         params,
         hint: None,
