@@ -4,7 +4,7 @@ use crate::{
   definitions::{MFKDF2DerivedKey, MFKDF2Factor},
   derive::factors::stack as derive_stack,
   error::{MFKDF2Error, MFKDF2Result},
-  policy::{Policy, evaluate::evaluate_internal},
+  policy::{FactorParams, Policy, evaluate::evaluate_internal},
 };
 
 fn expand(
@@ -16,10 +16,10 @@ fn expand(
 
   for factor in &policy.factors {
     if factor.kind == "stack" {
-      if let Ok(nested_policy) = serde_json::from_value::<Policy>(factor.params.clone())
-        && evaluate_internal(&nested_policy, factor_set)
+      if let FactorParams::Stack(nested_policy) = &factor.params
+        && evaluate_internal(nested_policy, factor_set)
       {
-        let nested_expanded = expand(&nested_policy, factors, factor_set)?;
+        let nested_expanded = expand(nested_policy, factors, factor_set)?;
         let stack_factor = derive_stack(nested_expanded)?;
         parsed_factors.insert(factor.id.clone(), stack_factor);
       }

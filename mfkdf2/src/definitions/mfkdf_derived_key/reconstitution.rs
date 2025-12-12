@@ -67,7 +67,7 @@
 //! #   setup::factors::uuid(UUIDOptions { id: Some("uuid1".to_string()), uuid: Some(uuid) })?,
 //! # ];
 //! # let secret = if let mfkdf2::definitions::FactorType::TOTP(ref f) = setup_factors[1].factor_type {
-//! #   f.config.secret.clone()
+//! #   f.secret.clone()
 //! # } else {
 //! #   unreachable!()
 //! # };
@@ -109,7 +109,6 @@ use crate::{
   definitions::{MFKDF2DerivedKey, MFKDF2Factor},
   error::{MFKDF2Error, MFKDF2Result},
   policy::PolicyFactor,
-  setup::FactorSetup,
 };
 
 impl MFKDF2DerivedKey {
@@ -207,7 +206,7 @@ impl MFKDF2DerivedKey {
 
       let new_factor = PolicyFactor {
         id: id.clone(),
-        kind: factor.kind(),
+        kind: factor.kind().to_string(),
         salt: general_purpose::STANDARD.encode(salt),
         params,
         hint: None,
@@ -216,7 +215,7 @@ impl MFKDF2DerivedKey {
       };
 
       factors.insert(id.clone(), new_factor);
-      outputs.insert(id.clone(), factor.factor_type.output());
+      outputs.insert(id.clone(), serde_json::to_value(factor.factor_type.setup().output())?);
       data.insert(id.clone(), factor.data());
       if material.contains_key(id.as_str()) {
         material.remove(id.as_str());

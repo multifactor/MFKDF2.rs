@@ -35,3 +35,48 @@ pub use question::question;
 pub use stack::stack;
 pub use totp::totp;
 pub use uuid::uuid;
+
+use crate::{
+  definitions::{FactorType, Key, factor::FactorParams},
+  derive::FactorDerive,
+  error::MFKDF2Result,
+};
+
+pub(crate) struct FactorDeriveCtx<'a>(pub(crate) &'a FactorType);
+
+impl FactorType {
+  /// Returns the derive implementation for the factor type.
+  pub(crate) fn derive(&self) -> FactorDeriveCtx<'_> { FactorDeriveCtx(self) }
+
+  /// Include parameters for the factor during derivation.
+  pub(crate) fn include_params(&mut self, params: FactorParams) -> MFKDF2Result<()> {
+    factor_dispatch_include_params!(self, params => {
+      Password, HOTP, Question, UUID, HmacSha1, TOTP, OOBA, Passkey, Stack, Persisted
+    })
+  }
+}
+
+impl FactorDeriveCtx<'_> {
+  /// Get parameters for the factor during derivation.
+  pub(crate) fn params(&self, key: Key) -> MFKDF2Result<FactorParams> {
+    factor_dispatch_params!(self.0, params(key) => {
+      Password => Password,
+      HOTP => HOTP,
+      Question => Question,
+      UUID => UUID,
+      HmacSha1 => HmacSha1,
+      TOTP => TOTP,
+      OOBA => OOBA,
+      Passkey => Passkey,
+      Stack => Stack,
+      Persisted => Persisted,
+    })
+  }
+
+  /// Get output for the factor during derivation.
+  pub(crate) fn output(&self) -> serde_json::Value {
+    factor_dispatch_output!(self.0, output() => {
+      Password, HOTP, Question, UUID, HmacSha1, TOTP, OOBA, Passkey, Stack, Persisted
+    })
+  }
+}

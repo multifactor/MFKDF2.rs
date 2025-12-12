@@ -200,10 +200,10 @@ ensure-wasm-bindgen-cli:
 # installs wasm-opt via cargo if missing
 install-wasm-opt:
     @if command -v wasm-opt >/dev/null 2>&1; then \
-      printf "{{success}}✓ wasm-opt already installed{reset}}\n"; \
+      printf "{{success}}✓ wasm-opt already installed{{reset}}\n"; \
     else \
       cargo install wasm-opt --locked; \
-      printf "{{success}}✓ Installed wasm-opt{reset}}\n"; \
+      printf "{{success}}✓ Installed wasm-opt{{reset}}\n"; \
     fi
 
 # fails if wasm-opt is missing

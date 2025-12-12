@@ -7,15 +7,18 @@ use std::{
 use base64::{Engine, engine::general_purpose};
 use mfkdf2::{
   constants::SECRET_SHARING_POLY,
-  definitions::MFKDF2Options,
+  definitions::{MFKDF2Options, factor::FactorParams},
   derive,
   error::MFKDF2Error,
   otpauth::{HashAlgorithm, generate_otp_token},
-  policy,
-  policy::PolicySetupOptions,
+  policy::{self, PolicySetupOptions},
   setup::{
     self,
-    factors::{hotp::HOTPOptions, password::PasswordOptions, totp::TOTPOptions},
+    factors::{
+      hotp::HOTPOptions,
+      password::PasswordOptions,
+      totp::{TOTPOptions, TOTPOutput},
+    },
   },
 };
 use rand_chacha::rand_core::{RngCore, SeedableRng};
@@ -28,6 +31,19 @@ fn generate_totp_code(secret: &[u8], step: u64, hash: &HashAlgorithm, digits: u3
   let now = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs();
   let counter = now / step;
   generate_otp_token(secret, counter, hash, digits)
+}
+
+fn parse_totp_output(output: &serde_json::Value) -> (Vec<u8>, u64, HashAlgorithm, u32) {
+  let totp_output: TOTPOutput = serde_json::from_value(output.clone()).unwrap();
+
+  let hash = match totp_output.algorithm.as_str() {
+    "sha1" => HashAlgorithm::Sha1,
+    "sha256" => HashAlgorithm::Sha256,
+    "sha512" => HashAlgorithm::Sha512,
+    _ => HashAlgorithm::Sha1,
+  };
+
+  (totp_output.secret, totp_output.period as u64, hash, totp_output.digits)
 }
 
 #[test]
@@ -227,9 +243,11 @@ fn factor_secret_encryption_hotp() -> Result<(), MFKDF2Error> {
   )?;
 
   // Get the pad from the first factor's params
-  let params = &&setup.policy.factors[0].params;
-  let pad_b64 = params["pad"].as_str().unwrap();
-  let pad = general_purpose::STANDARD.decode(pad_b64)?;
+  let params = match &setup.policy.factors[0].params {
+    mfkdf2::definitions::factor::FactorParams::HOTP(p) => p,
+    _ => unreachable!(),
+  };
+  let pad = general_purpose::STANDARD.decode(params.pad.clone())?;
 
   // XOR the pad with the original secret
   let recover = xor(&pad, &secret);
@@ -268,8 +286,10 @@ fn factor_secret_encryption_totp() -> Result<(), MFKDF2Error> {
   )?;
 
   // Get the pad from the first factor's params
-  let params = &&setup.policy.factors[0].params;
-  let pad_b64 = params["pad"].as_str().unwrap();
+  let pad_b64 = match &setup.policy.factors[0].params {
+    FactorParams::TOTP(p) => p.pad.as_str(),
+    _ => panic!("Unexpected params for TOTP pad"),
+  };
   let pad = general_purpose::STANDARD.decode(pad_b64)?;
 
   // XOR the pad with the original secret
@@ -309,21 +329,8 @@ fn totp_dynamic_no_oracle() -> Result<(), MFKDF2Error> {
 
   // Get the secret from the setup outputs
   let outputs = setup.outputs.get("totp").unwrap();
-  let secret = outputs["secret"]
-    .as_array()
-    .unwrap()
-    .iter()
-    .map(|v| v.as_u64().unwrap() as u8)
-    .collect::<Vec<u8>>();
-  let step = outputs["period"].as_u64().unwrap();
-  let algorithm_str = outputs["algorithm"].as_str().unwrap();
-  let hash = match algorithm_str {
-    "sha1" => HashAlgorithm::Sha1,
-    "sha256" => HashAlgorithm::Sha256,
-    "sha512" => HashAlgorithm::Sha512,
-    _ => HashAlgorithm::Sha1,
-  };
-  let digits = outputs["digits"].as_u64().unwrap() as u32;
+  let (secret, step, hash, digits) =
+    parse_totp_output(&serde_json::from_value(outputs.clone()).unwrap());
 
   // Derive multiple times with the same oracle
   let derive1 = policy::derive(
@@ -386,21 +393,8 @@ fn totp_dynamic_valid_fixed_oracle() {
 
   // Get the secret from the setup outputs
   let outputs = setup.outputs.get("totp").unwrap();
-  let secret = outputs["secret"]
-    .as_array()
-    .unwrap()
-    .iter()
-    .map(|v| v.as_u64().unwrap() as u8)
-    .collect::<Vec<u8>>();
-  let step = outputs["period"].as_u64().unwrap();
-  let algorithm_str = outputs["algorithm"].as_str().unwrap();
-  let hash = match algorithm_str {
-    "sha1" => HashAlgorithm::Sha1,
-    "sha256" => HashAlgorithm::Sha256,
-    "sha512" => HashAlgorithm::Sha512,
-    _ => HashAlgorithm::Sha1,
-  };
-  let digits = outputs["digits"].as_u64().unwrap() as u32;
+  let (secret, step, hash, digits) =
+    parse_totp_output(&serde_json::from_value(outputs.clone()).unwrap());
 
   let derive1 = policy::derive(
     &setup.policy,
@@ -483,21 +477,8 @@ fn totp_dynamic_invalid_fixed_oracle() {
 
   // Get the secret from the setup outputs
   let outputs = setup.outputs.get("totp").unwrap();
-  let secret = outputs["secret"]
-    .as_array()
-    .unwrap()
-    .iter()
-    .map(|v| v.as_u64().unwrap() as u8)
-    .collect::<Vec<u8>>();
-  let step = outputs["period"].as_u64().unwrap();
-  let algorithm_str = outputs["algorithm"].as_str().unwrap();
-  let hash = match algorithm_str {
-    "sha1" => HashAlgorithm::Sha1,
-    "sha256" => HashAlgorithm::Sha256,
-    "sha512" => HashAlgorithm::Sha512,
-    _ => HashAlgorithm::Sha1,
-  };
-  let digits = outputs["digits"].as_u64().unwrap() as u32;
+  let (secret, step, hash, digits) =
+    parse_totp_output(&serde_json::from_value(outputs.clone()).unwrap());
 
   // Create a different oracle with different values
   let mut oracle2 = HashMap::new();
@@ -589,21 +570,8 @@ fn totp_dynamic_valid_dynamic_oracle() {
 
   // Get the secret from the setup outputs
   let outputs = setup.outputs.get("totp").unwrap();
-  let secret = outputs["secret"]
-    .as_array()
-    .unwrap()
-    .iter()
-    .map(|v| v.as_u64().unwrap() as u8)
-    .collect::<Vec<u8>>();
-  let step = outputs["period"].as_u64().unwrap();
-  let algorithm_str = outputs["algorithm"].as_str().unwrap();
-  let hash = match algorithm_str {
-    "sha1" => HashAlgorithm::Sha1,
-    "sha256" => HashAlgorithm::Sha256,
-    "sha512" => HashAlgorithm::Sha512,
-    _ => HashAlgorithm::Sha1,
-  };
-  let digits = outputs["digits"].as_u64().unwrap() as u32;
+  let (secret, step, hash, digits) =
+    parse_totp_output(&serde_json::from_value(outputs.clone()).unwrap());
 
   // Derive multiple times with the same oracle (should succeed)
   let derive1 = policy::derive(

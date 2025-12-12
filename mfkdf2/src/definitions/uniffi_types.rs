@@ -28,7 +28,7 @@ uniffi::custom_type!(HmacSha1Response, Vec<u8>, {
 uniffi::custom_type!(Jwk, String, {
   remote,
   lower: |v| serde_json::to_string(&v).expect("serialize Jwk"),
-  try_lift: |s: String| Ok(serde_json::from_str(&s)?),
+  try_lift: |s: String| Ok(serde_json::from_str(&s).map_err(|e| MFKDF2Error::Serialize(e))?),
 });
 
 uniffi::custom_type!(Uuid, String, {

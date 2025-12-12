@@ -11,7 +11,6 @@ use crate::{
   constants::SECRET_SHARING_POLY,
   crypto::{decrypt, hkdf_sha256_with_info, hmacsha256},
   definitions::{MFKDF2DerivedKey, MFKDF2Entropy, MFKDF2Factor},
-  derive::FactorDerive,
   error::{MFKDF2Error, MFKDF2Result},
   policy::Policy,
 };
@@ -81,7 +80,10 @@ use crate::{
 ///
 /// // Build derive‑time HMAC witness using the challenge from policy
 /// let policy_hmac = setup_key.policy.factors.iter().find(|f| f.id == "hmacsha1").unwrap();
-/// let challenge = hex::decode(policy_hmac.params["challenge"].as_str().unwrap()).unwrap();
+/// let challenge = match &policy_hmac.params {
+///   mfkdf2::definitions::factor::FactorParams::HmacSha1(p) => hex::decode(&p.challenge).unwrap(),
+///   _ => unreachable!(),
+/// };
 /// let secret = if let mfkdf2::definitions::FactorType::HmacSha1(h) = &hmac_factor.factor_type {
 ///   &h.padded_secret[..20]
 /// } else {
@@ -142,14 +144,15 @@ use crate::{
 ///
 /// // HOTP witness
 /// let policy_hotp = setup_key.policy.factors.iter().find(|f| f.id == "hotp").unwrap();
-/// let hotp_params = &policy_hotp.params;
-/// let counter = hotp_params["counter"].as_u64().unwrap();
+/// let (counter, hash, digits) = match &policy_hotp.params {
+///   mfkdf2::definitions::factor::FactorParams::HOTP(p) => (p.counter, &p.hash, p.digits),
+///   _ => unreachable!(),
+/// };
 /// let hotp = match setup_hotp.factor_type {
 ///   mfkdf2::definitions::FactorType::HOTP(ref h) => h,
 ///   _ => unreachable!(),
 /// };
-/// let hotp_code =
-///   generate_otp_token(&hotp.config.secret[..20], counter, &hotp.config.hash, hotp.config.digits);
+/// let hotp_code = generate_otp_token(&hotp.secret[..20], counter, hash, digits);
 /// let derive_hotp = derive_hotp(hotp_code as u32)?;
 /// factors.insert("hotp".to_string(), derive_hotp);
 ///
@@ -307,7 +310,8 @@ pub fn key(
       // TODO (autoparallel): It would be preferred to know the size of this array at compile
       // time.
       shares_bytes.push(Some(plaintext));
-      outputs.insert(factor.id.clone(), material.factor_type.derive().output());
+      outputs
+        .insert(factor.id.clone(), serde_json::to_value(material.factor_type.derive().output())?);
     }
   }
 
@@ -410,7 +414,7 @@ pub fn key(
       &general_purpose::STANDARD.decode(&factor.salt)?,
       format!("mfkdf2:factor:params:{}", factor.id).as_bytes(),
     );
-    let params = material.factor_type.params(params_key.into())?;
+    let params = material.factor_type.derive().params(params_key.into())?;
     factor.params = params;
   }
 
@@ -430,10 +434,10 @@ pub fn key(
     .map_err(|_| MFKDF2Error::ShareRecovery)?;
 
   // derive a dedicated final key to ensure domain separation between internal and external keys
-  let final_key: [u8; 32] = if !stack {
-    hkdf_sha256_with_info(&internal_key, &salt_bytes, "mfkdf2:key:final".as_bytes())
-  } else {
+  let final_key: [u8; 32] = if stack {
     internal_key.try_into().map_err(|_| MFKDF2Error::TryFromVec)?
+  } else {
+    hkdf_sha256_with_info(&internal_key, &salt_bytes, "mfkdf2:key:final".as_bytes())
   };
 
   let result = MFKDF2DerivedKey {
@@ -596,7 +600,10 @@ mod tests {
     let policy_hmac_factor =
       setup_derived_key.policy.factors.iter().find(|f| f.id == "hmac").unwrap();
     let params = &policy_hmac_factor.params;
-    let challenge = hex::decode(params["challenge"].as_str().unwrap()).unwrap();
+    let challenge = match params {
+      crate::definitions::factor::FactorParams::HmacSha1(p) => hex::decode(&p.challenge).unwrap(),
+      _ => panic!("Expected HmacSha1 params"),
+    };
 
     let secret = if let FactorType::HmacSha1(h) = &setup_hmac_factor.factor_type {
       &h.padded_secret[..20]
@@ -649,18 +656,19 @@ mod tests {
     let policy_hotp_factor =
       setup_derived_key.policy.factors.iter().find(|f| f.id == "hotp").unwrap();
     let hotp_params = &policy_hotp_factor.params;
-    let counter = hotp_params["counter"].as_u64().unwrap();
-    let correct_code =
-      generate_otp_token(&hotp.config.secret[..20], counter, &hotp.config.hash, hotp.config.digits);
+    let counter = match hotp_params {
+      crate::definitions::factor::FactorParams::HOTP(p) => p.counter,
+      _ => panic!("Expected HOTP params"),
+    };
+    let correct_code = generate_otp_token(&hotp.secret[..20], counter, &hotp.hash, hotp.digits);
     let mut derive_hotp_factor = derive_hotp(correct_code as u32).unwrap();
     derive_hotp_factor.id = Some("hotp".to_string());
     derive_factors_map.insert("hotp".to_string(), derive_hotp_factor);
 
     // TOTP factor
     let time = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_millis();
-    let counter = time as u64 / (totp.config.step as u64 * 1000);
-    let totp_code =
-      generate_otp_token(&totp.config.secret[..20], counter, &totp.config.hash, totp.config.digits);
+    let counter = time as u64 / (totp.step as u64 * 1000);
+    let totp_code = generate_otp_token(&totp.secret[..20], counter, &totp.hash, totp.digits);
     let mut derive_totp_factor = derive_totp(totp_code as u32, None).unwrap();
     derive_totp_factor.id = Some("totp".to_string());
     derive_factors_map.insert("totp".to_string(), derive_totp_factor);
@@ -669,7 +677,10 @@ mod tests {
     let policy_ooba_factor =
       setup_derived_key.policy.factors.iter().find(|f| f.id == "ooba").unwrap();
     let ooba_params = &policy_ooba_factor.params;
-    let ciphertext = hex::decode(ooba_params["next"].as_str().unwrap()).unwrap();
+    let ciphertext = match ooba_params {
+      crate::definitions::factor::FactorParams::OOBA(p) => hex::decode(&p.next).unwrap(),
+      _ => panic!("Expected OOBA params"),
+    };
     let decrypted = serde_json::from_slice::<Value>(
       &private_key.decrypt(Oaep::new::<Sha256>(), &ciphertext).unwrap(),
     )
@@ -692,18 +703,19 @@ mod tests {
     // hotp factor
     let policy_hotp_factor = derived_key.policy.factors.iter().find(|f| f.id == "hotp").unwrap();
     let hotp_params = &policy_hotp_factor.params;
-    let counter = hotp_params["counter"].as_u64().unwrap();
-    let correct_code =
-      generate_otp_token(&hotp.config.secret[..20], counter, &hotp.config.hash, hotp.config.digits);
+    let counter = match hotp_params {
+      crate::definitions::factor::FactorParams::HOTP(p) => p.counter,
+      _ => panic!("Expected HOTP params"),
+    };
+    let correct_code = generate_otp_token(&hotp.secret[..20], counter, &hotp.hash, hotp.digits);
     let mut derive_hotp_factor = derive_hotp(correct_code as u32).unwrap();
     derive_hotp_factor.id = Some("hotp".to_string());
     derive_factors_map.insert("hotp".to_string(), derive_hotp_factor);
 
     // totp factor
     let time = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_millis();
-    let counter = time as u64 / (u64::from(totp.config.step) * 1000);
-    let totp_code =
-      generate_otp_token(&totp.config.secret[..20], counter, &totp.config.hash, totp.config.digits);
+    let counter = time as u64 / (u64::from(totp.step) * 1000);
+    let totp_code = generate_otp_token(&totp.secret[..20], counter, &totp.hash, totp.digits);
     let mut derive_totp_factor = derive_totp(totp_code as u32, None).unwrap();
     derive_totp_factor.id = Some("totp".to_string());
     derive_factors_map.insert("totp".to_string(), derive_totp_factor);
@@ -711,7 +723,10 @@ mod tests {
     // ooba factor
     let policy_ooba_factor = derived_key.policy.factors.iter().find(|f| f.id == "ooba").unwrap();
     let ooba_params = &policy_ooba_factor.params;
-    let ciphertext = hex::decode(ooba_params["next"].as_str().unwrap()).unwrap();
+    let ciphertext = match ooba_params {
+      crate::definitions::factor::FactorParams::OOBA(p) => hex::decode(&p.next).unwrap(),
+      _ => panic!("Expected OOBA params"),
+    };
     let decrypted = serde_json::from_slice::<Value>(
       &private_key.decrypt(Oaep::new::<Sha256>(), &ciphertext).unwrap(),
     )
@@ -764,9 +779,11 @@ mod tests {
     let policy_hotp_factor =
       setup_derived_key.policy.factors.iter().find(|f| f.id == "hotp").unwrap();
     let hotp_params = &policy_hotp_factor.params;
-    let counter = hotp_params["counter"].as_u64().unwrap();
-    let correct_code =
-      generate_otp_token(&hotp.config.secret[..20], counter, &hotp.config.hash, hotp.config.digits);
+    let counter = match hotp_params {
+      crate::definitions::factor::FactorParams::HOTP(p) => p.counter,
+      _ => panic!("Expected HOTP params"),
+    };
+    let correct_code = generate_otp_token(&hotp.secret[..20], counter, &hotp.hash, hotp.digits);
     let mut derive_hotp_factor = derive_hotp(correct_code as u32).unwrap();
     derive_hotp_factor.id = Some("hotp".to_string());
     derive_factors_map.insert("hotp".to_string(), derive_hotp_factor);
@@ -833,7 +850,10 @@ mod tests {
     let policy_hmac_factor =
       setup_derived_key.policy.factors.iter().find(|f| f.id == "hmac").unwrap();
     let params = &policy_hmac_factor.params;
-    let challenge = hex::decode(params["challenge"].as_str().unwrap()).unwrap();
+    let challenge = match params {
+      crate::definitions::factor::FactorParams::HmacSha1(p) => hex::decode(&p.challenge).unwrap(),
+      _ => panic!("Expected HmacSha1 params"),
+    };
     let secret = &hmac_setup.padded_secret[..20];
     let response = crate::crypto::hmacsha1(secret, &challenge);
     let mut derive_hmac_factor = derive_hmacsha1(response).unwrap();
@@ -844,9 +864,11 @@ mod tests {
     let policy_hotp_factor =
       setup_derived_key.policy.factors.iter().find(|f| f.id == "hotp").unwrap();
     let hotp_params = &policy_hotp_factor.params;
-    let counter = hotp_params["counter"].as_u64().unwrap();
-    let correct_code =
-      generate_otp_token(&hotp.config.secret[..20], counter, &hotp.config.hash, hotp.config.digits);
+    let counter = match hotp_params {
+      crate::definitions::factor::FactorParams::HOTP(p) => p.counter,
+      _ => panic!("Expected HOTP params"),
+    };
+    let correct_code = generate_otp_token(&hotp.secret[..20], counter, &hotp.hash, hotp.digits);
     let mut derive_hotp_factor = derive_hotp(correct_code as u32).unwrap();
     derive_hotp_factor.id = Some("hotp".to_string());
     derive_factors_map.insert("hotp".to_string(), derive_hotp_factor);

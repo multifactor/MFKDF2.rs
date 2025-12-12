@@ -4,11 +4,11 @@
 //! device binding or opaque identifiers where you want stable, high‑entropy bytes that are not
 //! intended to be memorized by a user.
 use serde::{Deserialize, Serialize};
-use serde_json::{Value, json};
 pub use uuid::Uuid;
 
 use crate::{
-  definitions::{FactorType, MFKDF2Factor, factor::FactorMetadata},
+  defaults::uuid as uuid_defaults,
+  definitions::{FactorType, MFKDF2Factor},
   error::MFKDF2Result,
   setup::FactorSetup,
 };
@@ -25,7 +25,7 @@ pub struct UUIDOptions {
 }
 
 impl Default for UUIDOptions {
-  fn default() -> Self { Self { id: Some("uuid".to_string()), uuid: None } }
+  fn default() -> Self { Self { id: Some(uuid_defaults::ID.to_string()), uuid: None } }
 }
 
 /// UUID‑backed factor state.
@@ -41,21 +41,34 @@ impl zeroize::Zeroize for UUIDFactor {
   fn zeroize(&mut self) {}
 }
 
-impl FactorMetadata for UUIDFactor {
-  fn kind(&self) -> String { "uuid".to_string() }
+impl_factor! {
+  UUIDFactor {
+    kind: "uuid",
+    params: UUIDFactorParams,
+    output: UUIDFactorOutput,
+    bytes: |self| self.uuid.as_bytes().to_vec(),
+  }
+}
 
-  fn bytes(&self) -> Vec<u8> { self.uuid.as_bytes().to_vec() }
+/// UUID factor parameters.
+#[cfg_attr(feature = "bindings", derive(uniffi::Record))]
+#[derive(Clone, Debug, Default, Serialize, Deserialize, Eq, PartialEq)]
+pub struct UUIDFactorParams {}
+
+/// UUID factor output.
+#[cfg_attr(feature = "bindings", derive(uniffi::Record))]
+#[derive(Clone, Debug, Default, Serialize, Deserialize, Eq, PartialEq)]
+pub struct UUIDFactorOutput {
+  /// UUID used as factor material.
+  pub uuid: Uuid,
 }
 
 impl FactorSetup for UUIDFactor {
-  type Output = Value;
-  type Params = Value;
-
-  fn output(&self) -> Self::Output {
-    json!({
-      "uuid": self.uuid,
-    })
+  fn params(&self, _key: crate::definitions::Key) -> MFKDF2Result<Self::Params> {
+    Ok(UUIDFactorParams::default())
   }
+
+  fn output(&self) -> Self::Output { UUIDFactorOutput { uuid: self.uuid } }
 }
 
 /// Creates a UUID factor from the given options.
@@ -87,9 +100,9 @@ pub fn uuid(mut options: UUIDOptions) -> MFKDF2Result<MFKDF2Factor> {
   let uuid = options.uuid.take().unwrap_or(Uuid::new_v4());
 
   Ok(MFKDF2Factor {
-    id:          Some(options.id.unwrap_or("uuid".to_string())),
+    id:          Some(options.id.unwrap_or_else(|| uuid_defaults::ID.to_string())),
     factor_type: FactorType::UUID(UUIDFactor { uuid }),
-    entropy:     Some(122.0),
+    entropy:     Some(uuid_defaults::ENTROPY),
   })
 }
 

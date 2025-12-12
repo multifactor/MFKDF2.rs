@@ -73,7 +73,7 @@ suite('setup/factors/password - with key parameter', () => {
     output.should.have.property('strength');
   });
 
-  test('params() and output() return same results regardless of key for password factor', async () => {
+  test('params() returns same results regardless of key for password factor', async () => {
     const factor = await mfkdf.setup.factors.password('hello');
 
     // Password factor doesn't use the key, so results should be identical
@@ -81,12 +81,5 @@ suite('setup/factors/password - with key parameter', () => {
     const paramsWithKey = await factor.params(new Uint8Array(32).buffer);
 
     paramsNoKey.should.deep.equal(paramsWithKey);
-
-    const outputNoKey = await factor.output();
-    const outputWithKey = await factor.output();
-
-    // Both should have strength property (value might differ slightly but structure same)
-    outputNoKey.should.have.property('strength');
-    outputWithKey.should.have.property('strength');
   });
 });

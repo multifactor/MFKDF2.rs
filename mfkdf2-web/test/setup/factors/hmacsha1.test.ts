@@ -36,7 +36,7 @@ suite('setup/factors/hmacsha1', () => {
     ])
     const factor = await mfkdf.setup.factors.hmacsha1({ secret })
     factor.type.should.equal('hmacsha1')
-    factor.data.slice(0, 20).should.deep.equal(secret)
+    Buffer.from(factor.data).subarray(0, 20).should.deep.equal(secret)
   })
 
   test('valid - with id', async () => {

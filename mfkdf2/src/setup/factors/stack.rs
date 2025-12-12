@@ -6,13 +6,12 @@
 use std::collections::HashMap;
 
 use serde::{Deserialize, Serialize};
-use serde_json::Value;
 
 use crate::{
-  definitions::{
-    FactorType, Key, MFKDF2DerivedKey, MFKDF2Factor, MFKDF2Options, Salt, factor::FactorMetadata,
-  },
+  defaults::stack as stack_defaults,
+  definitions::{FactorType, Key, MFKDF2DerivedKey, MFKDF2Factor, MFKDF2Options, Salt},
   error::{MFKDF2Error, MFKDF2Result},
+  policy::Policy,
   setup::{FactorSetup, key},
 };
 
@@ -59,26 +58,30 @@ pub struct Stack {
 #[cfg(feature = "zeroize")]
 impl zeroize::Zeroize for Stack {
   fn zeroize(&mut self) {
-    self.factors.values_mut().for_each(|factor| factor.zeroize());
+    self.factors.values_mut().for_each(zeroize::Zeroize::zeroize);
     self.key.zeroize();
   }
 }
 
-impl FactorMetadata for Stack {
-  fn kind(&self) -> String { "stack".to_string() }
-
-  fn bytes(&self) -> Vec<u8> { self.key.key.clone().into() }
+impl_factor! {
+  Stack {
+    kind: "stack",
+    params: StackParams,
+    output: StackOutput,
+    bytes: |self| self.key.key.clone().into(),
+  }
 }
 
+/// Stack factor parameters.
+pub type StackParams = Policy;
+
+/// Stack factor output.
+pub type StackOutput = MFKDF2DerivedKey;
+
 impl FactorSetup for Stack {
-  type Output = Value;
-  type Params = Value;
+  fn params(&self, _key: Key) -> MFKDF2Result<Self::Params> { Ok(self.key.policy.clone()) }
 
-  fn params(&self, _key: Key) -> MFKDF2Result<Self::Params> {
-    Ok(serde_json::to_value(&self.key.policy)?)
-  }
-
-  fn output(&self) -> Self::Output { serde_json::to_value(&self.key).unwrap() }
+  fn output(&self) -> Self::Output { self.key.clone() }
 }
 
 /// Creates a stack factor from existing factors.
@@ -109,7 +112,7 @@ impl FactorSetup for Stack {
 /// ```
 pub fn stack(factors: Vec<MFKDF2Factor>, options: StackOptions) -> MFKDF2Result<MFKDF2Factor> {
   let id = match options.id {
-    None => Some("stack".to_string()),
+    None => Some(stack_defaults::ID.to_string()),
     Some(ref id) => {
       if id.is_empty() {
         return Err(MFKDF2Error::MissingFactorId);
@@ -146,7 +149,10 @@ async fn setup_stack(
 #[cfg(test)]
 mod tests {
   use super::*;
-  use crate::setup::factors::password::{PasswordOptions, password};
+  use crate::{
+    definitions::factor::FactorParams,
+    setup::factors::password::{PasswordOptions, password},
+  };
 
   #[test]
   fn setup_stack_construction() {
@@ -195,13 +201,11 @@ mod tests {
     let key = [0u8; 32];
 
     let params = stack_factor.factor_type.setup().params(key.into()).unwrap();
-    let output = stack_factor.factor_type.output();
+    let output = stack_factor.factor_type.setup().output();
 
     if let FactorType::Stack(stack) = stack_factor.factor_type {
-      let expected_params = serde_json::to_value(&stack.key.policy).unwrap();
-      let expected_output = serde_json::to_value(&stack.key).unwrap();
-      assert_eq!(params, expected_params);
-      assert_eq!(output, expected_output);
+      assert_eq!(params, FactorParams::Stack(stack.key.policy.clone()));
+      assert_eq!(output, serde_json::to_value(stack.key).unwrap());
     } else {
       panic!("Expected Stack factor type");
     }

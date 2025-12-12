@@ -7,16 +7,10 @@
 //!   identifiers)
 use serde::{Deserialize, Serialize};
 
-use crate::setup::factors::{hmacsha1, hotp, ooba, passkey, password, question, stack, totp, uuid};
-
-/// Trait for factor metadata.
-#[cfg_attr(feature = "bindings", uniffi::export)]
-pub(crate) trait FactorMetadata: Send + Sync + std::fmt::Debug {
-  /// Returns the bytes of the factor material.
-  fn bytes(&self) -> Vec<u8>;
-  /// Returns the type of the factor.
-  fn kind(&self) -> String;
-}
+use crate::{
+  setup::factors::{hmacsha1, hotp, ooba, passkey, password, question, stack, totp, uuid},
+  traits::Factor,
+};
 
 /// MFKDF2 factor instance.
 ///
@@ -74,7 +68,7 @@ pub struct MFKDF2Factor {
 
 impl MFKDF2Factor {
   /// Returns the type of the factor.
-  pub fn kind(&self) -> String { self.factor_type.kind() }
+  pub fn kind(&self) -> &'static str { self.factor_type.kind() }
 
   /// Returns the bytes of the factor material.
   pub fn data(&self) -> Vec<u8> { self.factor_type.bytes() }
@@ -98,8 +92,8 @@ impl std::fmt::Debug for MFKDF2Factor {
 /// Each variant corresponds to a concrete factor type (such as password, TOTP, passkey,
 /// etc.). Every factor implement the `FactorMetadata`, `FactorSetup`, and `FactorDerive` traits,
 /// which define the common interface for factor management, setup, and derivation.
-#[cfg_attr(feature = "bindings", derive(uniffi::Enum))]
 #[derive(Clone, Debug, Serialize, Deserialize)]
+#[cfg_attr(feature = "bindings", derive(uniffi::Enum))]
 #[cfg_attr(feature = "zeroize", derive(zeroize::Zeroize))]
 pub enum FactorType {
   /// [`password::Password`] factor.
@@ -124,34 +118,44 @@ pub enum FactorType {
   Persisted(crate::derive::factors::persisted::Persisted),
 }
 
-impl FactorMetadata for FactorType {
-  fn bytes(&self) -> Vec<u8> {
-    match self {
-      FactorType::Password(password) => password.bytes(),
-      FactorType::HOTP(hotp) => hotp.bytes(),
-      FactorType::Question(question) => question.bytes(),
-      FactorType::UUID(uuid) => uuid.bytes(),
-      FactorType::HmacSha1(hmacsha1) => hmacsha1.bytes(),
-      FactorType::TOTP(totp) => totp.bytes(),
-      FactorType::OOBA(ooba) => ooba.bytes(),
-      FactorType::Passkey(passkey) => passkey.bytes(),
-      FactorType::Stack(stack) => stack.bytes(),
-      FactorType::Persisted(persisted) => persisted.bytes(),
-    }
+/// Public, serializable parameters for each supported authentication factor.
+/// Each variant corresponds to its respective factor type's parameter struct.
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+#[cfg_attr(feature = "bindings", derive(uniffi::Enum))]
+pub enum FactorParams {
+  /// Parameters for the [`password::Password`] factor.
+  Password(password::PasswordParams),
+  /// Parameters for the [`hotp::HOTP`] factor.
+  HOTP(hotp::HOTPParams),
+  /// Parameters for the [`question::Question`] factor.
+  Question(question::QuestionParams),
+  /// Parameters for the [`uuid::UUIDFactor`] factor.
+  UUID(uuid::UUIDFactorParams),
+  /// Parameters for the [`hmacsha1::HmacSha1`] factor.
+  HmacSha1(hmacsha1::HmacSha1Params),
+  /// Parameters for the [`totp::TOTP`] factor.
+  TOTP(totp::TOTPParams),
+  /// Parameters for the [`ooba::Ooba`] factor.
+  OOBA(ooba::OobaParams),
+  /// Parameters for the [`passkey::Passkey`] factor.
+  Passkey(passkey::PasskeyParams),
+  /// Parameters for the [`stack::Stack`] factor.
+  Stack(stack::StackParams),
+  /// Parameters for the [`persisted::Persisted`](`crate::derive::factors::persisted::Persisted`)
+  /// derived factor.
+  Persisted(crate::derive::factors::persisted::PersistedParams),
+}
+
+impl FactorType {
+  pub(crate) fn bytes(&self) -> Vec<u8> {
+    factor_dispatch_method!(self, bytes() => {
+      Password, HOTP, Question, UUID, HmacSha1, TOTP, OOBA, Passkey, Stack, Persisted
+    })
   }
 
-  fn kind(&self) -> String {
-    match self {
-      FactorType::Password(password) => password.kind(),
-      FactorType::HOTP(hotp) => hotp.kind(),
-      FactorType::Question(question) => question.kind(),
-      FactorType::UUID(uuid) => uuid.kind(),
-      FactorType::HmacSha1(hmacsha1) => hmacsha1.kind(),
-      FactorType::TOTP(totp) => totp.kind(),
-      FactorType::OOBA(ooba) => ooba.kind(),
-      FactorType::Passkey(passkey) => passkey.kind(),
-      FactorType::Stack(stack) => stack.kind(),
-      FactorType::Persisted(persisted) => persisted.kind(),
-    }
+  pub(crate) fn kind(&self) -> &'static str {
+    factor_dispatch_method!(self, kind() => {
+      Password, HOTP, Question, UUID, HmacSha1, TOTP, OOBA, Passkey, Stack, Persisted
+    })
   }
 }

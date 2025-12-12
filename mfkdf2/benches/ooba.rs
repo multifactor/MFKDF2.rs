@@ -3,7 +3,7 @@ use std::{collections::HashMap, hint::black_box};
 use base64::Engine;
 use criterion::{Criterion, criterion_group, criterion_main};
 use mfkdf2::{
-  definitions::MFKDF2Options,
+  definitions::{MFKDF2Options, factor::FactorParams},
   derive,
   policy::Policy,
   setup::{
@@ -35,8 +35,11 @@ fn create_jwk(bits: usize) -> serde_json::Value { create_keypair(bits).0 }
 
 fn get_challenge_response(policy: &Policy, factor_id: &str, private_key: &RsaPrivateKey) -> String {
   let factor_policy = policy.factors.iter().find(|f| f.id == factor_id).unwrap();
-  let params = &factor_policy.params;
-  let ciphertext = hex::decode(params["next"].as_str().unwrap()).unwrap();
+  let params = match &factor_policy.params {
+    FactorParams::OOBA(p) => p,
+    _ => unreachable!(),
+  };
+  let ciphertext = hex::decode(params.next.as_str()).unwrap();
   let decrypted = serde_json::from_slice::<serde_json::Value>(
     &private_key.decrypt(Oaep::new::<sha2::Sha256>(), &ciphertext).unwrap(),
   )

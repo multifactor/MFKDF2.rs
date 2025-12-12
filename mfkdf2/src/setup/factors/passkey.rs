@@ -22,7 +22,8 @@
 use serde::{Deserialize, Serialize};
 
 use crate::{
-  definitions::{ByteArray, FactorType, MFKDF2Factor, factor::FactorMetadata},
+  defaults::passkey as passkey_defaults,
+  definitions::{ByteArray, FactorType, MFKDF2Factor},
   error::MFKDF2Result,
   setup::FactorSetup,
 };
@@ -40,15 +41,31 @@ pub struct Passkey {
   pub secret: PasskeySecret,
 }
 
-impl FactorMetadata for Passkey {
-  fn kind(&self) -> String { "passkey".to_string() }
-
-  fn bytes(&self) -> Vec<u8> { self.secret.to_vec() }
+impl_factor! {
+  Passkey {
+    kind: "passkey",
+    params: PasskeyParams,
+    output: PasskeyOutput,
+    bytes: |self| self.secret.to_vec(),
+  }
 }
 
+/// Passkey factor parameters.
+#[cfg_attr(feature = "bindings", derive(uniffi::Record))]
+#[derive(Clone, Debug, Default, Serialize, Deserialize, Eq, PartialEq)]
+pub struct PasskeyParams {}
+
+/// Passkey factor output.
+#[cfg_attr(feature = "bindings", derive(uniffi::Record))]
+#[derive(Clone, Debug, Default, Serialize, Deserialize, Eq, PartialEq)]
+pub struct PasskeyOutput {}
+
 impl FactorSetup for Passkey {
-  type Output = serde_json::Value;
-  type Params = serde_json::Value;
+  fn params(&self, _key: crate::definitions::Key) -> crate::error::MFKDF2Result<Self::Params> {
+    Ok(PasskeyParams::default())
+  }
+
+  fn output(&self) -> Self::Output { PasskeyOutput::default() }
 }
 
 /// Options for configuring a passkey factor
@@ -61,7 +78,7 @@ pub struct PasskeyOptions {
 }
 
 impl Default for PasskeyOptions {
-  fn default() -> Self { Self { id: Some("passkey".to_string()) } }
+  fn default() -> Self { Self { id: Some(passkey_defaults::ID.to_string()) } }
 }
 
 /// Creates a passkey factor from a 32‑byte secret
@@ -98,12 +115,12 @@ pub fn passkey(secret: [u8; 32], options: PasskeyOptions) -> MFKDF2Result<MFKDF2
   {
     return Err(crate::error::MFKDF2Error::MissingFactorId);
   }
-  let id = options.id.unwrap_or("passkey".to_string());
+  let id = options.id.unwrap_or_else(|| passkey_defaults::ID.to_string());
 
   Ok(MFKDF2Factor {
     id:          Some(id),
     factor_type: FactorType::Passkey(Passkey { secret: secret.into() }),
-    entropy:     Some(256.0),
+    entropy:     Some(passkey_defaults::ENTROPY),
   })
 }
 

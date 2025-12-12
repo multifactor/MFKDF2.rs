@@ -21,48 +21,48 @@ pub use ooba::ooba;
 pub use passkey::passkey;
 pub use password::password;
 pub use question::question;
-use serde_json::Value;
 pub use stack::stack;
 pub use totp::totp;
 pub use uuid::uuid;
 
 use crate::{
-  definitions::{FactorType, Key, factor::FactorMetadata},
+  definitions::{FactorType, Key, factor::FactorParams},
   error::MFKDF2Result,
   setup::FactorSetup,
 };
 
+pub(crate) struct FactorSetupCtx<'a>(pub(crate) &'a FactorType);
+
 impl FactorType {
   /// Returns the setup implementation for the factor type.
-  pub(crate) fn setup(&self) -> &dyn FactorSetup<Params = Value, Output = Value> {
-    match self {
-      FactorType::Password(password) => password,
-      FactorType::HOTP(hotp) => hotp,
-      FactorType::Question(question) => question,
-      FactorType::UUID(uuid) => uuid,
-      FactorType::HmacSha1(hmacsha1) => hmacsha1,
-      FactorType::TOTP(totp) => totp,
-      FactorType::OOBA(ooba) => ooba,
-      FactorType::Passkey(passkey) => passkey,
-      FactorType::Stack(stack) => stack,
-      FactorType::Persisted(_) =>
-        unreachable!("Persisted factor should not be used in this context"),
-    }
-  }
+  pub(crate) fn setup(&self) -> FactorSetupCtx<'_> { FactorSetupCtx(self) }
 }
 
-impl FactorSetup for FactorType {
-  type Output = Value;
-  type Params = Value;
+impl FactorSetupCtx<'_> {
+  pub(crate) fn params(&self, key: Key) -> MFKDF2Result<FactorParams> {
+    factor_dispatch_params!(self.0, params(key) => {
+      Password => Password,
+      HOTP => HOTP,
+      Question => Question,
+      UUID => UUID,
+      HmacSha1 => HmacSha1,
+      TOTP => TOTP,
+      OOBA => OOBA,
+      Passkey => Passkey,
+      Stack => Stack,
+    }; unreachable_persisted)
+  }
 
-  fn params(&self, key: Key) -> MFKDF2Result<Self::Params> { self.setup().params(key) }
-
-  fn output(&self) -> Self::Output { self.setup().output() }
+  pub(crate) fn output(&self) -> serde_json::Value {
+    factor_dispatch_output!(self.0, output() => {
+      Password, HOTP, Question, UUID, HmacSha1, TOTP, OOBA, Passkey, Stack
+    }; unreachable_persisted)
+  }
 }
 
 #[cfg(feature = "bindings")]
 #[cfg_attr(feature = "bindings", uniffi::export)]
-fn factor_type_kind(factor_type: &FactorType) -> String { factor_type.kind() }
+fn factor_type_kind(factor_type: &FactorType) -> String { factor_type.kind().to_string() }
 
 #[cfg(feature = "bindings")]
 #[cfg_attr(feature = "bindings", uniffi::export)]
@@ -70,12 +70,17 @@ fn factor_type_bytes(factor_type: &FactorType) -> Vec<u8> { factor_type.bytes() 
 
 #[cfg(feature = "bindings")]
 #[cfg_attr(feature = "bindings", uniffi::export)]
-fn setup_factor_type_params(factor_type: &FactorType, key: Option<Key>) -> MFKDF2Result<Value> {
+fn setup_factor_type_params(
+  factor_type: &FactorType,
+  key: Option<Key>,
+) -> MFKDF2Result<FactorParams> {
   // TODO (@lonerapier): remove dummy key usage
   let key = key.unwrap_or_else(|| [0u8; 32].into());
-  factor_type.params(key)
+  factor_type.setup().params(key)
 }
 
 #[cfg(feature = "bindings")]
 #[cfg_attr(feature = "bindings", uniffi::export)]
-fn setup_factor_type_output(factor_type: &FactorType) -> Value { factor_type.output() }
+fn setup_factor_type_output(factor_type: &FactorType) -> serde_json::Value {
+  factor_type.setup().output()
+}

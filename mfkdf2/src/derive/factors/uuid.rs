@@ -4,27 +4,23 @@
 //! UUID value into an [`MFKDF2Factor`] used during the derive phase. It is typically used in flows
 //! where a device, account, or hardware identifier is known at both setup and derive and acts as a
 //! non‑interactive high‑entropy factor
-use serde_json::json;
 use uuid::Uuid;
 
 use crate::{
   definitions::{FactorType, MFKDF2Factor},
   derive::FactorDerive,
   error::MFKDF2Result,
-  setup::factors::uuid::UUIDFactor,
+  setup::factors::uuid::{UUIDFactor, UUIDFactorOutput, UUIDFactorParams},
 };
 
 impl FactorDerive for UUIDFactor {
-  type Output = serde_json::Value;
-  type Params = serde_json::Value;
-
   fn include_params(&mut self, _params: Self::Params) -> MFKDF2Result<()> { Ok(()) }
 
-  fn output(&self) -> Self::Output {
-    json!({
-      "uuid": self.uuid.clone(),
-    })
+  fn params(&self, _key: crate::definitions::Key) -> MFKDF2Result<Self::Params> {
+    Ok(UUIDFactorParams::default())
   }
+
+  fn output(&self) -> Self::Output { UUIDFactorOutput { uuid: self.uuid } }
 }
 
 /// Factor construction derive phase for a UUID factor
@@ -96,21 +92,29 @@ mod tests {
   fn output() {
     let valid_uuid = "f9bf78b9-54e7-4696-97dc-5e750de4c592";
     let factor = uuid(Uuid::parse_str(valid_uuid).unwrap()).unwrap();
-    let output = factor.factor_type.output();
-    assert_eq!(output, json!({ "uuid": valid_uuid }));
+    let output = factor.factor_type.derive().output();
+    assert_eq!(output["uuid"], valid_uuid);
   }
 
   #[test]
   fn params() {
+    use crate::setup::factors::uuid::UUIDFactorParams;
     let valid_uuid = "f9bf78b9-54e7-4696-97dc-5e750de4c592";
     let mut factor = uuid(Uuid::parse_str(valid_uuid).unwrap()).unwrap();
 
     // Test include_params (does nothing)
-    let result = factor.factor_type.include_params(json!({}));
+    let result = factor
+      .factor_type
+      .include_params(crate::definitions::factor::FactorParams::UUID(UUIDFactorParams::default()));
     assert!(result.is_ok());
 
     // Test params_derive (returns empty)
-    let params = factor.factor_type.params([0; 32].into()).unwrap();
-    assert_eq!(params, json!({}));
+    let params_enum = factor.factor_type.derive().params([0; 32].into()).unwrap();
+    match params_enum {
+      crate::definitions::factor::FactorParams::UUID(p) => {
+        assert_eq!(p, UUIDFactorParams::default());
+      },
+      _ => panic!("Expected UUID params"),
+    }
   }
 }

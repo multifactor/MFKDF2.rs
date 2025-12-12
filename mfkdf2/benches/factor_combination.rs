@@ -2,9 +2,8 @@ use std::{collections::HashMap, hint::black_box};
 
 use criterion::{Criterion, criterion_group, criterion_main};
 use mfkdf2::{
-  definitions::MFKDF2Options,
-  derive,
-  derive::factors::totp::TOTPDeriveOptions,
+  definitions::{MFKDF2Options, factor::FactorParams},
+  derive::{self, factors::totp::TOTPDeriveOptions},
   otpauth::{HashAlgorithm, generate_otp_token},
   setup::{
     self,
@@ -105,9 +104,11 @@ fn bench_factor_combination_derive(c: &mut Criterion) {
 
   // Pre-compute HOTP code for derive
   let policy_hotp_factor = setup_key.policy.factors.iter().find(|f| f.id == "hotp").unwrap();
-  let hotp_params = &policy_hotp_factor.params;
-  let counter = hotp_params["counter"].as_u64().unwrap();
-  let hotp_code = generate_otp_token(&SECRET20, counter, &HashAlgorithm::Sha1, 6);
+  let hotp_params = match &policy_hotp_factor.params {
+    FactorParams::HOTP(p) => p,
+    _ => unreachable!(),
+  };
+  let hotp_code = generate_otp_token(&SECRET20, hotp_params.counter, &HashAlgorithm::Sha1, 6);
 
   // Pre-compute TOTP code for derive
   let time = 1;

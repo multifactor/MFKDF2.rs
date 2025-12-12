@@ -2,12 +2,13 @@
 //! setup a multi-factor derived key (eg. as browser cookies) so that they do not need to be used to
 //! derive the key in the future.
 use serde::{Deserialize, Serialize};
-use serde_json::Value;
 
 use crate::{
-  definitions::{FactorType, MFKDF2Factor, factor::FactorMetadata},
+  defaults::persisted as persisted_defaults,
+  definitions::{FactorType, Key, MFKDF2Factor},
   derive::FactorDerive,
   error::MFKDF2Result,
+  traits::Factor,
 };
 
 /// Persisted share factor state.
@@ -19,19 +20,31 @@ pub struct Persisted {
   pub share: Vec<u8>,
 }
 
-impl FactorMetadata for Persisted {
-  fn kind(&self) -> String { "persisted".to_string() }
+impl Factor for Persisted {
+  type Output = PersistedOutput;
+  type Params = PersistedParams;
+
+  fn kind(&self) -> &'static str { "persisted" }
 
   fn bytes(&self) -> Vec<u8> { self.share.clone() }
 }
 
-impl FactorDerive for Persisted {
-  type Output = Value;
-  type Params = Value;
+/// Persisted factor parameters.
+#[cfg_attr(feature = "bindings", derive(uniffi::Record))]
+#[derive(Clone, Debug, Default, Serialize, Deserialize, Eq, PartialEq)]
+pub struct PersistedParams {}
 
+/// Persisted factor output.
+#[cfg_attr(feature = "bindings", derive(uniffi::Record))]
+#[derive(Clone, Debug, Default, Serialize, Deserialize, Eq, PartialEq)]
+pub struct PersistedOutput {}
+
+impl FactorDerive for Persisted {
   fn include_params(&mut self, _params: Self::Params) -> MFKDF2Result<()> { Ok(()) }
 
-  fn output(&self) -> Self::Output { Value::Null }
+  fn params(&self, _key: Key) -> MFKDF2Result<Self::Params> { Ok(PersistedParams::default()) }
+
+  fn output(&self) -> Self::Output { PersistedOutput::default() }
 }
 
 /// Factor construction derive phase for a persisted Shamir share
@@ -69,7 +82,7 @@ impl FactorDerive for Persisted {
 /// ```
 pub fn persisted(share: Vec<u8>) -> MFKDF2Result<MFKDF2Factor> {
   Ok(MFKDF2Factor {
-    id:          Some("persisted".to_string()),
+    id:          Some(persisted_defaults::ID.to_string()),
     factor_type: FactorType::Persisted(Persisted { share }),
     entropy:     None,
   })

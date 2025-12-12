@@ -4,11 +4,12 @@
 //! an entropy estimate derived from Dropbox's [`mod@zxcvbn`] crate, which can be used to enforce
 //! security question strength policies.
 use serde::{Deserialize, Serialize};
-use serde_json::{Value, json};
+use serde_json::Value;
 use zxcvbn::zxcvbn;
 
 use crate::{
-  definitions::{FactorType, Key, MFKDF2Factor, factor::FactorMetadata},
+  defaults::question as question_defaults,
+  definitions::{FactorType, Key, MFKDF2Factor},
   error::{MFKDF2Error, MFKDF2Result},
   setup::FactorSetup,
 };
@@ -26,7 +27,7 @@ pub struct QuestionOptions {
 }
 
 impl Default for QuestionOptions {
-  fn default() -> Self { Self { id: Some("question".to_string()), question: None } }
+  fn default() -> Self { Self { id: Some(question_defaults::ID.to_string()), question: None } }
 }
 
 /// Security‑question factor state. This factor models a user-chosen security question and answer.
@@ -36,7 +37,7 @@ pub struct Question {
   /// Normalized answer string used as factor material.
   pub answer:   String,
   /// Factor public state that is used to derive the factor material.
-  pub params:   Value,
+  pub params:   QuestionParams,
   /// Human‑readable prompt shown to the user (e.g., _"What is your favorite teacher's name?"_).
   pub question: String,
 }
@@ -49,26 +50,38 @@ impl zeroize::Zeroize for Question {
   }
 }
 
-impl FactorMetadata for Question {
-  fn kind(&self) -> String { "question".to_string() }
+impl_factor! {
+  Question {
+    kind: "question",
+    params: QuestionParams,
+    output: QuestionOutput,
+    bytes: |self| self.answer.as_bytes().to_vec(),
+  }
+}
 
-  fn bytes(&self) -> Vec<u8> { self.answer.as_bytes().to_vec() }
+/// Question factor parameters.
+#[cfg_attr(feature = "bindings", derive(uniffi::Record))]
+#[derive(Clone, Debug, Default, Serialize, Deserialize, PartialEq)]
+pub struct QuestionParams {
+  /// Human-readable security question prompt.
+  pub question: String,
+}
+
+/// Question factor output.
+#[cfg_attr(feature = "bindings", derive(uniffi::Record))]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+pub struct QuestionOutput {
+  /// Answer strength estimate from zxcvbn.
+  pub strength: Value,
 }
 
 impl FactorSetup for Question {
-  type Output = Value;
-  type Params = Value;
-
   fn params(&self, _key: Key) -> MFKDF2Result<Self::Params> {
-    Ok(json!({
-      "question": self.question,
-    }))
+    Ok(QuestionParams { question: self.question.clone() })
   }
 
   fn output(&self) -> Self::Output {
-    json!({
-      "strength": zxcvbn(&self.answer, &[]),
-    })
+    QuestionOutput { strength: serde_json::to_value(zxcvbn(&self.answer, &[])).unwrap() }
   }
 }
 
@@ -109,7 +122,7 @@ pub fn question(
   {
     return Err(crate::error::MFKDF2Error::MissingFactorId);
   }
-  let id = Some(options.id.take().unwrap_or("question".to_string()));
+  let id = Some(options.id.take().unwrap_or_else(|| question_defaults::ID.to_string()));
 
   let question = options.question.take().unwrap_or_default();
 
@@ -122,7 +135,11 @@ pub fn question(
 
   Ok(MFKDF2Factor {
     id,
-    factor_type: FactorType::Question(Question { question, params: Value::Null, answer }),
+    factor_type: FactorType::Question(Question {
+      question,
+      params: QuestionParams::default(),
+      answer,
+    }),
     entropy: Some((strength.guesses() as f64).log2()),
   })
 }
@@ -191,14 +208,13 @@ mod tests {
     let params = question_factor.params([0u8; 32].into());
     assert!(params.is_ok());
     let params = params.unwrap();
-    assert!(params.is_object());
-    assert_eq!(params["question"], "What is your favorite color?");
+    assert_eq!(params.question, "What is your favorite color?");
   }
 
   #[test]
   fn output() {
     let factor = mock_construction();
-    let output = factor.factor_type.output();
+    let output = factor.factor_type.setup().output();
     assert!(output.is_object());
     assert!(output["strength"].is_object());
     assert!(output["strength"]["score"].is_number());

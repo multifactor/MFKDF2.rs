@@ -14,45 +14,49 @@ use sha2::Sha256;
 
 use crate::{
   crypto::{decrypt_cbc, encrypt_cbc, hkdf_sha256_with_info},
+  defaults::ooba as ooba_defaults,
   definitions::{FactorType, Key, MFKDF2Factor},
   derive::FactorDerive,
   error::{MFKDF2Error, MFKDF2Result},
   rng::GlobalRng,
-  setup::factors::ooba::{Ooba, OobaPublicKey, generate_alphanumeric_characters},
+  setup::factors::ooba::{
+    Ooba, OobaOutput, OobaParams, OobaPublicKey, generate_alphanumeric_characters,
+  },
 };
 
 impl FactorDerive for Ooba {
-  type Output = Value;
-  type Params = Value;
-
   /// Includes the public parameters for in factor state and decrypts the secret material from
   /// public parameters.
-  fn include_params(&mut self, mut params: Self::Params) -> MFKDF2Result<()> {
-    let pad_b64 =
-      params["pad"].as_str().ok_or(MFKDF2Error::MissingDeriveParams("pad".to_string()))?;
-    let pad = general_purpose::STANDARD
-      .decode(pad_b64)
-      .map_err(|_| MFKDF2Error::InvalidDeriveParams("pad".to_string()))?;
-
-    let config = params["params"].take();
-    if !config.is_object() {
-      return Err(MFKDF2Error::InvalidDeriveParams("params".to_string()));
+  fn include_params(&mut self, params: Self::Params) -> MFKDF2Result<()> {
+    if params.pad.is_empty() {
+      return Err(MFKDF2Error::InvalidDeriveParams("pad".to_string()));
+    }
+    if params.key.is_none() {
+      return Err(MFKDF2Error::MissingOobaKey);
     }
 
+    let pad = general_purpose::STANDARD
+      .decode(&params.pad)
+      .map_err(|_| MFKDF2Error::InvalidDeriveParams("pad".to_string()))?;
+
     let key = hkdf_sha256_with_info(self.code.as_bytes(), &[], &[]);
-    let iv = general_purpose::STANDARD.decode(config["iv"].as_str().unwrap()).unwrap();
+    let iv = general_purpose::STANDARD
+      .decode(
+        params.params["iv"]
+          .as_str()
+          .ok_or_else(|| MFKDF2Error::MissingDeriveParams("iv".to_string()))?,
+      )
+      .map_err(|_| MFKDF2Error::InvalidDeriveParams("iv".to_string()))?;
     let key = cipher::Key::<cbc::Decryptor<Aes256>>::from(key);
     let iv = cipher::Iv::<cbc::Decryptor<Aes256>>::from_iter(iv);
-    self.target = decrypt_cbc::<Aes256>(&pad, &key, &iv)?;
+    self.target = decrypt_cbc::<Aes256>(&pad, &key, &iv)?
+      .try_into()
+      .map_err(|_| MFKDF2Error::InvalidDeriveParams("target length".to_string()))?;
 
-    self.length = params["length"]
-      .as_u64()
-      .ok_or(MFKDF2Error::MissingDeriveParams("length".to_string()))? as u8;
-    let jwk = serde_json::from_value::<jsonwebtoken::jwk::Jwk>(params["key"].take())
-      .map_err(|_| MFKDF2Error::InvalidDeriveParams("key".to_string()))?;
-    self.jwk = Some(jwk);
+    self.length = params.length;
+    self.jwk = params.key;
 
-    self.params = config;
+    self.params = params.params;
 
     Ok(())
   }
@@ -64,7 +68,7 @@ impl FactorDerive for Ooba {
     let next_key = hkdf_sha256_with_info(code.as_bytes(), &[], &[]);
     let key = cipher::Key::<Encryptor<Aes256>>::from(next_key);
     let iv = Encryptor::<Aes256>::generate_iv(&mut GlobalRng);
-    let pad = encrypt_cbc::<Aes256>(&self.target, &key, &iv)?;
+    let pad = encrypt_cbc::<Aes256>(self.target.as_ref(), &key, &iv)?;
 
     let mut params = self.params.clone();
     params["code"] = Value::String(code);
@@ -80,14 +84,16 @@ impl FactorDerive for Ooba {
     let ciphertext =
       public_key.0.encrypt(&mut rsa::rand_core::OsRng, Oaep::new::<Sha256>(), &plaintext)?;
 
-    Ok(json!({
-        "length": self.length,
-        "key": self.jwk,
-        "params": pub_params,
-        "next": hex::encode(ciphertext),
-        "pad": general_purpose::STANDARD.encode(pad),
-    }))
+    Ok(OobaParams {
+      length: self.length,
+      key:    self.jwk.clone(),
+      params: pub_params,
+      next:   hex::encode(ciphertext),
+      pad:    general_purpose::STANDARD.encode(pad),
+    })
   }
+
+  fn output(&self) -> Self::Output { OobaOutput::default() }
 }
 
 /// Factor construction derive phase for an OOBA factor
@@ -149,7 +155,10 @@ impl FactorDerive for Ooba {
 /// let policy_factor =
 ///   setup_key.policy.factors.iter().find(|f| f.id == "ooba").unwrap();
 /// let setup_params = &policy_factor.params;
-/// let ciphertext = hex::decode(setup_params["next"].as_str().unwrap()).unwrap();
+/// let ciphertext = match setup_params {
+///   mfkdf2::definitions::factor::FactorParams::OOBA(p) => hex::decode(&p.next).unwrap(),
+///   _ => unreachable!(),
+/// };
 /// let plaintext = private_key.decrypt(rsa::Oaep::new::<sha2::Sha256>(), &ciphertext).unwrap();
 /// let decoded: serde_json::Value = serde_json::from_slice(&plaintext).unwrap();
 /// let code = decoded["code"].as_str().unwrap();
@@ -171,9 +180,9 @@ pub fn ooba(code: &str) -> MFKDF2Result<MFKDF2Factor> {
   }
 
   Ok(MFKDF2Factor {
-    id:          Some("ooba".to_string()),
+    id:          Some(ooba_defaults::ID.to_string()),
     factor_type: FactorType::OOBA(Ooba {
-      target: vec![],
+      target: [0u8; 32].into(),
       length: 0,
       code:   code.to_uppercase(),
       jwk:    None,
@@ -235,8 +244,13 @@ mod tests {
     let (private_key, public_key) = keypair();
     let setup = mock_ooba_setup(&public_key);
 
-    let setup_params = setup.factor_type.setup().params([0u8; 32].into()).unwrap();
-    let ciphertext = hex::decode(setup_params["next"].as_str().unwrap()).unwrap();
+    let setup_params_enum = setup.factor_type.setup().params([0u8; 32].into()).unwrap();
+    let setup_params = match setup_params_enum {
+      crate::definitions::factor::FactorParams::OOBA(p) => p,
+      _ => panic!("Expected OOBA params"),
+    };
+    let next_clone = setup_params.next.clone();
+    let ciphertext = hex::decode(next_clone).unwrap();
     let decrypted = serde_json::from_slice::<Value>(
       &private_key.decrypt(Oaep::new::<Sha256>(), &ciphertext).unwrap(),
     )
@@ -253,10 +267,10 @@ mod tests {
       _ => panic!("Factor type should be Ooba"),
     };
 
-    ooba.include_params(setup_params).unwrap();
+    ooba.include_params(setup_params.clone()).unwrap();
     let derive_params = ooba.params([0u8; 32].into()).unwrap();
 
-    let ciphertext = hex::decode(derive_params["next"].as_str().unwrap()).unwrap();
+    let ciphertext = hex::decode(derive_params.next).unwrap();
     let decrypted = serde_json::from_slice::<Value>(
       &private_key.decrypt(Oaep::new::<Sha256>(), &ciphertext).unwrap(),
     )
@@ -265,12 +279,12 @@ mod tests {
     let iv = general_purpose::STANDARD.decode(decrypted["iv"].as_str().unwrap()).unwrap();
 
     let prev_key = hkdf_sha256_with_info(code.as_bytes(), &[], &[]);
-    let pad = general_purpose::STANDARD.decode(derive_params["pad"].as_str().unwrap()).unwrap();
+    let pad = general_purpose::STANDARD.decode(&derive_params.pad).unwrap();
     let key = cipher::Key::<cbc::Decryptor<Aes256>>::from(prev_key);
     let iv = cipher::Iv::<cbc::Decryptor<Aes256>>::from_iter(iv);
     let target = crate::crypto::decrypt_cbc::<Aes256>(&pad, &key, &iv).unwrap();
 
-    assert_eq!(ooba.target, target);
+    assert_eq!(ooba.target.as_ref(), target);
   }
 
   #[test]
@@ -285,8 +299,13 @@ mod tests {
     let (private_key, public_key) = keypair();
     let setup = mock_ooba_setup(&public_key);
 
-    let setup_params = setup.factor_type.setup().params([0u8; 32].into()).unwrap();
-    let ciphertext = hex::decode(setup_params["next"].as_str().unwrap()).unwrap();
+    let setup_params_enum = setup.factor_type.setup().params([0u8; 32].into()).unwrap();
+    let setup_params = match setup_params_enum {
+      crate::definitions::factor::FactorParams::OOBA(p) => p,
+      _ => panic!("Expected OOBA params"),
+    };
+    let next_clone = setup_params.next.clone();
+    let ciphertext = hex::decode(next_clone).unwrap();
     let decrypted = serde_json::from_slice::<Value>(
       &private_key.decrypt(Oaep::new::<Sha256>(), &ciphertext).unwrap(),
     )
@@ -303,10 +322,10 @@ mod tests {
       _ => panic!("Factor type should be Ooba"),
     };
 
-    ooba.include_params(setup_params).unwrap();
+    ooba.include_params(setup_params.clone()).unwrap();
     let derive_params = ooba.params([0u8; 32].into()).unwrap();
 
-    assert_eq!(derive_params["params"]["foo"], "bar");
+    assert_eq!(derive_params.params["foo"], "bar");
   }
 
   #[test]
@@ -342,8 +361,12 @@ mod tests {
     let setup = crate::setup::factors::ooba(options).unwrap();
 
     // Setup for derive
-    let setup_params = setup.factor_type.setup().params([0u8; 32].into()).unwrap();
-    let ciphertext = hex::decode(setup_params["next"].as_str().unwrap()).unwrap();
+    let setup_params_enum = setup.factor_type.setup().params([0u8; 32].into()).unwrap();
+    let setup_params = match setup_params_enum {
+      crate::definitions::factor::FactorParams::OOBA(p) => p,
+      _ => panic!("Expected OOBA params"),
+    };
+    let ciphertext = hex::decode(setup_params.next.clone()).unwrap();
     let decrypted_params = serde_json::from_slice::<Value>(
       &private_key.decrypt(Oaep::new::<Sha256>(), &ciphertext).unwrap(),
     )
@@ -359,7 +382,7 @@ mod tests {
     let derive_params = ooba.params([0u8; 32].into()).unwrap();
 
     // 7. Get `next` and `params`
-    let next_hex = derive_params["next"].as_str().unwrap();
+    let next_hex = &derive_params.next;
     // let params_from_derive = derive_params["params"].clone();
     let ciphertext = hex::decode(next_hex).unwrap();
 
@@ -390,71 +413,93 @@ mod tests {
   fn include_params_missing_pad() {
     let (_, public_key) = keypair();
     let setup = mock_ooba_setup(&public_key);
-    let mut setup_params = setup.factor_type.setup().params([0u8; 32].into()).unwrap();
-    setup_params.as_object_mut().unwrap().remove("pad");
+    let setup_params_enum = setup.factor_type.setup().params([0u8; 32].into()).unwrap();
+    let mut setup_params = match setup_params_enum {
+      crate::definitions::factor::FactorParams::OOBA(p) => p,
+      _ => panic!("Expected OOBA params"),
+    };
+    setup_params.pad = String::new();
 
     let mut ooba = get_ooba_for_test();
     let err = ooba.include_params(setup_params).unwrap_err();
-    assert!(matches!(err, MFKDF2Error::MissingDeriveParams(s) if s == "pad"));
+    assert!(matches!(err, MFKDF2Error::InvalidDeriveParams(_)));
   }
 
   #[test]
   fn include_params_invalid_pad() {
     let (_, public_key) = keypair();
     let setup = mock_ooba_setup(&public_key);
-    let mut setup_params = setup.factor_type.setup().params([0u8; 32].into()).unwrap();
-    setup_params["pad"] = json!("not-base64");
+    let setup_params_enum = setup.factor_type.setup().params([0u8; 32].into()).unwrap();
+    let mut setup_params = match setup_params_enum {
+      crate::definitions::factor::FactorParams::OOBA(p) => p,
+      _ => panic!("Expected OOBA params"),
+    };
+    setup_params.pad = "not-base64".to_string();
 
     let mut ooba = get_ooba_for_test();
     let err = ooba.include_params(setup_params).unwrap_err();
-    assert!(matches!(err, MFKDF2Error::InvalidDeriveParams(s) if s == "pad"));
+    assert!(matches!(err, MFKDF2Error::InvalidDeriveParams(_)));
   }
 
   #[test]
   fn include_params_missing_params_config() {
     let (_, public_key) = keypair();
     let setup = mock_ooba_setup(&public_key);
-    let mut setup_params = setup.factor_type.setup().params([0u8; 32].into()).unwrap();
-    setup_params.as_object_mut().unwrap().remove("params");
+    let setup_params_enum = setup.factor_type.setup().params([0u8; 32].into()).unwrap();
+    let mut setup_params = match setup_params_enum {
+      crate::definitions::factor::FactorParams::OOBA(p) => p,
+      _ => panic!("Expected OOBA params"),
+    };
+    setup_params.params = json!(null);
 
     let mut ooba = get_ooba_for_test();
     let err = ooba.include_params(setup_params).unwrap_err();
-    assert!(matches!(err, MFKDF2Error::InvalidDeriveParams(s) if s == "params"));
+    assert!(matches!(err, MFKDF2Error::MissingDeriveParams(_)));
   }
 
   #[test]
   fn include_params_params_config_not_object() {
     let (_, public_key) = keypair();
     let setup = mock_ooba_setup(&public_key);
-    let mut setup_params = setup.factor_type.setup().params([0u8; 32].into()).unwrap();
-    setup_params["params"] = json!("not-an-object");
+    let setup_params_enum = setup.factor_type.setup().params([0u8; 32].into()).unwrap();
+    let mut setup_params = match setup_params_enum {
+      crate::definitions::factor::FactorParams::OOBA(p) => p,
+      _ => panic!("Expected OOBA params"),
+    };
+    setup_params.params = json!("not-an-object");
 
     let mut ooba = get_ooba_for_test();
     let err = ooba.include_params(setup_params).unwrap_err();
-    assert!(matches!(err, MFKDF2Error::InvalidDeriveParams(s) if s == "params"));
+    assert!(matches!(err, MFKDF2Error::MissingDeriveParams(_)));
   }
 
   #[test]
   fn include_params_missing_length() {
     let (_, public_key) = keypair();
     let setup = mock_ooba_setup(&public_key);
-    let mut setup_params = setup.factor_type.setup().params([0u8; 32].into()).unwrap();
-    setup_params.as_object_mut().unwrap().remove("length");
-
+    let setup_params_enum = setup.factor_type.setup().params([0u8; 32].into()).unwrap();
+    let setup_params = match setup_params_enum {
+      crate::definitions::factor::FactorParams::OOBA(p) => p,
+      _ => panic!("Expected OOBA params"),
+    };
+    // Length is part of the struct, so it can't be missing
     let mut ooba = get_ooba_for_test();
-    let err = ooba.include_params(setup_params).unwrap_err();
-    assert!(matches!(err, MFKDF2Error::MissingDeriveParams(s) if s == "length"));
+    ooba.include_params(setup_params).unwrap();
   }
 
   #[test]
   fn include_params_missing_key() {
     let (_, public_key) = keypair();
     let setup = mock_ooba_setup(&public_key);
-    let mut setup_params = setup.factor_type.setup().params([0u8; 32].into()).unwrap();
-    setup_params.as_object_mut().unwrap().remove("key");
+    let setup_params_enum = setup.factor_type.setup().params([0u8; 32].into()).unwrap();
+    let mut setup_params = match setup_params_enum {
+      crate::definitions::factor::FactorParams::OOBA(p) => p,
+      _ => panic!("Expected OOBA params"),
+    };
+    setup_params.key = None;
 
     let mut ooba = get_ooba_for_test();
     let err = ooba.include_params(setup_params).unwrap_err();
-    assert!(matches!(err, MFKDF2Error::InvalidDeriveParams(s) if s == "key"));
+    assert!(matches!(err, MFKDF2Error::MissingOobaKey));
   }
 }
