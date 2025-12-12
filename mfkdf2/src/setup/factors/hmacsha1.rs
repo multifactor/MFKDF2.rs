@@ -22,7 +22,6 @@ use crate::{
   error::MFKDF2Result,
   rng,
   setup::factors::{FactorSetup, FactorType},
-  traits::Factor,
 };
 
 /// Options for configuring an [`HmacSha1`] factor.
@@ -64,15 +63,6 @@ pub struct HmacSha1 {
   pub padded_secret: Vec<u8>,
 }
 
-impl Factor for HmacSha1 {
-  type Output = HmacSha1Output;
-  type Params = HmacSha1Params;
-
-  fn kind(&self) -> &'static str { "hmacsha1" }
-
-  fn bytes(&self) -> Vec<u8> { self.padded_secret.clone() }
-}
-
 /// HMAC-SHA1 factor parameters.
 #[cfg_attr(feature = "bindings", derive(uniffi::Record))]
 #[derive(Clone, Debug, Default, Serialize, Deserialize, Eq, PartialEq)]
@@ -89,6 +79,15 @@ pub struct HmacSha1Params {
 pub struct HmacSha1Output {
   /// HMAC-SHA1 secret (20 bytes).
   pub secret: Vec<u8>,
+}
+
+impl_factor! {
+  HmacSha1 {
+    kind: "hmacsha1",
+    params: HmacSha1Params,
+    output: HmacSha1Output,
+    bytes: |self| self.padded_secret.clone(),
+  }
 }
 
 impl FactorSetup for HmacSha1 {

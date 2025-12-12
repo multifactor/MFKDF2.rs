@@ -40,35 +40,23 @@ impl FactorType {
 
 impl FactorSetupCtx<'_> {
   pub(crate) fn params(&self, key: Key) -> MFKDF2Result<FactorParams> {
-    Ok(match self.0 {
-      FactorType::Password(password) => FactorParams::Password(password.params(key)?),
-      FactorType::HOTP(hotp) => FactorParams::HOTP(hotp.params(key)?),
-      FactorType::Question(question) => FactorParams::Question(question.params(key)?),
-      FactorType::UUID(uuid) => FactorParams::UUID(uuid.params(key)?),
-      FactorType::HmacSha1(hmacsha1) => FactorParams::HmacSha1(hmacsha1.params(key)?),
-      FactorType::TOTP(totp) => FactorParams::TOTP(totp.params(key)?),
-      FactorType::OOBA(ooba) => FactorParams::OOBA(ooba.params(key)?),
-      FactorType::Passkey(passkey) => FactorParams::Passkey(passkey.params(key)?),
-      FactorType::Stack(stack) => FactorParams::Stack(stack.params(key)?),
-      FactorType::Persisted(_) =>
-        unreachable!("Persisted factor should not be used in this context"),
-    })
+    factor_dispatch_params!(self.0, params(key) => {
+      Password => Password,
+      HOTP => HOTP,
+      Question => Question,
+      UUID => UUID,
+      HmacSha1 => HmacSha1,
+      TOTP => TOTP,
+      OOBA => OOBA,
+      Passkey => Passkey,
+      Stack => Stack,
+    }; unreachable_persisted)
   }
 
   pub(crate) fn output(&self) -> serde_json::Value {
-    match self.0 {
-      FactorType::Password(password) => serde_json::to_value(password.output()).unwrap(),
-      FactorType::HOTP(hotp) => serde_json::to_value(hotp.output()).unwrap(),
-      FactorType::Question(question) => serde_json::to_value(question.output()).unwrap(),
-      FactorType::UUID(uuid) => serde_json::to_value(uuid.output()).unwrap(),
-      FactorType::HmacSha1(hmacsha1) => serde_json::to_value(hmacsha1.output()).unwrap(),
-      FactorType::TOTP(totp) => serde_json::to_value(totp.output()).unwrap(),
-      FactorType::OOBA(ooba) => serde_json::to_value(ooba.output()).unwrap(),
-      FactorType::Passkey(passkey) => serde_json::to_value(passkey.output()).unwrap(),
-      FactorType::Stack(stack) => serde_json::to_value(stack.output()).unwrap(),
-      FactorType::Persisted(_) =>
-        unreachable!("Persisted factor should not be used in this context"),
-    }
+    factor_dispatch_output!(self.0, output() => {
+      Password, HOTP, Question, UUID, HmacSha1, TOTP, OOBA, Passkey, Stack
+    }; unreachable_persisted)
   }
 }
 

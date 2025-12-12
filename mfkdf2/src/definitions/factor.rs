@@ -148,32 +148,14 @@ pub enum FactorParams {
 
 impl FactorType {
   pub(crate) fn bytes(&self) -> Vec<u8> {
-    match self {
-      FactorType::Password(password) => password.bytes(),
-      FactorType::HOTP(hotp) => hotp.bytes(),
-      FactorType::Question(question) => question.bytes(),
-      FactorType::UUID(uuid) => uuid.bytes(),
-      FactorType::HmacSha1(hmacsha1) => hmacsha1.bytes(),
-      FactorType::TOTP(totp) => totp.bytes(),
-      FactorType::OOBA(ooba) => ooba.bytes(),
-      FactorType::Passkey(passkey) => passkey.bytes(),
-      FactorType::Stack(stack) => stack.bytes(),
-      FactorType::Persisted(persisted) => persisted.bytes(),
-    }
+    factor_dispatch_method!(self, bytes() => {
+      Password, HOTP, Question, UUID, HmacSha1, TOTP, OOBA, Passkey, Stack, Persisted
+    })
   }
 
   pub(crate) fn kind(&self) -> &'static str {
-    match self {
-      FactorType::Password(password) => password.kind(),
-      FactorType::HOTP(hotp) => hotp.kind(),
-      FactorType::Question(question) => question.kind(),
-      FactorType::UUID(uuid) => uuid.kind(),
-      FactorType::HmacSha1(hmacsha1) => hmacsha1.kind(),
-      FactorType::TOTP(totp) => totp.kind(),
-      FactorType::OOBA(ooba) => ooba.kind(),
-      FactorType::Passkey(passkey) => passkey.kind(),
-      FactorType::Stack(stack) => stack.kind(),
-      FactorType::Persisted(persisted) => persisted.kind(),
-    }
+    factor_dispatch_method!(self, kind() => {
+      Password, HOTP, Question, UUID, HmacSha1, TOTP, OOBA, Passkey, Stack, Persisted
+    })
   }
 }

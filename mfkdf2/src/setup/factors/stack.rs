@@ -13,7 +13,6 @@ use crate::{
   error::{MFKDF2Error, MFKDF2Result},
   policy::Policy,
   setup::{FactorSetup, key},
-  traits::Factor,
 };
 
 /// Options for constructing a stack factor.
@@ -64,13 +63,13 @@ impl zeroize::Zeroize for Stack {
   }
 }
 
-impl Factor for Stack {
-  type Output = StackOutput;
-  type Params = StackParams;
-
-  fn kind(&self) -> &'static str { "stack" }
-
-  fn bytes(&self) -> Vec<u8> { self.key.key.clone().into() }
+impl_factor! {
+  Stack {
+    kind: "stack",
+    params: StackParams,
+    output: StackOutput,
+    bytes: |self| self.key.key.clone().into(),
+  }
 }
 
 /// Stack factor parameters.

@@ -26,7 +26,6 @@ use crate::{
   definitions::{ByteArray, FactorType, MFKDF2Factor},
   error::MFKDF2Result,
   setup::FactorSetup,
-  traits::Factor,
 };
 
 /// 32 byte passkey secret
@@ -42,13 +41,13 @@ pub struct Passkey {
   pub secret: PasskeySecret,
 }
 
-impl Factor for Passkey {
-  type Output = PasskeyOutput;
-  type Params = PasskeyParams;
-
-  fn kind(&self) -> &'static str { "passkey" }
-
-  fn bytes(&self) -> Vec<u8> { self.secret.to_vec() }
+impl_factor! {
+  Passkey {
+    kind: "passkey",
+    params: PasskeyParams,
+    output: PasskeyOutput,
+    bytes: |self| self.secret.to_vec(),
+  }
 }
 
 /// Passkey factor parameters.

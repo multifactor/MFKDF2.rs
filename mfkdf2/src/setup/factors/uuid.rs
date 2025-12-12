@@ -11,7 +11,6 @@ use crate::{
   definitions::{FactorType, MFKDF2Factor},
   error::MFKDF2Result,
   setup::FactorSetup,
-  traits::Factor,
 };
 
 /// Options for configuring a [`UUIDFactor`].
@@ -42,13 +41,13 @@ impl zeroize::Zeroize for UUIDFactor {
   fn zeroize(&mut self) {}
 }
 
-impl Factor for UUIDFactor {
-  type Output = UUIDFactorOutput;
-  type Params = UUIDFactorParams;
-
-  fn kind(&self) -> &'static str { "uuid" }
-
-  fn bytes(&self) -> Vec<u8> { self.uuid.as_bytes().to_vec() }
+impl_factor! {
+  UUIDFactor {
+    kind: "uuid",
+    params: UUIDFactorParams,
+    output: UUIDFactorOutput,
+    bytes: |self| self.uuid.as_bytes().to_vec(),
+  }
 }
 
 /// UUID factor parameters.

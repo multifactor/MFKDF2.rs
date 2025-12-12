@@ -12,7 +12,6 @@ use crate::{
   definitions::{FactorType, Key, MFKDF2Factor},
   error::{MFKDF2Error, MFKDF2Result},
   setup::FactorSetup,
-  traits::Factor,
 };
 
 /// Options for configuring a security‑question factor.
@@ -51,13 +50,13 @@ impl zeroize::Zeroize for Question {
   }
 }
 
-impl Factor for Question {
-  type Output = QuestionOutput;
-  type Params = QuestionParams;
-
-  fn kind(&self) -> &'static str { "question" }
-
-  fn bytes(&self) -> Vec<u8> { self.answer.as_bytes().to_vec() }
+impl_factor! {
+  Question {
+    kind: "question",
+    params: QuestionParams,
+    output: QuestionOutput,
+    bytes: |self| self.answer.as_bytes().to_vec(),
+  }
 }
 
 /// Question factor parameters.

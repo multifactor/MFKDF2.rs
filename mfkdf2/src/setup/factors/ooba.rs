@@ -42,7 +42,6 @@ use crate::{
   error::{MFKDF2Error, MFKDF2Result},
   rng::GlobalRng,
   setup::FactorSetup,
-  traits::Factor,
 };
 
 /// Generates a random alphanumeric string of the given length.
@@ -142,13 +141,13 @@ impl TryFrom<&Jwk> for OobaPublicKey {
   }
 }
 
-impl Factor for Ooba {
-  type Output = OobaOutput;
-  type Params = OobaParams;
-
-  fn kind(&self) -> &'static str { "ooba" }
-
-  fn bytes(&self) -> Vec<u8> { self.target.to_vec() }
+impl_factor! {
+  Ooba {
+    kind: "ooba",
+    params: OobaParams,
+    output: OobaOutput,
+    bytes: |self| self.target.to_vec(),
+  }
 }
 
 /// OOBA factor parameters.

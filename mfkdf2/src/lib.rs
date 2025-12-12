@@ -3,6 +3,9 @@
 #![warn(unused_extern_crates, unreachable_pub, nonstandard_style)]
 #![allow(clippy::cast_possible_truncation)]
 
+#[macro_use]
+mod macros;
+
 pub mod constants;
 mod crypto;
 mod defaults;

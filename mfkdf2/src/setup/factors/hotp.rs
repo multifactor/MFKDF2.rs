@@ -40,7 +40,6 @@ use crate::{
   error::MFKDF2Result,
   otpauth::{self, HashAlgorithm, OtpAuthUrlOptions, generate_otp_token},
   setup::FactorSetup,
-  traits::Factor,
 };
 
 /// Options for configuring a HOTP factor before setup
@@ -166,13 +165,13 @@ pub struct HOTPOutput {
   pub uri:       String,
 }
 
-impl Factor for HOTP {
-  type Output = HOTPOutput;
-  type Params = HOTPParams;
-
-  fn kind(&self) -> &'static str { "hotp" }
-
-  fn bytes(&self) -> Vec<u8> { self.target.to_be_bytes().to_vec() }
+impl_factor! {
+  HOTP {
+    kind: "hotp",
+    params: HOTPParams,
+    output: HOTPOutput,
+    bytes: |self| self.target.to_be_bytes().to_vec(),
+  }
 }
 
 impl FactorSetup for HOTP {

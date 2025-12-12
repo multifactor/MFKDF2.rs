@@ -53,7 +53,6 @@ use crate::{
   error::MFKDF2Result,
   otpauth::{self, HashAlgorithm, OtpAuthUrlOptions, generate_otp_token},
   setup::{FactorSetup, factors::hotp::mod_positive},
-  traits::Factor,
 };
 
 /// Options for configuring a TOTP factor setup
@@ -166,13 +165,13 @@ impl zeroize::Zeroize for TOTP {
   }
 }
 
-impl Factor for TOTP {
-  type Output = TOTPOutput;
-  type Params = TOTPParams;
-
-  fn kind(&self) -> &'static str { "totp" }
-
-  fn bytes(&self) -> Vec<u8> { self.target.to_be_bytes().to_vec() }
+impl_factor! {
+  TOTP {
+    kind: "totp",
+    params: TOTPParams,
+    output: TOTPOutput,
+    bytes: |self| self.target.to_be_bytes().to_vec(),
+  }
 }
 
 impl FactorSetup for TOTP {
@@ -384,7 +383,7 @@ async fn setup_totp(options: TOTPOptions) -> MFKDF2Result<MFKDF2Factor> { totp(o
 #[cfg(test)]
 mod tests {
   use super::*;
-  use crate::{crypto::decrypt, error::MFKDF2Error};
+  use crate::{crypto::decrypt, error::MFKDF2Error, traits::Factor};
 
   fn mock_construction() -> MFKDF2Factor {
     let options = TOTPOptions {

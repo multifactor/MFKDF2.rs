@@ -11,7 +11,6 @@ use crate::{
   definitions::{FactorType, MFKDF2Factor},
   error::{MFKDF2Error, MFKDF2Result},
   setup::FactorSetup,
-  traits::Factor,
 };
 
 /// Password factor state
@@ -23,13 +22,13 @@ pub struct Password {
   pub password: String,
 }
 
-impl Factor for Password {
-  type Output = PasswordOutput;
-  type Params = PasswordParams;
-
-  fn kind(&self) -> &'static str { "password" }
-
-  fn bytes(&self) -> Vec<u8> { self.password.as_bytes().to_vec() }
+impl_factor! {
+  Password {
+    kind: "password",
+    params: PasswordParams,
+    output: PasswordOutput,
+    bytes: |self| self.password.as_bytes().to_vec(),
+  }
 }
 
 /// Password factor parameters.
@@ -128,7 +127,7 @@ async fn setup_password(password: String, options: PasswordOptions) -> MFKDF2Res
 #[cfg(test)]
 mod tests {
   use super::*;
-  use crate::{error::MFKDF2Error, setup::FactorSetup};
+  use crate::{error::MFKDF2Error, setup::FactorSetup, traits::Factor};
 
   #[test]
   fn password_strength() {
