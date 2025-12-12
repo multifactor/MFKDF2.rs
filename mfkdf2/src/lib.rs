@@ -16,6 +16,7 @@ pub mod integrity;
 mod log;
 pub mod otpauth;
 pub mod policy;
+pub mod prelude;
 mod rng;
 pub mod setup;
 mod traits;

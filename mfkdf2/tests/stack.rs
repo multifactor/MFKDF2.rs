@@ -1,66 +1,52 @@
 use std::collections::HashMap;
 
 use hmac::{Hmac, Mac};
-use mfkdf2::definitions::factor::FactorParams;
+use mfkdf2::prelude::*;
 use sha1::Sha1;
+use uuid::Uuid;
 
-const HMACSHA1_SECRET: [u8; 20] = [
+pub const HMACSHA1_SECRET: [u8; 20] = [
   0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f, 0x10,
   0x11, 0x12, 0x13, 0x14,
 ];
 
-fn mock_setup_stack() -> Result<mfkdf2::definitions::MFKDF2DerivedKey, mfkdf2::error::MFKDF2Error> {
+fn mock_setup_stack() -> MFKDF2Result<MFKDF2DerivedKey> {
   let stacked_factors = vec![
-    mfkdf2::setup::factors::password(
-      "Tr0ubd4dour",
-      mfkdf2::setup::factors::password::PasswordOptions { id: Some("password_1".to_string()) },
-    ),
-    mfkdf2::setup::factors::question::question(
-      "my secret answer",
-      mfkdf2::setup::factors::question::QuestionOptions {
-        id:       Some("question_1".to_string()),
-        question: Some("What is my secret?".to_string()),
-      },
-    ),
+    setup_password("Tr0ubd4dour", PasswordOptions { id: Some("password_1".to_string()) })?,
+    setup_question("my secret answer", QuestionOptions {
+      id:       Some("question_1".to_string()),
+      question: Some("What is my secret?".to_string()),
+    })?,
   ]
   .into_iter()
-  .collect::<Result<Vec<_>, _>>()?;
+  .collect::<Vec<_>>();
 
   let stacked_factors_2 = vec![
-    mfkdf2::setup::factors::uuid::uuid(mfkdf2::setup::factors::uuid::UUIDOptions {
+    setup_uuid(UUIDOptions {
       id:   Some("uuid_1".to_string()),
-      uuid: Some(uuid::Uuid::parse_str("f9bf78b9-54e7-4696-97dc-5e750de4c592").unwrap()),
-    }),
-    mfkdf2::setup::factors::hmacsha1(mfkdf2::setup::factors::hmacsha1::HmacSha1Options {
+      uuid: Some(Uuid::parse_str("f9bf78b9-54e7-4696-97dc-5e750de4c592").unwrap()),
+    })?,
+    setup_hmacsha1(HmacSha1Options {
       id:     Some("hmacsha1_1".to_string()),
       secret: Some(HMACSHA1_SECRET.to_vec()),
-    }),
+    })?,
   ]
   .into_iter()
-  .collect::<Result<Vec<_>, _>>()?;
+  .collect::<Vec<_>>();
 
-  let key = mfkdf2::setup::key(
+  let key = setup::key(
     &[
-      mfkdf2::setup::factors::stack(
-        stacked_factors,
-        mfkdf2::setup::factors::stack::StackOptions {
-          id: Some("stack_1".to_string()),
-          ..Default::default()
-        },
-      )?,
-      mfkdf2::setup::factors::stack(
-        stacked_factors_2,
-        mfkdf2::setup::factors::stack::StackOptions {
-          id: Some("stack_2".to_string()),
-          ..Default::default()
-        },
-      )?,
-      mfkdf2::setup::factors::password(
-        "my-secure-password",
-        mfkdf2::setup::factors::password::PasswordOptions { id: Some("password_3".to_string()) },
-      )?,
+      setup_stack(stacked_factors, StackOptions {
+        id: Some("stack_1".to_string()),
+        ..Default::default()
+      })?,
+      setup_stack(stacked_factors_2, StackOptions {
+        id: Some("stack_2".to_string()),
+        ..Default::default()
+      })?,
+      setup_password("my-secure-password", PasswordOptions { id: Some("password_3".to_string()) })?,
     ],
-    mfkdf2::definitions::MFKDF2Options { threshold: Some(1), ..Default::default() },
+    MFKDF2Options { threshold: Some(1), ..Default::default() },
   )?;
   Ok(key)
 }
@@ -69,13 +55,13 @@ fn mock_setup_stack() -> Result<mfkdf2::definitions::MFKDF2DerivedKey, mfkdf2::e
 fn stack_derive() {
   let key = mock_setup_stack().unwrap();
 
-  let derived_key = mfkdf2::derive::key(
+  let derived_key = derive::key(
     &key.policy,
     HashMap::from([(
       "stack_1".to_string(),
-      mfkdf2::derive::factors::stack(HashMap::from([
-        ("password_1".to_string(), mfkdf2::derive::factors::password("Tr0ubd4dour").unwrap()),
-        ("question_1".to_string(), mfkdf2::derive::factors::question("my secret answer").unwrap()),
+      derive_stack(HashMap::from([
+        ("password_1".to_string(), derive_password("Tr0ubd4dour").unwrap()),
+        ("question_1".to_string(), derive_question("my secret answer").unwrap()),
       ]))
       .unwrap(),
     )]),
@@ -85,12 +71,9 @@ fn stack_derive() {
   .unwrap();
   assert_eq!(derived_key.key, key.key);
 
-  let derived_key = mfkdf2::derive::key(
+  let derived_key = derive::key(
     &key.policy,
-    HashMap::from([(
-      "password_3".to_string(),
-      mfkdf2::derive::factors::password("my-secure-password").unwrap(),
-    )]),
+    HashMap::from([("password_3".to_string(), derive_password("my-secure-password").unwrap())]),
     false,
     false,
   )
@@ -114,19 +97,16 @@ fn stack_derive() {
     .finalize()
     .into_bytes()
     .into();
-  let derived_key = mfkdf2::derive::key(
+  let derived_key = derive::key(
     &derived_key.policy,
     HashMap::from([(
       "stack_2".to_string(),
-      mfkdf2::derive::factors::stack(HashMap::from([
+      derive_stack(HashMap::from([
         (
           "uuid_1".to_string(),
-          mfkdf2::derive::factors::uuid(
-            uuid::Uuid::parse_str("f9bf78b9-54e7-4696-97dc-5e750de4c592").unwrap(),
-          )
-          .unwrap(),
+          derive_uuid(Uuid::parse_str("f9bf78b9-54e7-4696-97dc-5e750de4c592").unwrap()).unwrap(),
         ),
-        ("hmacsha1_1".to_string(), mfkdf2::derive::factors::hmacsha1(response).unwrap()),
+        ("hmacsha1_1".to_string(), derive_hmacsha1(response).unwrap()),
       ]))
       .unwrap(),
     )]),
@@ -142,12 +122,9 @@ fn stack_derive() {
 fn stack_derive_fail() {
   let key = mock_setup_stack().unwrap();
 
-  let derived_key = mfkdf2::derive::key(
+  let derived_key = derive::key(
     &key.policy,
-    HashMap::from([(
-      "password_3".to_string(),
-      mfkdf2::derive::factors::password("wrong_password").unwrap(),
-    )]),
+    HashMap::from([("password_3".to_string(), derive_password("wrong_password").unwrap())]),
     false,
     false,
   )
@@ -160,13 +137,13 @@ fn stack_derive_fail() {
 fn stack_derive_fail_second() {
   let key = mock_setup_stack().unwrap();
 
-  let derived_key = mfkdf2::derive::key(
+  let derived_key = derive::key(
     &key.policy,
     HashMap::from([(
       "stack".to_string(),
-      mfkdf2::derive::factors::stack(HashMap::from([(
+      derive_stack(HashMap::from([(
         "password_1".to_string(),
-        mfkdf2::derive::factors::password("Tr0ubd4dour").unwrap(),
+        derive_password("Tr0ubd4dour").unwrap(),
       )]))
       .unwrap(),
     )]),

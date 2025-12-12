@@ -59,21 +59,19 @@ over time. It consists of two algorithms:
 Initializes the factor with a secret and produces a public state with initial key material.
 
 ```rust
-# use mfkdf2::setup::factors::{password, password::PasswordOptions};
-# use mfkdf2::setup::factors::{totp, totp::TOTPOptions};
-# use mfkdf2::error::MFKDF2Error;
+use mfkdf2::prelude::*;
 # let TOTP_SECRET = vec![0u8; 20];
 #
 // setup a password factor with id "pwd"
-let password_factor = password("password", PasswordOptions { id: Some("pwd".to_string()) })?;
+let password_factor = setup_password("password", PasswordOptions { id: Some("pwd".to_string()) })?;
 
 // setup a TOTP factor with id "totp"
-let totp_factor = totp(TOTPOptions {
+let totp_factor = setup_totp(TOTPOptions {
   id: Some("totp".to_string()),
   secret: Some(TOTP_SECRET),
   ..Default::default()
 })?;
-# Ok::<(), mfkdf2::error::MFKDF2Error>(())
+# MFKDF2Result::Ok(())
 ```
 
 ## Derive
@@ -83,13 +81,14 @@ Takes the factor's witness and produces key material from the factor and the upd
 ```rust
 # use mfkdf2::derive::factors::{password, totp};
 # use mfkdf2::error::MFKDF2Error;
+# use mfkdf2::error::MFKDF2Result;
 #
 // derive the password factor
 let password_factor = password("password")?;
 
 // derive the TOTP factor with code `123456`
 let totp_factor = totp(123456, None)?;
-# Ok::<(), mfkdf2::error::MFKDF2Error>(())
+# MFKDF2Result::Ok(())
 ```
 
 # KDF construction
@@ -104,25 +103,20 @@ how a key is derived and ensures the key is the same every time (as long as the 
 correct).
 
 ```rust
-# use mfkdf2::setup::factors::{password, password::PasswordOptions};
-# use mfkdf2::setup::factors::{hmacsha1, hmacsha1::HmacSha1Options};
-# use mfkdf2::setup::factors::{hotp, hotp::HOTPOptions};
-# use mfkdf2::setup;
-# use mfkdf2::definitions::MFKDF2Options;
-# use mfkdf2::error::MFKDF2Error;
+use mfkdf2::prelude::*;
 # let HOTP_SECRET = vec![0u8; 20];
 #
 // perform setup key
 let setup_derived_key = setup::key(
   &[
-    password("password123", PasswordOptions::default()).expect("Failed to setup password factor"),
-    hmacsha1(HmacSha1Options::default())?,
-    hotp(HOTPOptions { secret: Some(HOTP_SECRET), ..Default::default() })?,
+    setup_password("password123", PasswordOptions::default()).expect("Failed to setup password factor"),
+    setup_hmacsha1(HmacSha1Options::default())?,
+    setup_hotp(HOTPOptions { secret: Some(HOTP_SECRET), ..Default::default() })?,
     // add more factors here
   ],
   MFKDF2Options::default(),
 )?;
-# Ok::<(), mfkdf2::error::MFKDF2Error>(())
+# MFKDF2Result::Ok(())
 ```
 
 ## Derive Key
@@ -149,17 +143,7 @@ Derive a composite key with password, hmacsha1 and hotp factors. Derive returns 
 
 ```rust
 # use std::collections::HashMap;
-# use mfkdf2::setup::factors::{password as setup_password, password::PasswordOptions};
-# use mfkdf2::setup::factors::{hmacsha1 as setup_hmacsha1, hmacsha1::HmacSha1Options};
-# use mfkdf2::setup::factors::{hotp as setup_hotp, hotp::HOTPOptions};
-# use mfkdf2::setup;
-# use mfkdf2::derive::factors::password as derive_password;
-# use mfkdf2::derive::factors::hmacsha1 as derive_hmacsha1;
-# use mfkdf2::derive::factors::hotp as derive_hotp;
-# use mfkdf2::otpauth::generate_otp_token;
-# use mfkdf2::derive;
-# use mfkdf2::definitions::MFKDF2Options;
-# use mfkdf2::error::MFKDF2Error;
+use mfkdf2::prelude::*;
 # use hmac::{Mac, Hmac};
 # use sha1::Sha1;
 # let HOTP_SECRET = vec![0u8; 20];
@@ -188,7 +172,7 @@ let derive_password_factor = derive_password("password123")?;
 #   .iter()
 #   .find(|f| f.id == "hmacsha1").unwrap();
 # let challenge = match &policy_hmac_factor.params {
-#   mfkdf2::definitions::factor::FactorParams::HmacSha1(p) => hex::decode(&p.challenge).unwrap(),
+#   FactorParams::HmacSha1(p) => hex::decode(&p.challenge).unwrap(),
 #   _ => unreachable!(),
 # };
 # let response: [u8; 20] = <Hmac<Sha1> as Mac>::new_from_slice(&HMACSHA1_SECRET)
@@ -205,7 +189,7 @@ let derive_hmac_factor = derive_hmacsha1(response)?;
 #   .iter()
 #   .find(|f| f.id == "hotp").unwrap();
 # let (counter, digits, hash) = match &policy_hotp_factor.params {
-#   mfkdf2::definitions::factor::FactorParams::HOTP(p) => (p.counter, p.digits, p.hash.clone()),
+#   FactorParams::HOTP(p) => (p.counter, p.digits, p.hash.clone()),
 #   _ => unreachable!(),
 # };
 # let correct_code = generate_otp_token(&HOTP_SECRET, counter, &hash, digits);
@@ -224,20 +208,19 @@ let derived_key = derive::key(
 
 // derived_key.key -> 34d2…5771
 # assert_eq!(derived_key.key, setup_derived_key.key);
-# Ok::<(), mfkdf2::error::MFKDF2Error>(())
+# MFKDF2Result::Ok(())
 ```
 
 ### Password + TOTP
 
 ```rust
 # use std::collections::HashMap;
-use mfkdf2::setup::factors::{totp::TOTPOptions, password::PasswordOptions};
-use mfkdf2::definitions::MFKDF2Options;
+use mfkdf2::prelude::*;
 
-let setup = mfkdf2::setup::key(
+let setup = setup::key(
   &[
-    mfkdf2::setup::factors::password("password1", PasswordOptions::default())?,
-    mfkdf2::setup::factors::totp(TOTPOptions {
+    setup_password("password1", PasswordOptions::default())?,
+    setup_totp(TOTPOptions {
       secret: Some(b"abcdefghijklmnopqrst".to_vec()),
       time: Some(1),
       ..Default::default()
@@ -246,15 +229,15 @@ let setup = mfkdf2::setup::key(
   MFKDF2Options::default(),
 )?;
 
-let derived_key = mfkdf2::derive::key(
+let derived_key = derive::key(
   &setup.policy,
   HashMap::from([
-    ("password".to_string(), mfkdf2::derive::factors::password("password1")?),
+    ("password".to_string(), derive_password("password1")?),
     (
       "totp".to_string(),
-      mfkdf2::derive::factors::totp(
+      derive_totp(
         241063,
-        Some(mfkdf2::derive::factors::totp::TOTPDeriveOptions {
+        Some(TOTPDeriveOptions {
           time: Some(30001),
           ..Default::default()
         }),
@@ -268,7 +251,7 @@ let derived_key = mfkdf2::derive::key(
 println!("Derived Key: {:?}", derived_key);
 
 # assert_eq!(setup.key, derived_key.key);
-# Ok::<(), mfkdf2::error::MFKDF2Error>(())
+# MFKDF2Result::Ok(())
 ```
 
 # Threshold Recovery

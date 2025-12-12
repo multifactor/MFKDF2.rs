@@ -1,13 +1,8 @@
-#![allow(clippy::unwrap_used)]
-
 mod common;
 
 use std::collections::HashMap;
 
-use mfkdf2::{
-  definitions::{MFKDF2DerivedKey, MFKDF2Options},
-  policy::Policy,
-};
+use mfkdf2::prelude::*;
 
 use crate::common::{create_derive_factor, create_setup_factor};
 
@@ -17,20 +12,16 @@ fn make_policy(setup_factor_names: &[&str], threshold: u8, integrity: bool) -> M
   let options =
     MFKDF2Options { threshold: Some(threshold), integrity: Some(integrity), ..Default::default() };
 
-  mfkdf2::setup::key(&setup_factors, options).unwrap()
+  setup::key(&setup_factors, options).unwrap()
 }
 
-fn derive_once(
-  policy: &Policy,
-  factor_names: &[&str],
-  verify_integrity: bool,
-) -> mfkdf2::definitions::MFKDF2DerivedKey {
+fn derive_once(policy: &Policy, factor_names: &[&str], verify_integrity: bool) -> MFKDF2DerivedKey {
   // build derive map using the shared harness (needs policy for TOTP/HOTP codes)
   let derive_map: HashMap<_, _> =
     factor_names.iter().map(|name| create_derive_factor(name, policy)).collect();
 
   // derive
-  mfkdf2::derive::key(policy, derive_map, verify_integrity, false).unwrap()
+  derive::key(policy, derive_map, verify_integrity, false).unwrap()
 }
 
 #[test]
@@ -48,7 +39,7 @@ fn integrity_disabled_allows_tamper() {
   }
 
   // Build derive map; override the id for the password entry to match the tampered id
-  let mut derive_map: HashMap<String, mfkdf2::definitions::MFKDF2Factor> = HashMap::new();
+  let mut derive_map: HashMap<String, MFKDF2Factor> = HashMap::new();
   for name in ["password", "hotp", "totp", "uuid"] {
     let (mut id, factor) = create_derive_factor(name, &policy);
     if name == "password" {
@@ -58,9 +49,9 @@ fn integrity_disabled_allows_tamper() {
   }
 
   // With integrity verification OFF, derivation must still succeed
-  let derived = mfkdf2::derive::key(&policy, derive_map, false, false).unwrap();
+  let derived = derive::key(&policy, derive_map, false, false).unwrap();
   // quick sanity: we can re-derive once more from the mutated policy
-  let _ = mfkdf2::derive::key(&derived.policy, HashMap::new(), false, false); // empty map just ensures type compiles; not used
+  let _ = derive::key(&derived.policy, HashMap::new(), false, false); // empty map just ensures type compiles; not used
 }
 
 #[test]
@@ -88,7 +79,7 @@ fn integrity_enabled_rejects_policy_id_tamper() {
   let derive_map: HashMap<_, _> =
     ["password", "uuid"].iter().map(|name| create_derive_factor(name, &policy)).collect();
 
-  let res = mfkdf2::derive::key(&policy, derive_map, true, false);
+  let res = derive::key(&policy, derive_map, true, false);
   assert!(res.is_err(), "expected integrity verification to fail after policy.id tamper");
 }
 
@@ -104,7 +95,7 @@ fn integrity_enabled_rejects_threshold_tamper() {
   let derive_map: HashMap<_, _> =
     ["password", "question"].iter().map(|name| create_derive_factor(name, &policy)).collect();
 
-  let res = mfkdf2::derive::key(&policy, derive_map, true, false);
+  let res = derive::key(&policy, derive_map, true, false);
   assert!(res.is_err(), "expected integrity verification to fail after threshold tamper");
 }
 
@@ -120,7 +111,7 @@ fn integrity_enabled_rejects_salt_tamper() {
   let derive_map: HashMap<_, _> =
     ["password", "totp"].iter().map(|name| create_derive_factor(name, &policy)).collect();
 
-  let res = mfkdf2::derive::key(&policy, derive_map, true, false);
+  let res = derive::key(&policy, derive_map, true, false);
   assert!(res.is_err(), "expected integrity verification to fail after salt tamper");
 }
 
@@ -138,7 +129,7 @@ fn integrity_enabled_rejects_factor_id_tamper() {
   }
 
   // Build derive map supplying password under tampered id — integrity must still reject
-  let mut derive_map: HashMap<String, mfkdf2::definitions::MFKDF2Factor> = HashMap::new();
+  let mut derive_map: HashMap<String, MFKDF2Factor> = HashMap::new();
   for name in ["password", "uuid"] {
     let (mut id, factor) = create_derive_factor(name, &policy);
     if name == "password" {
@@ -147,7 +138,7 @@ fn integrity_enabled_rejects_factor_id_tamper() {
     derive_map.insert(id, factor);
   }
 
-  let res = mfkdf2::derive::key(&policy, derive_map, true, false);
+  let res = derive::key(&policy, derive_map, true, false);
   assert!(res.is_err(), "expected integrity verification to fail after factor id tamper");
 }
 
@@ -170,7 +161,7 @@ fn integrity_enabled_rejects_derived_policy_tamper() {
   }
 
   // Supply factors; integrity ON must now reject
-  let mut derive_map: HashMap<String, mfkdf2::definitions::MFKDF2Factor> = HashMap::new();
+  let mut derive_map: HashMap<String, MFKDF2Factor> = HashMap::new();
   for name in ["password", "hotp", "uuid", "totp"] {
     let (mut id, factor) = create_derive_factor(name, &tampered);
     if name == "password" {
@@ -179,6 +170,6 @@ fn integrity_enabled_rejects_derived_policy_tamper() {
     derive_map.insert(id, factor);
   }
 
-  let res = mfkdf2::derive::key(&tampered, derive_map, true, false);
+  let res = derive::key(&tampered, derive_map, true, false);
   assert!(res.is_err(), "expected integrity verification to fail after tampering derived policy");
 }

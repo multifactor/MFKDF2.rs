@@ -28,14 +28,10 @@ use crate::{
 /// # Example
 ///
 /// ```rust
-/// use mfkdf2::{
-///   definitions::FactorType,
-///   derive::factors::password as derive_password,
-///   setup::factors::password::{PasswordOptions, password},
-/// };
+/// use mfkdf2::prelude::*;
 ///
 /// // setup a password factor with id "pwd"
-/// let setup = password("password123", PasswordOptions { id: Some("pwd".to_string()) })?;
+/// let setup = setup_password("password123", PasswordOptions { id: Some("pwd".to_string()) })?;
 ///
 /// let p = match &setup.factor_type {
 ///   FactorType::Password(p) => p,
@@ -51,7 +47,7 @@ use crate::{
 /// };
 /// assert_eq!(p.password, "password123");
 /// assert_eq!(derive.data(), "password123".as_bytes());
-/// # Ok::<(), mfkdf2::error::MFKDF2Error>(())
+/// # MFKDF2Result::Ok(())
 /// ```
 #[derive(Clone, Serialize, Deserialize)]
 #[cfg_attr(feature = "bindings", derive(uniffi::Record))]
