@@ -35,8 +35,9 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
   crypto::encrypt,
+  defaults::hotp as hotp_defaults,
   definitions::{FactorType, Key, MFKDF2Factor},
-  error::{MFKDF2Error, MFKDF2Result},
+  error::MFKDF2Result,
   otpauth::{self, HashAlgorithm, OtpAuthUrlOptions, generate_otp_token},
   setup::FactorSetup,
   traits::Factor,
@@ -68,66 +69,12 @@ pub struct HOTPOptions {
 impl Default for HOTPOptions {
   fn default() -> Self {
     Self {
-      id:     Some("hotp".to_string()),
+      id:     Some(hotp_defaults::ID.to_string()),
       secret: None,
-      digits: Some(6),
-      hash:   Some(HashAlgorithm::Sha1),
-      issuer: Some("MFKDF".to_string()),
-      label:  Some("mfkdf.com".to_string()),
-    }
-  }
-}
-
-/// HOTP configuration.
-#[cfg_attr(feature = "bindings", derive(uniffi::Record))]
-#[derive(Clone, Debug, Serialize, Deserialize)]
-pub struct HOTPConfig {
-  /// Optional application-defined identifier for the factor. Defaults to `"hotp"`. If
-  /// provided, it must be non-empty
-  pub id:     String,
-  /// 20‑byte HOTP secret. If omitted, a random secret is generated
-  pub secret: Vec<u8>,
-  /// Number of digits in the OTP code (6–8). Values outside this range cause
-  /// [`MFKDF2Error::InvalidHOTPDigits`]
-  pub digits: u32,
-  /// Hash algorithm used by the HOTP generator (default: SHA‑1)
-  pub hash:   HashAlgorithm,
-  /// A string value indicating the provider or service the credential is associated with.
-  pub issuer: String,
-  /// A string value identifying which account a credential is associated with. It also serves
-  /// as the unique identifier for the credential itself.
-  pub label:  String,
-}
-
-#[cfg(feature = "zeroize")]
-impl zeroize::Zeroize for HOTPConfig {
-  fn zeroize(&mut self) { self.secret.zeroize(); }
-}
-
-impl TryFrom<HOTPOptions> for HOTPConfig {
-  type Error = MFKDF2Error;
-
-  fn try_from(mut value: HOTPOptions) -> Result<Self, Self::Error> {
-    Ok(HOTPConfig {
-      id:     value.id.take().ok_or(MFKDF2Error::MissingFactorId)?,
-      secret: value.secret.take().ok_or(MFKDF2Error::MissingSetupParams("secret".to_string()))?,
-      digits: value.digits.ok_or(MFKDF2Error::InvalidHOTPDigits)?,
-      hash:   value.hash.take().unwrap_or(HashAlgorithm::Sha1),
-      issuer: value.issuer.take().unwrap_or("MFKDF".to_string()),
-      label:  value.label.take().unwrap_or("mfkdf.com".to_string()),
-    })
-  }
-}
-
-impl Default for HOTPConfig {
-  fn default() -> Self {
-    Self {
-      id:     "hotp".to_string(),
-      secret: [0u8; 20].to_vec(),
-      digits: 6,
-      hash:   HashAlgorithm::Sha1,
-      issuer: "MFKDF".to_string(),
-      label:  "mfkdf.com".to_string(),
+      digits: Some(hotp_defaults::DIGITS),
+      hash:   Some(hotp_defaults::HASH),
+      issuer: Some(hotp_defaults::ISSUER.to_string()),
+      label:  Some(hotp_defaults::LABEL.to_string()),
     }
   }
 }
@@ -136,9 +83,19 @@ impl Default for HOTPConfig {
 #[cfg_attr(feature = "bindings", derive(uniffi::Record))]
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct HOTP {
-  // TODO (@lonerapier): config is only used for setup, not for derive
-  /// HOTP configuration.
-  pub config: HOTPConfig,
+  /// Application-defined identifier for the factor.
+  pub id:     String,
+  /// 32‑byte HOTP secret (20 bytes original + 12 bytes padding).
+  pub secret: Vec<u8>,
+  /// Number of digits in the OTP code (6–8).
+  pub digits: u32,
+  /// Hash algorithm used by the HOTP generator.
+  pub hash:   HashAlgorithm,
+  /// A string value indicating the provider or service the credential is associated with.
+  pub issuer: String,
+  /// A string value identifying which account a credential is associated with. It also serves
+  /// as the unique identifier for the credential itself.
+  pub label:  String,
   /// HOTP public parameters.
   pub params: Option<HOTPParams>,
   /// HOTP code.
@@ -150,7 +107,7 @@ pub struct HOTP {
 #[cfg(feature = "zeroize")]
 impl zeroize::Zeroize for HOTP {
   fn zeroize(&mut self) {
-    self.config.zeroize();
+    self.secret.zeroize();
     self.target.zeroize();
     self.code.zeroize();
   }
@@ -175,10 +132,10 @@ pub struct HOTPParams {
 impl Default for HOTPParams {
   fn default() -> Self {
     Self {
-      hash:    HashAlgorithm::Sha1,
-      digits:  6,
+      hash:    hotp_defaults::HASH,
+      digits:  hotp_defaults::DIGITS,
       pad:     String::new(),
-      counter: 1,
+      counter: hotp_defaults::COUNTER,
       offset:  0,
     }
   }
@@ -222,19 +179,18 @@ impl FactorSetup for HOTP {
   fn params(&self, key: Key) -> MFKDF2Result<Self::Params> {
     // Generate HOTP code with counter = 1
     let code =
-      generate_otp_token(&self.config.secret[..20], 1, &self.config.hash, self.config.digits);
+      generate_otp_token(&self.secret[..20], hotp_defaults::COUNTER, &self.hash, self.digits);
 
     // Calculate offset
-    let offset =
-      mod_positive(i64::from(self.target) - i64::from(code), 10_i64.pow(self.config.digits));
+    let offset = mod_positive(i64::from(self.target) - i64::from(code), 10_i64.pow(self.digits));
 
-    let pad = encrypt(&self.config.secret, key.as_ref());
+    let pad = encrypt(&self.secret, key.as_ref());
 
     Ok(HOTPParams {
-      hash: self.config.hash.clone(),
-      digits: self.config.digits,
+      hash: self.hash.clone(),
+      digits: self.digits,
       pad: base64::prelude::BASE64_STANDARD.encode(&pad),
-      counter: 1,
+      counter: hotp_defaults::COUNTER,
       offset,
     })
   }
@@ -243,22 +199,22 @@ impl FactorSetup for HOTP {
     HOTPOutput {
       scheme:    "otpauth".to_string(),
       type_:     "hotp".to_string(),
-      label:     self.config.label.clone(),
-      secret:    self.config.secret[..20].to_vec(),
-      issuer:    self.config.issuer.clone(),
-      algorithm: self.config.hash.to_string(),
-      digits:    self.config.digits,
-      counter:   1,
+      label:     self.label.clone(),
+      secret:    self.secret[..20].to_vec(),
+      issuer:    self.issuer.clone(),
+      algorithm: self.hash.to_string(),
+      digits:    self.digits,
+      counter:   hotp_defaults::COUNTER,
       uri:       otpauth::otpauth_url(&OtpAuthUrlOptions {
-        secret:    hex::encode(&self.config.secret[..20]),
-        label:     self.config.label.clone(),
+        secret:    hex::encode(&self.secret[..20]),
+        label:     self.label.clone(),
         kind:      Some(otpauth::Kind::Hotp),
-        counter:   Some(1),
-        issuer:    Some(self.config.issuer.clone()),
-        digits:    Some(self.config.digits),
+        counter:   Some(hotp_defaults::COUNTER),
+        issuer:    Some(self.issuer.clone()),
+        digits:    Some(self.digits),
         period:    None,
         encoding:  Some(otpauth::Encoding::Hex),
-        algorithm: Some(self.config.hash.clone()),
+        algorithm: Some(self.hash.clone()),
       })
       .unwrap(),
     }
@@ -322,21 +278,20 @@ pub fn hotp(mut options: HOTPOptions) -> MFKDF2Result<MFKDF2Factor> {
   {
     return Err(crate::error::MFKDF2Error::MissingFactorId);
   }
-  let id = options.id.take().unwrap_or("hotp".to_string());
+  let id = options.id.take().unwrap_or_else(|| hotp_defaults::ID.to_string());
 
-  if let Some(digits) = options.digits
-    && !(6..=8).contains(&digits)
-  {
+  // Validate and extract digits with default
+  let digits = options.digits.unwrap_or(hotp_defaults::DIGITS);
+  if !(6..=8).contains(&digits) {
     return Err(crate::error::MFKDF2Error::InvalidHOTPDigits);
   }
-  options.digits = Some(options.digits.unwrap_or(6));
 
   // TODO (@lonerapier); remove this validation later using static secret type
   // secret length validation
   if let Some(ref secret) = options.secret
     && secret.len() != 20
   {
-    return Err(crate::error::MFKDF2Error::InvalidSecretLength(id));
+    return Err(crate::error::MFKDF2Error::InvalidSecretLength(id.clone()));
   }
   // consume the secret from options and generate a random one if none is provided
   let secret = options.secret.take().unwrap_or_else(|| {
@@ -346,24 +301,31 @@ pub fn hotp(mut options: HOTPOptions) -> MFKDF2Result<MFKDF2Factor> {
   });
 
   // Generate random target
-  let target = crate::rng::gen_range_u32(10_u32.pow(options.digits.unwrap()) - 1);
+  let target = crate::rng::gen_range_u32(10_u32.pow(digits) - 1);
 
   // Pad secret to 32 bytes
   let mut secret_pad = [0u8; 12];
   crate::rng::fill_bytes(&mut secret_pad);
   let padded_secret = secret.into_iter().chain(secret_pad).collect();
-  options.secret = Some(padded_secret);
 
-  let entropy = Some(f64::from(options.digits.unwrap()) * 10.0_f64.log2());
+  // Extract other fields with defaults
+  let hash = options.hash.unwrap_or(hotp_defaults::HASH);
+  let issuer = options.issuer.take().unwrap_or_else(|| hotp_defaults::ISSUER.to_string());
+  let label = options.label.take().unwrap_or_else(|| hotp_defaults::LABEL.to_string());
 
-  options.id = Some(id.clone());
+  let entropy = Some(f64::from(digits) * 10.0_f64.log2());
 
   // TODO (autoparallel): Code should possibly be an option, though this follows the same pattern as
   // the password factor which stores the actual password in the struct.
   Ok(MFKDF2Factor {
-    id: Some(id),
+    id: Some(id.clone()),
     factor_type: FactorType::HOTP(HOTP {
-      config: options.try_into()?,
+      id,
+      secret: padded_secret,
+      digits,
+      hash,
+      issuer,
+      label,
       params: None,
       code: 0,
       target,
@@ -487,10 +449,7 @@ mod tests {
 
     let decrypted_secret = crate::crypto::decrypt(pad, &key);
 
-    assert_eq!(
-      &decrypted_secret[..hotp_factor.config.secret.len()],
-      &hotp_factor.config.secret[..]
-    );
+    assert_eq!(&decrypted_secret[..hotp_factor.secret.len()], &hotp_factor.secret[..]);
   }
 
   #[test]
@@ -507,17 +466,11 @@ mod tests {
 
     let params = hotp_factor.params(key.into()).unwrap();
 
-    let code = generate_otp_token(
-      &hotp_factor.config.secret[..20],
-      1,
-      &hotp_factor.config.hash,
-      hotp_factor.config.digits,
-    );
+    let code =
+      generate_otp_token(&hotp_factor.secret[..20], 1, &hotp_factor.hash, hotp_factor.digits);
 
-    let expected_offset = mod_positive(
-      i64::from(hotp_factor.target) - i64::from(code),
-      10_i64.pow(hotp_factor.config.digits),
-    );
+    let expected_offset =
+      mod_positive(i64::from(hotp_factor.target) - i64::from(code), 10_i64.pow(hotp_factor.digits));
 
     assert_eq!(params.offset, expected_offset);
   }

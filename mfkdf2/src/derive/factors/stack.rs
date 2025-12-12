@@ -8,6 +8,7 @@
 use std::collections::HashMap;
 
 use crate::{
+  defaults::stack as stack_defaults,
   definitions::{FactorType, Key, MFKDF2DerivedKey, MFKDF2Factor},
   derive::FactorDerive,
   error::{MFKDF2Error, MFKDF2Result},
@@ -85,7 +86,7 @@ pub fn stack(factors: HashMap<String, MFKDF2Factor>) -> MFKDF2Result<MFKDF2Facto
   }
 
   Ok(MFKDF2Factor {
-    id:          Some("stack".to_string()),
+    id:          Some(stack_defaults::ID.to_string()),
     factor_type: FactorType::Stack(Stack { factors, key: MFKDF2DerivedKey::default() }),
     entropy:     None,
   })

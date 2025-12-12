@@ -37,6 +37,7 @@ use sha2::Sha256;
 
 use crate::{
   crypto::{encrypt_cbc, hkdf_sha256_with_info},
+  defaults::ooba as ooba_defaults,
   definitions::{ByteArray, FactorType, Key, MFKDF2Factor},
   error::{MFKDF2Error, MFKDF2Result},
   rng::GlobalRng,
@@ -79,7 +80,12 @@ pub struct OobaOptions {
 
 impl Default for OobaOptions {
   fn default() -> Self {
-    Self { id: Some("ooba".to_string()), length: Some(6), key: None, params: None }
+    Self {
+      id:     Some(ooba_defaults::ID.to_string()),
+      length: Some(ooba_defaults::LENGTH),
+      key:    None,
+      params: None,
+    }
   }
 }
 
@@ -258,7 +264,7 @@ pub fn ooba(mut options: OobaOptions) -> MFKDF2Result<MFKDF2Factor> {
   {
     return Err(crate::error::MFKDF2Error::MissingFactorId);
   }
-  let length = options.length.unwrap_or(6);
+  let length = options.length.unwrap_or(ooba_defaults::LENGTH);
   if length == 0 || length > 32 {
     return Err(MFKDF2Error::InvalidOobaLength);
   }
@@ -275,7 +281,7 @@ pub fn ooba(mut options: OobaOptions) -> MFKDF2Result<MFKDF2Factor> {
   crate::rng::fill_bytes(&mut target);
 
   Ok(MFKDF2Factor {
-    id:          Some(options.id.take().unwrap_or("ooba".to_string())),
+    id:          Some(options.id.take().unwrap_or_else(|| ooba_defaults::ID.to_string())),
     factor_type: FactorType::OOBA(Ooba {
       target: target.into(),
       length,

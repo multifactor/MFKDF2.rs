@@ -67,7 +67,7 @@
 //! #   setup::factors::uuid(UUIDOptions { id: Some("uuid1".to_string()), uuid: Some(uuid) })?,
 //! # ];
 //! # let secret = if let mfkdf2::definitions::FactorType::TOTP(ref f) = setup_factors[1].factor_type {
-//! #   f.config.secret.clone()
+//! #   f.secret.clone()
 //! # } else {
 //! #   unreachable!()
 //! # };

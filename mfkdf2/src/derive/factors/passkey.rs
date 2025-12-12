@@ -4,6 +4,7 @@
 //! stable 256‑bit entropy across `KeySetup` and `KeyDerive`
 
 use crate::{
+  defaults::passkey as passkey_defaults,
   definitions::{FactorType, MFKDF2Factor},
   derive::FactorDerive,
   error::MFKDF2Result,
@@ -69,7 +70,7 @@ impl FactorDerive for Passkey {
 /// ```
 pub fn passkey(secret: impl Into<PasskeySecret>) -> MFKDF2Result<MFKDF2Factor> {
   Ok(MFKDF2Factor {
-    id:          Some("passkey".to_string()),
+    id:          Some(passkey_defaults::ID.to_string()),
     factor_type: FactorType::Passkey(Passkey { secret: secret.into() }),
     entropy:     None,
   })
@@ -79,7 +80,7 @@ pub fn passkey(secret: impl Into<PasskeySecret>) -> MFKDF2Result<MFKDF2Factor> {
 #[cfg_attr(feature = "bindings", uniffi::export)]
 async fn derive_passkey(secret: Vec<u8>) -> MFKDF2Result<MFKDF2Factor> {
   if secret.len() != 32 {
-    return Err(crate::error::MFKDF2Error::InvalidSecretLength("passkey".to_string()));
+    return Err(crate::error::MFKDF2Error::InvalidSecretLength(passkey_defaults::ID.to_string()));
   }
   let secret: PasskeySecret = secret.try_into().unwrap();
 

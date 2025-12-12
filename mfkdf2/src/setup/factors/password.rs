@@ -7,6 +7,7 @@ use serde::{Deserialize, Serialize};
 use zxcvbn::zxcvbn;
 
 use crate::{
+  defaults::password as password_defaults,
   definitions::{FactorType, MFKDF2Factor},
   error::{MFKDF2Error, MFKDF2Result},
   setup::FactorSetup,
@@ -112,7 +113,7 @@ pub fn password(
   let strength = zxcvbn(&password, &[]);
 
   Ok(MFKDF2Factor {
-    id:          Some(options.id.unwrap_or("password".to_string())),
+    id:          Some(options.id.unwrap_or_else(|| password_defaults::ID.to_string())),
     factor_type: FactorType::Password(Password { password }),
     entropy:     Some((strength.guesses() as f64).log2()),
   })

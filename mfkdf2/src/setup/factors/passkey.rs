@@ -22,6 +22,7 @@
 use serde::{Deserialize, Serialize};
 
 use crate::{
+  defaults::passkey as passkey_defaults,
   definitions::{ByteArray, FactorType, MFKDF2Factor},
   error::MFKDF2Result,
   setup::FactorSetup,
@@ -78,7 +79,7 @@ pub struct PasskeyOptions {
 }
 
 impl Default for PasskeyOptions {
-  fn default() -> Self { Self { id: Some("passkey".to_string()) } }
+  fn default() -> Self { Self { id: Some(passkey_defaults::ID.to_string()) } }
 }
 
 /// Creates a passkey factor from a 32‑byte secret
@@ -115,12 +116,12 @@ pub fn passkey(secret: [u8; 32], options: PasskeyOptions) -> MFKDF2Result<MFKDF2
   {
     return Err(crate::error::MFKDF2Error::MissingFactorId);
   }
-  let id = options.id.unwrap_or("passkey".to_string());
+  let id = options.id.unwrap_or_else(|| passkey_defaults::ID.to_string());
 
   Ok(MFKDF2Factor {
     id:          Some(id),
     factor_type: FactorType::Passkey(Passkey { secret: secret.into() }),
-    entropy:     Some(256.0),
+    entropy:     Some(passkey_defaults::ENTROPY),
   })
 }
 

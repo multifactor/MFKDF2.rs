@@ -5,6 +5,7 @@
 
 pub mod constants;
 mod crypto;
+mod defaults;
 pub mod definitions;
 pub mod derive;
 pub mod error;

@@ -48,8 +48,9 @@ use web_time::{SystemTime, UNIX_EPOCH};
 
 use crate::{
   crypto::encrypt,
+  defaults::totp as totp_defaults,
   definitions::{FactorType, Key, MFKDF2Factor},
-  error::{MFKDF2Error, MFKDF2Result},
+  error::MFKDF2Result,
   otpauth::{self, HashAlgorithm, OtpAuthUrlOptions, generate_otp_token},
   setup::{FactorSetup, factors::hotp::mod_positive},
   traits::Factor,
@@ -88,88 +89,15 @@ pub struct TOTPOptions {
 impl Default for TOTPOptions {
   fn default() -> Self {
     Self {
-      id:     Some("totp".to_string()),
+      id:     Some(totp_defaults::ID.to_string()),
       secret: None,
-      digits: Some(6),
-      hash:   Some(HashAlgorithm::Sha1),
-      issuer: Some("MFKDF".to_string()),
-      label:  Some("mfkdf.com".to_string()),
+      digits: Some(totp_defaults::DIGITS),
+      hash:   Some(totp_defaults::HASH),
+      issuer: Some(totp_defaults::ISSUER.to_string()),
+      label:  Some(totp_defaults::LABEL.to_string()),
       time:   None,
-      window: Some(87600),
-      step:   Some(30),
-      oracle: None,
-    }
-  }
-}
-
-/// TOTP configuration
-#[cfg_attr(feature = "bindings", derive(uniffi::Record))]
-#[derive(Clone, Debug, Serialize, Deserialize)]
-pub struct TOTPConfig {
-  /// Optional application-defined identifier for the factor. Defaults to `"totp"`. If provided, it
-  /// must be non-empty
-  pub id:     String,
-  /// 20‑byte TOTP secret. If omitted, a random secret is generated
-  pub secret: Vec<u8>,
-  /// Number of digits in the OTP code (6–8). Values outside this range cause
-  /// [`MFKDF2Error::InvalidTOTPDigits`]
-  pub digits: u32,
-  /// Hash algorithm used by the TOTP generator (default: SHA‑1)
-  pub hash:   HashAlgorithm,
-  /// A string value indicating the provider or service the credential is associated with
-  pub issuer: String,
-  /// A string value identifying which account a credential is associated with. It also serves
-  /// as the unique identifier for the credential itself
-  pub label:  String,
-  /// Starting Unix time in milliseconds used to anchor the TOTP window
-  pub time:   u64,
-  /// Number of TOTP steps for which offsets are precomputed (default is sized for long‑lived
-  /// offline use)
-  pub window: u32,
-  /// Step size in seconds (the TOTP "period", default 30s)
-  pub step:   u32,
-  /// Optional timing oracle to harden TOTP factor construction
-  pub oracle: Option<HashMap<u64, u32>>,
-}
-
-#[cfg(feature = "zeroize")]
-impl zeroize::Zeroize for TOTPConfig {
-  fn zeroize(&mut self) { self.secret.zeroize(); }
-}
-
-impl TryFrom<TOTPOptions> for TOTPConfig {
-  type Error = MFKDF2Error;
-
-  fn try_from(value: TOTPOptions) -> Result<Self, Self::Error> {
-    Ok(TOTPConfig {
-      id:     value.id.ok_or(MFKDF2Error::MissingFactorId)?,
-      secret: value.secret.ok_or(MFKDF2Error::MissingSetupParams("secret".to_string()))?,
-      digits: value.digits.ok_or(MFKDF2Error::InvalidTOTPDigits)?,
-      hash:   value.hash.unwrap_or(HashAlgorithm::Sha1),
-      issuer: value.issuer.unwrap_or("MFKDF".to_string()),
-      label:  value.label.unwrap_or("mfkdf.com".to_string()),
-      time:   value.time.ok_or(MFKDF2Error::MissingSetupParams("time".to_string()))?,
-      window: value.window.unwrap_or(87600),
-      step:   value.step.unwrap_or(30),
-      oracle: value.oracle,
-    })
-  }
-}
-
-impl Default for TOTPConfig {
-  fn default() -> Self {
-    let now_ms = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_millis() as u64;
-
-    Self {
-      id:     "totp".to_string(),
-      secret: [0u8; 20].to_vec(),
-      digits: 6,
-      hash:   HashAlgorithm::Sha1,
-      issuer: "MFKDF".to_string(),
-      label:  "mfkdf.com".to_string(),
-      time:   now_ms,
-      window: 87600,
-      step:   30,
+      window: Some(totp_defaults::WINDOW),
+      step:   Some(totp_defaults::STEP),
       oracle: None,
     }
   }
@@ -200,20 +128,39 @@ pub struct TOTPParams {
 #[cfg_attr(feature = "bindings", derive(uniffi::Record))]
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct TOTP {
-  /// TOTP configuration
-  pub config: TOTPConfig,
-  /// TOTP public parameters
+  /// Application-defined identifier for the factor.
+  pub id:     String,
+  /// 32‑byte TOTP secret (20 bytes original + 12 bytes padding).
+  pub secret: Vec<u8>,
+  /// Number of digits in the OTP code (6–8).
+  pub digits: u32,
+  /// Hash algorithm used by the TOTP generator.
+  pub hash:   HashAlgorithm,
+  /// A string value indicating the provider or service the credential is associated with.
+  pub issuer: String,
+  /// A string value identifying which account a credential is associated with. It also serves
+  /// as the unique identifier for the credential itself.
+  pub label:  String,
+  /// Starting Unix time in milliseconds used to anchor the TOTP window.
+  pub time:   u64,
+  /// Number of TOTP steps for which offsets are precomputed.
+  pub window: u32,
+  /// Step size in seconds (the TOTP "period").
+  pub step:   u32,
+  /// Optional timing oracle to harden TOTP factor construction.
+  pub oracle: Option<HashMap<u64, u32>>,
+  /// TOTP public parameters.
   pub params: Option<TOTPParams>,
-  /// TOTP code
+  /// TOTP code.
   pub code:   u32,
-  /// TOTP factor material. The target code that is used to derive the key
+  /// TOTP factor material. The target code that is used to derive the key.
   pub target: u32,
 }
 
 #[cfg(feature = "zeroize")]
 impl zeroize::Zeroize for TOTP {
   fn zeroize(&mut self) {
-    self.config.zeroize();
+    self.secret.zeroize();
     self.target.zeroize();
     self.code.zeroize();
   }
@@ -230,47 +177,41 @@ impl Factor for TOTP {
 
 impl FactorSetup for TOTP {
   fn params(&self, key: Key) -> MFKDF2Result<Self::Params> {
-    let time = u128::from(self.config.time);
-    let mut offsets = Vec::with_capacity(4 * self.config.window as usize);
+    let time = u128::from(self.time);
+    let mut offsets = Vec::with_capacity(4 * self.window as usize);
 
-    for i in 0..self.config.window {
+    for i in 0..self.window {
       // Calculate the time-step 'T' as per RFC 6238, Section 4.2.
       // T = floor((CurrentUnixTime - T0) / X)
-      // Here, T0 is 0 (Unix epoch) and X is self.config.step.
+      // Here, T0 is 0 (Unix epoch) and X is self.step.
       // We add 'i' to generate a window of future OTPs for offline use.
-      let counter = (time / 1000) as u64 / u64::from(self.config.step) + i as u64;
-      let code = generate_otp_token(
-        &self.config.secret[..20],
-        counter,
-        &self.config.hash,
-        self.config.digits,
-      );
+      let counter = (time / 1000) as u64 / u64::from(self.step) + i as u64;
+      let code = generate_otp_token(&self.secret[..20], counter, &self.hash, self.digits);
 
       let mut offset =
-        mod_positive(i64::from(self.target) - i64::from(code), 10_i64.pow(self.config.digits));
+        mod_positive(i64::from(self.target) - i64::from(code), 10_i64.pow(self.digits));
 
-      let oracle_time = counter * u64::from(self.config.step) * 1000;
-      if self.config.oracle.is_some()
-        && self.config.oracle.as_ref().unwrap().contains_key(&oracle_time)
+      let oracle_time = counter * u64::from(self.step) * 1000;
+      if let Some(ref oracle) = self.oracle
+        && oracle.contains_key(&oracle_time)
       {
         offset = mod_positive(
-          i64::from(offset)
-            + i64::from(*self.config.oracle.as_ref().unwrap().get(&oracle_time).unwrap()),
-          10_i64.pow(self.config.digits),
+          i64::from(offset) + i64::from(oracle[&oracle_time]),
+          10_i64.pow(self.digits),
         );
       }
 
       offsets.extend_from_slice(&offset.to_be_bytes());
     }
 
-    let pad = encrypt(&self.config.secret, &key);
+    let pad = encrypt(&self.secret, &key);
 
     Ok(TOTPParams {
       start:   time as u64,
-      hash:    self.config.hash.clone(),
-      digits:  self.config.digits,
-      step:    self.config.step,
-      window:  self.config.window,
+      hash:    self.hash.clone(),
+      digits:  self.digits,
+      step:    self.step,
+      window:  self.window,
       pad:     base64::prelude::BASE64_STANDARD.encode(&pad),
       offsets: base64::prelude::BASE64_STANDARD.encode(&offsets),
     })
@@ -280,22 +221,22 @@ impl FactorSetup for TOTP {
     TOTPOutput {
       scheme:    "otpauth".to_string(),
       type_:     "totp".to_string(),
-      label:     self.config.label.clone(),
-      secret:    self.config.secret[..20].to_vec(),
-      issuer:    self.config.issuer.clone(),
-      algorithm: self.config.hash.to_string(),
-      digits:    self.config.digits,
-      period:    self.config.step,
+      label:     self.label.clone(),
+      secret:    self.secret[..20].to_vec(),
+      issuer:    self.issuer.clone(),
+      algorithm: self.hash.to_string(),
+      digits:    self.digits,
+      period:    self.step,
       uri:       otpauth::otpauth_url(&OtpAuthUrlOptions {
-        secret:    hex::encode(&self.config.secret[..20]),
-        label:     self.config.label.clone(),
+        secret:    hex::encode(&self.secret[..20]),
+        label:     self.label.clone(),
         kind:      Some(otpauth::Kind::Totp),
         counter:   None,
-        issuer:    Some(self.config.issuer.clone()),
-        digits:    Some(self.config.digits),
-        period:    Some(self.config.step),
+        issuer:    Some(self.issuer.clone()),
+        digits:    Some(self.digits),
+        period:    Some(self.step),
         encoding:  Some(otpauth::Encoding::Hex),
-        algorithm: Some(self.config.hash.clone()),
+        algorithm: Some(self.hash.clone()),
       })
       .unwrap(),
     }
@@ -338,8 +279,6 @@ pub struct TOTPOutput {
 /// - [`MFKDF2Error::MissingFactorId`] if `id` is provided but empty
 /// - [`MFKDF2Error::InvalidTOTPDigits`] if `digits` is set outside `6..=8`
 /// - [`MFKDF2Error::InvalidSecretLength`] if `secret` is provided but not exactly 20 bytes
-/// - [`MFKDF2Error::MissingSetupParams`] if required fields like `secret` or `time` are missing
-///   when converting to [`TOTPConfig`]
 ///
 /// # Example
 ///
@@ -376,14 +315,13 @@ pub fn totp(mut options: TOTPOptions) -> MFKDF2Result<MFKDF2Factor> {
   {
     return Err(crate::error::MFKDF2Error::MissingFactorId);
   }
-  let id = options.id.take().unwrap_or("totp".to_string());
+  let id = options.id.take().unwrap_or_else(|| totp_defaults::ID.to_string());
 
-  if let Some(digits) = options.digits
-    && !(6..=8).contains(&digits)
-  {
+  // Validate and extract digits with default
+  let digits = options.digits.unwrap_or(totp_defaults::DIGITS);
+  if !(6..=8).contains(&digits) {
     return Err(crate::error::MFKDF2Error::InvalidTOTPDigits);
   }
-  options.digits = Some(options.digits.unwrap_or(6));
 
   let secret = options.secret.take().unwrap_or_else(|| {
     let mut secret = [0u8; 20];
@@ -391,30 +329,46 @@ pub fn totp(mut options: TOTPOptions) -> MFKDF2Result<MFKDF2Factor> {
     secret.to_vec()
   });
   if secret.len() != 20 {
-    return Err(crate::error::MFKDF2Error::InvalidSecretLength(id));
+    return Err(crate::error::MFKDF2Error::InvalidSecretLength(id.clone()));
   }
 
-  if options.time.is_none() {
-    let now_ms = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_millis() as u64;
-    options.time = Some(now_ms);
-  }
+  // Extract time with default (current time if not provided)
+  let time = options
+    .time
+    .take()
+    .unwrap_or_else(|| SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_millis() as u64);
 
   // Generate random target
-  let target = crate::rng::gen_range_u32(10_u32.pow(options.digits.unwrap()) - 1);
+  let target = crate::rng::gen_range_u32(10_u32.pow(digits) - 1);
 
+  // Pad secret to 32 bytes
   let mut secret_pad = [0u8; 12];
   crate::rng::fill_bytes(&mut secret_pad);
   let padded_secret = secret.into_iter().chain(secret_pad).collect();
-  options.secret = Some(padded_secret);
 
-  let entropy = Some(f64::from(options.digits.unwrap()) * 10.0_f64.log2());
+  // Extract other fields with defaults
+  let hash = options.hash.unwrap_or(totp_defaults::HASH);
+  let issuer = options.issuer.take().unwrap_or_else(|| totp_defaults::ISSUER.to_string());
+  let label = options.label.take().unwrap_or_else(|| totp_defaults::LABEL.to_string());
+  let window = options.window.unwrap_or(totp_defaults::WINDOW);
+  let step = options.step.unwrap_or(totp_defaults::STEP);
+  let oracle = options.oracle.take();
 
-  options.id = Some(id.clone());
+  let entropy = Some(f64::from(digits) * 10.0_f64.log2());
 
   Ok(MFKDF2Factor {
-    id: Some(id),
+    id: Some(id.clone()),
     factor_type: FactorType::TOTP(TOTP {
-      config: options.try_into()?,
+      id,
+      secret: padded_secret,
+      digits,
+      hash,
+      issuer,
+      label,
+      time,
+      window,
+      step,
+      oracle,
       params: None,
       code: 0,
       target,
@@ -466,11 +420,11 @@ mod tests {
 
     assert!(matches!(factor.factor_type, FactorType::TOTP(_)));
     if let FactorType::TOTP(totp_factor) = factor.factor_type {
-      assert_eq!(totp_factor.config.digits, 8);
-      assert_eq!(totp_factor.config.hash, HashAlgorithm::Sha256);
-      assert_eq!(totp_factor.config.issuer, "TestCorp".to_string());
-      assert_eq!(totp_factor.config.label, "tester@testcorp.com".to_string());
-      assert_eq!(totp_factor.config.secret.len(), 32); // 20 bytes generated + 12 bytes padding
+      assert_eq!(totp_factor.digits, 8);
+      assert_eq!(totp_factor.hash, HashAlgorithm::Sha256);
+      assert_eq!(totp_factor.issuer, "TestCorp".to_string());
+      assert_eq!(totp_factor.label, "tester@testcorp.com".to_string());
+      assert_eq!(totp_factor.secret.len(), 32); // 20 bytes generated + 12 bytes padding
       assert!(totp_factor.target < 10_u32.pow(8));
     }
   }
@@ -514,7 +468,7 @@ mod tests {
     let factor = result.unwrap();
     if let FactorType::TOTP(totp_factor) = factor.factor_type {
       // 20 bytes generated + 12 bytes padding
-      assert_eq!(totp_factor.config.secret.len(), 32);
+      assert_eq!(totp_factor.secret.len(), 32);
     } else {
       panic!("Wrong factor type");
     }
@@ -542,7 +496,7 @@ mod tests {
 
     let pad = base64::prelude::BASE64_STANDARD.decode(params.pad).unwrap();
     let decrypted_secret = decrypt(pad, &key);
-    let original_secret = totp_factor.config.secret.as_slice();
+    let original_secret = totp_factor.secret.as_slice();
     assert_eq!(&decrypted_secret[..original_secret.len()], original_secret);
     let offsets = base64::prelude::BASE64_STANDARD.decode(params.offsets).unwrap();
     assert_eq!(offsets.len(), 4 * 87600);
@@ -566,7 +520,7 @@ mod tests {
     assert_eq!(output.digits, 8);
     assert_eq!(output.period, 30);
     assert_eq!(output.secret.len(), 20);
-    assert_eq!(output.secret, totp_factor.config.secret[..20]);
+    assert_eq!(output.secret, totp_factor.secret[..20]);
   }
 
   #[test]

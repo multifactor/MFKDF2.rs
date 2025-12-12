@@ -14,6 +14,7 @@ use sha2::Sha256;
 
 use crate::{
   crypto::{decrypt_cbc, encrypt_cbc, hkdf_sha256_with_info},
+  defaults::ooba as ooba_defaults,
   definitions::{FactorType, Key, MFKDF2Factor},
   derive::FactorDerive,
   error::{MFKDF2Error, MFKDF2Result},
@@ -179,7 +180,7 @@ pub fn ooba(code: &str) -> MFKDF2Result<MFKDF2Factor> {
   }
 
   Ok(MFKDF2Factor {
-    id:          Some("ooba".to_string()),
+    id:          Some(ooba_defaults::ID.to_string()),
     factor_type: FactorType::OOBA(Ooba {
       target: [0u8; 32].into(),
       length: 0,

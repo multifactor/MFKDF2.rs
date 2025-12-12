@@ -4,6 +4,7 @@
 use serde::{Deserialize, Serialize};
 
 use crate::{
+  defaults::persisted as persisted_defaults,
   definitions::{FactorType, Key, MFKDF2Factor},
   derive::FactorDerive,
   error::MFKDF2Result,
@@ -81,7 +82,7 @@ impl FactorDerive for Persisted {
 /// ```
 pub fn persisted(share: Vec<u8>) -> MFKDF2Result<MFKDF2Factor> {
   Ok(MFKDF2Factor {
-    id:          Some("persisted".to_string()),
+    id:          Some(persisted_defaults::ID.to_string()),
     factor_type: FactorType::Persisted(Persisted { share }),
     entropy:     None,
   })

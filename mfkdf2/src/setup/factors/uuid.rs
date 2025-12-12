@@ -7,6 +7,7 @@ use serde::{Deserialize, Serialize};
 pub use uuid::Uuid;
 
 use crate::{
+  defaults::uuid as uuid_defaults,
   definitions::{FactorType, MFKDF2Factor},
   error::MFKDF2Result,
   setup::FactorSetup,
@@ -25,7 +26,7 @@ pub struct UUIDOptions {
 }
 
 impl Default for UUIDOptions {
-  fn default() -> Self { Self { id: Some("uuid".to_string()), uuid: None } }
+  fn default() -> Self { Self { id: Some(uuid_defaults::ID.to_string()), uuid: None } }
 }
 
 /// UUID‑backed factor state.
@@ -100,9 +101,9 @@ pub fn uuid(mut options: UUIDOptions) -> MFKDF2Result<MFKDF2Factor> {
   let uuid = options.uuid.take().unwrap_or(Uuid::new_v4());
 
   Ok(MFKDF2Factor {
-    id:          Some(options.id.unwrap_or("uuid".to_string())),
+    id:          Some(options.id.unwrap_or_else(|| uuid_defaults::ID.to_string())),
     factor_type: FactorType::UUID(UUIDFactor { uuid }),
-    entropy:     Some(122.0),
+    entropy:     Some(uuid_defaults::ENTROPY),
   })
 }
 

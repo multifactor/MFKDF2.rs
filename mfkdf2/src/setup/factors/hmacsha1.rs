@@ -17,6 +17,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
   crypto::encrypt,
+  defaults::hmacsha1 as hmacsha1_defaults,
   definitions::{ByteArray, Key, MFKDF2Factor},
   error::MFKDF2Result,
   rng,
@@ -42,7 +43,7 @@ pub struct HmacSha1Options {
 }
 
 impl Default for HmacSha1Options {
-  fn default() -> Self { Self { id: Some("hmacsha1".to_string()), secret: None } }
+  fn default() -> Self { Self { id: Some(hmacsha1_defaults::ID.to_string()), secret: None } }
 }
 
 /// HMAC‑SHA1 response
@@ -161,7 +162,7 @@ pub fn hmacsha1(mut options: HmacSha1Options) -> MFKDF2Result<MFKDF2Factor> {
   {
     return Err(crate::error::MFKDF2Error::MissingFactorId);
   }
-  let id = options.id.take().unwrap_or("hmacsha1".to_string());
+  let id = options.id.take().unwrap_or_else(|| hmacsha1_defaults::ID.to_string());
 
   // consume the secret from options and generate a random one if none is provided
   let secret = options.secret.take().unwrap_or_else(|| {
@@ -170,7 +171,7 @@ pub fn hmacsha1(mut options: HmacSha1Options) -> MFKDF2Result<MFKDF2Factor> {
     secret.to_vec()
   });
   if secret.len() != 20 {
-    return Err(crate::error::MFKDF2Error::InvalidSecretLength(id));
+    return Err(crate::error::MFKDF2Error::InvalidSecretLength(id.clone()));
   }
   let mut secret_pad = [0u8; 12];
   rng::fill_bytes(&mut secret_pad);
@@ -179,7 +180,7 @@ pub fn hmacsha1(mut options: HmacSha1Options) -> MFKDF2Result<MFKDF2Factor> {
   Ok(MFKDF2Factor {
     id:          Some(id),
     factor_type: FactorType::HmacSha1(HmacSha1 { padded_secret, response: None }),
-    entropy:     Some(160.0),
+    entropy:     Some(hmacsha1_defaults::ENTROPY),
   })
 }
 

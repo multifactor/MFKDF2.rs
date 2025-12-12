@@ -330,7 +330,7 @@ let hotp_params = match &policy_hotp_factor.params {
   _ => unreachable!("HOTP factor always gives HOTP params"),
 };
 
-let hotp_secret = &hotp_state.config.secret[..20];
+let hotp_secret = &hotp_state.secret[..20];
 let correct_code = generate_otp_token(hotp_secret, hotp_params.counter, &hotp_params.hash, hotp_params.digits);
 
 let mut derive_factors = HashMap::new();

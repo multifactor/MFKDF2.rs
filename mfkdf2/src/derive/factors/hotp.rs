@@ -9,11 +9,12 @@ use base64::Engine;
 
 use crate::{
   crypto::decrypt,
+  defaults::hotp as hotp_defaults,
   definitions::{FactorType, Key, MFKDF2Factor},
   derive::FactorDerive,
   error::MFKDF2Result,
   otpauth::generate_otp_token,
-  setup::factors::hotp::{HOTP, HOTPConfig, HOTPOutput, HOTPParams, mod_positive},
+  setup::factors::hotp::{HOTP, HOTPOutput, HOTPParams, mod_positive},
 };
 
 impl FactorDerive for HOTP {
@@ -70,12 +71,12 @@ impl FactorDerive for HOTP {
     HOTPOutput {
       scheme:    "otpauth".to_string(),
       type_:     "hotp".to_string(),
-      label:     "mfkdf.com".to_string(),
+      label:     hotp_defaults::LABEL.to_string(),
       secret:    vec![0u8; 20],
-      issuer:    "MFKDF".to_string(),
-      algorithm: "sha1".to_string(),
-      digits:    6,
-      counter:   1,
+      issuer:    hotp_defaults::ISSUER.to_string(),
+      algorithm: hotp_defaults::HASH.to_string(),
+      digits:    hotp_defaults::DIGITS,
+      counter:   hotp_defaults::COUNTER,
       uri:       String::new(),
     }
   }
@@ -130,12 +131,8 @@ impl FactorDerive for HOTP {
 ///   mfkdf2::definitions::factor::FactorParams::HOTP(p) => p.counter,
 ///   _ => unreachable!(),
 /// };
-/// let code = mfkdf2::otpauth::generate_otp_token(
-///   &hotp.config.secret[..20],
-///   counter,
-///   &hotp.config.hash,
-///   hotp.config.digits,
-/// );
+/// let code =
+///   mfkdf2::otpauth::generate_otp_token(&hotp.secret[..20], counter, &hotp.hash, hotp.digits);
 ///
 /// let derive_factor = derive::factors::hotp(code)?;
 /// let derived_key = derive::key(
@@ -154,7 +151,12 @@ pub fn hotp(code: u32) -> MFKDF2Result<MFKDF2Factor> {
   Ok(MFKDF2Factor {
     id:          None,
     factor_type: FactorType::HOTP(HOTP {
-      config: HOTPConfig::default(),
+      id: hotp_defaults::ID.to_string(),
+      secret: vec![0u8; 32], // Placeholder, will be decrypted from params
+      digits: hotp_defaults::DIGITS,
+      hash: hotp_defaults::HASH,
+      issuer: hotp_defaults::ISSUER.to_string(),
+      label: hotp_defaults::LABEL.to_string(),
       params: Some(HOTPParams::default()),
       code,
       target: 0,
@@ -202,12 +204,11 @@ mod tests {
     let offset = setup_params.offset;
 
     // Generate the correct HOTP code that the user would need to provide
-    let correct_code =
-      generate_otp_token(&hotp.config.secret[..20], counter, &hotp.config.hash, hotp.config.digits);
+    let correct_code = generate_otp_token(&hotp.secret[..20], counter, &hotp.hash, hotp.digits);
     let expected_target = u32::from_be_bytes(factor.data().try_into().unwrap());
 
     // Verify the relationship: target = (offset + correct_code) % 10^digits
-    let modulus = 10_u32.pow(hotp.config.digits);
+    let modulus = 10_u32.pow(hotp.digits);
     assert_eq!(expected_target, (offset + correct_code) % modulus);
 
     // Derive phase - user provides the correct HOTP code

@@ -8,6 +8,7 @@ use std::collections::HashMap;
 use serde::{Deserialize, Serialize};
 
 use crate::{
+  defaults::stack as stack_defaults,
   definitions::{FactorType, Key, MFKDF2DerivedKey, MFKDF2Factor, MFKDF2Options, Salt},
   error::{MFKDF2Error, MFKDF2Result},
   policy::Policy,
@@ -112,7 +113,7 @@ impl FactorSetup for Stack {
 /// ```
 pub fn stack(factors: Vec<MFKDF2Factor>, options: StackOptions) -> MFKDF2Result<MFKDF2Factor> {
   let id = match options.id {
-    None => Some("stack".to_string()),
+    None => Some(stack_defaults::ID.to_string()),
     Some(ref id) => {
       if id.is_empty() {
         return Err(MFKDF2Error::MissingFactorId);

@@ -8,6 +8,7 @@ use serde_json::Value;
 use zxcvbn::zxcvbn;
 
 use crate::{
+  defaults::question as question_defaults,
   definitions::{FactorType, Key, MFKDF2Factor},
   error::{MFKDF2Error, MFKDF2Result},
   setup::FactorSetup,
@@ -27,7 +28,7 @@ pub struct QuestionOptions {
 }
 
 impl Default for QuestionOptions {
-  fn default() -> Self { Self { id: Some("question".to_string()), question: None } }
+  fn default() -> Self { Self { id: Some(question_defaults::ID.to_string()), question: None } }
 }
 
 /// Security‑question factor state. This factor models a user-chosen security question and answer.
@@ -122,7 +123,7 @@ pub fn question(
   {
     return Err(crate::error::MFKDF2Error::MissingFactorId);
   }
-  let id = Some(options.id.take().unwrap_or("question".to_string()));
+  let id = Some(options.id.take().unwrap_or_else(|| question_defaults::ID.to_string()));
 
   let question = options.question.take().unwrap_or_default();
 

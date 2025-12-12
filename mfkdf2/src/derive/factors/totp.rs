@@ -16,13 +16,14 @@ use web_time::{SystemTime, UNIX_EPOCH};
 
 use crate::{
   crypto::decrypt,
+  defaults::totp as totp_defaults,
   definitions::{FactorType, Key, MFKDF2Factor},
   derive::FactorDerive,
   error::{MFKDF2Error, MFKDF2Result},
   otpauth::generate_otp_token,
   setup::factors::{
     hotp::mod_positive,
-    totp::{TOTP, TOTPConfig, TOTPOutput, TOTPParams},
+    totp::{TOTP, TOTPOutput, TOTPParams},
   },
 };
 
@@ -36,24 +37,12 @@ pub struct TOTPDeriveOptions {
   pub oracle: Option<HashMap<u64, u32>>,
 }
 
-impl TryFrom<TOTPDeriveOptions> for TOTPConfig {
-  type Error = MFKDF2Error;
-
-  fn try_from(options: TOTPDeriveOptions) -> Result<Self, MFKDF2Error> {
-    Ok(TOTPConfig {
-      time: options.time.ok_or(MFKDF2Error::MissingDeriveParams("time".to_string()))?,
-      oracle: options.oracle,
-      ..Default::default()
-    })
-  }
-}
-
 impl FactorDerive for TOTP {
   /// Stores the public parameters for the TOTP factor.
   /// Calculates the offset index from start time and current time, and derives the target code.
   fn include_params(&mut self, params: Self::Params) -> MFKDF2Result<()> {
     let start_counter = params.start / (params.step as u64 * 1000);
-    let now_counter = self.config.time / (params.step as u64 * 1000);
+    let now_counter = self.time / (params.step as u64 * 1000);
 
     let index = (now_counter - start_counter) as usize;
     if index >= params.window as usize {
@@ -74,17 +63,15 @@ impl FactorDerive for TOTP {
       })?);
 
     let oracle_time = now_counter * (params.step as u64) * 1000;
-    if self.config.oracle.is_some()
-      && self.config.oracle.as_ref().unwrap().contains_key(&oracle_time)
+    if let Some(ref oracle) = self.oracle
+      && oracle.contains_key(&oracle_time)
     {
       offset = mod_positive(
-        i64::from(offset)
-          - i64::from(*self.config.oracle.as_ref().unwrap().get(&oracle_time).unwrap()),
+        i64::from(offset) - i64::from(oracle[&oracle_time]),
         10_i64.pow(params.digits),
       );
     }
-    self.target =
-      mod_positive(i64::from(offset) + i64::from(self.code), 10_i64.pow(self.config.digits));
+    self.target = mod_positive(i64::from(offset) + i64::from(self.code), 10_i64.pow(self.digits));
 
     self.params = Some(params);
     Ok(())
@@ -112,12 +99,11 @@ impl FactorDerive for TOTP {
         mod_positive(i64::from(self.target) - i64::from(code), 10_i64.pow(params.digits));
 
       let oracle_time = counter * u64::from(params.step) * 1000;
-      if self.config.oracle.is_some()
-        && self.config.oracle.as_ref().unwrap().contains_key(&oracle_time)
+      if let Some(ref oracle) = self.oracle
+        && oracle.contains_key(&oracle_time)
       {
         offset = mod_positive(
-          i64::from(offset)
-            + i64::from(*self.config.oracle.as_ref().unwrap().get(&oracle_time).unwrap()),
+          i64::from(offset) + i64::from(oracle[&oracle_time]),
           10_i64.pow(params.digits),
         );
       }
@@ -170,9 +156,6 @@ impl FactorDerive for TOTP {
 ///
 /// # Errors
 ///
-/// - [`MFKDF2Error::MissingDeriveParams`] if required fields such as "time" are missing when
-///   converting [`TOTPDeriveOptions`] into [`TOTPConfig`] (this is avoided when `options` is `None`
-///   and the default time is used)
 /// - [`MFKDF2Error::TOTPWindowExceeded`] when the effective time lies outside the precomputed
 ///   window encoded in the policy
 /// - [`MFKDF2Error::InvalidDeriveParams`] when the offsets buffer is malformed or too small for the
@@ -202,7 +185,7 @@ impl FactorDerive for TOTP {
 ///
 /// let setup_factor = setup_totp(options)?;
 /// # let secret = if let mfkdf2::definitions::FactorType::TOTP(ref f) = setup_factor.factor_type {
-/// #  f.config.secret.clone()
+/// #  f.secret.clone()
 /// # } else {
 /// #   unreachable!()
 /// # };
@@ -227,18 +210,27 @@ impl FactorDerive for TOTP {
 /// # Ok::<(), mfkdf2::error::MFKDF2Error>(())
 /// ```
 pub fn totp(code: u32, options: Option<TOTPDeriveOptions>) -> MFKDF2Result<MFKDF2Factor> {
-  let mut options = options.unwrap_or_default();
+  let options = options.unwrap_or_default();
 
-  // Validation
-  if options.time.is_none() {
-    let now_ms = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_millis() as u64;
-    options.time = Some(now_ms);
-  }
+  // Extract time with default (current time if not provided)
+  let time = options
+    .time
+    .unwrap_or_else(|| SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_millis() as u64);
 
+  // For derive, we only need minimal fields; the rest will come from policy params
   Ok(MFKDF2Factor {
-    id:          Some("totp".to_string()),
+    id:          Some(totp_defaults::ID.to_string()),
     factor_type: FactorType::TOTP(TOTP {
-      config: TOTPConfig::try_from(options)?,
+      id: totp_defaults::ID.to_string(),
+      secret: vec![0u8; 32], // Placeholder, will be decrypted from params
+      digits: totp_defaults::DIGITS,
+      hash: totp_defaults::HASH,
+      issuer: totp_defaults::ISSUER.to_string(),
+      label: totp_defaults::LABEL.to_string(),
+      time,
+      window: totp_defaults::WINDOW,
+      step: totp_defaults::STEP,
+      oracle: options.oracle,
       params: None,
       code,
       target: 0,
@@ -312,7 +304,7 @@ mod tests {
     let factor = setup_totp::totp(setup_options).unwrap();
 
     let secret = if let FactorType::TOTP(f) = &factor.factor_type {
-      f.config.secret.clone()
+      f.secret.clone()
     } else {
       panic!("wrong factor type");
     };

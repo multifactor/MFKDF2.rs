@@ -152,7 +152,7 @@ use crate::{
 ///   mfkdf2::definitions::FactorType::HOTP(ref h) => h,
 ///   _ => unreachable!(),
 /// };
-/// let hotp_code = generate_otp_token(&hotp.config.secret[..20], counter, hash, digits);
+/// let hotp_code = generate_otp_token(&hotp.secret[..20], counter, hash, digits);
 /// let derive_hotp = derive_hotp(hotp_code as u32)?;
 /// factors.insert("hotp".to_string(), derive_hotp);
 ///
@@ -660,17 +660,15 @@ mod tests {
       crate::definitions::factor::FactorParams::HOTP(p) => p.counter,
       _ => panic!("Expected HOTP params"),
     };
-    let correct_code =
-      generate_otp_token(&hotp.config.secret[..20], counter, &hotp.config.hash, hotp.config.digits);
+    let correct_code = generate_otp_token(&hotp.secret[..20], counter, &hotp.hash, hotp.digits);
     let mut derive_hotp_factor = derive_hotp(correct_code as u32).unwrap();
     derive_hotp_factor.id = Some("hotp".to_string());
     derive_factors_map.insert("hotp".to_string(), derive_hotp_factor);
 
     // TOTP factor
     let time = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_millis();
-    let counter = time as u64 / (totp.config.step as u64 * 1000);
-    let totp_code =
-      generate_otp_token(&totp.config.secret[..20], counter, &totp.config.hash, totp.config.digits);
+    let counter = time as u64 / (totp.step as u64 * 1000);
+    let totp_code = generate_otp_token(&totp.secret[..20], counter, &totp.hash, totp.digits);
     let mut derive_totp_factor = derive_totp(totp_code as u32, None).unwrap();
     derive_totp_factor.id = Some("totp".to_string());
     derive_factors_map.insert("totp".to_string(), derive_totp_factor);
@@ -709,17 +707,15 @@ mod tests {
       crate::definitions::factor::FactorParams::HOTP(p) => p.counter,
       _ => panic!("Expected HOTP params"),
     };
-    let correct_code =
-      generate_otp_token(&hotp.config.secret[..20], counter, &hotp.config.hash, hotp.config.digits);
+    let correct_code = generate_otp_token(&hotp.secret[..20], counter, &hotp.hash, hotp.digits);
     let mut derive_hotp_factor = derive_hotp(correct_code as u32).unwrap();
     derive_hotp_factor.id = Some("hotp".to_string());
     derive_factors_map.insert("hotp".to_string(), derive_hotp_factor);
 
     // totp factor
     let time = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_millis();
-    let counter = time as u64 / (u64::from(totp.config.step) * 1000);
-    let totp_code =
-      generate_otp_token(&totp.config.secret[..20], counter, &totp.config.hash, totp.config.digits);
+    let counter = time as u64 / (u64::from(totp.step) * 1000);
+    let totp_code = generate_otp_token(&totp.secret[..20], counter, &totp.hash, totp.digits);
     let mut derive_totp_factor = derive_totp(totp_code as u32, None).unwrap();
     derive_totp_factor.id = Some("totp".to_string());
     derive_factors_map.insert("totp".to_string(), derive_totp_factor);
@@ -787,8 +783,7 @@ mod tests {
       crate::definitions::factor::FactorParams::HOTP(p) => p.counter,
       _ => panic!("Expected HOTP params"),
     };
-    let correct_code =
-      generate_otp_token(&hotp.config.secret[..20], counter, &hotp.config.hash, hotp.config.digits);
+    let correct_code = generate_otp_token(&hotp.secret[..20], counter, &hotp.hash, hotp.digits);
     let mut derive_hotp_factor = derive_hotp(correct_code as u32).unwrap();
     derive_hotp_factor.id = Some("hotp".to_string());
     derive_factors_map.insert("hotp".to_string(), derive_hotp_factor);
@@ -873,8 +868,7 @@ mod tests {
       crate::definitions::factor::FactorParams::HOTP(p) => p.counter,
       _ => panic!("Expected HOTP params"),
     };
-    let correct_code =
-      generate_otp_token(&hotp.config.secret[..20], counter, &hotp.config.hash, hotp.config.digits);
+    let correct_code = generate_otp_token(&hotp.secret[..20], counter, &hotp.hash, hotp.digits);
     let mut derive_hotp_factor = derive_hotp(correct_code as u32).unwrap();
     derive_hotp_factor.id = Some("hotp".to_string());
     derive_factors_map.insert("hotp".to_string(), derive_hotp_factor);
