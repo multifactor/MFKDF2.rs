@@ -78,21 +78,21 @@ pub struct PasswordOptions {
 /// Basic usage with a default id:
 ///
 /// ```rust
-/// # use mfkdf2::setup::factors::password::{password, PasswordOptions};
-/// let factor = password("correct horse battery staple", PasswordOptions::default())?;
+/// use mfkdf2::prelude::*;
+/// let factor = setup_password("correct horse battery staple", PasswordOptions::default())?;
 /// assert_eq!(factor.id.as_deref(), Some("password"));
 /// assert!(factor.entropy.unwrap() > 40.0);
-/// # Ok::<(), mfkdf2::error::MFKDF2Error>(())
+/// # MFKDF2Result::Ok(())
 /// ```
 ///
 /// Using a custom id so you can distinguish multiple password factors:
 ///
 /// ```rust
-/// # use mfkdf2::setup::factors::password::{password, PasswordOptions};
+/// use mfkdf2::prelude::*;
 /// let options = PasswordOptions { id: Some("login-password".to_string()) };
-/// let factor = password("my login secret", options)?;
+/// let factor = setup_password("my login secret", options)?;
 /// assert_eq!(factor.id.as_deref(), Some("login-password"));
-/// # Ok::<(), mfkdf2::error::MFKDF2Error>(())
+/// # MFKDF2Result::Ok(())
 /// ```
 pub fn password(
   password: impl Into<String>,
