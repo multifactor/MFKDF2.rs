@@ -1,3 +1,6 @@
+# switch to nightly rust
+rustup default nightly
+
 # install just
 cargo install just
 cargo install uniffi --features="cli" # this may have changed since the documentation attemps `cargo install uniffi-bindgen` and that no longer works
