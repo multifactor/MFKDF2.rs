@@ -1,0 +1,18 @@
+{
+	"name": "MFKDF2-${localEnv:USERNAME}",
+	"image": "mcr.microsoft.com/devcontainers/rust:2-1-trixie",
+	"features": {
+		"ghcr.io/devcontainers/features/python:1": {},
+		"ghcr.io/devcontainers-extra/features/corepack:1": {},
+		"ghcr.io/devcontainers-extra/features/npm-package:1": {}
+	},
+	"customizations": {
+		"vscode": {
+			"extensions": [
+				"streetsidesoftware.code-spell-checker",
+				"Gruntfuggly.todo-tree"
+			]
+		}
+	},
+	"postCreateCommand": ".devcontainer/setup.sh"
+}
