@@ -8,7 +8,8 @@
     "docs/book/",
     "mfkdf2-web/node_modules/",
     "mfkdf2-web/rust_modules/",
-    "mfkdf2-web/test_results/",
+    "mfkdf2-web/test-results/",
+    "mfkdf2-web/src/generated/"
   ],
   "words": [
     "AQAB",
@@ -37,6 +38,7 @@
     "hmacsha",
     "hotkeyₜ",
     "hotp",
+    "indistinguishability",
     "initialised",
     "inlines",
     "intialize",
@@ -82,6 +84,7 @@
     "rngs",
     "rstest",
     "rustc",
+    "rustdoc",
     "RUSTDOCFLAGS",
     "rustup",
     "Sambhav",
@@ -117,11 +120,5 @@
     "NV4XGZLDOJSXI",
     "98p23uijafjj",
     "ah77yhfraklhjaza"
-  ],
-  "userWords": [
-    "indistinguishability",
-    "MFDKF",
-    "inidividually",
-    "bindnigs"
   ]
 }
