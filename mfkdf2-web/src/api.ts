@@ -1185,7 +1185,7 @@ export const mfkdf = {
         return wrapDeriveFactor(await raw.derivePassword(password));
       },
       /**
-       * Use a persisted MFDKF factor
+       * Use a persisted MFKDF factor
        *
        * @example
        * // setup 3-factor multi-factor derived key

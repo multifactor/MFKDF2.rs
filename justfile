@@ -316,3 +316,8 @@ benchmarks-clean:
     @just header "Cleaning up benchmark files"
     rm -f *.jsonl
     @printf "{{success}}✓ Benchmark files cleaned up{{reset}}\n"
+
+spell-check:
+    @just header "Checking for spelling mistakes"
+    npx cspell .
+    @printf "{{success}}✓ Spell check complete{{reset}}\n"
