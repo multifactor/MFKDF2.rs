@@ -184,7 +184,7 @@ just ci
 - `just udeps` - Check for unused dependencies
 - `just fmt` - Format code (Rust + TOML)
 - `just gen-ts-bindings` - Generate TypeScript bindings
-- `just verify-bindnigs` - Verify that bindings were properly generated
+- `just verify-bindings` - Verify that bindings were properly generated
 - `just test-bindings` - Test the TypeScript bindings
 
 ## License

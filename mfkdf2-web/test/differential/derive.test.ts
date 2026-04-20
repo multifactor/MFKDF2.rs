@@ -336,7 +336,7 @@ suite('differential/derive', () => {
     })
   });
 
-  // each factor inidividually and multiple factors
+  // each factor individually and multiple factors
   suite('multiple factors', () => {
     test('password', async () => {
       const setup = await mfkdf.setup.key([
