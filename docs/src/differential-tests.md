@@ -31,19 +31,26 @@ See: [multifactor/MFKDF#27](https://github.com/multifactor/MFKDF/pull/27)
 See: [multifactor/MFKDF2.rs#43](https://github.com/multifactor/MFKDF2.rs/pull/43)
 - Add a `differential-test` feature flag providing a global deterministic RNG equivalent to the reference.
 - Provide utility methods in the TypeScript bindings facade for nested parameter parsing and stringification (read/write inner params) to match reference structures.
+- Pin the versions used for differential testing to:
+  - `MFKDF2.rs` commit `7c33c7164d6e40a26c0899f19b8f9ad9b9f0c029`
+  - `MFKDF` commit `3d5bf73b4ce42b23da113b4be6d35e7d941fadf8`
 
 ## How to reproduce
 
-Run the differential tests using the bindings workflow. From the repository root:
+You can run the differential tests **locally** or via the **GitHub Actions workflow**.
+
+### Locally
+
+From the repository root:
 
 ```bash
 # Ensure the WASM target is present (one-time)
 rustup target add wasm32-unknown-unknown
 
-# Generate differential-release bindings (optimized)
+# Generate differential-release bindings (includes the `differential-test` feature)
 just gen-ts-bindings-differential
 
-# Run the TypeScript test suite (includes differential tests)
+# Run only the differential TypeScript test suite
 just test-bindings-differential
 ```
 

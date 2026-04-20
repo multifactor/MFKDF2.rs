@@ -304,33 +304,6 @@ pub fn key(
       let pad = general_purpose::STANDARD.decode(&factor.pad)?;
       let plaintext = decrypt(pad, &stretched);
 
-      if let Some(ref factor_hint) = factor.hint {
-        let buffer = hkdf_sha256_with_info(
-          &stretched,
-          &salt_bytes,
-          format!("mfkdf2:factor:hint:{}", factor.id).as_bytes(),
-        );
-
-        let binary_string = buffer.iter().fold(String::new(), |mut acc, byte| {
-          write!(&mut acc, "{byte:08b}").unwrap();
-          acc
-        });
-
-        // Take the last `hint_len` characters
-        let hint = binary_string
-          .chars()
-          .rev()
-          .take(factor_hint.len())
-          .collect::<Vec<_>>()
-          .into_iter()
-          .rev()
-          .collect::<String>();
-
-        if hint != *factor_hint {
-          return Err(MFKDF2Error::HintMismatch(factor.id.clone()));
-        }
-      }
-
       // TODO (autoparallel): It would be preferred to know the size of this array at compile
       // time.
       shares_bytes.push(Some(plaintext));
@@ -372,23 +345,13 @@ pub fn key(
   }
 
   let policy_key_bytes = general_purpose::STANDARD.decode(policy.key.as_bytes())?;
-  let key = decrypt(policy_key_bytes, &kek);
 
-  for factor in &mut new_policy.factors {
-    let Some(material) = factors.get(factor.id.as_str()) else {
-      continue;
-    };
+  // Create an internal key for deriving separate keys for parameters, secret, and integrity
+  let internal_key = decrypt(policy_key_bytes.clone(), &kek);
 
-    let params_key = hkdf_sha256_with_info(
-      &key,
-      &general_purpose::STANDARD.decode(&factor.salt)?,
-      format!("mfkdf2:factor:params:{}", factor.id).as_bytes(),
-    );
-    let params = material.factor_type.params(params_key.into())?;
-    factor.params = params;
-  }
-
-  let integrity_key = hkdf_sha256_with_info(&key, &salt_bytes, "mfkdf2:integrity".as_bytes());
+  // Perform integrity check
+  let integrity_key =
+    hkdf_sha256_with_info(&internal_key, &salt_bytes, "mfkdf2:integrity".as_bytes());
   if verify {
     let integrity_data = policy.extract();
     let digest = hmacsha256(&integrity_key, &integrity_data);
@@ -397,6 +360,57 @@ pub fn key(
       return Err(MFKDF2Error::PolicyIntegrityCheckFailed);
     }
   }
+
+  for factor in &mut new_policy.factors {
+    let Some(material) = factors.get(factor.id.as_str()) else {
+      continue;
+    };
+
+    // Perform hint verification after policy integrity check
+    if let Some(ref factor_hint) = factor.hint {
+      let salt = general_purpose::STANDARD.decode(&factor.salt)?;
+      let stretched = hkdf_sha256_with_info(
+        &material.data(),
+        &salt,
+        format!("mfkdf2:factor:pad:{}", factor.id).as_bytes(),
+      );
+
+      let buffer = hkdf_sha256_with_info(
+        &stretched,
+        &salt,
+        format!("mfkdf2:factor:hint:{}", factor.id).as_bytes(),
+      );
+
+      let binary_string = buffer.iter().fold(String::new(), |mut acc, byte| {
+        write!(&mut acc, "{byte:08b}").unwrap();
+        acc
+      });
+
+      // Take the last `hint_len` characters
+      let hint = binary_string
+        .chars()
+        .rev()
+        .take(factor_hint.len())
+        .collect::<Vec<_>>()
+        .into_iter()
+        .rev()
+        .collect::<String>();
+
+      if hint != *factor_hint {
+        return Err(MFKDF2Error::HintMismatch(factor.id.clone()));
+      }
+    }
+
+    let params_key = hkdf_sha256_with_info(
+      &internal_key,
+      &general_purpose::STANDARD.decode(&factor.salt)?,
+      format!("mfkdf2:factor:params:{}", factor.id).as_bytes(),
+    );
+    let params = material.factor_type.params(params_key.into())?;
+    factor.params = params;
+  }
+
+  // Update the policy HMAC
   if !policy.hmac.is_empty() {
     let integrity_data = new_policy.extract();
     let digest = hmacsha256(&integrity_key, &integrity_data);
@@ -411,9 +425,16 @@ pub fn key(
     )
     .map_err(|_| MFKDF2Error::ShareRecovery)?;
 
+  // derive a dedicated final key to ensure domain separation between internal and external keys
+  let final_key = if !stack {
+    hkdf_sha256_with_info(&internal_key, &salt_bytes, "mfkdf2:key:final".as_bytes())
+  } else {
+    internal_key.try_into().map_err(|_| MFKDF2Error::TryFromVec)?
+  };
+
   Ok(MFKDF2DerivedKey {
     policy: new_policy,
-    key: key.try_into()?,
+    key: final_key.into(),
     secret: secret_arr.to_vec(),
     shares: original_shares.into_iter().map(|s| Vec::from(&s)).collect(),
     outputs,
